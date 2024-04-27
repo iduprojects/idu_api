@@ -1,0 +1,3 @@
+"""
+Logic exceptions module.
+"""
