@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 from loguru import logger
 
-from test_fastapi import __version__ as api_version
+from urban_api import __version__ as api_version
 
 
 @dataclass
