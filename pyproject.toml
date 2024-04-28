@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "urban-api"
 version = "0.1.0"
-description = "API service for digital urbanism platform"
+description = "This is a Digital Territories Platform API to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
 

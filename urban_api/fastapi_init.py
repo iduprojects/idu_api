@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from .version import VERSION, LAST_UPDATE
+from .version import VERSION
 from .db.connection.session import SessionManager
 from .endpoints import list_of_routes
 from .config.app_settings_global import app_settings
@@ -24,14 +24,22 @@ def get_app(prefix: str = "/api") -> FastAPI:
     """
     Create application and all dependable objects.
     """
-    description = "This is a simple note taking service"
+    description = "This is a Digital Territories Platform API to access and manipulate basic territories data."
 
     application = FastAPI(
-        title="Noted API",
+        title="Digital Territories Platform Data API",
         description=description,
         docs_url="/api/docs",
         openapi_url="/api/openapi",
-        version=f"{VERSION} ({LAST_UPDATE})",
+        version=VERSION,
+        terms_of_service="http://swagger.io/terms/",
+        contact={
+            "email": "idu@itmo.ru"
+        },
+        license_info={
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        }
     )
     bind_routes(application, prefix)
 

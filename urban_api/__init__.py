@@ -1,5 +1,5 @@
 """
-"This is a simple note-taking service"
+This is a Digital Territories Platform API to access and manipulate basic territories data.
 """
 
 from .version import VERSION as __version__

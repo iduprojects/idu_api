@@ -17,9 +17,9 @@ class AppSettings:
     host: str = "0.0.0.0"
     port: int = 8000
 
-    db_addr: str = "notes_db"
+    db_addr: str = "localhost"
     db_port: int = 5432
-    db_name: str = "notes_db"
+    db_name: str = "urban_db"
     db_user: str = "postgres"
     db_pass: str = "1111"
     debug: bool = False
