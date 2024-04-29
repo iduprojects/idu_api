@@ -18,6 +18,8 @@ loguru = "^0.7.2"
 sqlalchemy = {version = "^2.0.29", extras = ["asyncio"]}
 cachetools = "^5.3.3"
 geoalchemy2 = "^0.15.0"
+shapely = "^2.0.4"
+pandas = "^2.2.2"
 
 [tool.poetry.scripts]
 launch_urban_api = "urban_api.__main__:main"
