@@ -2,10 +2,10 @@
 Territory schemas are defined here.
 """
 from pydantic import BaseModel, Field, validator
-from typing import Optional
+from typing import Optional, Dict
 from loguru import logger
 
-from urban_api.dto import TerritoryTypeDTO, TerritoryDTO
+from urban_api.dto import TerritoryTypeDTO, TerritoryDTO, TerritoryWithoutGeometryDTO
 from urban_api.schemas.geometries import Geometry
 
 
@@ -41,17 +41,17 @@ class TerritoriesData(BaseModel):
     Territory with all its attributes
     """
 
-    territory_id: int = Field(examples=[1])
-    territory_type_id: int = Field(examples=[1])
-    parent_id: int = Field(examples=[1])
-    name: str = Field(examples=["--"], description="Territory name")
-    geometry: Geometry = Field(description="Territory geometry")
-    level: int = Field(examples=[1])
-    properties: dict = Field(examples=[{"additional_attribute_name": "additional_attribute_value"}],
-                             description="Territory additional parameters")
-    centre_point: Geometry
-    admin_center: int
-    okato_code: str
+    territory_id: int = Field(..., examples=[1])
+    territory_type_id: int = Field(..., examples=[1])
+    parent_id: int = Field(..., examples=[1])
+    name: str = Field(..., examples=["--"], description="Territory name")
+    geometry: Geometry = Field(..., description="Territory geometry")
+    level: int = Field(..., examples=[1])
+    properties: Dict[str, str] = Field(..., description="Service additional properties",
+                                       example={"additional_attribute_name": "additional_attribute_value"})
+    centre_point: Geometry = Field(..., description="Centre coordinates")
+    admin_center: int = Field(..., examples=[1])
+    okato_code: str = Field(..., examples=["1"])
 
     @classmethod
     def from_dto(cls, dto: TerritoryDTO) -> "TerritoriesData":
@@ -82,11 +82,11 @@ class TerritoriesDataPost(BaseModel):
     name: str = Field(examples=["--"], description="Territory name")
     geometry: Geometry = Field(description="Territory geometry")
     level: int = Field(examples=[1])
-    properties: dict = Field(examples=[{"additional_attribute_name": "additional_attribute_value"}],
-                             description="Territory additional parameters")
-    centre_point: Geometry
-    admin_center: int
-    okato_code: str
+    properties: Dict[str, str] = Field(..., description="Service additional properties",
+                                       example={"additional_attribute_name": "additional_attribute_value"})
+    centre_point: Geometry = Field(..., description="Centre coordinates")
+    admin_center: int = Field(..., examples=[1])
+    okato_code: str = Field(..., examples=["1"])
 
     @validator("geometry")
     @staticmethod
@@ -114,3 +114,35 @@ class TerritoriesDataPost(BaseModel):
             logger.debug("Exception on passing geometry: {!r}", exc)
             raise ValueError("Invalid geometry passed") from exc
         return geometry
+
+
+class TerritoryWithoutGeometry(BaseModel):
+    """
+    Territory with all its attributes
+    """
+
+    territory_id: int = Field(..., examples=[1])
+    territory_type_id: int = Field(..., examples=[1])
+    parent_id: int = Field(..., examples=[1])
+    name: str = Field(..., examples=["--"], description="Territory name")
+    level: int = Field(..., examples=[1])
+    properties: Dict[str, str] = Field(..., description="Service additional properties",
+                                       example={"additional_attribute_name": "additional_attribute_value"})
+    admin_center: int = Field(..., examples=[1])
+    okato_code: str = Field(..., examples=["1"])
+
+    @classmethod
+    def from_dto(cls, dto: TerritoryWithoutGeometryDTO) -> "TerritoryWithoutGeometry":
+        """
+        Construct from DTO.
+        """
+        return cls(
+            territory_id=dto.territory_id,
+            territory_type_id=dto.territory_type_id,
+            parent_id=dto.parent_id,
+            name=dto.name,
+            level=dto.level,
+            properties=dto.properties,
+            admin_center=dto.admin_center,
+            okato_code=dto.okato_code
+        )
