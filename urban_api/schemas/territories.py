@@ -1,11 +1,13 @@
 """
 Territory schemas are defined here.
 """
-from pydantic import BaseModel, Field, validator
-from typing import Optional, Dict
-from loguru import logger
 
-from urban_api.dto import TerritoryTypeDTO, TerritoryDTO, TerritoryWithoutGeometryDTO
+from typing import Any, Optional
+
+from loguru import logger
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from urban_api.dto import TerritoryDTO, TerritoryTypeDTO, TerritoryWithoutGeometryDTO
 from urban_api.schemas.geometries import Geometry
 
 
@@ -22,10 +24,7 @@ class TerritoryTypes(BaseModel):
         """
         Construct from DTO.
         """
-        return cls(
-            territory_type_id=dto.territory_type_id,
-            name=dto.name
-        )
+        return cls(territory_type_id=dto.territory_type_id, name=dto.name)
 
 
 class TerritoryTypesPost(BaseModel):
@@ -41,17 +40,21 @@ class TerritoriesData(BaseModel):
     Territory with all its attributes
     """
 
-    territory_id: int = Field(..., examples=[1])
-    territory_type_id: int = Field(..., examples=[1])
-    parent_id: int = Field(..., examples=[1])
-    name: str = Field(..., examples=["--"], description="Territory name")
-    geometry: Geometry = Field(..., description="Territory geometry")
-    level: int = Field(..., examples=[1])
-    properties: Dict[str, str] = Field(..., description="Service additional properties",
-                                       example={"additional_attribute_name": "additional_attribute_value"})
-    centre_point: Geometry = Field(..., description="Centre coordinates")
-    admin_center: int = Field(..., examples=[1])
-    okato_code: str = Field(..., examples=["1"])
+    territory_id: int = Field(examples=[1])
+    territory_type_id: int = Field(examples=[1])
+    parent_id: Optional[int] = Field(
+        examples=[1], description="Parent territory identifier, null only for the one territory"
+    )
+    name: str = Field(examples=["--"], description="Territory name")
+    geometry: Geometry = Field(description="Territory geometry")
+    level: int = Field(examples=[1])
+    properties: dict[str, str] = Field(
+        description="Service additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+    centre_point: Geometry = Field(description="Centre coordinates")
+    admin_center: Optional[int] = Field(examples=[1])
+    okato_code: Optional[str] = Field(examples=["1"])
 
     @classmethod
     def from_dto(cls, dto: TerritoryDTO) -> "TerritoriesData":
@@ -63,12 +66,12 @@ class TerritoriesData(BaseModel):
             territory_type_id=dto.territory_type_id,
             parent_id=dto.parent_id,
             name=dto.name,
-            geometry=dto.geometry,
+            geometry=Geometry.from_shapely_geometry(dto.geometry),
             level=dto.level,
             properties=dto.properties,
-            centre_point=dto.centre_point,
+            centre_point=Geometry.from_shapely_geometry(dto.centre_point),
             admin_center=dto.admin_center,
-            okato_code=dto.okato_code
+            okato_code=dto.okato_code,
         )
 
 
@@ -82,13 +85,15 @@ class TerritoriesDataPost(BaseModel):
     name: str = Field(examples=["--"], description="Territory name")
     geometry: Geometry = Field(description="Territory geometry")
     level: int = Field(examples=[1])
-    properties: Dict[str, str] = Field(..., description="Service additional properties",
-                                       example={"additional_attribute_name": "additional_attribute_value"})
-    centre_point: Geometry = Field(..., description="Centre coordinates")
-    admin_center: int = Field(..., examples=[1])
-    okato_code: str = Field(..., examples=["1"])
+    properties: dict[str, Any] = Field(
+        description="Service additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+    centre_point: Optional[Geometry] = Field(description="Centre coordinates")
+    admin_center: int = Field(examples=[1])
+    okato_code: str = Field(examples=["1"])
 
-    @validator("geometry")
+    @field_validator("geometry")
     @staticmethod
     def validate_geometry(geometry: Geometry) -> Geometry:
         """
@@ -101,19 +106,31 @@ class TerritoriesDataPost(BaseModel):
             raise ValueError("Invalid geometry passed") from exc
         return geometry
 
-    @validator("centre_point")
+    @field_validator("centre_point")
     @staticmethod
-    def validate_geometry(geometry: Geometry) -> Geometry:
+    def validate_center(centre_point: Geometry | None) -> Geometry:
         """
         Validate that given geometry is Point and validity via creating Shapely object.
         """
-        assert geometry.type == "Point", "Only Point is accepted"
+        if centre_point is None:
+            return None
+        assert centre_point.type == "Point", "Only Point is accepted"
         try:
-            geometry.as_shapely_geometry()
+            centre_point.as_shapely_geometry()
         except (AttributeError, ValueError, TypeError) as exc:
             logger.debug("Exception on passing geometry: {!r}", exc)
             raise ValueError("Invalid geometry passed") from exc
-        return geometry
+        return centre_point
+
+    @model_validator(mode="after")
+    @staticmethod
+    def validate_post(model: "TerritoriesDataPost") -> "TerritoriesDataPost":
+        """
+        Use geometry centroid for centre_point if it is missing.
+        """
+        if model.centre_point is None:
+            model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
+        return model
 
 
 class TerritoryWithoutGeometry(BaseModel):
@@ -121,15 +138,19 @@ class TerritoryWithoutGeometry(BaseModel):
     Territory with all its attributes
     """
 
-    territory_id: int = Field(..., examples=[1])
-    territory_type_id: int = Field(..., examples=[1])
-    parent_id: int = Field(..., examples=[1])
-    name: str = Field(..., examples=["--"], description="Territory name")
-    level: int = Field(..., examples=[1])
-    properties: Dict[str, str] = Field(..., description="Service additional properties",
-                                       example={"additional_attribute_name": "additional_attribute_value"})
-    admin_center: int = Field(..., examples=[1])
-    okato_code: str = Field(..., examples=["1"])
+    territory_id: int = Field(examples=[1])
+    territory_type_id: int = Field(examples=[1])
+    parent_id: Optional[int] = Field(
+        examples=[1], description="Parent territory identifier, null only for the one territory"
+    )
+    name: str = Field(examples=["--"], description="Territory name")
+    level: int = Field(examples=[1])
+    properties: dict[str, str] = Field(
+        description="Service additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+    admin_center: Optional[int] = Field(examples=[1])
+    okato_code: Optional[str] = Field(examples=["1"])
 
     @classmethod
     def from_dto(cls, dto: TerritoryWithoutGeometryDTO) -> "TerritoryWithoutGeometry":
@@ -144,5 +165,5 @@ class TerritoryWithoutGeometry(BaseModel):
             level=dto.level,
             properties=dto.properties,
             admin_center=dto.admin_center,
-            okato_code=dto.okato_code
+            okato_code=dto.okato_code,
         )

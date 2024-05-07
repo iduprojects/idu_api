@@ -5,6 +5,7 @@ Enumerations converted to database datatypes are defined here
 from enum import Enum
 
 
+# pylint: disable=invalid-name
 class DateFieldType(Enum):
     """
     Enumeration of date field types.
@@ -17,6 +18,7 @@ class DateFieldType(Enum):
     day = "day"
 
 
+# pylint: disable=invalid-name
 class IndicatorValueType(Enum):
     """
     Enumeration of indicator value types.

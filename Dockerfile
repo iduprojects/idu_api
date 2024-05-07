@@ -13,7 +13,7 @@ WORKDIR /app
 RUN poetry install
 
 COPY README.md /app/README.md
-COPY chair_api /app/chair_api
+COPY urban_api /app/urban_api
 
 RUN poetry build
 
@@ -22,8 +22,8 @@ FROM python:3.11-alpine
 
 RUN mkdir /app
 
-COPY --from=builder /app/dist/*.tar.gz /chair_api.tar.gz
+COPY --from=builder /app/dist/*.tar.gz /urban_api.tar.gz
 
-RUN pip3 install /chair_api.tar.gz
+RUN pip3 install /urban_api.tar.gz
 
 CMD ["launch_urban_api"]

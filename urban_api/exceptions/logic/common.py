@@ -1,6 +1,7 @@
 """
 Exceptions connected with geometry are defined here.
 """
+
 from fastapi import status
 
 from urban_api.exceptions import NotesApiError
@@ -27,5 +28,3 @@ class EntityNotFoundById(NotesApiError):
         Return '404 Not found' status code.
         """
         return status.HTTP_404_NOT_FOUND
-
-

@@ -1,24 +1,17 @@
 """
 Geojson response models is defined here.
 """
+
 import json
-from typing import Any, Generic, Iterable, Literal, TypeVar
+from typing import Any, Generic, Iterable, Literal, Optional, TypeVar
 
 import pandas as pd
 import shapely.geometry as geom
 from loguru import logger
 from pydantic import BaseModel, Field
-
-
-try:
-    from pydantic.generics import GenericModel  # pydantic 1.X
-except ImportError:
-    from pydantic import BaseModel as GenericModel
-
 from sqlalchemy.engine.row import Row
 
-
-FeaturePropertiesType = TypeVar("FeaturePropertiesType")
+FeaturePropertiesType = TypeVar("FeaturePropertiesType")  # pylint: disable=invalid-name
 
 
 class Crs(BaseModel):
@@ -34,9 +27,9 @@ class Crs(BaseModel):
         """
         Return code of the projection. Would work only if CRS properties is set as name: ...<code>.
         """
-        name = self.properties["name"]
+        name: str = self.properties["name"]
         try:
-            return int(name[name.rindex(":") + 1:]) if ":" in name else int(name)
+            return int(name[name.rindex(":") + 1 :]) if ":" in name else int(name)
         except Exception as exc:
             logger.debug("Crs {} code is invalid? {!r}", self, exc)
             raise ValueError(f"something wrong with crs name: '{name}'") from exc
@@ -54,10 +47,20 @@ class Geometry(BaseModel):
     type: Literal["Point", "Polygon", "MultiPolygon", "LineString"] = Field(default="Polygon")
     coordinates: list[Any] = Field(
         description="list[int] for Point,\n" "list[list[list[int]]] for Polygon",
-        default=[[[30.22, 59.86], [30.22, 59.85], [30.25, 59.85], [30.25, 59.86], [30.22, 59.86]]],
+        default=[
+            [
+                [30.22, 59.86],
+                [30.22, 59.85],
+                [30.25, 59.85],
+                [30.25, 59.86],
+                [30.22, 59.86],
+            ]
+        ],
     )
 
-    def as_shapely_geometry(self) -> geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString:
+    def as_shapely_geometry(
+        self,
+    ) -> geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString:
         """
         Return Shapely geometry object from the parsed geometry.
         """
@@ -71,8 +74,29 @@ class Geometry(BaseModel):
             case "LineString":
                 return geom.LineString(self.coordinates)
 
+    @classmethod
+    def from_shapely_geometry(
+        cls, geometry: geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString | None
+    ) -> Optional["Geometry"]:
+        """
+        Construct Geometry model from shapely geometry.
+        """
+        if geometry is None:
+            return None
+        match type(geometry):
+            case geom.Point:
+                return cls(type="Point", coordinates=geometry.coords)
+            case geom.Polygon:
+                return cls(type="Polygon", coordinates=list(geometry.exterior.coords))
+            case geom.MultiPolygon:
+                return cls(
+                    type="MultiPolygon", coordinates=[list(polygon.exterior.coords) for polygon in geometry.geoms]
+                )
+            case geom.LineString:
+                return cls(type="LineString", coordinates=geometry.coords)
 
-class Feature(GenericModel, Generic[FeaturePropertiesType]):
+
+class Feature(BaseModel, Generic[FeaturePropertiesType]):
     """
     Feature representation for GeoJSON model.
     """
@@ -83,7 +107,10 @@ class Feature(GenericModel, Generic[FeaturePropertiesType]):
 
     @classmethod
     def from_series(
-        cls, series: pd.Series, geometry_column: str = "geometry", include_nulls: bool = True
+        cls,
+        series: pd.Series,
+        geometry_column: str = "geometry",
+        include_nulls: bool = True,
     ) -> "Feature[FeaturePropertiesType]":
         """
         Construct Feature object from series with a given geometrty column.
@@ -99,7 +126,10 @@ class Feature(GenericModel, Generic[FeaturePropertiesType]):
 
     @classmethod
     def from_dict(
-        cls, feature: dict[str, Any], geometry_column: str = "geometry", include_nulls: bool = True
+        cls,
+        feature: dict[str, Any],
+        geometry_column: str = "geometry",
+        include_nulls: bool = True,
     ) -> "Feature[FeaturePropertiesType]":
         """
         Construct Feature object from dictionary with a given geometrty field.
@@ -115,7 +145,10 @@ class Feature(GenericModel, Generic[FeaturePropertiesType]):
 
     @classmethod
     def from_row(
-        cls, row: dict[str, Any], geometry_column: str = "geometry", include_nulls: bool = True
+        cls,
+        row: dict[str, Any],
+        geometry_column: str = "geometry",
+        include_nulls: bool = True,
     ) -> "Feature[FeaturePropertiesType]":
         """
         Construct Feature object from dictionary with a given geometrty field.
@@ -132,7 +165,7 @@ class Feature(GenericModel, Generic[FeaturePropertiesType]):
         return cls(geometry=geometry, properties=properties)
 
 
-class GeoJSONResponse(GenericModel, Generic[FeaturePropertiesType]):
+class GeoJSONResponse(BaseModel, Generic[FeaturePropertiesType]):
     """
     GeoJSON model representation.
     """
@@ -143,14 +176,23 @@ class GeoJSONResponse(GenericModel, Generic[FeaturePropertiesType]):
 
     @classmethod
     async def from_df(
-        cls, data_df: pd.DataFrame, geometry_column: str = "geometry", crs: Crs = crs_4326, include_nulls: bool = True
+        cls,
+        data_df: pd.DataFrame,
+        geometry_column: str = "geometry",
+        crs: Crs = crs_4326,
+        include_nulls: bool = True,
     ) -> "GeoJSONResponse[FeaturePropertiesType]":
         """
         Construct GeoJSON model from pandas DataFrame with one column containing GeoJSON geometries.
         """
         return cls(
             crs=crs,
-            features=list(data_df.apply(lambda row: Feature.from_series(row, geometry_column, include_nulls), axis=1)),
+            features=list(
+                data_df.apply(
+                    lambda row: Feature.from_series(row, geometry_column, include_nulls),
+                    axis=1,
+                )
+            ),
         )
 
     @classmethod

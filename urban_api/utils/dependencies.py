@@ -1,20 +1,17 @@
 """
 FastApi dependencies are defined here.
 """
+
 import asyncio
-from fastapi import HTTPException, status, Depends
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.ext.asyncio import AsyncConnection
-from sqlalchemy import select, insert
-from keycloak import KeycloakOpenID
 from typing import Annotated
+
 from cachetools import TTLCache
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from keycloak import KeycloakOpenID
 
-from urban_api.db.connection import get_connection
-from urban_api.db.entities.users import users
-from urban_api.dto.users import UserDTO
 from urban_api.config.app_settings_global import app_settings
-
+from urban_api.dto.users import UserDTO
 
 keycloak_openid = KeycloakOpenID(
     server_url=app_settings.keycloak_server_url,
@@ -28,15 +25,11 @@ cache = TTLCache(maxsize=100, ttl=60)
 
 
 async def get_idp_public_key():
-    return (
-        "-----BEGIN PUBLIC KEY-----\n"
-        f"{keycloak_openid.public_key()}"
-        "\n-----END PUBLIC KEY-----"
-    )
+    return "-----BEGIN PUBLIC KEY-----\n" f"{keycloak_openid.public_key()}" "\n-----END PUBLIC KEY-----"
 
 
 async def access_token_dependency(
-        access_token: Annotated[HTTPAuthorizationCredentials, Depends(HTTPBearer())],
+    access_token: Annotated[HTTPAuthorizationCredentials, Depends(HTTPBearer())],
 ) -> dict:
 
     result = cache.get(access_token.credentials)
@@ -48,11 +41,7 @@ async def access_token_dependency(
         result = keycloak_openid.decode_token(
             access_token.credentials,
             key=await get_idp_public_key(),
-            options={
-                "verify_signature": True,
-                "verify_aud": False,
-                "exp": True
-            }
+            options={"verify_signature": True, "verify_aud": False, "exp": True},
         )
         await asyncio.sleep(5)
 
@@ -62,7 +51,7 @@ async def access_token_dependency(
         return result
 
     except Exception as e:
-        raise HTTPException(
+        raise HTTPException(  # pylint: disable=raise-missing-from
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),  # "Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},
@@ -71,7 +60,6 @@ async def access_token_dependency(
 
 async def user_dependency(
     payload: dict = Depends(access_token_dependency),
-    conn: AsyncConnection = Depends(get_connection),
 ) -> UserDTO:
     """
     Return user fetched from the database by email from a validated access token.
@@ -79,25 +67,15 @@ async def user_dependency(
     Ensures that User is approved to log in and valid.
     """
 
-    statement = (select(users.c.is_banned).
-                 where(users.c.id == payload.get('sub')))
-    is_banned = (await conn.execute(statement)).fetchone()
-
-    if is_banned is None:
-        statement = insert(users).values(id=payload.get('sub')).returning(users.c.is_banned)
-        is_banned = list(await conn.execute(statement))[0]
-        await conn.commit()
-
     try:
         return UserDTO(
-            id=payload.get('sub'),
-            username=payload.get('username'),
-            email=payload.get('email'),
+            id=payload.get("sub"),
+            username=payload.get("username"),
+            email=payload.get("email"),
             roles=list(payload.get("realm_access", {}).get("roles", [])),
-            is_banned=bool(*is_banned)
         )
     except Exception as e:
-        raise HTTPException(
+        raise HTTPException(  # pylint: disable=raise-missing-from
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),  # "Invalid authentication credentials",
             headers={"WWW-Authenticate": "Bearer"},

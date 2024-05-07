@@ -1,18 +1,20 @@
 """
 Response and request schemas are defined here.
 """
-from .health_check import PingResponse
-from .territories import (TerritoryTypes,
-                          TerritoryTypesPost,
-                          TerritoriesData,
-                          TerritoriesDataPost,
-                          TerritoryWithoutGeometry
-                          )
-from .services import ServicesData, ServicesDataWithGeometry
-from .indicators import Indicators, IndicatorValue
-from .physical_objects import PhysicalObjectsData, PhysicalObjectWithGeometry
-from .living_buildings import LivingBuildingsWithGeometry
+
 from .functional_zones import FunctionalZoneData
+from .health_check import PingResponse
+from .indicators import Indicators, IndicatorValue
+from .living_buildings import LivingBuildingsWithGeometry
+from .physical_objects import PhysicalObjectsData, PhysicalObjectWithGeometry
+from .services import ServicesData, ServicesDataWithGeometry
+from .territories import (
+    TerritoriesData,
+    TerritoriesDataPost,
+    TerritoryTypes,
+    TerritoryTypesPost,
+    TerritoryWithoutGeometry,
+)
 
 __all__ = [
     "PingResponse",
@@ -28,5 +30,5 @@ __all__ = [
     "PhysicalObjectsData",
     "PhysicalObjectWithGeometry",
     "LivingBuildingsWithGeometry",
-    "FunctionalZoneData"
+    "FunctionalZoneData",
 ]
