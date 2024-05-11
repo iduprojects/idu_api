@@ -1,3 +1,4 @@
+# pylint: disable=no-member,invalid-name,missing-function-docstring,too-many-statements
 """${message}
 
 Revision ID: ${up_revision}

@@ -1,6 +1,7 @@
 """
 Basic response schemas are defined here.
 """
+
 from typing import Literal
 
 from pydantic import BaseModel

@@ -1,7 +1,7 @@
-import shapely.geometry as geom
-
 from dataclasses import dataclass
 from typing import Dict
+
+import shapely.geometry as geom
 
 
 @dataclass(frozen=True)

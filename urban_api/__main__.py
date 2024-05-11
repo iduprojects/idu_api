@@ -2,15 +2,14 @@ import itertools
 import os
 import sys
 import typing as tp
+
 import click
 import uvicorn
-
 from loguru import logger
 
 from .config import AppSettings
 from .config.app_settings_global import app_settings
 from .utils.dotenv import try_load_envfile
-
 
 LogLevel = tp.Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR"]
 
@@ -135,18 +134,18 @@ def logger_from_str(logger_text: str) -> list[tuple[LogLevel, str]]:
     is_flag=True,
     help="Enable debug mode (auto-reload on change, traceback returned to user, etc.)",
 )
-def main(
-        db_addr: str,
-        db_port: int,
-        db_name: str,
-        db_user: str,
-        db_pass: str,
-        db_pool_size: int,
-        port: int,
-        host: str,
-        logger_verbosity: LogLevel,
-        additional_loggers: list[tuple[LogLevel, str]],
-        debug: bool
+def main(  # pylint: disable=too-many-arguments
+    db_addr: str,
+    db_port: int,
+    db_name: str,
+    db_user: str,
+    db_pass: str,
+    db_pool_size: int,
+    port: int,
+    host: str,
+    logger_verbosity: LogLevel,
+    additional_loggers: list[tuple[LogLevel, str]],
+    debug: bool,
 ):
     """
     Taking notes backend service main function, performs configuration
@@ -162,24 +161,14 @@ def main(
         db_user=db_user,
         db_pass=db_pass,
         db_pool_size=db_pool_size,
-        debug=debug
+        debug=debug,
     )
     app_settings.update(settings)
     if __name__ in ("__main__", "urban_api.__main__"):
         if debug:
-            uvicorn.run(
-                "urban_api:app",
-                host=host,
-                port=port,
-                reload=True,
-                log_level=logger_verbosity.lower()
-            )
+            uvicorn.run("urban_api:app", host=host, port=port, reload=True, log_level=logger_verbosity.lower())
         else:
-            uvicorn.run("urban_api:app",
-                        host=host,
-                        port=port,
-                        log_level=logger_verbosity.lower()
-                        )
+            uvicorn.run("urban_api:app", host=host, port=port, log_level=logger_verbosity.lower())
     else:
         if logger_verbosity != "DEBUG":
             logger.remove()
@@ -190,4 +179,4 @@ def main(
 
 if __name__ in ("__main__", "urban_api.__main__"):
     try_load_envfile(os.environ.get("ENVFILE", ".env"))
-    main()
+    main()  # pylint: disable=no-value-for-parameter

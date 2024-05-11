@@ -1,6 +1,7 @@
 """
 health_check endpoint is defined here.
 """
+
 from starlette import status
 
 from urban_api.schemas import PingResponse

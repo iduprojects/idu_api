@@ -7,7 +7,8 @@ Current list is:
 - territory_types_dict
 - service_types_dict
 """
-from sqlalchemy import Table, Column, Integer, String, Sequence, ForeignKey, Text
+
+from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table, Text
 
 from urban_api.db import metadata
 
@@ -16,10 +17,15 @@ functional_zone_types_dict_id_seq = Sequence("functional_zone_types_dict_id_seq"
 functional_zone_types_dict = Table(
     "functional_zone_types_dict",
     metadata,
-    Column("functional_zone_type_id", Integer, primary_key=True, server_default=functional_zone_types_dict_id_seq.next_value()),
+    Column(
+        "functional_zone_type_id",
+        Integer,
+        primary_key=True,
+        server_default=functional_zone_types_dict_id_seq.next_value(),
+    ),
     Column("name", String(100), nullable=False, unique=True),
     Column("zone_nickname", String(100)),
-    Column("description", Text)
+    Column("description", Text),
 )
 
 """
@@ -35,8 +41,13 @@ physical_object_types_dict_id_seq = Sequence("physical_object_types_dict_id_seq"
 physical_object_types_dict = Table(
     "physical_object_types_dict",
     metadata,
-    Column("physical_object_type_id", Integer, primary_key=True, server_default=physical_object_types_dict_id_seq.next_value()),
-    Column("name", String(200), nullable=False, unique=True)
+    Column(
+        "physical_object_type_id",
+        Integer,
+        primary_key=True,
+        server_default=physical_object_types_dict_id_seq.next_value(),
+    ),
+    Column("name", String(200), nullable=False, unique=True),
 )
 
 """
@@ -51,7 +62,7 @@ territory_types_dict = Table(
     "territory_types_dict",
     metadata,
     Column("territory_type_id", Integer, primary_key=True, server_default=territory_types_dict_id_seq.next_value()),
-    Column("name", String(200), nullable=False, unique=True)
+    Column("name", String(200), nullable=False, unique=True),
 )
 
 """
@@ -66,10 +77,10 @@ service_types_dict = Table(
     "service_types_dict",
     metadata,
     Column("service_type_id", Integer, primary_key=True, server_default=service_types_dict_id_seq.next_value()),
-    Column("urban_function_id", ForeignKey('urban_functions_dict.urban_function_id'), nullable=False),
+    Column("urban_function_id", ForeignKey("urban_functions_dict.urban_function_id"), nullable=False),
     Column("name", String(200), nullable=False, unique=True),
     Column("capacity_modeled", Integer),
-    Column("code", String(50), nullable=False)
+    Column("code", String(50), nullable=False),
 )
 
 """

@@ -1,6 +1,7 @@
 """
 Head API exception class is defined here.
 """
+
 from fastapi import HTTPException, status
 
 

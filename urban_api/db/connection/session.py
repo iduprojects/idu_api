@@ -1,6 +1,7 @@
 """
 Session manager class and get_connection function are defined here.
 """
+
 from loguru import logger
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine

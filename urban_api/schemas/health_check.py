@@ -1,6 +1,7 @@
 """
 Ping endpoint response is defined here.
 """
+
 from pydantic import BaseModel, Field
 
 

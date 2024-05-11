@@ -1,6 +1,7 @@
 """
 Environment operation functions are defined here.
 """
+
 import os
 
 
@@ -14,7 +15,7 @@ def try_load_envfile(envfile: str) -> bool:
         return False
     with open(envfile, "rt", encoding="utf-8") as file:
         for name, value in (
-            tuple((line[len("export "):] if line.startswith("export ") else line).strip().split("=", 1))
+            tuple((line[len("export ") :] if line.startswith("export ") else line).strip().split("=", 1))
             for line in file.readlines()
             if not line.startswith("#") and "=" in line
         ):

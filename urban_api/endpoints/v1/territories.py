@@ -1,44 +1,46 @@
 """
 Territory endpoints are defined here.
 """
-from fastapi import Depends, Path, Query
-from starlette import status
-from sqlalchemy.ext.asyncio import AsyncConnection
-from typing import List, Optional
+
 from datetime import datetime
+from typing import List, Optional
+
+from fastapi import Depends, Path, Query
+from sqlalchemy.ext.asyncio import AsyncConnection
+from starlette import status
 
 from urban_api.db.connection import get_connection
 from urban_api.logic.territories import (
-    get_territory_types_from_db,
-    add_territory_type_to_db,
-    get_territory_by_id_from_db,
     add_territory_to_db,
-    get_services_by_territory_id_from_db,
-    get_services_with_geometry_by_territory_id_from_db,
-    get_services_capacity_by_territory_id_from_db,
-    get_indicators_by_territory_id_from_db,
+    add_territory_type_to_db,
+    get_functional_zones_by_territory_id_from_db,
     get_indicator_values_by_territory_id_from_db,
+    get_indicators_by_territory_id_from_db,
+    get_living_buildings_with_geometry_by_territory_id_from_db,
     get_physical_objects_by_territory_id_from_db,
     get_physical_objects_with_geometry_by_territory_id_from_db,
-    get_living_buildings_with_geometry_by_territory_id_from_db,
-    get_functional_zones_by_territory_id_from_db,
+    get_services_by_territory_id_from_db,
+    get_services_capacity_by_territory_id_from_db,
+    get_services_with_geometry_by_territory_id_from_db,
     get_territories_by_parent_id_from_db,
-    get_territories_without_geometry_by_parent_id_from_db
+    get_territories_without_geometry_by_parent_id_from_db,
+    get_territory_by_id_from_db,
+    get_territory_types_from_db,
 )
 from urban_api.schemas import (
-    TerritoryTypes,
-    TerritoryTypesPost,
-    TerritoriesData,
-    TerritoriesDataPost,
-    TerritoryWithoutGeometry,
-    ServicesData,
-    ServicesDataWithGeometry,
+    FunctionalZoneData,
     Indicators,
     IndicatorValue,
+    LivingBuildingsWithGeometry,
     PhysicalObjectsData,
     PhysicalObjectWithGeometry,
-    LivingBuildingsWithGeometry,
-    FunctionalZoneData
+    ServicesData,
+    ServicesDataWithGeometry,
+    TerritoriesData,
+    TerritoriesDataPost,
+    TerritoryTypes,
+    TerritoryTypesPost,
+    TerritoryWithoutGeometry,
 )
 
 from .routers import territories_router
@@ -49,9 +51,7 @@ from .routers import territories_router
     response_model=List[TerritoryTypes],
     status_code=status.HTTP_200_OK,
 )
-async def get_territory_types(
-        connection: AsyncConnection = Depends(get_connection)
-) -> List[TerritoryTypes]:
+async def get_territory_types(connection: AsyncConnection = Depends(get_connection)) -> List[TerritoryTypes]:
     """
     Summary:
         Get territory types list
@@ -71,8 +71,7 @@ async def get_territory_types(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_territory_type(
-        territory_type: TerritoryTypesPost,
-        connection: AsyncConnection = Depends(get_connection)
+    territory_type: TerritoryTypesPost, connection: AsyncConnection = Depends(get_connection)
 ) -> TerritoryTypes:
     """
     Summary:
@@ -93,8 +92,8 @@ async def add_territory_type(
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_by_id(
-        territory_id: int = Query(..., description="territory id", gt=0),
-        connection: AsyncConnection = Depends(get_connection)
+    territory_id: int = Query(..., description="territory id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> TerritoriesData:
     """
     Summary:
@@ -115,8 +114,7 @@ async def get_territory_by_id(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_territory(
-        territory: TerritoriesDataPost,
-        connection: AsyncConnection = Depends(get_connection)
+    territory: TerritoriesDataPost, connection: AsyncConnection = Depends(get_connection)
 ) -> TerritoriesData:
     """
     Summary:
@@ -137,9 +135,9 @@ async def add_territory(
     status_code=status.HTTP_200_OK,
 )
 async def get_services_by_territory_id(
-        territory_id: int = Path(..., description="territory id", gt=0),
-        service_type: Optional[int] = Query(None, description="Service type id", gt=0),
-        connection: AsyncConnection = Depends(get_connection)
+    territory_id: int = Path(..., description="territory id", gt=0),
+    service_type: Optional[int] = Query(None, description="Service type id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> list[ServicesData]:
     """
     Summary:
@@ -149,8 +147,7 @@ async def get_services_by_territory_id(
         Get services for territory by id, service type could be specified in parameters
     """
 
-    services = await get_services_by_territory_id_from_db(territory_id, connection,
-                                                          service_type_id=service_type)
+    services = await get_services_by_territory_id_from_db(territory_id, connection, service_type_id=service_type)
 
     return [ServicesData.from_dto(service) for service in services]
 
@@ -161,9 +158,9 @@ async def get_services_by_territory_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_services_with_geometry_by_territory_id(
-        territory_id: int = Path(..., description="territory id", gt=0),
-        service_type: Optional[int] = Query(None, description="Service type id", gt=0),
-        connection: AsyncConnection = Depends(get_connection)
+    territory_id: int = Path(..., description="territory id", gt=0),
+    service_type: Optional[int] = Query(None, description="Service type id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[ServicesDataWithGeometry]:
     """
     Summary:
@@ -173,8 +170,9 @@ async def get_services_with_geometry_by_territory_id(
         Get services for territory by id, service type could be specified in parameters
     """
 
-    services = await get_services_with_geometry_by_territory_id_from_db(territory_id, connection,
-                                                                        service_type_id=service_type)
+    services = await get_services_with_geometry_by_territory_id_from_db(
+        territory_id, connection, service_type_id=service_type
+    )
 
     return [ServicesDataWithGeometry.from_dto(service) for service in services]
 
@@ -184,10 +182,10 @@ async def get_services_with_geometry_by_territory_id(
     response_model=int,
     status_code=status.HTTP_200_OK,
 )
-async def get_services_with_geometry_by_territory_id(
-        territory_id: int = Path(..., description="territory id", gt=0),
-        service_type: Optional[int] = Query(None, description="Service type id", gt=0),
-        connection: AsyncConnection = Depends(get_connection)
+async def get_services_with_geometry_by_territory_idu(
+    territory_id: int = Path(..., description="territory id", gt=0),
+    service_type: Optional[int] = Query(None, description="Service type id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> int:
     """
     Summary:
@@ -197,8 +195,9 @@ async def get_services_with_geometry_by_territory_id(
         Get aggregated capacity of services for territory
     """
 
-    capacity = await get_services_capacity_by_territory_id_from_db(territory_id, connection,
-                                                                   service_type_id=service_type)
+    capacity = await get_services_capacity_by_territory_id_from_db(
+        territory_id, connection, service_type_id=service_type
+    )
 
     return capacity
 
@@ -209,8 +208,8 @@ async def get_services_with_geometry_by_territory_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_indicators_by_territory_id(
-        territory_id: int = Path(..., description="territory id", gt=0),
-        connection: AsyncConnection = Depends(get_connection)
+    territory_id: int = Path(..., description="territory id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[Indicators]:
     """
     Summary:
@@ -231,10 +230,10 @@ async def get_indicators_by_territory_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_values_by_territory_id(
-        territory_id: int = Path(..., description="territory id", gt=0),
-        date_type: Optional[str] = Query(None, description="Date type"),
-        date_value: Optional[datetime] = Query(None, description="Time value"),
-        connection: AsyncConnection = Depends(get_connection)
+    territory_id: int = Path(..., description="territory id", gt=0),
+    date_type: Optional[str] = Query(None, description="Date type"),
+    date_value: Optional[datetime] = Query(None, description="Time value"),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[IndicatorValue]:
     """
     Summary:
@@ -257,9 +256,9 @@ async def get_indicator_values_by_territory_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_physical_objects_by_territory_id(
-        territory_id: int = Path(..., description="territory id", gt=0),
-        physical_object_type: Optional[int] = Query(None, description="Physical object type id", gt=0),
-        connection: AsyncConnection = Depends(get_connection)
+    territory_id: int = Path(..., description="territory id", gt=0),
+    physical_object_type: Optional[int] = Query(None, description="Physical object type id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[PhysicalObjectsData]:
     """
     Summary:
@@ -282,9 +281,9 @@ async def get_physical_objects_by_territory_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_physical_objects_with_geometry_by_territory_id(
-        territory_id: int = Path(..., description="territory id", gt=0),
-        physical_object_type: Optional[int] = Query(None, description="Physical object type id", gt=0),
-        connection: AsyncConnection = Depends(get_connection)
+    territory_id: int = Path(..., description="territory id", gt=0),
+    physical_object_type: Optional[int] = Query(None, description="Physical object type id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[PhysicalObjectWithGeometry]:
     """
     Summary:
@@ -301,13 +300,13 @@ async def get_physical_objects_with_geometry_by_territory_id(
 
 
 @territories_router.get(
-    "/v1/territory/{id}/living_buildings_with_geometry",
+    "/territory/{id}/living_buildings_with_geometry",
     response_model=List[LivingBuildingsWithGeometry],
     status_code=status.HTTP_200_OK,
 )
 async def get_living_buildings_with_geometry_by_territory_id(
-        territory_id: int = Path(..., description="territory id", gt=0),
-        connection: AsyncConnection = Depends(get_connection)
+    territory_id: int = Path(..., description="territory id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[LivingBuildingsWithGeometry]:
     """
     Summary:
@@ -323,14 +322,14 @@ async def get_living_buildings_with_geometry_by_territory_id(
 
 
 @territories_router.get(
-    "/v1/territory/{id}/functional_zones",
+    "/territory/{id}/functional_zones",
     response_model=List[FunctionalZoneData],
     status_code=status.HTTP_200_OK,
 )
 async def get_functional_zones_for_territory(
-        territory_id: int = Path(..., description="territory id", gt=0),
-        functional_zone_type_id: Optional[int] = Query(None, description="functional_zone_type_id", gt=0),
-        connection: AsyncConnection = Depends(get_connection)
+    territory_id: int = Path(..., description="territory id", gt=0),
+    functional_zone_type_id: Optional[int] = Query(None, description="functional_zone_type_id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[FunctionalZoneData]:
     """
     Summary:
@@ -340,9 +339,7 @@ async def get_functional_zones_for_territory(
         Get functional zones for territory, functional_zone_type could be specified in parameters
     """
 
-    zones = await get_functional_zones_by_territory_id_from_db(
-        territory_id, connection, functional_zone_type_id
-    )
+    zones = await get_functional_zones_by_territory_id_from_db(territory_id, connection, functional_zone_type_id)
 
     return [FunctionalZoneData.from_dto(zone) for zone in zones]
 
@@ -353,12 +350,12 @@ async def get_functional_zones_for_territory(
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_by_parent_id(
-        parent_id: int = Query(...,
-                               description="Parent territory id to filter, should be 0 for top level territories"),
-        get_all_levels: bool = Query(False,
-                                     description="Getting full subtree of territories (unsafe for high level parents)"),
-        territory_type_id: Optional[int] = Query(None, description="Specifying territory type"),
-        connection: AsyncConnection = Depends(get_connection)
+    parent_id: int = Query(..., description="Parent territory id to filter, should be 0 for top level territories"),
+    get_all_levels: bool = Query(
+        False, description="Getting full subtree of territories (unsafe for high level parents)"
+    ),
+    territory_type_id: Optional[int] = Query(None, description="Specifying territory type"),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[TerritoriesData]:
     """
     Summary:
@@ -368,8 +365,7 @@ async def get_territory_by_parent_id(
         Get a territory or list of territories by parent, territory type could be specified in parameters
     """
 
-    territories = await get_territories_by_parent_id_from_db(parent_id, connection,
-                                                             get_all_levels, territory_type_id)
+    territories = await get_territories_by_parent_id_from_db(parent_id, connection, get_all_levels, territory_type_id)
 
     return [TerritoriesData.from_dto(territory) for territory in territories]
 
@@ -380,13 +376,11 @@ async def get_territory_by_parent_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_without_geometry_by_parent_id(
-        parent_id: int = Query(...,
-                               description="Parent territory id to filter, "
-                                           "should be 0 for top level territories"),
-        get_all_levels: bool = Query(False,
-                                     description="Getting full subtree of territories "
-                                                 "(unsafe for high level parents)"),
-        connection: AsyncConnection = Depends(get_connection)
+    parent_id: int = Query(..., description="Parent territory id to filter, " "should be 0 for top level territories"),
+    get_all_levels: bool = Query(
+        False, description="Getting full subtree of territories " "(unsafe for high level parents)"
+    ),
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[TerritoryWithoutGeometry]:
     """
     Summary:
@@ -396,8 +390,6 @@ async def get_territory_without_geometry_by_parent_id(
         Get a territory or list of territories without geometry by parent
     """
 
-    territories = await get_territories_without_geometry_by_parent_id_from_db(
-        parent_id, connection, get_all_levels)
+    territories = await get_territories_without_geometry_by_parent_id_from_db(parent_id, connection, get_all_levels)
 
     return [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
-

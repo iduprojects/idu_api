@@ -1,31 +1,28 @@
 """
 Environment preparation for Alembic.
 """
+
 import os
 import pathlib
 import sys
 
-
 project_dir = pathlib.Path(__file__).resolve().parent.parent.parent.parent
 sys.path.append(str(project_dir))
 from urban_api.utils.dotenv import try_load_envfile
-
 
 try_load_envfile(os.environ.get("ENVFILE", str(project_dir / ".env")))
 
 import asyncio
 from logging.config import fileConfig
 
+from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from alembic import context
-
 from urban_api.config.app_settings_global import AppSettings, app_settings
 from urban_api.db import DeclarativeBase
 from urban_api.db.entities import *
-
 
 config = context.config
 section = config.config_ini_section

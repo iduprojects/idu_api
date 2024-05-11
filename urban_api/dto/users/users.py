@@ -1,6 +1,7 @@
 """
 User DTO is defined here.
 """
+
 from dataclasses import dataclass
 
 
@@ -14,7 +15,6 @@ class UserDTO:
     username: str
     email: str
     roles: list[str]
-    is_banned: bool
 
     def __str__(self) -> str:
         return f"(id={self.id}, username: {self.username})"

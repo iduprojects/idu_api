@@ -1,8 +1,9 @@
 """
 Object geometries data table is defined here
 """
-from sqlalchemy import Table, Column, Integer, Sequence, ForeignKey, String
+
 from geoalchemy2.types import Geometry
+from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table
 
 from urban_api.db import metadata
 
@@ -12,9 +13,17 @@ object_geometries_data = Table(
     "object_geometries_data",
     metadata,
     Column("object_geometry_id", Integer, primary_key=True, server_default=object_geometries_data_id_seq.next_value()),
-    Column("territory_id", ForeignKey('territories_data.territory_id'), nullable=False),
-    Column("geometry", Geometry(spatial_index=False, from_text='ST_GeomFromEWKT', name='geometry', nullable=False), nullable=False),
-    Column("centre_point", Geometry('POINT', spatial_index=False, from_text='ST_GeomFromEWKT', name='geometry', nullable=False), nullable=False),
+    Column("territory_id", ForeignKey("territories_data.territory_id"), nullable=False),
+    Column(
+        "geometry",
+        Geometry(spatial_index=False, from_text="ST_GeomFromEWKT", name="geometry", nullable=False),
+        nullable=False,
+    ),
+    Column(
+        "centre_point",
+        Geometry("POINT", spatial_index=False, from_text="ST_GeomFromEWKT", name="geometry", nullable=False),
+        nullable=False,
+    ),
     Column("address", String(300)),
 )
 
