@@ -1,3 +1,7 @@
+"""
+Living buildings DTO are defined here.
+"""
+
 from dataclasses import dataclass
 from typing import Dict
 

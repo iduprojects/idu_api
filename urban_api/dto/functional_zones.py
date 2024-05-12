@@ -1,3 +1,7 @@
+"""
+Functional zones DTO are defined here.
+"""
+
 from dataclasses import dataclass
 
 from shapely import geometry as geom

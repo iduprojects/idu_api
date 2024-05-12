@@ -31,7 +31,7 @@ def logger_from_str(logger_text: str) -> list[tuple[LogLevel, str]]:
     return res
 
 
-@click.command("Run taking notes service")
+@click.command("Run urban api service")
 @click.option(
     "--db_addr",
     "-H",
@@ -148,7 +148,7 @@ def main(  # pylint: disable=too-many-arguments
     debug: bool,
 ):
     """
-    Taking notes backend service main function, performs configuration
+    Urban api backend service main function, performs configuration
     via command line parameters and environment variables.
     """
     additional_loggers = list(itertools.chain.from_iterable(additional_loggers))

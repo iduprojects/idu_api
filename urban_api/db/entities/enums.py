@@ -6,7 +6,7 @@ from enum import Enum
 
 
 # pylint: disable=invalid-name
-class DateFieldType(Enum):
+class DateFieldType(str, Enum):
     """
     Enumeration of date field types.
     """
@@ -19,7 +19,7 @@ class DateFieldType(Enum):
 
 
 # pylint: disable=invalid-name
-class IndicatorValueType(Enum):
+class IndicatorValueType(str, Enum):
     """
     Enumeration of indicator value types.
     """

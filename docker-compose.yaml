@@ -32,7 +32,7 @@ services:
     environment:
       - DEBUG
     depends_on:
-      chair_db:
+      urban_db:
         condition: service_healthy
 
   keycloak:

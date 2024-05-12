@@ -81,9 +81,9 @@ async def add_territory_type(
         Add a territory type
     """
 
-    territory_types = await add_territory_type_to_db(territory_type, connection)
+    territory_type_dto = await add_territory_type_to_db(territory_type, connection)
 
-    return TerritoryTypes.from_dto(territory_types)
+    return TerritoryTypes.from_dto(territory_type_dto)
 
 
 @territories_router.get(
@@ -124,9 +124,9 @@ async def add_territory(
         Add a territory type
     """
 
-    territory = await add_territory_to_db(territory, connection)
+    territory_dto = await add_territory_to_db(territory, connection)
 
-    return TerritoriesData.from_dto(territory)
+    return TerritoriesData.from_dto(territory_dto)
 
 
 @territories_router.get(
@@ -376,9 +376,9 @@ async def get_territory_by_parent_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_without_geometry_by_parent_id(
-    parent_id: int = Query(..., description="Parent territory id to filter, " "should be 0 for top level territories"),
+    parent_id: int = Query(..., description="Parent territory id to filter, should be 0 for top level territories"),
     get_all_levels: bool = Query(
-        False, description="Getting full subtree of territories " "(unsafe for high level parents)"
+        False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
     connection: AsyncConnection = Depends(get_connection),
 ) -> List[TerritoryWithoutGeometry]:

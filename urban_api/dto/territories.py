@@ -30,10 +30,10 @@ class TerritoryDTO:
     name: str
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     level: int
-    properties: Dict[str, str]
+    properties: Optional[Dict[str, str]]
     centre_point: geom.Point
-    admin_center: int
-    okato_code: str
+    admin_center: Optional[int]
+    okato_code: Optional[str]
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
