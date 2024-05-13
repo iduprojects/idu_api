@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import HTTPException
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromGeoJSON
+from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
 from sqlalchemy import cast, func, insert, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -121,20 +121,31 @@ async def add_territory_to_db(
             territory_type_id=territory.territory_type_id,
             parent_id=territory.parent_id,
             name=territory.name,
-            geometry=ST_GeomFromGeoJSON(str(territory.geometry.dict())),
+            geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry())),
             level=territory.level,
             properties=territory.properties,
-            centre_point=ST_GeomFromGeoJSON(str(territory.centre_point.dict())),
+            centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry())),
             admin_center=territory.admin_center,
             okato_code=territory.okato_code,
         )
-        .returning(territories_data)
+        .returning(
+            territories_data.c.territory_id,
+            territories_data.c.territory_type_id,
+            territories_data.c.parent_id,
+            territories_data.c.name,
+            cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
+            territories_data.c.level,
+            territories_data.c.properties,
+            cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
+            territories_data.c.admin_center,
+            territories_data.c.okato_code,
+        )
     )
-    result = (await session.execute(statement)).scalar()
+    result = (await session.execute(statement)).mappings().one()
 
     await session.commit()
 
-    return TerritoryDTO(*result)
+    return TerritoryDTO(**result)
 
 
 async def get_services_by_territory_id_from_db(
@@ -160,9 +171,9 @@ async def get_services_by_territory_id_from_db(
     if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
 
-    result = (await session.execute(statement)).scalars()
+    result = (await session.execute(statement)).mappings().all()
 
-    return [ServiceDTO(*service) for service in result]
+    return [ServiceDTO(**service) for service in result]
 
 
 async def get_services_with_geometry_by_territory_id_from_db(
@@ -197,9 +208,9 @@ async def get_services_with_geometry_by_territory_id_from_db(
     if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
 
-    result = (await session.execute(statement)).scalars()
+    result = (await session.execute(statement)).mappings().all()
 
-    return [ServiceWithGeometryDTO(*service) for service in result]
+    return [ServiceWithGeometryDTO(**service) for service in result]
 
 
 async def get_services_capacity_by_territory_id_from_db(
@@ -257,9 +268,9 @@ async def get_indicators_by_territory_id_from_db(
         .where(territory_indicators_data.c.territory_id == territory_id)
     )
 
-    result = (await session.execute(statement)).scalars()
+    result = (await session.execute(statement)).mappings().all()
 
-    return [IndicatorsDTO(*indicator) for indicator in result]
+    return [IndicatorsDTO(**indicator) for indicator in result]
 
 
 async def get_indicator_values_by_territory_id_from_db(
@@ -281,9 +292,9 @@ async def get_indicator_values_by_territory_id_from_db(
     if date_value is not None:
         statement = statement.where(territory_indicators_data.c.date_value == date_value)
 
-    result = (await session.execute(statement)).scalars()
+    result = (await session.execute(statement)).mappings().all()
 
-    return [IndicatorValueDTO(*indicator_value) for indicator_value in result]
+    return [IndicatorValueDTO(**indicator_value) for indicator_value in result]
 
 
 async def get_physical_objects_by_territory_id_from_db(
@@ -321,9 +332,9 @@ async def get_physical_objects_by_territory_id_from_db(
     if physical_object_type is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type)
 
-    result = (await session.execute(statement)).fetchall()
+    result = (await session.execute(statement)).mappings().all()
 
-    return [PhysicalObjectsDataDTO(*physical_object) for physical_object in result]
+    return [PhysicalObjectsDataDTO(**physical_object) for physical_object in result]
 
 
 async def get_physical_objects_with_geometry_by_territory_id_from_db(
@@ -363,11 +374,11 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     if physical_object_type is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type)
 
-    result = (await session.execute(statement)).scalars()
+    result = (await session.execute(statement)).mappings().all()
     if result is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
-    return [PhysicalObjectWithGeometryDTO(*physical_object) for physical_object in result]
+    return [PhysicalObjectWithGeometryDTO(**physical_object) for physical_object in result]
 
 
 async def get_living_buildings_with_geometry_by_territory_id_from_db(
@@ -404,9 +415,9 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
         .where(object_geometries_data.c.territory_id == territory_id)
     )
 
-    result = (await session.execute(statement)).scalars()
+    result = (await session.execute(statement)).mappings().all()
 
-    return [LivingBuildingsWithGeometryDTO(*living_building) for living_building in result]
+    return [LivingBuildingsWithGeometryDTO(**living_building) for living_building in result]
 
 
 async def get_functional_zones_by_territory_id_from_db(
@@ -428,9 +439,9 @@ async def get_functional_zones_by_territory_id_from_db(
     if functional_zone_type_id is not None:
         statement = statement.where(functional_zones_data.c.functional_zone_type_id == functional_zone_type_id)
 
-    result = (await session.execute(statement)).scalars()
+    result = (await session.execute(statement)).mappings().all()
 
-    return [FunctionalZoneDataDTO(*zone) for zone in result]
+    return [FunctionalZoneDataDTO(**zone) for zone in result]
 
 
 async def get_territories_by_parent_id_from_db(

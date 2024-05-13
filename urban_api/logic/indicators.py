@@ -102,11 +102,11 @@ async def get_indicator_by_id_from_db(indicator_id: int, session: AsyncConnectio
     """
 
     statement = select(indicators_dict).where(indicators_dict.c.indicator_id == indicator_id)
-    result = (await session.execute(statement)).one_or_none()
+    result = (await session.execute(statement)).mappings().one_or_none()
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
-    return IndicatorsDTO(*result)
+    return IndicatorsDTO(**result)
 
 
 async def add_indicator_to_db(

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,11 +12,12 @@ class Indicators(BaseModel):
     """
 
     indicator_id: int = Field(example=1)
-    name: str = Field(description="Indicator unit name", example="Численность населения")
-    measurement_unit_id: int = Field(description="Indicator measurement unit id", example=1)
+    name_full: str = Field(description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории")
+    name_short: str = Field(description="Indicator unit short name", example="Численность населения")
+    measurement_unit_id: Optional[int] = Field(description="Indicator measurement unit id", example=1)
     level: int = Field(description="Number of indicator functions above in a tree + 1", example=1)
     list_label: str = Field(description="Indicator marker in lists", example="1.1.1")
-    parent_id: int = Field(description="Indicator parent id", example=1)
+    parent_id: Optional[int] = Field(description="Indicator parent id", example=1)
 
     @classmethod
     def from_dto(cls, dto: IndicatorsDTO) -> "Indicators":
@@ -25,7 +26,8 @@ class Indicators(BaseModel):
         """
         return cls(
             indicator_id=dto.indicator_id,
-            name=dto.name,
+            name_full=dto.name_full,
+            name_short=dto.name_short,
             measurement_unit_id=dto.measurement_unit_id,
             level=dto.level,
             list_label=dto.list_label,
@@ -38,7 +40,8 @@ class IndicatorsPost(BaseModel):
     Indicator with all its attributes
     """
 
-    name: str = Field(description="Indicator unit name", example="Численность населения")
+    name_full: str = Field(description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории")
+    name_short: str = Field(description="Indicator unit short name", example="Численность населения")
     measurement_unit_id: int = Field(description="Indicator measurement unit id", example=1)
     level: int = Field(description="Number of indicator functions above in a tree + 1", example=1)
     list_label: str = Field(description="Indicator marker in lists", example="1.1.1")
