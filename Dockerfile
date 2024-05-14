@@ -1,8 +1,7 @@
-# -- builder --
-FROM python:3.11-alpine AS builder
+FROM python:3.11-alpine
 
 RUN apk add --virtual build-deps
-RUN apk add python3-dev musl-dev linux-headers postgresql-dev
+RUN apk add python3-dev musl-dev linux-headers postgresql-dev geos-dev
 
 RUN pip3 install --no-cache-dir poetry
 
@@ -15,15 +14,6 @@ RUN poetry install
 COPY README.md /app/README.md
 COPY urban_api /app/urban_api
 
-RUN poetry build
-
-# -- api --
-FROM python:3.11-alpine
-
-RUN mkdir /app
-
-COPY --from=builder /app/dist/*.tar.gz /urban_api.tar.gz
-
-RUN pip3 install /urban_api.tar.gz
+RUN pip3 install .
 
 CMD ["launch_urban_api"]

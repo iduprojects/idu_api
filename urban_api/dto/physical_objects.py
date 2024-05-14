@@ -3,7 +3,7 @@ Physical objects DTO are defined here.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Optional
 
 import shapely.geometry as geom
 
@@ -14,7 +14,7 @@ class PhysicalObjectsDataDTO:
     physical_object_type_id: int
     name: Optional[str]
     address: Optional[str]
-    properties: Dict[str, str]
+    properties: dict[str, str]
 
 
 @dataclass
@@ -23,6 +23,6 @@ class PhysicalObjectWithGeometryDTO:
     physical_object_type_id: int
     name: Optional[str]
     address: Optional[str]
-    properties: Dict[str, str]
+    properties: dict[str, str]
     geometry: geom.Polygon | geom.MultiPolygon
     centre_point: geom.Point

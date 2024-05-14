@@ -3,7 +3,7 @@ Territories DTO are defined here.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Optional
 
 import shapely.geometry as geom
 
@@ -30,7 +30,7 @@ class TerritoryDTO:
     name: str
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     level: int
-    properties: Optional[Dict[str, str]]
+    properties: Optional[dict[str, str]]
     centre_point: geom.Point
     admin_center: Optional[int]
     okato_code: Optional[str]
@@ -55,6 +55,6 @@ class TerritoryWithoutGeometryDTO:
     parent_id: int
     name: str
     level: int
-    properties: Dict[str, str]
+    properties: dict[str, str]
     admin_center: int
     okato_code: str

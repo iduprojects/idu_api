@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, func, insert, select
+from sqlalchemy import cast, exists, func, insert, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -69,11 +69,11 @@ async def add_territory_type_to_db(
         )
         .returning(territory_types_dict)
     )
-    result = (await session.execute(statement)).scalar()
+    result = (await session.execute(statement)).mappings().one()
 
     await session.commit()
 
-    return TerritoryTypeDTO(*result)
+    return TerritoryTypeDTO(**result)
 
 
 async def get_territory_by_id_from_db(territory_id: int, session: AsyncConnection) -> TerritoryDTO:
@@ -280,9 +280,8 @@ async def get_indicator_values_by_territory_id_from_db(
     Get indicator values by territory id, optional time period
     """
 
-    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    is_found_territory_id = (await session.execute(statement)).one_or_none()
-    if is_found_territory_id is None:
+    statement = select(exists().where(territories_data.c.territory_id == territory_id))
+    if not (await session.execute(statement)).scalar_one():
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = select(territory_indicators_data).where(territory_indicators_data.c.territory_id == territory_id)

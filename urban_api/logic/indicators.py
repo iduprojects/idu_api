@@ -54,11 +54,11 @@ async def add_measurement_unit_to_db(
         )
         .returning(measurement_units_dict)
     )
-    result = (await session.execute(statement)).scalar()
+    result = (await session.execute(statement)).mappings().one()
 
     await session.commit()
 
-    return MeasurementUnitDTO(*result)
+    return MeasurementUnitDTO(**result)
 
 
 async def get_indicators_by_parent_id_from_db(
@@ -123,7 +123,7 @@ async def add_indicator_to_db(
         if check_parent_id is None:
             raise HTTPException(status_code=404, detail="Given parent_id is not found")
 
-    statement = select(indicators_dict).filter(indicators_dict.c.name == indicator.name)
+    statement = select(indicators_dict).filter(indicators_dict.c.name_full == indicator.name_full)
     check_indicator_name = (await session.execute(statement)).one_or_none()
     if check_indicator_name is not None:
         raise HTTPException(status_code=400, detail="Invalid input (indicator already exists)")
@@ -131,7 +131,8 @@ async def add_indicator_to_db(
     statement = (
         insert(indicators_dict)
         .values(
-            name=indicator.name,
+            name_full=indicator.name_full,
+            name_short=indicator.name_short,
             measurement_unit_id=indicator.measurement_unit_id,
             level=indicator.level,
             list_label=indicator.list_label,
@@ -139,11 +140,11 @@ async def add_indicator_to_db(
         )
         .returning(indicators_dict)
     )
-    result = (await session.execute(statement)).scalar()
+    result = (await session.execute(statement)).mappings().one()
 
     await session.commit()
 
-    return IndicatorsDTO(*result)
+    return IndicatorsDTO(**result)
 
 
 async def get_indicator_value_by_id_from_db(
@@ -224,8 +225,8 @@ async def get_indicator_values_by_id_from_db(
     if date_value is not None:
         statement = statement.where(territory_indicators_data.c.date_value == date_value)
 
-    result = (await session.execute(statement)).scalars()
+    result = (await session.execute(statement)).mappings().all()
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
-    return [IndicatorValueDTO(*value) for value in result]
+    return [IndicatorValueDTO(**value) for value in result]

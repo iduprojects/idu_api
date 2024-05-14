@@ -1,5 +1,3 @@
-from typing import Dict
-
 from pydantic import BaseModel, Field
 
 from urban_api.dto import LivingBuildingsWithGeometryDTO
@@ -11,7 +9,7 @@ class LivingBuildingsWithGeometry(BaseModel):
     physical_object_id: int = Field(example=1)
     residents_number: int = Field(example=200)
     living_area: float = Field(example=300.0)
-    properties: Dict[str, str] = Field(
+    properties: dict[str, str] = Field(
         {}, description="Additional properties", example={"additional_attribute_name": "additional_attribute_value"}
     )
     geometry: Geometry = Field(description="Object geometry")

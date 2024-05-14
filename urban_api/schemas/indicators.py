@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Literal, Optional
+from enum import Enum
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from urban_api.dto import IndicatorsDTO, IndicatorValueDTO, MeasurementUnitDTO
 
@@ -59,9 +60,23 @@ class IndicatorValue(BaseModel):
         description="Time interval", example="year"
     )
     date_value: datetime = Field(description="Timestamp", example="2024-03-26T16:33:24.974Z")
-    value: int = Field(description="Indicator value for territory at time", example=100500)
+    value: float = Field(description="Indicator value for territory at time", example=100500)
     value_type: Literal["real", "forecast", "target"] = Field(description="Indicator value type", example="real")
-    information_source: str = Field(description="Information source", example="information source")
+    information_source: Optional[str] = Field(description="Information source", example="information source")
+
+    @field_validator("date_type", mode="before")
+    @staticmethod
+    def date_type_to_string(date_type: Any) -> str:
+        if isinstance(date_type, Enum):
+            return date_type.value
+        return date_type
+
+    @field_validator("value_type", mode="before")
+    @staticmethod
+    def value_type_to_string(value_type: Any) -> str:
+        if isinstance(value_type, Enum):
+            return value_type.value
+        return value_type
 
     @classmethod
     def from_dto(cls, dto: IndicatorValueDTO) -> "IndicatorValue":

@@ -1,5 +1,3 @@
-from typing import Dict
-
 from pydantic import BaseModel, Field
 
 from urban_api.dto import ServiceDTO, ServiceWithGeometryDTO
@@ -13,7 +11,7 @@ class ServicesData(BaseModel):
     name: str = Field(description="Service name", example="--")
     list_label: str = Field(description="Indicator marker in lists", example="1.1.1")
     capacity_real: int = Field(example=1)
-    properties: Dict[str, str] = Field(
+    properties: dict[str, str] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
@@ -41,7 +39,7 @@ class ServicesDataWithGeometry(BaseModel):
     name: str = Field(description="Service name", example="--")
     list_label: str = Field(description="Indicator marker in lists", example="1.1.1")
     capacity_real: int = Field(example=1)
-    properties: Dict[str, str] = Field(
+    properties: dict[str, str] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )

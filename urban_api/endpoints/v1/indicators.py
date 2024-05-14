@@ -21,6 +21,7 @@ from urban_api.logic.indicators import (
     get_measurement_units_from_db,
 )
 from urban_api.schemas import Indicators, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
+from urban_api.schemas.enums import DateType
 
 from .routers import indicators_router
 
@@ -71,7 +72,7 @@ async def add_measurement_unit(
     status_code=status.HTTP_200_OK,
 )
 async def get_indicators_by_parent_id(
-    parent_id: int = Query(..., description="Parent indicator id to filter, should be 0 for top level indicators"),
+    parent_id: int = Query(description="Parent indicator id to filter, should be 0 for top level indicators"),
     get_all_subtree: bool = Query(
         False, description="Getting full subtree of indicators (unsafe for high level parents"
     ),
@@ -96,7 +97,7 @@ async def get_indicators_by_parent_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_by_id(
-    indicator_id: int = Query(..., description="Getting indicator by id"),
+    indicator_id: int = Query(description="Getting indicator by id"),
     connection: AsyncConnection = Depends(get_connection),
 ) -> Indicators:
     """
@@ -137,10 +138,10 @@ async def add_indicator(indicator: IndicatorsPost, connection: AsyncConnection =
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_value_by_id(
-    indicator_id: int = Query(..., description="indicator id"),
-    territory_id: int = Query(..., description="territory id"),
-    date_type: str = Query(..., description="date type"),
-    date_value: datetime = Query(..., description="time value"),
+    indicator_id: int = Query(description="indicator id"),
+    territory_id: int = Query(description="territory id"),
+    date_type: DateType = Query(description="date type"),
+    date_value: datetime = Query(description="time value"),
     connection: AsyncConnection = Depends(get_connection),
 ) -> IndicatorValue:
     """
@@ -185,9 +186,9 @@ async def add_indicator_value(
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_values_by_id(
-    indicator_id: int = Path(..., description="indicator id"),
+    indicator_id: int = Path(description="indicator id"),
     territory_id: Optional[int] = Query(None, description="territory id"),
-    date_type: Optional[str] = Query(None, description="date type"),
+    date_type: Optional[DateType] = Query(None, description="date type"),
     date_value: Optional[datetime] = Query(None, description="time value"),
     connection: AsyncConnection = Depends(get_connection),
 ) -> List[IndicatorValue]:
