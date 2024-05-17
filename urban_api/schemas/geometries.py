@@ -57,6 +57,7 @@ class Geometry(BaseModel):
             ]
         ],
     )
+    _shapely_geom: geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString | None = None
 
     def as_shapely_geometry(
         self,
@@ -64,15 +65,17 @@ class Geometry(BaseModel):
         """
         Return Shapely geometry object from the parsed geometry.
         """
-        match self.type:
-            case "Point":
-                return geom.Point(self.coordinates)
-            case "Polygon":
-                return geom.Polygon(self.coordinates[0])  # pylint: disable=unsubscriptable-object
-            case "MultiPolygon":
-                return geom.MultiPolygon(self.coordinates)
-            case "LineString":
-                return geom.LineString(self.coordinates)
+        if self._shapely_geom is None:
+            match self.type:
+                case "Point":
+                    self._shapely_geom = geom.Point(self.coordinates)
+                case "Polygon":
+                    self._shapely_geom = geom.Polygon(self.coordinates[0])  # pylint: disable=unsubscriptable-object
+                case "MultiPolygon":
+                    self._shapely_geom = geom.MultiPolygon(self.coordinates)
+                case "LineString":
+                    self._shapely_geom = geom.LineString(self.coordinates)
+        return self._shapely_geom
 
     @classmethod
     def from_shapely_geometry(

@@ -27,3 +27,9 @@ build:
 
 install-from-build:
 	python -m wheel install dist/urban_api-*.whl
+
+prepare-migration:
+	cd urban_api/db; poetry run alembic revision --autogen
+
+apply-migrations:
+	cd urban_api/db; poetry run alembic upgrade head

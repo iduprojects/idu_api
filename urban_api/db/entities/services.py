@@ -14,8 +14,8 @@ services_data = Table(
     metadata,
     Column("service_id", Integer, primary_key=True, server_default=services_data_id_seq.next_value()),
     Column("service_type_id", ForeignKey("service_types_dict.service_type_id"), nullable=False),
-    Column("territory_type_id", ForeignKey("territory_types_dict.territory_type_id"), nullable=False),
-    Column("name", String(200), nullable=False),
+    Column("territory_type_id", ForeignKey("territory_types_dict.territory_type_id")),
+    Column("name", String(200)),
     Column("capacity_real", Integer),
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
 )

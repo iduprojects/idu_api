@@ -86,12 +86,13 @@ class TerritoriesDataPost(BaseModel):
     geometry: Geometry = Field(description="Territory geometry")
     level: int = Field(examples=[1])
     properties: dict[str, Any] = Field(
+        default_factory=dict,
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
-    centre_point: Optional[Geometry] = Field(description="Centre coordinates")
-    admin_center: int = Field(examples=[1])
-    okato_code: str = Field(examples=["1"])
+    centre_point: Optional[Geometry] = Field(None, description="Centre coordinates")
+    admin_center: Optional[int] = Field(None, examples=[1])
+    okato_code: Optional[str] = Field(None, examples=["1"])
 
     @field_validator("geometry")
     @staticmethod

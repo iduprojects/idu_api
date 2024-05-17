@@ -20,7 +20,12 @@ service_types_normatives_data = Table(
     Column("time_availability_minutes", Integer),
     Column("services_per_1000_normative", Float(53)),
     Column("services_capacity_per_1000_normative", Float(53)),
-    UniqueConstraint("service_type_id", "urban_function_id", "territory_id"),
+    UniqueConstraint(
+        "service_type_id",
+        "urban_function_id",
+        "territory_id",
+        name="service_types_normatives_data_service_type_id_urban_functio_key", # postgres max column name len = 63
+    ),
 )
 
 """

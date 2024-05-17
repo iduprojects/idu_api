@@ -10,7 +10,8 @@ from typing import Literal
 @dataclass
 class IndicatorsDTO:
     indicator_id: int
-    name: str
+    name_full: str
+    name_short: str
     measurement_unit_id: int
     level: int
     list_label: str
