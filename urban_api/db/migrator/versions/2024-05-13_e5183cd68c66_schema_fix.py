@@ -1,5 +1,5 @@
 # pylint: disable=no-member,invalid-name,missing-function-docstring,too-many-statements
-"""empty message
+"""schema_fix
 
 Revision ID: e5183cd68c66
 Revises: aa0c57f0df82
@@ -32,7 +32,6 @@ def upgrade() -> None:
 
     op.drop_constraint("indicators_dict_name_key", "indicators_dict", type_="unique")
     op.create_unique_constraint(op.f("indicators_dict_name_full_key"), "indicators_dict", ["name_full"])
-    op.create_unique_constraint(op.f("indicators_dict_name_short_key"), "indicators_dict", ["name_short"])
 
     op.alter_column("service_types_normatives_data", "service_type_id", existing_type=sa.INTEGER(), nullable=False)
     op.alter_column("service_types_normatives_data", "urban_function_id", existing_type=sa.INTEGER(), nullable=False)
@@ -198,7 +197,7 @@ def upgrade() -> None:
         ),
         (
             "check_geometry_correctness_trigger",
-            "public.functial_zones_data",
+            "public.functional_zones_data",
             "get_check_geometry_not_point_correctness_trigger",
         ),
         (
@@ -229,7 +228,7 @@ def downgrade() -> None:
         ("check_geometry_correctness_trigger", "public.object_geometries_data"),
         ("set_center_point_trigger_trigger", "public.object_geometries_data"),
         ("check_normative_correctness_trigger", "public.service_types_normatives_data"),
-        ("check_geometry_correctness_trigger", "public.functial_zones_data"),
+        ("check_geometry_correctness_trigger", "public.functional_zones_data"),
         ("check_date_value_correctness", "public.territory_indicators_data"),
     ]:
         op.execute(sa.text(f"DROP TRIGGER {trigger_name} ON {table_name}"))

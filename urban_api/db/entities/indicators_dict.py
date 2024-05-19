@@ -32,20 +32,20 @@ indicators_dict = Table(
     metadata,
     Column("indicator_id", Integer, primary_key=True, server_default=indicators_dict_id_seq.next_value()),
     Column("name_full", String(200), nullable=False, unique=True),
+    Column("name_short", String(200), nullable=False),
     Column("measurement_unit_id", ForeignKey("measurement_units_dict.measurement_unit_id")),
     Column("level", Integer),
     Column("list_label", String(20), nullable=False),
     Column("parent_id", ForeignKey("indicators_dict.indicator_id")),
-    Column("name_short", String(200), nullable=False, unique=True),
 )
 
 """
 Indicators dict:
 - indicator_id int
 - name_full string(200)
+- name_short string(200)
 - measurement_unit_id foreign key int
 - level int
 - list_label string(20)
 - parent_id foreign key int
-- name_short string(200)
 """

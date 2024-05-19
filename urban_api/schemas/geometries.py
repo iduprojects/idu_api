@@ -88,7 +88,7 @@ class Geometry(BaseModel):
             return None
         match type(geometry):
             case geom.Point:
-                return cls(type="Point", coordinates=geometry.coords)
+                return cls(type="Point", coordinates=geometry.coords[0])
             case geom.Polygon:
                 return cls(type="Polygon", coordinates=list(geometry.exterior.coords))
             case geom.MultiPolygon:
