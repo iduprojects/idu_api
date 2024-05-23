@@ -2,8 +2,8 @@
 Territory endpoints are defined here.
 """
 
-from datetime import datetime
-from typing import List, Optional
+from datetime import datetime, date
+from typing import List, Optional, Dict
 
 from fastapi import Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -104,9 +104,9 @@ async def get_territory_by_id(
         Get a territory by id
     """
 
-    territory = await get_territory_by_id_from_db(territory_id, connection)
+    territory, territory_type = await get_territory_by_id_from_db(territory_id, connection)
 
-    return TerritoriesData.from_dto(territory)
+    return TerritoriesData.from_dto(territory, territory_type)
 
 
 @territories_router.post(
@@ -119,15 +119,15 @@ async def add_territory(
 ) -> TerritoriesData:
     """
     Summary:
-        Add territory type
+        Add territory
 
     Description:
-        Add a territory type
+        Add a territory
     """
 
-    territory_dto = await add_territory_to_db(territory, connection)
+    territory_dto, territory_type_dto = await add_territory_to_db(territory, connection)
 
-    return TerritoriesData.from_dto(territory_dto)
+    return TerritoriesData.from_dto(territory_dto, territory_type_dto)
 
 
 @territories_router.get(
@@ -351,7 +351,9 @@ async def get_functional_zones_for_territory(
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_by_parent_id(
-    parent_id: int = Query(description="Parent territory id to filter, should be 0 for top level territories"),
+    parent_id: int = Query(
+        None, description="Parent territory id to filter, should be None for top level territories"
+    ),
     get_all_levels: bool = Query(
         False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
@@ -368,21 +370,28 @@ async def get_territory_by_parent_id(
 
     territories = await get_territories_by_parent_id_from_db(parent_id, connection, get_all_levels, territory_type_id)
 
-    return [TerritoriesData.from_dto(territory) for territory in territories]
+    return [TerritoriesData.from_dto(territory, territory_type) for territory, territory_type in territories]
 
 
 @territories_router.get(
     "/territories_without_geometry",
-    response_model=List[TerritoryWithoutGeometry],
+    response_model=Dict[str, int | str | List[TerritoryWithoutGeometry]],
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_without_geometry_by_parent_id(
-    parent_id: int = Query(description="Parent territory id to filter, should be 0 for top level territories"),
+    parent_id: int = Query(
+        None, description="Parent territory id to filter, should be None for top level territories"
+    ),
     get_all_levels: bool = Query(
         False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
+    ordering: Optional[str] = Query(None, description="Order by 'created_at'"),
+    created_at: Optional[date] = Query(None, description="Filter by created date"),
+    name: Optional[str] = Query(None, description="Search by name"),
+    page: int = Query(1, description="Page number"),
+    page_size: int = Query(10, description="Number of items per page"),
     connection: AsyncConnection = Depends(get_connection),
-) -> List[TerritoryWithoutGeometry]:
+) -> Dict[str, int | str | List[TerritoryWithoutGeometry]]:
     """
     Summary:
         Get territories by parent id
@@ -391,6 +400,32 @@ async def get_territory_without_geometry_by_parent_id(
         Get a territory or list of territories without geometry by parent
     """
 
-    territories = await get_territories_without_geometry_by_parent_id_from_db(parent_id, connection, get_all_levels)
+    count, territories = await get_territories_without_geometry_by_parent_id_from_db(
+        parent_id, connection, get_all_levels, ordering, created_at, name, page, page_size)
 
-    return [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
+    results = [TerritoryWithoutGeometry.from_dto(territory, territory_type)
+               for territory, territory_type in territories]
+
+    response = {"count": count, "results": results}
+
+    if page > 1:
+        prev_page = (f"/api/v1/?"
+                     f"ordering={ordering}&"
+                     f"parent_id={parent_id}&"
+                     f"created_at={created_at}&"
+                     f"name={name}&"
+                     f"page={page - 1}&"
+                     f"page_size={page_size}")
+        response.update({"prev": prev_page})
+
+    if page < (count - 1) // page_size + 1:
+        next_page = (f"/api/v1/?"
+                     f"ordering={ordering}&"
+                     f"parent_id={parent_id}&"
+                     f"created_at={created_at}&"
+                     f"name={name}&"
+                     f"page={page + 1}&"
+                     f"page_size={page_size}")
+        response.update({"next": next_page})
+
+    return response

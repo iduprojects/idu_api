@@ -15,7 +15,7 @@ territories_data = Table(
     metadata,
     Column("territory_id", Integer, primary_key=True, server_default=territories_data_id_seq.next_value()),
     Column("territory_type_id", ForeignKey("territory_types_dict.territory_type_id"), nullable=False),
-    Column("parent_id", ForeignKey("territories_data.territory_id")),
+    Column("parent_id", ForeignKey("territories_data.territory_id"), nullable=True),
     Column("name", String(200), nullable=False),
     Column(
         "geometry",

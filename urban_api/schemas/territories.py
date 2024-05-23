@@ -16,8 +16,8 @@ class TerritoryTypes(BaseModel):
     Territory type with all its attributes
     """
 
-    territory_type_id: Optional[int] = Field(examples=[1], description="Territory type id, if set")
-    name: str = Field(description="Territory type unit name", examples=["Город"])
+    territory_type_id: Optional[int] = Field(example=1, description="Territory type id, if set")
+    name: str = Field(description="Territory type unit name", example="Город")
 
     @classmethod
     def from_dto(cls, dto: TerritoryTypeDTO) -> "TerritoryTypes":
@@ -32,7 +32,7 @@ class TerritoryTypesPost(BaseModel):
     Schema of territory type for POST request
     """
 
-    name: str = Field(description="Territory type unit name", examples=["Город"])
+    name: str = Field(description="Territory type unit name", example="Город")
 
 
 class TerritoriesData(BaseModel):
@@ -41,29 +41,29 @@ class TerritoriesData(BaseModel):
     """
 
     territory_id: int = Field(examples=[1])
-    territory_type_id: int = Field(examples=[1])
+    territory_type: TerritoryTypes = Field(example={"territory_type_id": 1, "name": "name"})
     parent_id: Optional[int] = Field(
-        examples=[1], description="Parent territory identifier, null only for the one territory"
+        example=1, description="Parent territory identifier, null only for the one territory"
     )
-    name: str = Field(examples=["--"], description="Territory name")
+    name: str = Field(example="--", description="Territory name")
     geometry: Geometry = Field(description="Territory geometry")
-    level: int = Field(examples=[1])
+    level: int = Field(example=1)
     properties: dict[str, str] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
     centre_point: Geometry = Field(description="Centre coordinates")
-    admin_center: Optional[int] = Field(examples=[1])
-    okato_code: Optional[str] = Field(examples=["1"])
+    admin_center: Optional[int] = Field(example=1)
+    okato_code: Optional[str] = Field(example="1")
 
     @classmethod
-    def from_dto(cls, dto: TerritoryDTO) -> "TerritoriesData":
+    def from_dto(cls, dto: TerritoryDTO, territory_type_dto: TerritoryTypeDTO) -> "TerritoriesData":
         """
         Construct from DTO.
         """
         return cls(
             territory_id=dto.territory_id,
-            territory_type_id=dto.territory_type_id,
+            territory_type=TerritoryTypes.from_dto(territory_type_dto),
             parent_id=dto.parent_id,
             name=dto.name,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
@@ -140,7 +140,7 @@ class TerritoryWithoutGeometry(BaseModel):
     """
 
     territory_id: int = Field(examples=[1])
-    territory_type_id: int = Field(examples=[1])
+    territory_type: TerritoryTypes = Field(example={"territory_type_id": 1, "name": "name"})
     parent_id: Optional[int] = Field(
         examples=[1], description="Parent territory identifier, null only for the one territory"
     )
@@ -154,13 +154,15 @@ class TerritoryWithoutGeometry(BaseModel):
     okato_code: Optional[str] = Field(examples=["1"])
 
     @classmethod
-    def from_dto(cls, dto: TerritoryWithoutGeometryDTO) -> "TerritoryWithoutGeometry":
+    def from_dto(
+            cls, dto: TerritoryWithoutGeometryDTO, territory_type_dto: TerritoryTypeDTO
+    ) -> "TerritoryWithoutGeometry":
         """
         Construct from DTO.
         """
         return cls(
             territory_id=dto.territory_id,
-            territory_type_id=dto.territory_type_id,
+            territory_type=TerritoryTypes.from_dto(territory_type_dto),
             parent_id=dto.parent_id,
             name=dto.name,
             level=dto.level,

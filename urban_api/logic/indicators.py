@@ -3,11 +3,10 @@ Indicators endpoints logic of getting entities from the database is defined here
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from fastapi import HTTPException
-from sqlalchemy import cast, func, insert, select
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from urban_api.db.entities import (
@@ -22,6 +21,7 @@ from urban_api.dto import (
     MeasurementUnitDTO,
 )
 from urban_api.schemas import IndicatorsPost, IndicatorValue, MeasurementUnitPost
+from urban_api.schemas.enums import DateType
 
 
 async def get_measurement_units_from_db(session: AsyncConnection) -> list[MeasurementUnitDTO]:
@@ -62,13 +62,13 @@ async def add_measurement_unit_to_db(
 
 
 async def get_indicators_by_parent_id_from_db(
-    parent_id: int, session: AsyncConnection, get_all_subtree: bool
-) -> List[IndicatorsDTO]:
+    parent_id: int, name: Optional[str], territory_id: Optional[int], session: AsyncConnection, get_all_subtree: bool
+) -> List[Tuple[IndicatorsDTO, MeasurementUnitDTO]]:
     """
     Get an indicator or list of indicators by parent
     """
 
-    if parent_id != 0:
+    if parent_id is not None:
         statement = select(indicators_dict.c.indicator_id).where(indicators_dict.c.indicator_id == parent_id)
         is_found_parent_id = (await session.execute(statement)).one_or_none()
         if is_found_parent_id is None:
@@ -76,27 +76,51 @@ async def get_indicators_by_parent_id_from_db(
 
     statement = select(indicators_dict)
 
+    if territory_id is not None:
+        statement = statement.join(
+            territory_indicators_data,
+            indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id
+        ).where(territory_indicators_data.c.territory_id == territory_id)
+
     if get_all_subtree:
         cte_statement = statement.where(
             indicators_dict.c.parent_id == parent_id if parent_id != 0 else indicators_dict.c.parent_id.is_(None)
         )
+        if name is not None:
+            statement = statement.where(indicators_dict.c.name_full.ilike(f"%{name}%"))
         cte_statement = cte_statement.cte(name="indicators_recursive", recursive=True)
 
         recursive_part = statement.join(cte_statement, indicators_dict.c.parent_id == cte_statement.c.indicator_id)
 
         statement = select(cte_statement.union_all(recursive_part))
-
     else:
         statement = statement.where(
             indicators_dict.c.parent_id == parent_id if parent_id != 0 else indicators_dict.c.parent_id.is_(None)
         )
+        if name is not None:
+            statement = statement.where(indicators_dict.c.name_full.ilike(f"%{name}%"))
 
     result = (await session.execute(statement)).mappings().all()
 
-    return [IndicatorsDTO(**indicator) for indicator in result]
+    indicators = [IndicatorsDTO(**indicator) for indicator in result]
+
+    statements = [
+        (select(measurement_units_dict).
+         where(measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id))
+        for indicator in indicators
+    ]
+
+    measurement_units = []
+    for statement_i in statements:
+        result = (await session.execute(statement_i)).mappings().one()
+        measurement_units.append(MeasurementUnitDTO(**result))
+
+    return list(zip(indicators, measurement_units))
 
 
-async def get_indicator_by_id_from_db(indicator_id: int, session: AsyncConnection) -> IndicatorsDTO:
+async def get_indicator_by_id_from_db(
+        indicator_id: int, session: AsyncConnection
+) -> Tuple[IndicatorsDTO, MeasurementUnitDTO]:
     """
     Get indicator object by id
     """
@@ -105,14 +129,20 @@ async def get_indicator_by_id_from_db(indicator_id: int, session: AsyncConnectio
     result = (await session.execute(statement)).mappings().one_or_none()
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
+    indicator = IndicatorsDTO(**result)
 
-    return IndicatorsDTO(**result)
+    statement = (select(measurement_units_dict).
+                 where(measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id))
+    result = (await session.execute(statement)).mappings().one()
+    measurement_unit = MeasurementUnitDTO(**result)
+
+    return indicator, measurement_unit
 
 
 async def add_indicator_to_db(
     indicator: IndicatorsPost,
     session: AsyncConnection,
-) -> IndicatorsDTO:
+) -> Tuple[IndicatorsDTO, MeasurementUnitDTO]:
     """
     Create indicator object
     """
@@ -144,11 +174,18 @@ async def add_indicator_to_db(
 
     await session.commit()
 
-    return IndicatorsDTO(**result)
+    indicator = IndicatorsDTO(**result)
+
+    statement = (select(measurement_units_dict).
+                 where(measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id))
+    result = (await session.execute(statement)).mappings().one()
+    measurement_unit = MeasurementUnitDTO(**result)
+
+    return indicator, measurement_unit
 
 
 async def get_indicator_value_by_id_from_db(
-    indicator_id: int, territory_id: int, date_type: str, date_value: datetime, session: AsyncConnection
+    indicator_id: int, territory_id: int, date_type: DateType, date_value: datetime, session: AsyncConnection
 ) -> IndicatorValueDTO:
     """
     Get indicator value object by id

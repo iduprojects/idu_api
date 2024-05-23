@@ -73,7 +73,7 @@ def logger_from_str(logger_text: str) -> list[tuple[LogLevel, str]]:
     "--db_pass",
     "-W",
     envvar="DB_PASS",
-    default="1111",
+    default="postgres",
     show_default=True,
     show_envvar=True,
     help="Postgres user password",
