@@ -13,7 +13,9 @@ class Indicators(BaseModel):
     """
 
     indicator_id: int = Field(example=1)
-    name_full: str = Field(description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории")
+    name_full: str = Field(
+        description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории"
+    )
     name_short: str = Field(description="Indicator unit short name", example="Численность населения")
     measurement_unit_id: Optional[int] = Field(description="Indicator measurement unit id", example=1)
     level: int = Field(description="Number of indicator functions above in a tree + 1", example=1)

@@ -2,8 +2,8 @@
 Territories endpoints logic of getting entities from the database is defined here.
 """
 
-from datetime import datetime, date
-from typing import List, Optional, Tuple
+from datetime import date, datetime
+from typing import Callable, List, Optional, Tuple
 
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
@@ -38,6 +38,7 @@ from urban_api.dto import (
 )
 from urban_api.schemas import TerritoriesDataPost, TerritoryTypesPost
 
+func: Callable
 
 async def get_territory_types_from_db(session: AsyncConnection) -> list[TerritoryTypeDTO]:
     """
@@ -77,7 +78,7 @@ async def add_territory_type_to_db(
 
 
 async def get_territory_by_id_from_db(
-        territory_id: int, session: AsyncConnection
+    territory_id: int, session: AsyncConnection
 ) -> Tuple[TerritoryDTO, TerritoryTypeDTO]:
     """
     Get territory object by id
@@ -102,8 +103,9 @@ async def get_territory_by_id_from_db(
 
     territory = TerritoryDTO(*result)
 
-    statement = (select(territory_types_dict).
-                 where(territory_types_dict.c.territory_type_id == territory.territory_type_id))
+    statement = select(territory_types_dict).where(
+        territory_types_dict.c.territory_type_id == territory.territory_type_id
+    )
 
     result = (await session.execute(statement)).mappings().one()
 
@@ -158,8 +160,9 @@ async def add_territory_to_db(
 
     territory = TerritoryDTO(**result)
 
-    statement = (select(territory_types_dict).
-                 where(territory_types_dict.c.territory_type_id == territory.territory_type_id))
+    statement = select(territory_types_dict).where(
+        territory_types_dict.c.territory_type_id == territory.territory_type_id
+    )
 
     result = (await session.execute(statement)).mappings().one()
 
@@ -491,7 +494,8 @@ async def get_territories_by_parent_id_from_db(
 
     if get_all_levels:
         cte_statement = statement.where(
-            territories_data.c.parent_id == parent_id if parent_id is not None
+            territories_data.c.parent_id == parent_id
+            if parent_id is not None
             else territories_data.c.parent_id.is_(None)
         )
         if territory_type_id is not None:
@@ -504,7 +508,8 @@ async def get_territories_by_parent_id_from_db(
 
     else:
         statement = statement.where(
-            territories_data.c.parent_id == parent_id if parent_id is not None
+            territories_data.c.parent_id == parent_id
+            if parent_id is not None
             else territories_data.c.parent_id.is_(None)
         )
 
@@ -529,8 +534,14 @@ async def get_territories_by_parent_id_from_db(
 
 
 async def get_territories_without_geometry_by_parent_id_from_db(
-        parent_id: int, session: AsyncConnection, get_all_levels: bool,
-        ordering: str, created_at: date, name: str, page: int, page_size: int
+    parent_id: int,
+    session: AsyncConnection,
+    get_all_levels: bool,
+    ordering: str,
+    created_at: date,
+    name: str,
+    page: int,
+    page_size: int,
 ) -> Tuple[int, List[Tuple[TerritoryWithoutGeometryDTO, TerritoryTypeDTO]]]:
     """
     Get a territory or list of territories by parent, territory type could be specified in parameters
@@ -555,14 +566,17 @@ async def get_territories_without_geometry_by_parent_id_from_db(
 
     if get_all_levels:
         cte_statement = statement.where(
-            (territories_data.c.parent_id == parent_id if parent_id is not None
-             else territories_data.c.parent_id.is_(None))
+            (
+                territories_data.c.parent_id == parent_id
+                if parent_id is not None
+                else territories_data.c.parent_id.is_(None)
+            )
         )
         if created_at is not None:
             cte_statement = cte_statement.where(func.date(territories_data.c.created_at) == created_at)
         if name is not None:
             cte_statement = cte_statement.where(territories_data.c.name.ilike(f"%{name}%"))
-        if ordering in ['created_at', 'updated_at']:
+        if ordering in ["created_at", "updated_at"]:
             cte_statement = cte_statement.order_by(getattr(territories_data.c, ordering).desc())
         cte_statement = cte_statement.cte(name="territories_recursive", recursive=True)
 
@@ -571,14 +585,15 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         statement = select(cte_statement.union_all(recursive_part))
     else:
         statement = statement.where(
-            territories_data.c.parent_id == parent_id if parent_id is not None
+            territories_data.c.parent_id == parent_id
+            if parent_id is not None
             else territories_data.c.parent_id.is_(None)
         )
         if created_at is not None:
             statement = statement.where(func.date(territories_data.c.created_at) == created_at)
         if name is not None:
             statement = statement.where(territories_data.c.name.ilike(f"%{name}%"))
-        if ordering in ['created_at', 'updated_at']:
+        if ordering in ["created_at", "updated_at"]:
             statement = statement.order_by(getattr(territories_data.c, ordering).desc())
 
     statement = statement.offset((page - 1) * page_size).limit(page_size)

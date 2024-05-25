@@ -24,7 +24,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # extensions
 
-    op.execute(sa.text("CREATE EXTENSION postgis"))
+    op.execute(sa.text("CREATE EXTENSION IF NOT EXISTS postgis"))
 
     # sequences
 
@@ -437,7 +437,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # table
+    # tables
+    op.drop_constraint(op.f("urban_functions_dict_list_label_key"), "urban_functions_dict", type_="unique")
 
     op.drop_table("urban_objects_data")
     op.drop_table("territory_indicators_data")

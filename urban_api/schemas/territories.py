@@ -155,7 +155,7 @@ class TerritoryWithoutGeometry(BaseModel):
 
     @classmethod
     def from_dto(
-            cls, dto: TerritoryWithoutGeometryDTO, territory_type_dto: TerritoryTypeDTO
+        cls, dto: TerritoryWithoutGeometryDTO, territory_type_dto: TerritoryTypeDTO
     ) -> "TerritoryWithoutGeometry":
         """
         Construct from DTO.

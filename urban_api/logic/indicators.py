@@ -12,7 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from urban_api.db.entities import (
     indicators_dict,
     measurement_units_dict,
-    territories_data,
     territory_indicators_data,
 )
 from urban_api.dto import (
@@ -78,8 +77,7 @@ async def get_indicators_by_parent_id_from_db(
 
     if territory_id is not None:
         statement = statement.join(
-            territory_indicators_data,
-            indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id
+            territory_indicators_data, indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id
         ).where(territory_indicators_data.c.territory_id == territory_id)
 
     if get_all_subtree:
@@ -105,8 +103,11 @@ async def get_indicators_by_parent_id_from_db(
     indicators = [IndicatorsDTO(**indicator) for indicator in result]
 
     statements = [
-        (select(measurement_units_dict).
-         where(measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id))
+        (
+            select(measurement_units_dict).where(
+                measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id
+            )
+        )
         for indicator in indicators
     ]
 
@@ -119,7 +120,7 @@ async def get_indicators_by_parent_id_from_db(
 
 
 async def get_indicator_by_id_from_db(
-        indicator_id: int, session: AsyncConnection
+    indicator_id: int, session: AsyncConnection
 ) -> Tuple[IndicatorsDTO, MeasurementUnitDTO]:
     """
     Get indicator object by id
@@ -131,8 +132,9 @@ async def get_indicator_by_id_from_db(
         raise HTTPException(status_code=404, detail="Given id is not found")
     indicator = IndicatorsDTO(**result)
 
-    statement = (select(measurement_units_dict).
-                 where(measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id))
+    statement = select(measurement_units_dict).where(
+        measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id
+    )
     result = (await session.execute(statement)).mappings().one()
     measurement_unit = MeasurementUnitDTO(**result)
 
@@ -176,8 +178,9 @@ async def add_indicator_to_db(
 
     indicator = IndicatorsDTO(**result)
 
-    statement = (select(measurement_units_dict).
-                 where(measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id))
+    statement = select(measurement_units_dict).where(
+        measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id
+    )
     result = (await session.execute(statement)).mappings().one()
     measurement_unit = MeasurementUnitDTO(**result)
 

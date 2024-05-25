@@ -1,11 +1,10 @@
-version: "3.9"
 services:
   urban_db:
-    container_name: ${POSTGRES_CONTAINER_NAME:-chair_db}
-    image: library/postgres:${POSTGRES_IMAGE_TAG:-15}
+    container_name: ${POSTGRES_CONTAINER_NAME:-urban_db}
+    image: postgis/postgis:16-3.4
     restart: on-failure
     ports:
-      - ${POSTGRES_PORT:-5432}:5432
+      - ${EXPORT_POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}
     env_file:
       - ./db.env
     volumes:
@@ -39,9 +38,9 @@ services:
     container_name: keycloak
     image: quay.io/keycloak/keycloak:20.0.2
     command:
-      - start --auto-build --db postgres --hostname-strict-https false --hostname-strict false --proxy edge --http-enabled true --import-realm --spi-user-profile-legacy-user-profile-read-only-attributes *_RES_ACCESS_MODE
+      - start --db postgres --hostname-strict-https false --hostname-strict false --proxy edge --http-enabled true --import-realm --spi-user-profile-legacy-user-profile-read-only-attributes *_RES_ACCESS_MODE
     ports:
-      - ${KC_PORT:-8080}:8080
+      - ${EXPORT_KC_PORT:-8080}:${KC_PORT:-8080}
     env_file:
       - ./keycloak.env
     volumes:
@@ -72,7 +71,7 @@ services:
       dockerfile: Dockerfile
     restart: on-failure
     ports:
-      - ${PORT:-8000}:8000
+      - ${EXPORT_API_PORT:-8000}:${PORT:-8000}
     env_file:
       - ./.env
     environment:
@@ -82,6 +81,8 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     healthcheck:
       test: curl -f http://localhost:8000/health_check/ping
       interval: 10s
