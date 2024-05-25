@@ -2,6 +2,7 @@
 Territory schemas are defined here.
 """
 
+from datetime import datetime
 from typing import Any, Optional
 
 from loguru import logger
@@ -55,15 +56,19 @@ class TerritoriesData(BaseModel):
     centre_point: Geometry = Field(description="Centre coordinates")
     admin_center: Optional[int] = Field(example=1)
     okato_code: Optional[str] = Field(example="1")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="The time when the territory was last updated"
+    )
 
     @classmethod
-    def from_dto(cls, dto: TerritoryDTO, territory_type_dto: TerritoryTypeDTO) -> "TerritoriesData":
+    def from_dto(cls, dto: TerritoryDTO) -> "TerritoriesData":
         """
         Construct from DTO.
         """
         return cls(
             territory_id=dto.territory_id,
-            territory_type=TerritoryTypes.from_dto(territory_type_dto),
+            territory_type=TerritoryTypes(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
             parent_id=dto.parent_id,
             name=dto.name,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
@@ -72,6 +77,8 @@ class TerritoriesData(BaseModel):
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
             admin_center=dto.admin_center,
             okato_code=dto.okato_code,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
         )
 
 
@@ -81,7 +88,7 @@ class TerritoriesDataPost(BaseModel):
     """
 
     territory_type_id: int = Field(examples=[1])
-    parent_id: int = Field(examples=[1])
+    parent_id: Optional[int] = Field(examples=[1])
     name: str = Field(examples=["--"], description="Territory name")
     geometry: Geometry = Field(description="Territory geometry")
     level: int = Field(examples=[1])
@@ -152,21 +159,25 @@ class TerritoryWithoutGeometry(BaseModel):
     )
     admin_center: Optional[int] = Field(examples=[1])
     okato_code: Optional[str] = Field(examples=["1"])
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="The time when the territory was last updated"
+    )
 
     @classmethod
-    def from_dto(
-        cls, dto: TerritoryWithoutGeometryDTO, territory_type_dto: TerritoryTypeDTO
-    ) -> "TerritoryWithoutGeometry":
+    def from_dto(cls, dto: TerritoryWithoutGeometryDTO) -> "TerritoryWithoutGeometry":
         """
         Construct from DTO.
         """
         return cls(
             territory_id=dto.territory_id,
-            territory_type=TerritoryTypes.from_dto(territory_type_dto),
+            territory_type=TerritoryTypes(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
             parent_id=dto.parent_id,
             name=dto.name,
             level=dto.level,
             properties=dto.properties,
             admin_center=dto.admin_center,
             okato_code=dto.okato_code,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
         )

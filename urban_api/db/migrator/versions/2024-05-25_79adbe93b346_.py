@@ -27,7 +27,7 @@ def upgrade() -> None:
             dedent(
                 """
                 CREATE TRIGGER set_center_point_trigger_trigger
-                BEFORE INSERT OR UPDATE ON public.territories
+                BEFORE INSERT OR UPDATE ON public.territories_data
                 FOR EACH ROW
                 EXECUTE PROCEDURE public.trigger_set_centre_point();
                 """
@@ -37,7 +37,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.execute(sa.text("DROP TRIGGER set_center_point_trigger_trigger ON public.territories"))
+    op.execute(sa.text("DROP TRIGGER set_center_point_trigger_trigger ON public.territories_data"))
     op.execute(sa.text("DROP FUNCTION public.trigger_set_centre_point"))
 
     op.execute(sa.schema.DropSchema("users", cascade=True))

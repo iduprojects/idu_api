@@ -7,6 +7,30 @@ from pydantic import BaseModel, Field, field_validator
 from urban_api.dto import IndicatorsDTO, IndicatorValueDTO, MeasurementUnitDTO
 
 
+class MeasurementUnit(BaseModel):
+    """
+    Measurement unit with all its attributes
+    """
+
+    measurement_unit_id: int = Field(description="Measurement unit id", example=1)
+    name: str = Field(description="Measurement unit name", example="Количество людей")
+
+    @classmethod
+    def from_dto(cls, dto: MeasurementUnitDTO) -> "MeasurementUnit":
+        """
+        Construct from DTO.
+        """
+        return cls(measurement_unit_id=dto.measurement_unit_id, name=dto.name)
+
+
+class MeasurementUnitPost(BaseModel):
+    """
+    Schema of measurement unit for POST request
+    """
+
+    name: str = Field(description="Measurement unit name", example="Количество человек")
+
+
 class Indicators(BaseModel):
     """
     Indicator with all its attributes
@@ -17,25 +41,40 @@ class Indicators(BaseModel):
         description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории"
     )
     name_short: str = Field(description="Indicator unit short name", example="Численность населения")
-    measurement_unit_id: Optional[int] = Field(description="Indicator measurement unit id", example=1)
+    measurement_unit: Optional[MeasurementUnit] = Field(
+        description="Indicator measurement unit", example={"measurement_unit_id": 1, "name": "ед"}
+    )
     level: int = Field(description="Number of indicator functions above in a tree + 1", example=1)
     list_label: str = Field(description="Indicator marker in lists", example="1.1.1")
     parent_id: Optional[int] = Field(description="Indicator parent id", example=1)
 
     @classmethod
-    def from_dto(cls, dto: IndicatorsDTO, unit_dto: MeasurementUnitDTO) -> "Indicators":
+    def from_dto(cls, dto: IndicatorsDTO) -> "Indicators":
         """
         Construct from DTO.
         """
-        return cls(
-            indicator_id=dto.indicator_id,
-            name_full=dto.name_full,
-            name_short=dto.name_short,
-            measurement_unit_id=MeasurementUnit.from_dto(unit_dto),
-            level=dto.level,
-            list_label=dto.list_label,
-            parent_id=dto.parent_id,
-        )
+        if dto.measurement_unit_id is not None:
+            return cls(
+                indicator_id=dto.indicator_id,
+                name_full=dto.name_full,
+                name_short=dto.name_short,
+                measurement_unit=MeasurementUnit(
+                    measurement_unit_id=dto.measurement_unit_id, name=dto.measurement_unit_name
+                ),
+                level=dto.level,
+                list_label=dto.list_label,
+                parent_id=dto.parent_id,
+            )
+        else:
+            return cls(
+                indicator_id=dto.indicator_id,
+                name_full=dto.name_full,
+                name_short=dto.name_short,
+                measurement_unit=None,
+                level=dto.level,
+                list_label=dto.list_label,
+                parent_id=dto.parent_id,
+            )
 
 
 class IndicatorsPost(BaseModel):
@@ -50,7 +89,7 @@ class IndicatorsPost(BaseModel):
     measurement_unit_id: int = Field(description="Indicator measurement unit id", example=1)
     level: int = Field(description="Number of indicator functions above in a tree + 1", example=1)
     list_label: str = Field(description="Indicator marker in lists", example="1.1.1")
-    parent_id: int = Field(description="Indicator parent id", example=1)
+    parent_id: Optional[int] = Field(description="Indicator parent id", example=1)
 
 
 class IndicatorValue(BaseModel):
@@ -96,27 +135,3 @@ class IndicatorValue(BaseModel):
             value_type=dto.value_type,
             information_source=dto.information_source,
         )
-
-
-class MeasurementUnit(BaseModel):
-    """
-    Measurement unit with all its attributes
-    """
-
-    measurement_unit_id: int = Field(description="Measurement unit id", example=1)
-    name: str = Field(description="Measurement unit name", example="Количество людей")
-
-    @classmethod
-    def from_dto(cls, dto: MeasurementUnitDTO) -> "MeasurementUnit":
-        """
-        Construct from DTO.
-        """
-        return cls(measurement_unit_id=dto.measurement_unit_id, name=dto.name)
-
-
-class MeasurementUnitPost(BaseModel):
-    """
-    Schema of measurement unit for POST request
-    """
-
-    name: str = Field(description="Territory type unit name", example="Город")

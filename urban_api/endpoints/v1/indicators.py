@@ -92,7 +92,7 @@ async def get_indicators_by_parent_id(
 
     indicators = await get_indicators_by_parent_id_from_db(parent_id, name, territory_id, connection, get_all_subtree)
 
-    return [Indicators.from_dto(indicator, measurement_unit) for indicator, measurement_unit in indicators]
+    return [Indicators.from_dto(indicator) for indicator in indicators]
 
 
 @indicators_router.get(
@@ -112,9 +112,9 @@ async def get_indicator_by_id(
         Get indicator by id
     """
 
-    indicator, measurement_unit = await get_indicator_by_id_from_db(indicator_id, connection)
+    indicator = await get_indicator_by_id_from_db(indicator_id, connection)
 
-    return Indicators.from_dto(indicator, measurement_unit)
+    return Indicators.from_dto(indicator)
 
 
 @indicators_router.post(
@@ -131,9 +131,9 @@ async def add_indicator(indicator: IndicatorsPost, connection: AsyncConnection =
         Add a new indicator
     """
 
-    indicator_dto, measurement_unit_dto = await add_indicator_to_db(indicator, connection)
+    indicator_dto = await add_indicator_to_db(indicator, connection)
 
-    return Indicators.from_dto(indicator_dto, measurement_unit_dto)
+    return Indicators.from_dto(indicator_dto)
 
 
 @indicators_router.get(

@@ -21,9 +21,9 @@ class AppSettings:  # pylint: disable=too-many-instance-attributes
 
     db_addr: str = "localhost"
     db_port: int = 5432
-    db_name: str = "urban_db"
+    db_name: str = "test_urban_db"
     db_user: str = "postgres"
-    db_pass: str = "postgres"
+    db_pass: str = "1111"
     debug: bool = False
     db_connect_retry: int = 20
     db_pool_size: int = 15

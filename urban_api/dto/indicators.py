@@ -4,7 +4,7 @@ Indicators DTO are defined here.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
+from typing import Literal, Optional
 
 
 @dataclass
@@ -12,7 +12,8 @@ class IndicatorsDTO:
     indicator_id: int
     name_full: str
     name_short: str
-    measurement_unit_id: int
+    measurement_unit_id: Optional[int]
+    measurement_unit_name: Optional[str]
     level: int
     list_label: str
     parent_id: int

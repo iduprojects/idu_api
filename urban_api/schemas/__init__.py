@@ -6,6 +6,7 @@ from .functional_zones import FunctionalZoneData
 from .health_check import PingResponse
 from .indicators import Indicators, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
 from .living_buildings import LivingBuildingsWithGeometry
+from .pages import Page
 from .physical_objects import PhysicalObjectsData, PhysicalObjectWithGeometry
 from .services import ServicesData, ServicesDataWithGeometry
 from .territories import (
@@ -34,4 +35,5 @@ __all__ = [
     "PhysicalObjectWithGeometry",
     "LivingBuildingsWithGeometry",
     "FunctionalZoneData",
+    "Page",
 ]

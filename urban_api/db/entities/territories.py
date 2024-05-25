@@ -3,7 +3,7 @@ Territories data table is defined here
 """
 
 from geoalchemy2.types import Geometry
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table, Text, text
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from urban_api.db import metadata
@@ -31,6 +31,8 @@ territories_data = Table(
     ),
     Column("admin_center", Integer),
     Column("okato_code", String(20)),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
 )
 
 """

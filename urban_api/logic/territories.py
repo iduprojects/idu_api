@@ -15,6 +15,7 @@ from urban_api.db.entities import (
     functional_zones_data,
     indicators_dict,
     living_buildings_data,
+    measurement_units_dict,
     object_geometries_data,
     physical_objects_data,
     services_data,
@@ -28,6 +29,7 @@ from urban_api.dto import (
     IndicatorsDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
+    MeasurementUnitDTO,
     PhysicalObjectsDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
@@ -39,6 +41,7 @@ from urban_api.dto import (
 from urban_api.schemas import TerritoriesDataPost, TerritoryTypesPost
 
 func: Callable
+
 
 async def get_territory_types_from_db(session: AsyncConnection) -> list[TerritoryTypeDTO]:
     """
@@ -77,52 +80,51 @@ async def add_territory_type_to_db(
     return TerritoryTypeDTO(**result)
 
 
-async def get_territory_by_id_from_db(
-    territory_id: int, session: AsyncConnection
-) -> Tuple[TerritoryDTO, TerritoryTypeDTO]:
+async def get_territory_by_id_from_db(territory_id: int, session: AsyncConnection) -> TerritoryDTO:
     """
     Get territory object by id
     """
 
-    statement = select(
-        territories_data.c.territory_id,
-        territories_data.c.territory_type_id,
-        territories_data.c.parent_id,
-        territories_data.c.name,
-        cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
-        territories_data.c.level,
-        territories_data.c.properties,
-        cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
-        territories_data.c.admin_center,
-        territories_data.c.okato_code,
-    ).where(territories_data.c.territory_id == territory_id)
+    statement = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.territory_type_id,
+            territories_data.c.parent_id,
+            territories_data.c.name,
+            cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
+            territories_data.c.level,
+            territories_data.c.properties,
+            cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
+            territories_data.c.admin_center,
+            territories_data.c.okato_code,
+            territories_data.c.created_at,
+            territories_data.c.updated_at,
+            territory_types_dict.c.name.label("territory_type_name"),
+        )
+        .select_from(
+            territories_data.join(
+                territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
+            )
+        )
+        .where(territories_data.c.territory_id == territory_id)
+    )
 
-    result = (await session.execute(statement)).one_or_none()
+    result = (await session.execute(statement)).mappings().one_or_none()
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
-    territory = TerritoryDTO(*result)
-
-    statement = select(territory_types_dict).where(
-        territory_types_dict.c.territory_type_id == territory.territory_type_id
-    )
-
-    result = (await session.execute(statement)).mappings().one()
-
-    territory_type = TerritoryTypeDTO(**result)
-
-    return territory, territory_type
+    return TerritoryDTO(**result)
 
 
 async def add_territory_to_db(
     territory: TerritoriesDataPost,
     session: AsyncConnection,
-) -> Tuple[TerritoryDTO, TerritoryTypeDTO]:
+) -> TerritoryDTO:
     """
     Create territory object
     """
 
-    if territory.parent_id != 0:
+    if territory.parent_id is not None:
         statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
         check_parent_id = (await session.execute(statement)).one_or_none()
         if check_parent_id is None:
@@ -141,34 +143,13 @@ async def add_territory_to_db(
             admin_center=territory.admin_center,
             okato_code=territory.okato_code,
         )
-        .returning(
-            territories_data.c.territory_id,
-            territories_data.c.territory_type_id,
-            territories_data.c.parent_id,
-            territories_data.c.name,
-            cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
-            territories_data.c.level,
-            territories_data.c.properties,
-            cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
-            territories_data.c.admin_center,
-            territories_data.c.okato_code,
-        )
+        .returning(territories_data)
     )
     result = (await session.execute(statement)).mappings().one()
 
     await session.commit()
 
-    territory = TerritoryDTO(**result)
-
-    statement = select(territory_types_dict).where(
-        territory_types_dict.c.territory_type_id == territory.territory_type_id
-    )
-
-    result = (await session.execute(statement)).mappings().one()
-
-    territory_type = TerritoryTypeDTO(**result)
-
-    return territory, territory_type
+    return await get_territory_by_id_from_db(result.territory_id, session)
 
 
 async def get_services_by_territory_id_from_db(
@@ -282,10 +263,13 @@ async def get_indicators_by_territory_id_from_db(
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = (
-        select(indicators_dict)
+        select(indicators_dict, measurement_units_dict.c.name.label("measurement_unit_name"))
         .select_from(
             territory_indicators_data.join(
                 indicators_dict, territory_indicators_data.c.indicator_id == indicators_dict.c.indicator_id
+            ).outerjoin(
+                measurement_units_dict,
+                measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
             )
         )
         .where(territory_indicators_data.c.territory_id == territory_id)
@@ -468,7 +452,7 @@ async def get_functional_zones_by_territory_id_from_db(
 
 async def get_territories_by_parent_id_from_db(
     parent_id: Optional[int], session: AsyncConnection, get_all_levels: Optional[bool], territory_type_id: Optional[int]
-) -> List[Tuple[TerritoryDTO, TerritoryTypeDTO]]:
+) -> List[TerritoryDTO]:
     """
     Get a territory or list of territories by parent, territory type could be specified in parameters
     """
@@ -490,6 +474,13 @@ async def get_territories_by_parent_id_from_db(
         cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
         territories_data.c.admin_center,
         territories_data.c.okato_code,
+        territories_data.c.created_at,
+        territories_data.c.updated_at,
+        territory_types_dict.c.name.label("territory_type_name"),
+    ).select_from(
+        territories_data.join(
+            territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
+        )
     )
 
     if get_all_levels:
@@ -518,36 +509,26 @@ async def get_territories_by_parent_id_from_db(
 
     result = (await session.execute(statement)).mappings().all()
 
-    territories = [TerritoryDTO(**territory) for territory in result]
-
-    statements = [
-        (select(territory_types_dict).where(territory_types_dict.c.territory_type_id == territory.territory_type_id))
-        for territory in territories
-    ]
-
-    territory_types = []
-    for statement in statements:
-        result = (await session.execute(statement)).mappings().one()
-        territory_types.append(TerritoryTypeDTO(**result))
-
-    return list(zip(territories, territory_types))
+    return [TerritoryDTO(**territory) for territory in result]
 
 
 async def get_territories_without_geometry_by_parent_id_from_db(
-    parent_id: int,
+    parent_id: Optional[int],
     session: AsyncConnection,
     get_all_levels: bool,
-    ordering: str,
-    created_at: date,
-    name: str,
+    ordering: Optional[str],
+    created_at: Optional[date],
+    name: Optional[str],
     page: int,
     page_size: int,
-) -> Tuple[int, List[Tuple[TerritoryWithoutGeometryDTO, TerritoryTypeDTO]]]:
+    # after: int
+) -> Tuple[int, List[TerritoryWithoutGeometryDTO]]:
     """
-    Get a territory or list of territories by parent, territory type could be specified in parameters
+    Get a territory or list of territories without geometry by parent,
+    ordering and filters can be specified in parameters
     """
 
-    if parent_id != 0:
+    if parent_id is not None:
         statement = select(territories_data).where(territories_data.c.territory_id == parent_id)
         is_found_parent_id = (await session.execute(statement)).one_or_none()
         if is_found_parent_id is None:
@@ -562,7 +543,23 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         territories_data.c.properties,
         territories_data.c.admin_center,
         territories_data.c.okato_code,
+        territories_data.c.created_at,
+        territories_data.c.updated_at,
+        territory_types_dict.c.name.label("territory_type_name"),
+    ).select_from(
+        territories_data.join(
+            territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
+        )
     )
+
+    # if after is not None:
+    #     statement = statement.where(territories_data.c.territory_id > after)
+    if name is not None:
+        statement = statement.where(territories_data.c.name.ilike(f"%{name}%"))
+    if created_at is not None:
+        statement = statement.where(func.date(territories_data.c.created_at) == created_at)
+    if ordering in ["created_at", "updated_at"]:
+        statement = statement.order_by(getattr(territories_data.c, ordering).desc())
 
     if get_all_levels:
         cte_statement = statement.where(
@@ -572,12 +569,6 @@ async def get_territories_without_geometry_by_parent_id_from_db(
                 else territories_data.c.parent_id.is_(None)
             )
         )
-        if created_at is not None:
-            cte_statement = cte_statement.where(func.date(territories_data.c.created_at) == created_at)
-        if name is not None:
-            cte_statement = cte_statement.where(territories_data.c.name.ilike(f"%{name}%"))
-        if ordering in ["created_at", "updated_at"]:
-            cte_statement = cte_statement.order_by(getattr(territories_data.c, ordering).desc())
         cte_statement = cte_statement.cte(name="territories_recursive", recursive=True)
 
         recursive_part = statement.join(cte_statement, territories_data.c.parent_id == cte_statement.c.territory_id)
@@ -589,27 +580,11 @@ async def get_territories_without_geometry_by_parent_id_from_db(
             if parent_id is not None
             else territories_data.c.parent_id.is_(None)
         )
-        if created_at is not None:
-            statement = statement.where(func.date(territories_data.c.created_at) == created_at)
-        if name is not None:
-            statement = statement.where(territories_data.c.name.ilike(f"%{name}%"))
-        if ordering in ["created_at", "updated_at"]:
-            statement = statement.order_by(getattr(territories_data.c, ordering).desc())
+
+    total_count = (await session.execute(select(func.count()).select_from(statement.subquery()))).scalar()
 
     statement = statement.offset((page - 1) * page_size).limit(page_size)
 
-    total_count = (await session.execute(select(func.count()).select_from(statement.subquery()))).scalar()
     result = (await session.execute(statement)).mappings().all()
 
-    territories = [TerritoryWithoutGeometryDTO(**territory) for territory in result]
-
-    statements = [
-        (select(territory_types_dict).where(territory_types_dict.c.territory_type_id == territory.territory_type_id))
-        for territory in territories
-    ]
-    territory_types = []
-    for statement_i in statements:
-        result = (await session.execute(statement_i)).mappings().one()
-        territory_types.append(TerritoryTypeDTO(**result))
-
-    return total_count, list(zip(territories, territory_types))
+    return total_count, [TerritoryWithoutGeometryDTO(**territory) for territory in result]
