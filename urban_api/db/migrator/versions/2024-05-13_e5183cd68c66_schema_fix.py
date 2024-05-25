@@ -25,10 +25,9 @@ def upgrade() -> None:
 
     op.alter_column("functional_zones_data", "territory_id", existing_type=sa.INTEGER(), nullable=False)
 
-    op.execute("ALTER indicators_dict RENAME name TO name_full")
-    op.alter_column("indicators_dict", "name_short", existing_type=sa.VARCHAR(length=200), nullable=True)
+    op.execute("ALTER TABLE indicators_dict RENAME name TO name_full")
+    op.add_column("indicators_dict", sa.Column("name_short", sa.VARCHAR(length=200), nullable=True))
     op.execute("UPDATE indicators_dict SET name_short = name_full")
-    op.alter_column("indicators_dict", "name_short", nullable=False)
 
     op.drop_constraint("indicators_dict_name_key", "indicators_dict", type_="unique")
     op.create_unique_constraint(op.f("indicators_dict_name_full_key"), "indicators_dict", ["name_full"])
@@ -55,7 +54,6 @@ def upgrade() -> None:
         ),
         nullable=False,
     )
-    op.create_unique_constraint(op.f("urban_functions_dict_list_label_key"), "urban_functions_dict", ["list_label"])
 
     # helper functions
 
@@ -172,38 +170,72 @@ def upgrade() -> None:
         )
     )
 
+    op.execute(
+        sa.text(
+            dedent(
+                """
+                CREATE OR REPLACE FUNCTION public.trigger_validate_date_value_correctness()
+                RETURNS TRIGGER
+                LANGUAGE plpgsql
+                AS $function$
+                BEGIN
+                    IF NEW.date_type = 'year'::date_field_type THEN
+                        IF DATE_TRUNC('year', NEW.date_value) <> NEW.date_type THEN
+                            RAISE EXCEPTION 'Invalid year date_value!';
+                        END IF;
+                    ELSEIF NEW.date_type = 'half_year'::date_field_type THEN
+                        IF NOT (EXTRACT(month FROM NEW.date_value) IN (1, 7) AND EXTRACT(day FROM NEW.date_value) = 1) THEN
+                            RAISE EXCEPTION 'Invalid half_year date_value!';
+                        END IF;
+                    ELSEIF NEW.date_type = 'quarter'::date_field_type THEN
+                        IF NOT (EXTRACT(month FROM NEW.date_value) IN (1, 4, 7, 10) AND EXTRACT(day FROM NEW.date_value) = 1) THEN
+                            RAISE EXCEPTION 'Invalid quarter date_value!';
+                        END IF;
+                    ELSEIF NEW.date_type = 'month'::date_field_type THEN
+                        IF DATE_TRUNC('month', NEW.date_value) <> NEW.date_type THEN
+                            RAISE EXCEPTION 'Invalid month date_value!';
+                        END IF;
+                    END IF;
+                    RETURN NEW;
+                END;
+                $function$;
+                """
+            )
+        )
+    )
+
     # triggers
 
     for trigger_name, table_name, procedure_name in [
         (
             "check_geometry_correctness_trigger",
             "public.territories_data",
-            "get_check_geometry_not_point_correctness_trigger",
+            "public.trigger_validate_geometry_not_point",
         ),
         (
             "check_geometry_correctness_trigger",
             "public.object_geometries_data",
-            "get_check_geometry_correctness_trigger",
+            "public.trigger_validate_geometry",
         ),
         (
             "set_center_point_trigger_trigger",
             "public.object_geometries_data",
-            "get_set_center_point_trigger",
+            "public.trigger_set_centre_point",
         ),
         (
             "check_normative_correctness_trigger",
             "public.service_types_normatives_data",
-            "get_check_normative_correctness_trigger",
+            "public.trigger_check_normative_sensefulness",
         ),
         (
             "check_geometry_correctness_trigger",
             "public.functional_zones_data",
-            "get_check_geometry_not_point_correctness_trigger",
+            "public.trigger_validate_geometry_not_point",
         ),
         (
             "check_date_value_correctness",
             "public.territory_indicators_data",
-            "get_check_date_value_correctness_trigger",
+            "public.trigger_validate_date_value_correctness",
         ),
     ]:
         op.execute(
@@ -236,16 +268,17 @@ def downgrade() -> None:
     # functions
 
     for function_name in [
+        "public.trigger_validate_geometry_not_point",
+        "public.trigger_validate_geometry",
         "public.trigger_set_centre_point",
         "public.trigger_check_normative_sensefulness",
         "public.trigger_validate_geometry_not_point",
-        "public.trigger_validate_geometry",
+        "public.trigger_validate_date_value_correctness",
     ]:
         op.execute(sa.text(f"DROP FUNCTION {function_name}"))
 
     # tables
 
-    op.drop_constraint(op.f("urban_functions_dict_list_label_key"), "urban_functions_dict", type_="unique")
     op.alter_column(
         "territories_data",
         "centre_point",
@@ -271,8 +304,8 @@ def downgrade() -> None:
 
     op.drop_constraint(op.f("indicators_dict_name_short_key"), "indicators_dict", type_="unique")
     op.drop_constraint(op.f("indicators_dict_name_full_key"), "indicators_dict", type_="unique")
-    op.create_unique_constraint("indicators_dict_name_key", "indicators_dict", ["name_full"])
-    op.execute("ALTER indicators_dict RENAME name_full TO name")
+    op.execute("ALTER TABLE indicators_dict RENAME name_full TO name")
+    op.create_unique_constraint("indicators_dict_name_key", "indicators_dict", ["name"])
     op.drop_column("indicators_dict", "name_short", existing_type=sa.VARCHAR(length=200), nullable=True)
 
     op.alter_column("functional_zones_data", "territory_id", existing_type=sa.INTEGER(), nullable=True)

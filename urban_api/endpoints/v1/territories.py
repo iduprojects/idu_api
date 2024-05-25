@@ -2,8 +2,8 @@
 Territory endpoints are defined here.
 """
 
-from datetime import datetime, date
-from typing import List, Optional, Dict
+from datetime import date, datetime
+from typing import Dict, List, Optional
 
 from fastapi import Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -351,9 +351,7 @@ async def get_functional_zones_for_territory(
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_by_parent_id(
-    parent_id: int = Query(
-        None, description="Parent territory id to filter, should be None for top level territories"
-    ),
+    parent_id: int = Query(None, description="Parent territory id to filter, should be None for top level territories"),
     get_all_levels: bool = Query(
         False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
@@ -379,9 +377,7 @@ async def get_territory_by_parent_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_without_geometry_by_parent_id(
-    parent_id: int = Query(
-        None, description="Parent territory id to filter, should be None for top level territories"
-    ),
+    parent_id: int = Query(None, description="Parent territory id to filter, should be None for top level territories"),
     get_all_levels: bool = Query(
         False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
@@ -401,31 +397,37 @@ async def get_territory_without_geometry_by_parent_id(
     """
 
     count, territories = await get_territories_without_geometry_by_parent_id_from_db(
-        parent_id, connection, get_all_levels, ordering, created_at, name, page, page_size)
+        parent_id, connection, get_all_levels, ordering, created_at, name, page, page_size
+    )
 
-    results = [TerritoryWithoutGeometry.from_dto(territory, territory_type)
-               for territory, territory_type in territories]
+    results = [
+        TerritoryWithoutGeometry.from_dto(territory, territory_type) for territory, territory_type in territories
+    ]
 
     response = {"count": count, "results": results}
 
     if page > 1:
-        prev_page = (f"/api/v1/?"
-                     f"ordering={ordering}&"
-                     f"parent_id={parent_id}&"
-                     f"created_at={created_at}&"
-                     f"name={name}&"
-                     f"page={page - 1}&"
-                     f"page_size={page_size}")
+        prev_page = (
+            f"/api/v1/?"
+            f"ordering={ordering}&"
+            f"parent_id={parent_id}&"
+            f"created_at={created_at}&"
+            f"name={name}&"
+            f"page={page - 1}&"
+            f"page_size={page_size}"
+        )
         response.update({"prev": prev_page})
 
     if page < (count - 1) // page_size + 1:
-        next_page = (f"/api/v1/?"
-                     f"ordering={ordering}&"
-                     f"parent_id={parent_id}&"
-                     f"created_at={created_at}&"
-                     f"name={name}&"
-                     f"page={page + 1}&"
-                     f"page_size={page_size}")
+        next_page = (
+            f"/api/v1/?"
+            f"ordering={ordering}&"
+            f"parent_id={parent_id}&"
+            f"created_at={created_at}&"
+            f"name={name}&"
+            f"page={page + 1}&"
+            f"page_size={page_size}"
+        )
         response.update({"next": next_page})
 
     return response

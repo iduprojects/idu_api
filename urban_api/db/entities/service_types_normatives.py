@@ -24,7 +24,7 @@ service_types_normatives_data = Table(
         "service_type_id",
         "urban_function_id",
         "territory_id",
-        name="service_types_normatives_data_service_type_id_urban_functio_key", # postgres max column name len = 63
+        name="service_types_normatives_data_service_type_id_urban_functio_key",  # postgres max column name len = 63
     ),
 )
 
