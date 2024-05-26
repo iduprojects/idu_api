@@ -3,8 +3,9 @@ Territories endpoints logic of getting entities from the database is defined her
 """
 
 from datetime import date, datetime
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, Literal, Optional, Tuple
 
+import shapely.geometry as geom
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
 from sqlalchemy import cast, exists, func, insert, select
@@ -29,7 +30,6 @@ from urban_api.dto import (
     IndicatorsDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
-    MeasurementUnitDTO,
     PhysicalObjectsDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
@@ -80,9 +80,9 @@ async def add_territory_type_to_db(
     return TerritoryTypeDTO(**result)
 
 
-async def get_territory_by_id_from_db(territory_id: int, session: AsyncConnection) -> TerritoryDTO:
+async def get_territories_by_id_from_db(territory_ids: list[int], session: AsyncConnection) -> TerritoryDTO:
     """
-    Get territory object by id
+    Get territory objects by ids list
     """
 
     statement = (
@@ -106,14 +106,23 @@ async def get_territory_by_id_from_db(territory_id: int, session: AsyncConnectio
                 territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
             )
         )
-        .where(territories_data.c.territory_id == territory_id)
+        .where(territories_data.c.territory_id.in_(territory_ids))
     )
 
-    result = (await session.execute(statement)).mappings().one_or_none()
-    if result is None:
+    results = (await session.execute(statement)).mappings().all()
+
+    return [TerritoryDTO(**territory) for territory in results]
+
+
+async def get_territory_by_id_from_db(territory_id: int, session: AsyncConnection) -> TerritoryDTO:
+    """
+    Get territory object by id
+    """
+    results = await get_territories_by_id_from_db([territory_id], session)
+    if len(results) == 0:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
-    return TerritoryDTO(**result)
+    return results[0]
 
 
 async def add_territory_to_db(
@@ -516,11 +525,12 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     parent_id: Optional[int],
     session: AsyncConnection,
     get_all_levels: bool,
-    ordering: Optional[str],
+    order_by: Optional[Literal["created_at", "updated_at"]],
     created_at: Optional[date],
     name: Optional[str],
     page: int,
     page_size: int,
+    ordering: Optional[Literal["asc", "desc"]] = "asc",
     # after: int
 ) -> Tuple[int, List[TerritoryWithoutGeometryDTO]]:
     """
@@ -552,15 +562,6 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         )
     )
 
-    # if after is not None:
-    #     statement = statement.where(territories_data.c.territory_id > after)
-    if name is not None:
-        statement = statement.where(territories_data.c.name.ilike(f"%{name}%"))
-    if created_at is not None:
-        statement = statement.where(func.date(territories_data.c.created_at) == created_at)
-    if ordering in ["created_at", "updated_at"]:
-        statement = statement.order_by(getattr(territories_data.c, ordering).desc())
-
     if get_all_levels:
         cte_statement = statement.where(
             (
@@ -583,8 +584,70 @@ async def get_territories_without_geometry_by_parent_id_from_db(
 
     total_count = (await session.execute(select(func.count()).select_from(statement.subquery()))).scalar()
 
+    # if after is not None:
+    #     statement = statement.where(territories_data.c.territory_id > after)
+
+    requested_territories = statement.cte("requested_territories")
+
+    statement = select(requested_territories)
+
+    if name is not None:
+        statement = statement.where(requested_territories.c.name.ilike(f"%{name}%"))
+    if created_at is not None:
+        statement = statement.where(func.date(requested_territories.c.created_at) == created_at)
+    if order_by is not None:
+        order = requested_territories.c.created_at if order_by == "created_at" else requested_territories.c.updated_at
+        if ordering == "desc":
+            order = order.desc()
+        statement = statement.order_by(order)
+    else:
+        statement = statement.order_by(requested_territories.c.territory_id)
+
     statement = statement.offset((page - 1) * page_size).limit(page_size)
 
     result = (await session.execute(statement)).mappings().all()
 
     return total_count, [TerritoryWithoutGeometryDTO(**territory) for territory in result]
+
+
+async def get_common_territory_for_geometry(
+    session: AsyncConnection, geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+) -> TerritoryDTO | None:
+    statement = (
+        select(territories_data.c.territory_id)
+        .where(func.ST_Covers(territories_data.c.geometry, ST_GeomFromText(str(geometry), 4326)))
+        .order_by(territories_data.c.level.desc())
+        .limit(1)
+    )
+
+    territory_id = (await session.execute(statement)).scalar()
+
+    if territory_id is None:
+        return None
+
+    return await get_territory_by_id_from_db(territory_id, session)
+
+
+async def get_intersecting_territories_for_geometry(
+    session: AsyncConnection, parent_territory: int, geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+) -> list[TerritoryDTO]:
+    level_subqery = (
+        select(territories_data.c.level + 1)
+        .where(territories_data.c.territory_id == parent_territory)
+        .scalar_subquery()
+    )
+
+    given_geometry = select(ST_GeomFromText(str(geometry), 4326)).cte("given_geometry")
+
+    statement = select(territories_data.c.territory_id).where(
+        territories_data.c.level == level_subqery,
+        (
+            func.ST_Intersects(territories_data.c.geometry, select(given_geometry).scalar_subquery())
+            | func.ST_Covers(select(given_geometry).scalar_subquery(), territories_data.c.geometry)
+            | func.ST_Covers(territories_data.c.geometry, select(given_geometry).scalar_subquery())
+        ),
+    )
+
+    territory_ids = (await session.execute(statement)).scalars().all()
+
+    return await get_territories_by_id_from_db(territory_ids, session)

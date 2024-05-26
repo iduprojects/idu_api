@@ -3,6 +3,7 @@ Territory schemas are defined here.
 """
 
 from datetime import datetime
+from enum import Enum
 from typing import Any, Optional
 
 from loguru import logger
@@ -10,6 +11,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from urban_api.dto import TerritoryDTO, TerritoryTypeDTO, TerritoryWithoutGeometryDTO
 from urban_api.schemas.geometries import Geometry
+
+
+class TerritoriesOrderByField(str, Enum):
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
 
 
 class TerritoryTypes(BaseModel):
