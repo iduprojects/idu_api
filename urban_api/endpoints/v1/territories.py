@@ -3,9 +3,9 @@ Territory endpoints are defined here.
 """
 
 from datetime import date, datetime
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-from fastapi import Depends, Path, Query
+from fastapi import Depends, HTTPException, Path, Query
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
@@ -13,9 +13,11 @@ from urban_api.db.connection import get_connection
 from urban_api.logic.territories import (
     add_territory_to_db,
     add_territory_type_to_db,
+    get_common_territory_for_geometry,
     get_functional_zones_by_territory_id_from_db,
     get_indicator_values_by_territory_id_from_db,
     get_indicators_by_territory_id_from_db,
+    get_intersecting_territories_for_geometry,
     get_living_buildings_with_geometry_by_territory_id_from_db,
     get_physical_objects_by_territory_id_from_db,
     get_physical_objects_with_geometry_by_territory_id_from_db,
@@ -43,7 +45,9 @@ from urban_api.schemas import (
     TerritoryTypesPost,
     TerritoryWithoutGeometry,
 )
-from urban_api.schemas.enums import DateType
+from urban_api.schemas.enums import DateType, Ordering
+from urban_api.schemas.geometries import Geometry
+from urban_api.schemas.territories import TerritoriesOrderByField
 
 from .routers import territories_router
 
@@ -378,15 +382,22 @@ async def get_territory_by_parent_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_without_geometry_by_parent_id(
-    parent_id: int = Query(None, description="Parent territory id to filter, should be None for top level territories"),
+    parent_id: Optional[int] = Query(
+        None, description="Parent territory id to filter, should be null for top level territories"
+    ),
     get_all_levels: bool = Query(
         False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
-    ordering: Optional[str] = Query(None, description="Order by 'created_at'"),
+    order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+        None, description="Attribute to set ordering (created_at or updated_at)"
+    ),
+    ordering: Ordering = Query(
+        Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
+    ),
     created_at: Optional[date] = Query(None, description="Filter by created date"),
-    name: Optional[str] = Query(None, description="Search by name"),
-    page: int = Query(1, description="Page number"),
-    page_size: int = Query(10, description="Number of items per page"),
+    name: Optional[str] = Query(None, description="Filter territories by name substring (case-insensitive)"),
+    page: int = Query(1, description="Page number starting from 1"),
+    page_size: int = Query(50, description="Number of territories per page"),
     # after: int = Query(None, description="The last id of territory on the previous page"),
     connection: AsyncConnection = Depends(get_connection),
 ) -> Page[TerritoryWithoutGeometry]:
@@ -398,24 +409,77 @@ async def get_territory_without_geometry_by_parent_id(
         Get a territory or list of territories without geometry by parent
     """
 
+    order_by_value = order_by.value if order_by is not None else 'null'
+
     count, territories = await get_territories_without_geometry_by_parent_id_from_db(
-        parent_id, connection, get_all_levels, ordering, created_at, name, page, page_size
+        parent_id, connection, get_all_levels, order_by_value, created_at, name, page, page_size, ordering.value
     )
 
     results = [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
 
     page_addr = (
         f"/api/v1/?"
-        f"ordering={ordering}&"
+        f"order_by={order_by_value}&"
+        f"ordering={ordering.value}&"
         f"parent_id={parent_id}&"
         f"created_at={created_at}&"
         f"name={name}&"
         f"page_size={page_size}"
     )
-    prev_page, next_page = "", ""
+    prev_page, next_page = None, None
     if page > 1:
         prev_page = page_addr + f"&page={page - 1}"  # + "f"&after={prev_after}"
     if page < (count - 1) // page_size + 1:
         next_page = page_addr + f"&page={page + 1}"  # + f"&after={next_after}"
 
     return Page(count=count, prev=prev_page, next=next_page, results=results)
+
+
+@territories_router.post(
+    "/common_territory",
+    response_model=TerritoriesData,
+    status_code=status.HTTP_200_OK,
+)
+async def get_common_territory(
+    geometry: Geometry,
+    connection: AsyncConnection = Depends(get_connection),
+) -> TerritoriesData:
+    """
+    Summary:
+        Get common territory
+
+    Description:
+        Get a territory which covers given geometry fully
+    """
+
+    territory = await get_common_territory_for_geometry(connection, geometry.as_shapely_geometry())
+
+    if territory is None:
+        raise HTTPException(404, "no common territory exists in the database")
+
+    return TerritoriesData.from_dto(territory)
+
+
+@territories_router.post(
+    "/territory/{parent_territory_id}/intersecting_territories",
+    response_model=list[TerritoriesData],
+    status_code=status.HTTP_200_OK,
+)
+async def intersecting_territories(
+    geometry: Geometry,
+    parent_territory_id: int = Path(description="parent territory id", gt=0),
+    connection: AsyncConnection = Depends(get_connection),
+) -> list[TerritoriesData]:
+    """
+    Summary:
+        Get overlapping territories
+
+    Description:
+        Get list of inner territories of a given parent territory which intersect with given geometry.
+    """
+
+    territories = await get_intersecting_territories_for_geometry(
+        connection, parent_territory_id, geometry.as_shapely_geometry()
+    )
+
+    return [TerritoriesData.from_dto(territory) for territory in territories]

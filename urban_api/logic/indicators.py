@@ -3,7 +3,7 @@ Indicators endpoints logic of getting entities from the database is defined here
 """
 
 from datetime import datetime
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 from fastapi import HTTPException
 from sqlalchemy import insert, select

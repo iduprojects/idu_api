@@ -65,16 +65,15 @@ class Indicators(BaseModel):
                 list_label=dto.list_label,
                 parent_id=dto.parent_id,
             )
-        else:
-            return cls(
-                indicator_id=dto.indicator_id,
-                name_full=dto.name_full,
-                name_short=dto.name_short,
-                measurement_unit=None,
-                level=dto.level,
-                list_label=dto.list_label,
-                parent_id=dto.parent_id,
-            )
+        return cls(
+            indicator_id=dto.indicator_id,
+            name_full=dto.name_full,
+            name_short=dto.name_short,
+            measurement_unit=None,
+            level=dto.level,
+            list_label=dto.list_label,
+            parent_id=dto.parent_id,
+        )
 
 
 class IndicatorsPost(BaseModel):

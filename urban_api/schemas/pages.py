@@ -2,7 +2,7 @@ from typing import Generic, List, TypeVar
 
 from pydantic import BaseModel, Field
 
-FeaturePropertiesType = TypeVar("FeaturePropertiesType")
+FeaturePropertiesType = TypeVar("FeaturePropertiesType")  # pylint: disable=invalid-name
 
 
 class Page(BaseModel, Generic[FeaturePropertiesType]):
@@ -11,8 +11,14 @@ class Page(BaseModel, Generic[FeaturePropertiesType]):
     """
 
     count: int = Field(description="Total count of records", example=0)
-    prev: str = Field(default="", description="The path to the previous page")
-    next: str = Field(default="", description="The path to the next page")
+    prev: str | None = Field(
+        None,
+        description="The path to the previous page",
+    )
+    next: str | None = Field(
+        None,
+        description="The path to the next page",
+    )
     results: List[FeaturePropertiesType] = Field(
-        default=[], description=f"List of {FeaturePropertiesType}", example=[1]
+        default_factory=list, description=f"List of {FeaturePropertiesType}", example=[1]
     )
