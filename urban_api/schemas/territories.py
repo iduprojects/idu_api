@@ -4,7 +4,7 @@ Territory schemas are defined here.
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -55,7 +55,7 @@ class TerritoriesData(BaseModel):
     name: str = Field(example="--", description="Territory name")
     geometry: Geometry = Field(description="Territory geometry")
     level: int = Field(example=1)
-    properties: dict[str, str] = Field(
+    properties: Dict[str, str] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
@@ -93,19 +93,19 @@ class TerritoriesDataPost(BaseModel):
     Schema of territory for POST request
     """
 
-    territory_type_id: int = Field(examples=[1])
-    parent_id: Optional[int] = Field(examples=[1])
-    name: str = Field(examples=["--"], description="Territory name")
+    territory_type_id: int = Field(example=1)
+    parent_id: Optional[int] = Field(example=1)
+    name: str = Field(example="--", description="Territory name")
     geometry: Geometry = Field(description="Territory geometry")
-    level: int = Field(examples=[1])
-    properties: dict[str, Any] = Field(
+    level: int = Field(example=1)
+    properties: Dict[str, Any] = Field(
         default_factory=dict,
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
     centre_point: Optional[Geometry] = Field(None, description="Centre coordinates")
-    admin_center: Optional[int] = Field(None, examples=[1])
-    okato_code: Optional[str] = Field(None, examples=["1"])
+    admin_center: Optional[int] = Field(None, example=1)
+    okato_code: Optional[str] = Field(None, example="1")
 
     @field_validator("geometry")
     @staticmethod
@@ -122,7 +122,7 @@ class TerritoriesDataPost(BaseModel):
 
     @field_validator("centre_point")
     @staticmethod
-    def validate_center(centre_point: Geometry | None) -> Geometry:
+    def validate_center(centre_point: Geometry | None) -> Optional[Geometry]:
         """
         Validate that given geometry is Point and validity via creating Shapely object.
         """
@@ -147,6 +147,147 @@ class TerritoriesDataPost(BaseModel):
         return model
 
 
+class TerritoriesDataPut(BaseModel):
+    """
+    Schema of territory for POST request
+    """
+
+    territory_type_id: int = Field(example=1)
+    parent_id: Optional[int] = Field(example=1)
+    name: str = Field(example="--", description="Territory name")
+    geometry: Geometry = Field(description="Territory geometry")
+    level: int = Field(example=1)
+    properties: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Service additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+    centre_point: Optional[Geometry] = Field(description="Centre coordinates")
+    admin_center: Optional[int] = Field(example=1)
+    okato_code: Optional[str] = Field(example="1")
+
+    @field_validator("geometry")
+    @staticmethod
+    def validate_geometry(geometry: Geometry) -> Geometry:
+        """
+        Validate that given geometry is validity via creating Shapely object.
+        """
+        try:
+            geometry.as_shapely_geometry()
+        except (AttributeError, ValueError, TypeError) as exc:
+            logger.debug("Exception on passing geometry: {!r}", exc)
+            raise ValueError("Invalid geometry passed") from exc
+        return geometry
+
+    @field_validator("centre_point")
+    @staticmethod
+    def validate_center(centre_point: Geometry | None) -> Optional[Geometry]:
+        """
+        Validate that given geometry is Point and validity via creating Shapely object.
+        """
+        if centre_point is None:
+            return None
+        assert centre_point.type == "Point", "Only Point is accepted"
+        try:
+            centre_point.as_shapely_geometry()
+        except (AttributeError, ValueError, TypeError) as exc:
+            logger.debug("Exception on passing geometry: {!r}", exc)
+            raise ValueError("Invalid geometry passed") from exc
+        return centre_point
+
+    @model_validator(mode="after")
+    @staticmethod
+    def validate_post(model: "TerritoriesDataPost") -> "TerritoriesDataPost":
+        """
+        Use geometry centroid for centre_point if it is missing.
+        """
+        if model.centre_point is None:
+            model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
+        return model
+
+
+class TerritoriesDataPatch(BaseModel):
+    """
+    Schema of territory for POST request
+    """
+
+    territory_type_id: Optional[int] = Field(None, example=1)
+    parent_id: Optional[int] = Field(None, example=1)
+    name: Optional[str] = Field(None, example="--", description="Territory name")
+    geometry: Optional[Geometry] = Field(None, description="Territory geometry")
+    level: Optional[int] = Field(None, example=1)
+    properties: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Service additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+    centre_point: Optional[Geometry] = Field(None, description="Centre coordinates")
+    admin_center: Optional[int] = Field(None, example=1)
+    okato_code: Optional[str] = Field(None, example="1")
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_empty_request(cls, values):
+        """
+        Ensure the request body is not empty.
+        """
+        if not values:
+            raise ValueError("Request body cannot be empty.")
+        return values
+
+    @model_validator(mode="before")
+    @classmethod
+    def disallow_nulls(cls, values):
+        """
+        Ensure the request body is not empty.
+        """
+        for k, v in values.items():
+            if v is None:
+                raise ValueError(f"{k} cannot be null")
+        return values
+
+    @field_validator("geometry")
+    @staticmethod
+    def validate_geometry(geometry: Optional[Geometry]) -> Optional[Geometry]:
+        """
+        Validate that given geometry is validity via creating Shapely object.
+        """
+        if geometry is None:
+            return None
+        try:
+            geometry.as_shapely_geometry()
+        except (AttributeError, ValueError, TypeError) as exc:
+            logger.debug("Exception on passing geometry: {!r}", exc)
+            raise ValueError("Invalid geometry passed") from exc
+        return geometry
+
+    @field_validator("centre_point")
+    @staticmethod
+    def validate_center(centre_point: Geometry | None) -> Geometry | None:
+        """
+        Validate that given geometry is Point and validity via creating Shapely object.
+        """
+        if centre_point is None:
+            return None
+        assert centre_point.type == "Point", "Only Point is accepted"
+        try:
+            centre_point.as_shapely_geometry()
+        except (AttributeError, ValueError, TypeError) as exc:
+            logger.debug("Exception on passing geometry: {!r}", exc)
+            raise ValueError("Invalid geometry passed") from exc
+        return centre_point
+
+    @model_validator(mode="after")
+    @staticmethod
+    def validate_post(model: "TerritoriesDataPost") -> "TerritoriesDataPost":
+        """
+        Use geometry centroid for centre_point if it is missing.
+        """
+        if model.centre_point is None and model.geometry is not None:
+            model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
+        return model
+
+
 class TerritoryWithoutGeometry(BaseModel):
     """
     Territory with all its attributes
@@ -159,7 +300,7 @@ class TerritoryWithoutGeometry(BaseModel):
     )
     name: str = Field(examples=["--"], description="Territory name")
     level: int = Field(examples=[1])
-    properties: dict[str, str] = Field(
+    properties: Dict[str, str] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )

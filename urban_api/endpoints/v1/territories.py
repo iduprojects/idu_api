@@ -28,6 +28,8 @@ from urban_api.logic.territories import (
     get_territories_without_geometry_by_parent_id_from_db,
     get_territory_by_id_from_db,
     get_territory_types_from_db,
+    patch_territory_to_db,
+    put_territory_to_db
 )
 from urban_api.schemas import (
     FunctionalZoneData,
@@ -40,7 +42,9 @@ from urban_api.schemas import (
     ServicesData,
     ServicesDataWithGeometry,
     TerritoriesData,
+    TerritoriesDataPatch,
     TerritoriesDataPost,
+    TerritoriesDataPut,
     TerritoryTypes,
     TerritoryTypesPost,
     TerritoryWithoutGeometry,
@@ -356,9 +360,13 @@ async def get_functional_zones_for_territory(
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_by_parent_id(
-    parent_id: int = Query(None, description="Parent territory id to filter, should be None for top level territories"),
+    parent_id: int = Query(
+        None,
+        description="Parent territory id to filter, should be null for top level territories"
+    ),
     get_all_levels: bool = Query(
-        False, description="Getting full subtree of territories (unsafe for high level parents)"
+        False,
+        description="Getting full subtree of territories (unsafe for high level parents)"
     ),
     territory_type_id: Optional[int] = Query(None, description="Specifying territory type"),
     connection: AsyncConnection = Depends(get_connection),
@@ -483,3 +491,49 @@ async def intersecting_territories(
     )
 
     return [TerritoriesData.from_dto(territory) for territory in territories]
+
+
+@territories_router.put(
+    "/territory/{territory_id}",
+    response_model=TerritoriesData,
+    status_code=status.HTTP_201_CREATED,
+)
+async def put_territory(
+    territory: TerritoriesDataPut,
+    territory_id: int = Path(description="territory id", gt=0),
+    connection: AsyncConnection = Depends(get_connection)
+) -> TerritoriesData:
+    """
+    Summary:
+        Put territory
+
+    Description:
+        Put a territory
+    """
+
+    territory_dto = await put_territory_to_db(territory_id, territory, connection)
+
+    return TerritoriesData.from_dto(territory_dto)
+
+
+@territories_router.patch(
+    "/territory/{territory_id}",
+    response_model=TerritoriesData,
+    status_code=status.HTTP_201_CREATED,
+)
+async def patch_territory(
+    territory: TerritoriesDataPatch,
+    territory_id: int = Path(description="territory id", gt=0),
+    connection: AsyncConnection = Depends(get_connection)
+) -> TerritoriesData:
+    """
+    Summary:
+        Patch territory
+
+    Description:
+        Patch a territory
+    """
+
+    territory_dto = await patch_territory_to_db(territory_id, territory, connection)
+
+    return TerritoriesData.from_dto(territory_dto)

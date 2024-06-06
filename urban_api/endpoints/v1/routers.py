@@ -27,7 +27,7 @@ routers_list = [
     functional_zones_router,
     physical_objects_router,
     object_geometries_router,
-    services_router,
+    service_types_router,
 ]
 
 __all__ = [

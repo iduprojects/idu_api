@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import shapely.geometry as geom
 
 
-@dataclass
+@dataclass(frozen=True)
 class LivingBuildingsWithGeometryDTO:
     living_building_real_id: int
     physical_object_id: int

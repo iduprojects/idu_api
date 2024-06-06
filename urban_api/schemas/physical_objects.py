@@ -2,8 +2,32 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from urban_api.dto import PhysicalObjectsDataDTO, PhysicalObjectWithGeometryDTO
+from urban_api.dto import PhysicalObjectsDataDTO, PhysicalObjectWithGeometryDTO, PhysicalObjectsTypesDTO
 from urban_api.schemas.geometries import Geometry
+
+
+class PhysicalObjectsTypes(BaseModel):
+    """
+    Physical object type with all its attributes
+    """
+
+    physical_object_type_id: Optional[int] = Field(description="Physical object type id, if set", example=1)
+    name: str = Field(description="Physical object type unit name", example="Здание")
+
+    @classmethod
+    def from_dto(cls, dto: PhysicalObjectsTypesDTO) -> "PhysicalObjectsTypes":
+        """
+        Construct from DTO.
+        """
+        return cls(physical_object_type_id=dto.physical_object_type_id, name=dto.name)
+
+
+class PhysicalObjectsTypesPost(BaseModel):
+    """
+    Schema of territory type for POST request
+    """
+
+    name: str = Field(description="Physical object type unit name", example="Здание")
 
 
 class PhysicalObjectsData(BaseModel):

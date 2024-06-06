@@ -101,9 +101,6 @@ async def get_indicators_by_parent_id_from_db(
             )
         )
 
-    if name is not None:
-        statement = statement.where(indicators_dict.c.name_full.ilike(f"%{name}%"))
-
     if get_all_subtree:
         cte_statement = statement.where(
             indicators_dict.c.parent_id == parent_id if parent_id is not None else indicators_dict.c.parent_id.is_(None)
@@ -117,6 +114,13 @@ async def get_indicators_by_parent_id_from_db(
         statement = statement.where(
             indicators_dict.c.parent_id == parent_id if parent_id is not None else indicators_dict.c.parent_id.is_(None)
         )
+
+    requested_indicators = statement.cte("requested_indicators")
+
+    statement = select(requested_indicators)
+
+    if name is not None:
+        statement = statement.where(indicators_dict.c.name_full.ilike(f"%{name}%"))
 
     result = (await session.execute(statement)).mappings().all()
 
@@ -158,12 +162,12 @@ async def add_indicator_to_db(
     """
 
     if indicator.parent_id is not None:
-        statement = select(indicators_dict).filter(indicators_dict.c.indicator_id == indicator.parent_id)
+        statement = select(indicators_dict).where(indicators_dict.c.indicator_id == indicator.parent_id)
         check_parent_id = (await session.execute(statement)).one_or_none()
         if check_parent_id is None:
             raise HTTPException(status_code=404, detail="Given parent_id is not found")
 
-    statement = select(indicators_dict).filter(indicators_dict.c.name_full == indicator.name_full)
+    statement = select(indicators_dict).where(indicators_dict.c.name_full == indicator.name_full)
     check_indicator_name = (await session.execute(statement)).one_or_none()
     if check_indicator_name is not None:
         raise HTTPException(status_code=400, detail="Invalid input (indicator already exists)")

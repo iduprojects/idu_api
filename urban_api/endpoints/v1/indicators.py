@@ -73,7 +73,7 @@ async def add_measurement_unit(
 )
 async def get_indicators_by_parent_id(
     parent_id: Optional[int] = Query(
-        None, description="Parent indicator id to filter, should be None for top level indicators"
+        None, description="Parent indicator id to filter, should be null for top level indicators"
     ),
     name: Optional[str] = Query(None, description="Search by indicator name"),
     territory_id: Optional[int] = Query(None, description="Filter by territory id"),
@@ -122,7 +122,9 @@ async def get_indicator_by_id(
     response_model=Indicators,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_indicator(indicator: IndicatorsPost, connection: AsyncConnection = Depends(get_connection)) -> Indicators:
+async def add_indicator(
+        indicator: IndicatorsPost, connection: AsyncConnection = Depends(get_connection)
+) -> Indicators:
     """
     Summary:
         Add a new indicator
