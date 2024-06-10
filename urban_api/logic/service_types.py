@@ -2,7 +2,7 @@
 Territories endpoints logic of getting entities from the database is defined here.
 """
 
-from typing import Callable, Optional, List
+from typing import Callable, List, Optional
 
 from fastapi import HTTPException
 from sqlalchemy import insert, select
@@ -12,24 +12,17 @@ from urban_api.db.entities import (
     service_types_dict,
     service_types_normatives_data,
     territories_data,
-    urban_functions_dict
+    urban_functions_dict,
 )
-from urban_api.dto import (
-    ServiceTypesDTO,
-    ServiceTypesNormativesDTO,
-    UrbanFunctionDTO
-)
-from urban_api.schemas import (
-    ServiceTypesPost,
-    ServiceTypesNormativesDataPost,
-    UrbanFunctionPost
-)
+from urban_api.dto import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
+from urban_api.schemas import ServiceTypesNormativesDataPost, ServiceTypesPost, UrbanFunctionPost
 
 func: Callable
 
 
 async def get_service_types_from_db(
-        urban_function_id: Optional[int], session: AsyncConnection,
+    urban_function_id: Optional[int],
+    session: AsyncConnection,
 ) -> List[ServiceTypesDTO]:
     """
     Get all service type objects
@@ -56,8 +49,9 @@ async def add_service_type_to_db(
     if result is not None:
         raise HTTPException(status_code=400, detail="Invalid input (service type already exists)")
 
-    statement = (select(urban_functions_dict)
-                 .where(urban_functions_dict.c.urban_function_id == service_type.urban_function_id))
+    statement = select(urban_functions_dict).where(
+        urban_functions_dict.c.urban_function_id == service_type.urban_function_id
+    )
     urban_function = (await session.execute(statement)).one_or_none()
     if urban_function is None:
         raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
@@ -68,7 +62,7 @@ async def add_service_type_to_db(
             name=service_type.name,
             urban_function_id=service_type.urban_function_id,
             capacity_modeled=service_type.capacity_modeled,
-            code=service_type.code
+            code=service_type.code,
         )
         .returning(service_types_dict)
     )
@@ -90,8 +84,7 @@ async def get_urban_functions_by_parent_id_from_db(
     """
 
     if parent_id is not None:
-        statement = (select(urban_functions_dict)
-                     .where(urban_functions_dict.c.urban_function_id == parent_id))
+        statement = select(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == parent_id)
         parent_urban_function = (await session.execute(statement)).one_or_none()
         if parent_urban_function is None:
             raise HTTPException(status_code=404, detail="Given parent id is not found")
@@ -106,8 +99,9 @@ async def get_urban_functions_by_parent_id_from_db(
         )
         cte_statement = cte_statement.cte(name="urban_function_recursive", recursive=True)
 
-        recursive_part = statement.join(cte_statement,
-                                        urban_functions_dict.c.parent_urban_function_id == cte_statement.c.urban_function_id)
+        recursive_part = statement.join(
+            cte_statement, urban_functions_dict.c.parent_urban_function_id == cte_statement.c.urban_function_id
+        )
 
         statement = select(cte_statement.union_all(recursive_part))
     else:
@@ -138,8 +132,9 @@ async def add_urban_function_to_db(
     """
 
     if urban_function.parent_id is not None:
-        statement = (select(urban_functions_dict)
-                     .where(urban_functions_dict.c.urban_function_id == urban_function.parent_id))
+        statement = select(urban_functions_dict).where(
+            urban_functions_dict.c.urban_function_id == urban_function.parent_id
+        )
         parent_urban_function = (await session.execute(statement)).one_or_none()
         if parent_urban_function is None:
             raise HTTPException(status_code=404, detail="Given parent_id is not found")
@@ -156,7 +151,7 @@ async def add_urban_function_to_db(
             name=urban_function.name,
             level=urban_function.level,
             list_label=urban_function.list_label,
-            code=urban_function.code
+            code=urban_function.code,
         )
         .returning(urban_functions_dict)
     )
@@ -168,10 +163,10 @@ async def add_urban_function_to_db(
 
 
 async def get_service_types_normatives_from_db(
-        service_type_id: Optional[int],
-        urban_function_id: Optional[int],
-        territory_id: Optional[int],
-        session: AsyncConnection,
+    service_type_id: Optional[int],
+    urban_function_id: Optional[int],
+    territory_id: Optional[int],
+    session: AsyncConnection,
 ) -> List[ServiceTypesNormativesDTO]:
     """
     Get all service type normative objects
@@ -198,21 +193,22 @@ async def add_service_type_normative_to_db(
     """
 
     if service_type_normative.service_type_id is not None:
-        statement = (select(service_types_dict)
-                     .where(service_types_dict.c.service_type_id == service_type_normative.service_type_id))
+        statement = select(service_types_dict).where(
+            service_types_dict.c.service_type_id == service_type_normative.service_type_id
+        )
         service_type = (await session.execute(statement)).one_or_none()
         if service_type is None:
             raise HTTPException(status_code=404, detail="Given service_type_id is not found")
 
     if service_type_normative.urban_function_id is not None:
-        statement = (select(urban_functions_dict)
-                     .where(urban_functions_dict.c.urban_function_id == service_type_normative.urban_function_id))
+        statement = select(urban_functions_dict).where(
+            urban_functions_dict.c.urban_function_id == service_type_normative.urban_function_id
+        )
         urban_function = (await session.execute(statement)).one_or_none()
         if urban_function is None:
             raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
 
-    statement = (select(territories_data)
-                 .where(territories_data.c.territory_id == service_type_normative.territory_id))
+    statement = select(territories_data).where(territories_data.c.territory_id == service_type_normative.territory_id)
     territory = (await session.execute(statement)).one_or_none()
     if territory is None:
         raise HTTPException(status_code=404, detail="Given territory_id is not found")

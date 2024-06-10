@@ -29,11 +29,11 @@ from urban_api.logic.territories import (
     get_territory_by_id_from_db,
     get_territory_types_from_db,
     patch_territory_to_db,
-    put_territory_to_db
+    put_territory_to_db,
 )
 from urban_api.schemas import (
     FunctionalZoneData,
-    Indicators,
+    Indicator,
     IndicatorValue,
     LivingBuildingsWithGeometry,
     Page,
@@ -214,13 +214,13 @@ async def get_services_with_geometry_by_territory_idu(
 
 @territories_router.get(
     "/territory/{territory_id}/indicators",
-    response_model=List[Indicators],
+    response_model=List[Indicator],
     status_code=status.HTTP_200_OK,
 )
 async def get_indicators_by_territory_id(
     territory_id: int = Path(description="territory id", gt=0),
     connection: AsyncConnection = Depends(get_connection),
-) -> List[Indicators]:
+) -> List[Indicator]:
     """
     Summary:
         Get indicators for territory
@@ -231,7 +231,7 @@ async def get_indicators_by_territory_id(
 
     indicators = await get_indicators_by_territory_id_from_db(territory_id, connection)
 
-    return [Indicators.from_dto(indicator) for indicator in indicators]
+    return [Indicator.from_dto(indicator) for indicator in indicators]
 
 
 @territories_router.get(
@@ -362,11 +362,10 @@ async def get_functional_zones_for_territory(
 async def get_territory_by_parent_id(
     parent_id: int = Query(
         None,
-        description="Parent territory id to filter, should be null for top level territories"
+        description="Parent territory id to filter, should be skipped to get top level territories",
     ),
     get_all_levels: bool = Query(
-        False,
-        description="Getting full subtree of territories (unsafe for high level parents)"
+        False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
     territory_type_id: Optional[int] = Query(None, description="Specifying territory type"),
     connection: AsyncConnection = Depends(get_connection),
@@ -391,7 +390,7 @@ async def get_territory_by_parent_id(
 )
 async def get_territory_without_geometry_by_parent_id(
     parent_id: Optional[int] = Query(
-        None, description="Parent territory id to filter, should be null for top level territories"
+        None, description="Parent territory id to filter, should be skipped to get top level territories"
     ),
     get_all_levels: bool = Query(
         False, description="Getting full subtree of territories (unsafe for high level parents)"
@@ -417,7 +416,7 @@ async def get_territory_without_geometry_by_parent_id(
         Get a territory or list of territories without geometry by parent
     """
 
-    order_by_value = order_by.value if order_by is not None else 'null'
+    order_by_value = order_by.value if order_by is not None else "null"
 
     count, territories = await get_territories_without_geometry_by_parent_id_from_db(
         parent_id, connection, get_all_levels, order_by_value, created_at, name, page, page_size, ordering.value
@@ -501,7 +500,7 @@ async def intersecting_territories(
 async def put_territory(
     territory: TerritoriesDataPut,
     territory_id: int = Path(description="territory id", gt=0),
-    connection: AsyncConnection = Depends(get_connection)
+    connection: AsyncConnection = Depends(get_connection),
 ) -> TerritoriesData:
     """
     Summary:
@@ -524,7 +523,7 @@ async def put_territory(
 async def patch_territory(
     territory: TerritoriesDataPatch,
     territory_id: int = Path(description="territory id", gt=0),
-    connection: AsyncConnection = Depends(get_connection)
+    connection: AsyncConnection = Depends(get_connection),
 ) -> TerritoriesData:
     """
     Summary:

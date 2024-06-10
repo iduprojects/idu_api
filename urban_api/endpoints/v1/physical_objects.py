@@ -18,7 +18,6 @@ from urban_api.schemas import (
     PhysicalObjectsTypesPost,
 )
 
-
 from .routers import physical_objects_router
 
 
@@ -28,7 +27,7 @@ from .routers import physical_objects_router
     status_code=status.HTTP_200_OK,
 )
 async def get_physical_object_types(
-        connection: AsyncConnection = Depends(get_connection)
+    connection: AsyncConnection = Depends(get_connection),
 ) -> List[PhysicalObjectsTypes]:
     """
     Summary:

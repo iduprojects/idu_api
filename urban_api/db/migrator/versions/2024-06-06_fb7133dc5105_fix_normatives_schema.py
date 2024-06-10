@@ -8,9 +8,8 @@ Create Date: 2024-06-06 11:52:43.225415
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "fb7133dc5105"
@@ -61,4 +60,3 @@ def downgrade() -> None:
         "service_types_normatives_data",
         ["service_type_id", "urban_function_id", "territory_id"],
     )
-

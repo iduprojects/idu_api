@@ -3,7 +3,7 @@ Physical objects DTO are defined here.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict
+from typing import Dict, Optional
 
 import shapely.geometry as geom
 

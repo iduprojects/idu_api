@@ -20,7 +20,7 @@ from urban_api.logic.indicators import (
     get_indicators_by_parent_id_from_db,
     get_measurement_units_from_db,
 )
-from urban_api.schemas import Indicators, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
+from urban_api.schemas import Indicator, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
 from urban_api.schemas.enums import DateType
 
 from .routers import indicators_router
@@ -68,20 +68,18 @@ async def add_measurement_unit(
 
 @indicators_router.get(
     "/indicators_by_parent",
-    response_model=List[Indicators],
+    response_model=List[Indicator],
     status_code=status.HTTP_200_OK,
 )
 async def get_indicators_by_parent_id(
     parent_id: Optional[int] = Query(
-        None, description="Parent indicator id to filter, should be null for top level indicators"
+        None, description="Parent indicator id to filter, should be skipped to get top level indicators"
     ),
-    name: Optional[str] = Query(None, description="Search by indicator name"),
-    territory_id: Optional[int] = Query(None, description="Filter by territory id"),
-    get_all_subtree: bool = Query(
-        False, description="Getting full subtree of indicators (unsafe for high level parents"
-    ),
+    name: Optional[str] = Query(None, description="Filter by indicator name"),
+    territory_id: Optional[int] = Query(None, description="Filter by territory id (not including inner territories)"),
+    get_all_subtree: bool = Query(False, description="Getting full subtree of indicators"),
     connection: AsyncConnection = Depends(get_connection),
-) -> List[Indicators]:
+) -> List[Indicator]:
     """
     Summary:
         Get indicators dictionary
@@ -92,18 +90,18 @@ async def get_indicators_by_parent_id(
 
     indicators = await get_indicators_by_parent_id_from_db(parent_id, name, territory_id, connection, get_all_subtree)
 
-    return [Indicators.from_dto(indicator) for indicator in indicators]
+    return [Indicator.from_dto(indicator) for indicator in indicators]
 
 
 @indicators_router.get(
     "/indicator",
-    response_model=Indicators,
+    response_model=Indicator,
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_by_id(
     indicator_id: int = Query(description="Getting indicator by id"),
     connection: AsyncConnection = Depends(get_connection),
-) -> Indicators:
+) -> Indicator:
     """
     Summary:
         Get indicator
@@ -114,17 +112,15 @@ async def get_indicator_by_id(
 
     indicator = await get_indicator_by_id_from_db(indicator_id, connection)
 
-    return Indicators.from_dto(indicator)
+    return Indicator.from_dto(indicator)
 
 
 @indicators_router.post(
     "/indicator",
-    response_model=Indicators,
+    response_model=Indicator,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_indicator(
-        indicator: IndicatorsPost, connection: AsyncConnection = Depends(get_connection)
-) -> Indicators:
+async def add_indicator(indicator: IndicatorsPost, connection: AsyncConnection = Depends(get_connection)) -> Indicator:
     """
     Summary:
         Add a new indicator
@@ -135,7 +131,7 @@ async def add_indicator(
 
     indicator_dto = await add_indicator_to_db(indicator, connection)
 
-    return Indicators.from_dto(indicator_dto)
+    return Indicator.from_dto(indicator_dto)
 
 
 @indicators_router.get(
