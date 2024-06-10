@@ -1,5 +1,6 @@
+from typing import Dict
+
 from pydantic import BaseModel, Field
-from typing import Dict, Optional
 
 from urban_api.dto import ServiceDTO, ServiceWithGeometryDTO
 from urban_api.schemas.geometries import Geometry

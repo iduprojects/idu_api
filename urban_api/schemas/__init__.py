@@ -4,28 +4,28 @@ Response and request schemas are defined here.
 
 from .functional_zones import FunctionalZoneData
 from .health_check import PingResponse
-from .indicators import Indicators, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
+from .indicators import Indicator, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
 from .living_buildings import LivingBuildingsWithGeometry
 from .pages import Page
 from .physical_objects import (
     PhysicalObjectsData,
     PhysicalObjectsTypes,
     PhysicalObjectsTypesPost,
-    PhysicalObjectWithGeometry
+    PhysicalObjectWithGeometry,
 )
-from .services import ServicesData, ServicesDataWithGeometry
 from .service_types import (
     ServiceTypes,
-    ServiceTypesPost,
     ServiceTypesNormativesData,
     ServiceTypesNormativesDataPost,
+    ServiceTypesPost,
     UrbanFunction,
-    UrbanFunctionPost
+    UrbanFunctionPost,
 )
+from .services import ServicesData, ServicesDataWithGeometry
 from .territories import (
     TerritoriesData,
-    TerritoriesDataPost,
     TerritoriesDataPatch,
+    TerritoriesDataPost,
     TerritoriesDataPut,
     TerritoryTypes,
     TerritoryTypesPost,
@@ -47,7 +47,7 @@ __all__ = [
     "ServiceTypesPost",
     "ServiceTypesNormativesData",
     "ServiceTypesNormativesDataPost",
-    "Indicators",
+    "Indicator",
     "IndicatorsPost",
     "IndicatorValue",
     "MeasurementUnit",

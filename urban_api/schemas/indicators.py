@@ -4,7 +4,7 @@ from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from urban_api.dto import IndicatorsDTO, IndicatorValueDTO, MeasurementUnitDTO
+from urban_api.dto import IndicatorDTO, IndicatorValueDTO, MeasurementUnitDTO
 
 
 class MeasurementUnit(BaseModel):
@@ -31,7 +31,7 @@ class MeasurementUnitPost(BaseModel):
     name: str = Field(description="Measurement unit name", example="Количество человек")
 
 
-class Indicators(BaseModel):
+class Indicator(BaseModel):
     """
     Indicator with all its attributes
     """
@@ -49,7 +49,7 @@ class Indicators(BaseModel):
     parent_id: Optional[int] = Field(description="Indicator parent id", example=1)
 
     @classmethod
-    def from_dto(cls, dto: IndicatorsDTO) -> "Indicators":
+    def from_dto(cls, dto: IndicatorDTO) -> "Indicator":
         """
         Construct from DTO.
         """
@@ -101,10 +101,18 @@ class IndicatorValue(BaseModel):
     date_type: Literal["year", "half_year", "quarter", "month", "day"] = Field(
         description="Time interval", example="year"
     )
-    date_value: datetime = Field(description="Timestamp", example="2024-03-26T16:33:24.974Z")
-    value: float = Field(description="Indicator value for territory at time", example=100500)
+    date_value: datetime = Field(
+        description="first day of the year for 'year' period, first of june for 'half_year',"
+        " first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
+        example="2024-01-01",
+    )
+    value: float = Field(description="Indicator value for territory at time", example=23.5)
     value_type: Literal["real", "forecast", "target"] = Field(description="Indicator value type", example="real")
-    information_source: Optional[str] = Field(description="Information source", example="information source")
+    information_source: Optional[str] = Field(
+        description="Information source",
+        example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+        "structure_version/229/",
+    )
 
     @field_validator("date_type", mode="before")
     @staticmethod

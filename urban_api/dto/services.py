@@ -3,7 +3,7 @@ Services DTO are defined here.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 
 import shapely.geometry as geom
 

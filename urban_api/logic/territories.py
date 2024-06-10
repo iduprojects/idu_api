@@ -8,7 +8,7 @@ from typing import Callable, List, Literal, Optional, Tuple
 import shapely.geometry as geom
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, exists, func, insert, select, update
+from sqlalchemy import cast, exists, func, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -27,7 +27,7 @@ from urban_api.db.entities import (
 )
 from urban_api.dto import (
     FunctionalZoneDataDTO,
-    IndicatorsDTO,
+    IndicatorDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
     PhysicalObjectsDataDTO,
@@ -38,7 +38,7 @@ from urban_api.dto import (
     TerritoryTypeDTO,
     TerritoryWithoutGeometryDTO,
 )
-from urban_api.schemas import TerritoriesDataPost, TerritoryTypesPost, TerritoriesDataPatch, TerritoriesDataPut
+from urban_api.schemas import TerritoriesDataPatch, TerritoriesDataPost, TerritoriesDataPut, TerritoryTypesPost
 
 func: Callable
 
@@ -80,9 +80,7 @@ async def add_territory_type_to_db(
     return TerritoryTypeDTO(**result)
 
 
-async def get_territories_by_id_from_db(
-    territory_ids: list[int], session: AsyncConnection
-) -> List[TerritoryDTO]:
+async def get_territories_by_id_from_db(territory_ids: list[int], session: AsyncConnection) -> List[TerritoryDTO]:
     """
     Get territory objects by ids list
     """
@@ -105,8 +103,7 @@ async def get_territories_by_id_from_db(
         )
         .select_from(
             territories_data.join(
-                territory_types_dict,
-                territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
+                territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
             )
         )
         .where(territories_data.c.territory_id.in_(territory_ids))
@@ -148,10 +145,10 @@ async def add_territory_to_db(
             territory_type_id=territory.territory_type_id,
             parent_id=territory.parent_id,
             name=territory.name,
-            geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry())),
+            geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text(text("4326"))),
             level=territory.level,
             properties=territory.properties,
-            centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry())),
+            centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text(text("4326"))),
             admin_center=territory.admin_center,
             okato_code=territory.okato_code,
         )
@@ -264,7 +261,7 @@ async def get_services_capacity_by_territory_id_from_db(
 async def get_indicators_by_territory_id_from_db(
     territory_id: int,
     session: AsyncConnection,
-) -> List[IndicatorsDTO]:
+) -> List[IndicatorDTO]:
     """
     Get indicators by territory id
     """
@@ -289,7 +286,7 @@ async def get_indicators_by_territory_id_from_db(
 
     result = (await session.execute(statement)).mappings().all()
 
-    return [IndicatorsDTO(**indicator) for indicator in result]
+    return [IndicatorDTO(**indicator) for indicator in result]
 
 
 async def get_indicator_values_by_territory_id_from_db(
@@ -618,7 +615,7 @@ async def get_common_territory_for_geometry(
 ) -> TerritoryDTO | None:
     statement = (
         select(territories_data.c.territory_id)
-        .where(func.ST_Covers(territories_data.c.geometry, ST_GeomFromText(str(geometry), 4326)))
+        .where(func.ST_Covers(territories_data.c.geometry, ST_GeomFromText(str(geometry), text("4326"))))
         .order_by(territories_data.c.level.desc())
         .limit(1)
     )
@@ -640,7 +637,7 @@ async def get_intersecting_territories_for_geometry(
         .scalar_subquery()
     )
 
-    given_geometry = select(ST_GeomFromText(str(geometry), 4326)).cte("given_geometry")
+    given_geometry = select(ST_GeomFromText(str(geometry), text("4326"))).cte("given_geometry")
 
     statement = select(territories_data.c.territory_id).where(
         territories_data.c.level == level_subqery,
@@ -683,13 +680,13 @@ async def put_territory_to_db(
             territory_type_id=territory.territory_type_id,
             parent_id=territory.parent_id,
             name=territory.name,
-            geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry())),
+            geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text("4326")),
             level=territory.level,
             properties=territory.properties,
-            centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry())),
+            centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326")),
             admin_center=territory.admin_center,
             okato_code=territory.okato_code,
-            updated_at=datetime.utcnow()
+            updated_at=datetime.utcnow(),
         )
         .returning(territories_data)
     )
@@ -728,15 +725,13 @@ async def patch_territory_to_db(
     )
 
     values_to_update = {}
-    for k, v in territory.dict().items():
+    for k, v in territory.model_dump().items():
         if v is not None:
-            if k == 'geometry' or k == 'centre_point':
-                values_to_update.update({k: ST_GeomFromText(str(v.as_shapely_geometry()))})
+            if k in ("geometry", "centre_point"):
+                values_to_update.update({k: ST_GeomFromText(str(v.as_shapely_geometry()), text("4326"))})
             else:
                 values_to_update.update({k: v})
     statement = statement.values(**values_to_update)
     result = (await session.execute(statement)).mappings().one()
     await session.commit()
     return await get_territory_by_id_from_db(result.territory_id, session)
-
-

@@ -8,7 +8,7 @@ from typing import Literal, Optional
 
 
 @dataclass
-class IndicatorsDTO:
+class IndicatorDTO:
     indicator_id: int
     name_full: str
     name_short: str

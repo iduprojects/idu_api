@@ -2,7 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from urban_api.dto import PhysicalObjectsDataDTO, PhysicalObjectWithGeometryDTO, PhysicalObjectsTypesDTO
+from urban_api.dto import PhysicalObjectsDataDTO, PhysicalObjectsTypesDTO, PhysicalObjectWithGeometryDTO
 from urban_api.schemas.geometries import Geometry
 
 

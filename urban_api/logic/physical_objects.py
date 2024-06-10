@@ -4,7 +4,6 @@ Territories endpoints logic of getting entities from the database is defined her
 
 from typing import Callable, List
 
-
 from fastapi import HTTPException
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -25,8 +24,7 @@ async def get_physical_object_types_from_db(session: AsyncConnection) -> List[Ph
     Get all territory type objects
     """
 
-    statement = (select(physical_object_types_dict)
-                 .order_by(physical_object_types_dict.c.physical_object_type_id))
+    statement = select(physical_object_types_dict).order_by(physical_object_types_dict.c.physical_object_type_id)
 
     return [PhysicalObjectsTypesDTO(*data) for data in await session.execute(statement)]
 
@@ -39,8 +37,7 @@ async def add_physical_object_type_to_db(
     Create territory type object
     """
 
-    statement = (select(physical_object_types_dict)
-                 .where(physical_object_types_dict.c.name == physical_object_type.name))
+    statement = select(physical_object_types_dict).where(physical_object_types_dict.c.name == physical_object_type.name)
     result = (await session.execute(statement)).one_or_none()
     if result is not None:
         raise HTTPException(status_code=400, detail="Invalid input (physical object type already exists)")

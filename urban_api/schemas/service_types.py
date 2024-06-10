@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 from urban_api.dto import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
 
@@ -21,7 +22,7 @@ class ServiceTypes(BaseModel):
             name=dto.name,
             urban_function_id=dto.urban_function_id,
             capacity_modeled=dto.capacity_modeled,
-            code=dto.code
+            code=dto.code,
         )
 
 
@@ -74,9 +75,7 @@ class ServiceTypesNormativesDataPost(BaseModel):
 
 class UrbanFunction(BaseModel):
     urban_function_id: int = Field(example=1)
-    parent_urban_function_id: Optional[int] = Field(
-        None, example=1, description="Urban function parent id, if set"
-    )
+    parent_urban_function_id: Optional[int] = Field(None, example=1, description="Urban function parent id, if set")
     name: str = Field(example="Образование", description="Urban function unit name")
     level: int = Field(example=1, description="Number of urban functions above in a tree + 1")
     list_label: str = Field(example="1.1.1", description="Urban function list label")
@@ -93,7 +92,7 @@ class UrbanFunction(BaseModel):
             name=dto.name,
             level=dto.level,
             list_label=dto.list_label,
-            code=dto.code
+            code=dto.code,
         )
 
 
