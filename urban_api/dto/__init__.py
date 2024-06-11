@@ -4,7 +4,8 @@ Data Transfer Objects (much like entities from database) are defined in this mod
 
 from .functional_zones import FunctionalZoneDataDTO
 from .indicators import IndicatorDTO, IndicatorValueDTO, MeasurementUnitDTO
-from .living_buildings import LivingBuildingsWithGeometryDTO
+from .living_buildings import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
+from .object_geometries import ObjectGeometryDTO
 from .physical_objects import PhysicalObjectsDataDTO, PhysicalObjectsTypesDTO, PhysicalObjectWithGeometryDTO
 from .service_types import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServiceWithGeometryDTO
@@ -23,9 +24,11 @@ __all__ = [
     "IndicatorDTO",
     "IndicatorValueDTO",
     "MeasurementUnitDTO",
+    "ObjectGeometryDTO",
     "PhysicalObjectsDataDTO",
     "PhysicalObjectsTypesDTO",
     "PhysicalObjectWithGeometryDTO",
+    "LivingBuildingsDTO",
     "LivingBuildingsWithGeometryDTO",
     "FunctionalZoneDataDTO",
     "TerritoryWithoutGeometryDTO",

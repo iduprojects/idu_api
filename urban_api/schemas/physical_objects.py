@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from loguru import logger
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from urban_api.dto import PhysicalObjectsDataDTO, PhysicalObjectsTypesDTO, PhysicalObjectWithGeometryDTO
 from urban_api.schemas.geometries import Geometry
@@ -24,18 +25,22 @@ class PhysicalObjectsTypes(BaseModel):
 
 class PhysicalObjectsTypesPost(BaseModel):
     """
-    Schema of territory type for POST request
+    Schema of physical object type for POST request
     """
 
     name: str = Field(description="Physical object type unit name", example="Здание")
 
 
 class PhysicalObjectsData(BaseModel):
+    """
+    Physical object with all its attributes
+    """
+
     physical_object_id: int = Field(example=1)
-    physical_object_type_id: int = Field(example=1)
-    address: str = Field(None, description="Physical object address", example="--")
+    physical_object_type: PhysicalObjectsTypes = Field(example={"physical_object_type_id": 1, "name": "Здание"})
     name: Optional[str] = Field(None, description="Physical object name", example="--")
-    properties: dict[str, str] = Field(
+    address: Optional[str] = Field(None, description="Physical object address", example="--")
+    properties: dict[str, Any] = Field(
         {},
         description="Physical object additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
@@ -48,7 +53,9 @@ class PhysicalObjectsData(BaseModel):
         """
         return cls(
             physical_object_id=dto.physical_object_id,
-            physical_object_type_id=dto.physical_object_type_id,
+            physical_object_type=PhysicalObjectsTypes(
+                physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
+            ),
             name=dto.name,
             address=dto.address,
             properties=dto.properties,
@@ -60,7 +67,7 @@ class PhysicalObjectWithGeometry(BaseModel):
     physical_object_type_id: int = Field(example=1)
     name: Optional[str] = Field(None, description="Physical object name", example="--")
     address: Optional[str] = Field(None, description="Physical object address", example="--")
-    properties: dict[str, str] = Field(
+    properties: dict[str, Any] = Field(
         {},
         description="Physical object additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
@@ -79,6 +86,63 @@ class PhysicalObjectWithGeometry(BaseModel):
             name=dto.name,
             address=dto.address,
             properties=dto.properties,
-            geometry=dto.geometry,
-            centre_point=dto.centre_point,
+            geometry=Geometry.from_shapely_geometry(dto.geometry),
+            centre_point=Geometry.from_shapely_geometry(dto.centre_point),
         )
+
+
+class PhysicalObjectsDataPost(BaseModel):
+    """
+    Schema of physical object for POST request
+    """
+
+    territory_id: int = Field(example=1)
+    geometry: Geometry = Field(description="Object geometry")
+    centre_point: Geometry = Field(None, description="Centre coordinates")
+    address: str = Field(None, description="Physical object address", example="--")
+    physical_object_type_id: int = Field(example=1)
+    name: Optional[str] = Field(None, description="Physical object name", example="--")
+    properties: dict[str, Any] = Field(
+        {},
+        description="Physical object additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+
+    @field_validator("geometry")
+    @staticmethod
+    def validate_geometry(geometry: Geometry) -> Geometry:
+        """
+        Validate that given geometry is validity via creating Shapely object.
+        """
+        try:
+            geometry.as_shapely_geometry()
+        except (AttributeError, ValueError, TypeError) as exc:
+            logger.debug("Exception on passing geometry: {!r}", exc)
+            raise ValueError("Invalid geometry passed") from exc
+        return geometry
+
+    @field_validator("centre_point")
+    @staticmethod
+    def validate_center(centre_point: Geometry | None) -> Optional[Geometry]:
+        """
+        Validate that given geometry is Point and validity via creating Shapely object.
+        """
+        if centre_point is None:
+            return None
+        assert centre_point.type == "Point", "Only Point is accepted"
+        try:
+            centre_point.as_shapely_geometry()
+        except (AttributeError, ValueError, TypeError) as exc:
+            logger.debug("Exception on passing geometry: {!r}", exc)
+            raise ValueError("Invalid geometry passed") from exc
+        return centre_point
+
+    @model_validator(mode="after")
+    @staticmethod
+    def validate_post(model: "PhysicalObjectsDataPost") -> "PhysicalObjectsDataPost":
+        """
+        Use geometry centroid for centre_point if it is missing.
+        """
+        if model.centre_point is None:
+            model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
+        return model

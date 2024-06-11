@@ -55,7 +55,7 @@ class TerritoriesData(BaseModel):
     name: str = Field(example="--", description="Territory name")
     geometry: Geometry = Field(description="Territory geometry")
     level: int = Field(example=1)
-    properties: Dict[str, str] = Field(
+    properties: Dict[str, Any] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
@@ -300,7 +300,7 @@ class TerritoryWithoutGeometry(BaseModel):
     )
     name: str = Field(examples=["--"], description="Territory name")
     level: int = Field(examples=[1])
-    properties: Dict[str, str] = Field(
+    properties: Dict[str, Any] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )

@@ -146,7 +146,7 @@ async def add_territory(
 )
 async def get_services_by_territory_id(
     territory_id: int = Path(description="territory id", gt=0),
-    service_type: Optional[int] = Query(None, description="Service type id", gt=0),
+    service_type_id: Optional[int] = Query(None, description="Service type id", gt=0),
     connection: AsyncConnection = Depends(get_connection),
 ) -> list[ServicesData]:
     """
@@ -157,7 +157,7 @@ async def get_services_by_territory_id(
         Get services for territory by id, service type could be specified in parameters
     """
 
-    services = await get_services_by_territory_id_from_db(territory_id, connection, service_type_id=service_type)
+    services = await get_services_by_territory_id_from_db(territory_id, connection, service_type_id=service_type_id)
 
     return [ServicesData.from_dto(service) for service in services]
 
@@ -169,7 +169,7 @@ async def get_services_by_territory_id(
 )
 async def get_services_with_geometry_by_territory_id(
     territory_id: int = Path(description="territory id", gt=0),
-    service_type: Optional[int] = Query(None, description="Service type id", gt=0),
+    service_type_id: Optional[int] = Query(None, description="Service type id", gt=0),
     connection: AsyncConnection = Depends(get_connection),
 ) -> List[ServicesDataWithGeometry]:
     """
@@ -181,7 +181,7 @@ async def get_services_with_geometry_by_territory_id(
     """
 
     services = await get_services_with_geometry_by_territory_id_from_db(
-        territory_id, connection, service_type_id=service_type
+        territory_id, connection, service_type_id=service_type_id
     )
 
     return [ServicesDataWithGeometry.from_dto(service) for service in services]
@@ -194,7 +194,7 @@ async def get_services_with_geometry_by_territory_id(
 )
 async def get_services_with_geometry_by_territory_idu(
     territory_id: int = Path(description="territory id", gt=0),
-    service_type: Optional[int] = Query(None, description="Service type id", gt=0),
+    service_type_id: Optional[int] = Query(None, description="Service type id", gt=0),
     connection: AsyncConnection = Depends(get_connection),
 ) -> int:
     """
@@ -206,7 +206,7 @@ async def get_services_with_geometry_by_territory_idu(
     """
 
     capacity = await get_services_capacity_by_territory_id_from_db(
-        territory_id, connection, service_type_id=service_type
+        territory_id, connection, service_type_id=service_type_id
     )
 
     return capacity

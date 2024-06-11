@@ -18,7 +18,9 @@ from urban_api.db.entities import (
     living_buildings_data,
     measurement_units_dict,
     object_geometries_data,
+    physical_object_types_dict,
     physical_objects_data,
+    service_types_dict,
     services_data,
     territories_data,
     territory_indicators_data,
@@ -145,10 +147,10 @@ async def add_territory_to_db(
             territory_type_id=territory.territory_type_id,
             parent_id=territory.parent_id,
             name=territory.name,
-            geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text(text("4326"))),
+            geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text("4326")),
             level=territory.level,
             properties=territory.properties,
-            centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text(text("4326"))),
+            centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326")),
             admin_center=territory.admin_center,
             okato_code=territory.okato_code,
         )
@@ -170,13 +172,33 @@ async def get_services_by_territory_id_from_db(
     Get service objects by territory id
     """
 
+    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    territory = (await session.execute(statement)).one_or_none()
+    if territory is None:
+        raise HTTPException(status_code=404, detail="Given territory id is not found")
+
     statement = (
-        select(services_data)
+        select(
+            services_data.c.service_id,
+            services_data.c.name,
+            services_data.c.capacity_real,
+            services_data.c.properties,
+            service_types_dict.c.service_type_id,
+            service_types_dict.c.urban_function_id,
+            service_types_dict.c.name.label("service_type_name"),
+            service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
+            service_types_dict.c.code.label("service_type_code"),
+            territory_types_dict.c.territory_type_id,
+            territory_types_dict.c.name.label("territory_type_name"),
+        )
         .select_from(
-            services_data.join(urban_objects_data, services_data.c.service_id == urban_objects_data.c.service_id).join(
+            services_data.join(urban_objects_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
                 object_geometries_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
+            .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
+            .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
         )
         .where(object_geometries_data.c.territory_id == territory_id)
     )
@@ -199,21 +221,34 @@ async def get_services_with_geometry_by_territory_id_from_db(
     """
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    is_found_territory_id = (await session.execute(statement)).one_or_none()
-    if is_found_territory_id is None:
+    territory = (await session.execute(statement)).one_or_none()
+    if territory is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = (
         select(
-            services_data,
+            services_data.c.service_id,
+            services_data.c.name,
+            services_data.c.capacity_real,
+            services_data.c.properties,
+            service_types_dict.c.service_type_id,
+            service_types_dict.c.urban_function_id,
+            service_types_dict.c.name.label("service_type_name"),
+            service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
+            service_types_dict.c.code.label("service_type_code"),
+            territory_types_dict.c.territory_type_id,
+            territory_types_dict.c.name.label("territory_type_name"),
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         )
         .select_from(
-            services_data.join(urban_objects_data, services_data.c.service_id == urban_objects_data.c.service_id).join(
+            services_data.join(urban_objects_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
                 object_geometries_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
+            .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
+            .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
         )
         .where(object_geometries_data.c.territory_id == territory_id)
     )
@@ -328,6 +363,7 @@ async def get_physical_objects_by_territory_id_from_db(
         select(
             physical_objects_data.c.physical_object_id,
             physical_objects_data.c.physical_object_type_id,
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_objects_data.c.name,
             object_geometries_data.c.address,
             physical_objects_data.c.properties,
@@ -336,9 +372,14 @@ async def get_physical_objects_by_territory_id_from_db(
             physical_objects_data.join(
                 urban_objects_data,
                 physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            ).join(
+            )
+            .join(
                 object_geometries_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
+                physical_object_types_dict,
+                physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
         .where(object_geometries_data.c.territory_id == territory_id)
@@ -412,19 +453,34 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
     statement = (
         select(
             living_buildings_data.c.living_building_id,
-            living_buildings_data.c.physical_object_id,
             living_buildings_data.c.residents_number,
             living_buildings_data.c.living_area,
             living_buildings_data.c.properties,
+            physical_objects_data.c.physical_object_id,
+            physical_objects_data.c.name.label("physical_object_name"),
+            physical_objects_data.c.properties.label("physical_object_properties"),
+            physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+            object_geometries_data.c.address.label("physical_object_type_address"),
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         )
         .select_from(
             living_buildings_data.join(
                 urban_objects_data,
                 living_buildings_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            ).join(
+            )
+            .join(
                 object_geometries_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == living_buildings_data.c.physical_object_id,
+            )
+            .join(
+                physical_object_types_dict,
+                physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
         .where(object_geometries_data.c.territory_id == territory_id)

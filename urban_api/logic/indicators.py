@@ -118,13 +118,11 @@ async def get_indicators_by_parent_id_from_db(
 
     if territory_id is not None:
         territory_filter = (
-            select(territory_indicators_data.c.indicator_id.distinct())
+            select(territory_indicators_data.c.indicator_id.distinct().label("indicator_id"))
             .where(territory_indicators_data.c.territory_id == territory_id)
             .cte("territory_filter")
         )
         statement = statement.where(requested_indicators.c.indicator_id.in_(select(territory_filter.c.indicator_id)))
-
-    print(statement)
 
     if name is not None:
         statement = statement.where(

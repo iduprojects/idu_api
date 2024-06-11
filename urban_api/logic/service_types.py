@@ -1,5 +1,5 @@
 """
-Territories endpoints logic of getting entities from the database is defined here.
+Service types endpoints logic of getting entities from the database is defined here.
 """
 
 from typing import Callable, List, Optional

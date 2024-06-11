@@ -4,7 +4,7 @@ Territories DTO are defined here.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import shapely.geometry as geom
 
@@ -32,7 +32,7 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
     name: str
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     level: int
-    properties: Optional[dict[str, str]]
+    properties: Optional[Dict[str, Any]]
     centre_point: geom.Point
     admin_center: Optional[int]
     okato_code: Optional[str]
@@ -60,7 +60,7 @@ class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attribut
     parent_id: int
     name: str
     level: int
-    properties: dict[str, str]
+    properties: Dict[str, Any]
     admin_center: int
     okato_code: str
     created_at: datetime
