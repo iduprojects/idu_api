@@ -3,7 +3,7 @@ Services DTO are defined here.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import shapely.geometry as geom
 
@@ -16,10 +16,10 @@ class ServiceDTO:
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
-    territory_type_id: int
-    territory_type_name: str
-    name: str
-    capacity_real: int
+    territory_type_id: Optional[int]
+    territory_type_name: Optional[str]
+    name: Optional[str]
+    capacity_real: Optional[int]
     properties: Dict[str, Any]
 
 
@@ -31,10 +31,10 @@ class ServiceWithGeometryDTO:
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
-    territory_type_id: int
-    territory_type_name: str
-    name: str
-    capacity_real: int
+    territory_type_id: Optional[int]
+    territory_type_name: Optional[str]
+    name: Optional[str]
+    capacity_real: Optional[int]
     properties: Dict[str, Any]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point

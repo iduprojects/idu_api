@@ -15,10 +15,10 @@ class LivingBuildingsWithGeometryDTO:
     physical_object_type_id: int
     physical_object_type_name: str
     physical_object_name: Optional[str]
-    physical_object_type_address: Optional[str]
+    physical_object_address: Optional[str]
     physical_object_properties: Dict[str, str]
-    residents_number: int
-    living_area: float
+    residents_number: Optional[int]
+    living_area: Optional[float]
     properties: Dict[str, str]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
@@ -39,8 +39,8 @@ class LivingBuildingsDTO:
     physical_object_type_id: int
     physical_object_type_name: str
     physical_object_name: Optional[str]
-    physical_object_type_address: Optional[str]
+    physical_object_address: Optional[str]
     physical_object_properties: Dict[str, str]
-    residents_number: int
-    living_area: float
+    residents_number: Optional[int]
+    living_area: Optional[float]
     properties: Dict[str, str]

@@ -1,6 +1,6 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from urban_api.dto import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
 from urban_api.schemas.geometries import Geometry
@@ -16,8 +16,8 @@ class LivingBuildingsWithGeometry(BaseModel):
             "properties": {"additional_attribute_name": "additional_attribute_value"},
         }
     )
-    residents_number: int = Field(example=200)
-    living_area: float = Field(example=300.0)
+    residents_number: Optional[int] = Field(example=200)
+    living_area: Optional[float] = Field(example=300.0)
     properties: Dict[str, Any] = Field(
         {}, description="Additional properties", example={"additional_attribute_name": "additional_attribute_value"}
     )
@@ -37,7 +37,7 @@ class LivingBuildingsWithGeometry(BaseModel):
                     physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
                 ),
                 name=dto.physical_object_name,
-                address=dto.physical_object_type_address,
+                address=dto.physical_object_address,
                 properties=dto.physical_object_properties,
             ),
             residents_number=dto.residents_number,
@@ -57,10 +57,12 @@ class LivingBuildingsData(BaseModel):
             "properties": {"additional_attribute_name": "additional_attribute_value"},
         }
     )
-    residents_number: int = Field(example=200)
-    living_area: float = Field(example=300.0)
+    residents_number: Optional[int] = Field(example=200)
+    living_area: Optional[float] = Field(example=300.0)
     properties: Dict[str, Any] = Field(
-        {}, description="Additional properties", example={"additional_attribute_name": "additional_attribute_value"}
+        default_factory=dict,
+        description="Additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
     )
 
     @classmethod
@@ -76,7 +78,7 @@ class LivingBuildingsData(BaseModel):
                     physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
                 ),
                 name=dto.physical_object_name,
-                address=dto.physical_object_type_address,
+                address=dto.physical_object_address,
                 properties=dto.physical_object_properties,
             ),
             residents_number=dto.residents_number,
@@ -86,9 +88,50 @@ class LivingBuildingsData(BaseModel):
 
 
 class LivingBuildingsDataPost(BaseModel):
-    physical_object_id: int = Field(example=1)
-    residents_number: int = Field(example=200)
-    living_area: float = Field(example=300.0)
+    physical_object_id: int = Field(..., example=1)
+    residents_number: Optional[int] = Field(None, example=200)
+    living_area: Optional[float] = Field(None, example=300.0)
     properties: Dict[str, Any] = Field(
-        {}, description="Additional properties", example={"additional_attribute_name": "additional_attribute_value"}
+        default_factory=dict,
+        description="Additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
     )
+
+
+class LivingBuildingsDataPut(BaseModel):
+    physical_object_id: int = Field(..., example=1)
+    residents_number: Optional[int] = Field(..., example=200)
+    living_area: Optional[float] = Field(..., example=300.0)
+    properties: Dict[str, Any] = Field(
+        ..., description="Additional properties", example={"additional_attribute_name": "additional_attribute_value"}
+    )
+
+
+class LivingBuildingsDataPatch(BaseModel):
+    physical_object_id: Optional[int] = Field(None, example=1)
+    residents_number: Optional[int] = Field(None, example=200)
+    living_area: Optional[float] = Field(None, example=300.0)
+    properties: Optional[Dict[str, Any]] = Field(
+        None, description="Additional properties", example={"additional_attribute_name": "additional_attribute_value"}
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_empty_request(cls, values):
+        """
+        Ensure the request body is not empty.
+        """
+        if not values:
+            raise ValueError("request body cannot be empty")
+        return values
+
+    @model_validator(mode="before")
+    @classmethod
+    def disallow_nulls(cls, values):
+        """
+        Ensure the request body hasn't nulls.
+        """
+        for k, v in values.items():
+            if v is None:
+                raise ValueError(f"{k} cannot be null")
+        return values

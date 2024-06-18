@@ -211,11 +211,11 @@ async def get_indicator_value_by_id_from_db(
         territory_indicators_data.c.date_type == date_type,
         territory_indicators_data.c.date_value == date_value,
     )
-    result = (await session.execute(statement)).one_or_none()
+    result = (await session.execute(statement)).mappings().one_or_none()
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
-    return IndicatorValueDTO(*result)
+    return IndicatorValueDTO(**result)
 
 
 async def add_indicator_value_to_db(
@@ -249,11 +249,11 @@ async def add_indicator_value_to_db(
         )
         .returning(territory_indicators_data)
     )
-    result = (await session.execute(statement)).scalar()
+    result = (await session.execute(statement)).mappings().one()
 
     await session.commit()
 
-    return IndicatorValueDTO(*result)
+    return IndicatorValueDTO(**result)
 
 
 async def get_indicator_values_by_id_from_db(

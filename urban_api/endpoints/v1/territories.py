@@ -6,6 +6,8 @@ from datetime import date, datetime
 from typing import List, Optional
 
 from fastapi import Depends, HTTPException, Path, Query
+from fastapi_pagination import paginate
+from fastapi_pagination.links import Page
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
@@ -36,7 +38,6 @@ from urban_api.schemas import (
     Indicator,
     IndicatorValue,
     LivingBuildingsWithGeometry,
-    Page,
     PhysicalObjectsData,
     PhysicalObjectWithGeometry,
     ServicesData,
@@ -141,37 +142,40 @@ async def add_territory(
 
 @territories_router.get(
     "/territory/{territory_id}/services",
-    response_model=List[ServicesData],
+    response_model=Page[ServicesData],
     status_code=status.HTTP_200_OK,
 )
 async def get_services_by_territory_id(
     territory_id: int = Path(description="territory id", gt=0),
     service_type_id: Optional[int] = Query(None, description="Service type id", gt=0),
+    name: Optional[str] = Query(None, description="Filter services by name substring (case-insensitive)"),
     connection: AsyncConnection = Depends(get_connection),
-) -> list[ServicesData]:
+) -> Page[ServicesData]:
     """
     Summary:
         Get services for territory
 
     Description:
-        Get services for territory by id, service type could be specified in parameters
+        Get services for territory by id, service type and name could be specified in parameters
     """
 
-    services = await get_services_by_territory_id_from_db(territory_id, connection, service_type_id=service_type_id)
+    services = await get_services_by_territory_id_from_db(territory_id, connection, service_type_id, name)
+    services = [ServicesData.from_dto(service) for service in services]
 
-    return [ServicesData.from_dto(service) for service in services]
+    return paginate(services)
 
 
 @territories_router.get(
     "/territory/{territory_id}/services_with_geometry",
-    response_model=List[ServicesDataWithGeometry],
+    response_model=Page[ServicesDataWithGeometry],
     status_code=status.HTTP_200_OK,
 )
 async def get_services_with_geometry_by_territory_id(
     territory_id: int = Path(description="territory id", gt=0),
     service_type_id: Optional[int] = Query(None, description="Service type id", gt=0),
+    name: Optional[str] = Query(None, description="Filter services by name substring (case-insensitive)"),
     connection: AsyncConnection = Depends(get_connection),
-) -> List[ServicesDataWithGeometry]:
+) -> Page[ServicesDataWithGeometry]:
     """
     Summary:
         Get services for territory
@@ -180,11 +184,10 @@ async def get_services_with_geometry_by_territory_id(
         Get services for territory by id, service type could be specified in parameters
     """
 
-    services = await get_services_with_geometry_by_territory_id_from_db(
-        territory_id, connection, service_type_id=service_type_id
-    )
+    services = await get_services_with_geometry_by_territory_id_from_db(territory_id, connection, service_type_id, name)
+    services = [ServicesDataWithGeometry.from_dto(service) for service in services]
 
-    return [ServicesDataWithGeometry.from_dto(service) for service in services]
+    return paginate(services)
 
 
 @territories_router.get(
@@ -262,14 +265,15 @@ async def get_indicator_values_by_territory_id(
 
 @territories_router.get(
     "/territory/{territory_id}/physical_objects",
-    response_model=List[PhysicalObjectsData],
+    response_model=Page[PhysicalObjectsData],
     status_code=status.HTTP_200_OK,
 )
 async def get_physical_objects_by_territory_id(
     territory_id: int = Path(description="territory id", gt=0),
     physical_object_type: Optional[int] = Query(None, description="Physical object type id", gt=0),
+    name: Optional[str] = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
     connection: AsyncConnection = Depends(get_connection),
-) -> List[PhysicalObjectsData]:
+) -> Page[PhysicalObjectsData]:
     """
     Summary:
         Get physical_objects for territory
@@ -279,22 +283,24 @@ async def get_physical_objects_by_territory_id(
     """
 
     physical_objects = await get_physical_objects_by_territory_id_from_db(
-        territory_id, connection, physical_object_type
+        territory_id, connection, physical_object_type, name
     )
+    physical_objects = [PhysicalObjectsData.from_dto(physical_object) for physical_object in physical_objects]
 
-    return [PhysicalObjectsData.from_dto(physical_object) for physical_object in physical_objects]
+    return paginate(physical_objects)
 
 
 @territories_router.get(
     "/territory/{territory_id}/physical_objects_with_geometry",
-    response_model=List[PhysicalObjectWithGeometry],
+    response_model=Page[PhysicalObjectWithGeometry],
     status_code=status.HTTP_200_OK,
 )
 async def get_physical_objects_with_geometry_by_territory_id(
     territory_id: int = Path(description="territory id", gt=0),
     physical_object_type: Optional[int] = Query(None, description="Physical object type id", gt=0),
+    name: Optional[str] = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
     connection: AsyncConnection = Depends(get_connection),
-) -> List[PhysicalObjectWithGeometry]:
+) -> Page[PhysicalObjectWithGeometry]:
     """
     Summary:
         Get physical_objects with geometry for territory
@@ -303,21 +309,22 @@ async def get_physical_objects_with_geometry_by_territory_id(
         Get physical_objects for territory, physical_object_type could be specified in parameters
     """
     physical_objects_with_geometry_dto = await get_physical_objects_with_geometry_by_territory_id_from_db(
-        territory_id, connection, physical_object_type
+        territory_id, connection, physical_object_type, name
     )
+    physical_objects = [PhysicalObjectWithGeometry.from_dto(obj) for obj in physical_objects_with_geometry_dto]
 
-    return [PhysicalObjectWithGeometry.from_dto(obj) for obj in physical_objects_with_geometry_dto]
+    return paginate(physical_objects)
 
 
 @territories_router.get(
     "/territory/{territory_id}/living_buildings_with_geometry",
-    response_model=List[LivingBuildingsWithGeometry],
+    response_model=Page[LivingBuildingsWithGeometry],
     status_code=status.HTTP_200_OK,
 )
 async def get_living_buildings_with_geometry_by_territory_id(
     territory_id: int = Path(description="territory id", gt=0),
     connection: AsyncConnection = Depends(get_connection),
-) -> List[LivingBuildingsWithGeometry]:
+) -> Page[LivingBuildingsWithGeometry]:
     """
     Summary:
         Get living buildings with geometry for territory
@@ -327,8 +334,9 @@ async def get_living_buildings_with_geometry_by_territory_id(
     """
 
     buildings = await get_living_buildings_with_geometry_by_territory_id_from_db(territory_id, connection)
+    buildings = [LivingBuildingsWithGeometry.from_dto(building) for building in buildings]
 
-    return [LivingBuildingsWithGeometry.from_dto(building) for building in buildings]
+    return paginate(buildings)
 
 
 @territories_router.get(
@@ -356,7 +364,7 @@ async def get_functional_zones_for_territory(
 
 @territories_router.get(
     "/territories",
-    response_model=List[TerritoriesData],
+    response_model=Page[TerritoriesData],
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_by_parent_id(
@@ -369,7 +377,7 @@ async def get_territory_by_parent_id(
     ),
     territory_type_id: Optional[int] = Query(None, description="Specifying territory type"),
     connection: AsyncConnection = Depends(get_connection),
-) -> List[TerritoriesData]:
+) -> Page[TerritoriesData]:
     """
     Summary:
         Get territories by parent id
@@ -379,8 +387,9 @@ async def get_territory_by_parent_id(
     """
 
     territories = await get_territories_by_parent_id_from_db(parent_id, connection, get_all_levels, territory_type_id)
+    territories = [TerritoriesData.from_dto(territory) for territory in territories]
 
-    return [TerritoriesData.from_dto(territory) for territory in territories]
+    return paginate(territories)
 
 
 @territories_router.get(
@@ -403,9 +412,6 @@ async def get_territory_without_geometry_by_parent_id(
     ),
     created_at: Optional[date] = Query(None, description="Filter by created date"),
     name: Optional[str] = Query(None, description="Filter territories by name substring (case-insensitive)"),
-    page: int = Query(1, description="Page number starting from 1"),
-    page_size: int = Query(50, description="Number of territories per page"),
-    # after: int = Query(None, description="The last id of territory on the previous page"),
     connection: AsyncConnection = Depends(get_connection),
 ) -> Page[TerritoryWithoutGeometry]:
     """
@@ -418,28 +424,13 @@ async def get_territory_without_geometry_by_parent_id(
 
     order_by_value = order_by.value if order_by is not None else "null"
 
-    count, territories = await get_territories_without_geometry_by_parent_id_from_db(
-        parent_id, connection, get_all_levels, order_by_value, created_at, name, page, page_size, ordering.value
+    territories = await get_territories_without_geometry_by_parent_id_from_db(
+        parent_id, connection, get_all_levels, order_by_value, created_at, name, ordering.value
     )
 
     results = [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
 
-    page_addr = (
-        f"/api/v1/?"
-        f"order_by={order_by_value}&"
-        f"ordering={ordering.value}&"
-        f"parent_id={parent_id}&"
-        f"created_at={created_at}&"
-        f"name={name}&"
-        f"page_size={page_size}"
-    )
-    prev_page, next_page = None, None
-    if page > 1:
-        prev_page = page_addr + f"&page={page - 1}"  # + "f"&after={prev_after}"
-    if page < (count - 1) // page_size + 1:
-        next_page = page_addr + f"&page={page + 1}"  # + f"&after={next_after}"
-
-    return Page(count=count, prev=prev_page, next=next_page, results=results)
+    return paginate(results)
 
 
 @territories_router.post(

@@ -17,12 +17,21 @@ from urban_api.logic.physical_objects import (
     get_physical_object_types_from_db,
     get_services_by_physical_object_id_from_db,
     get_services_with_geometry_by_physical_object_id_from_db,
+    patch_living_building_to_db,
+    patch_physical_object_to_db,
+    put_living_building_to_db,
+    put_physical_object_to_db,
 )
 from urban_api.schemas import (
     LivingBuildingsData,
+    LivingBuildingsDataPatch,
     LivingBuildingsDataPost,
+    LivingBuildingsDataPut,
     ObjectGeometries,
+    PhysicalObjectsData,
+    PhysicalObjectsDataPatch,
     PhysicalObjectsDataPost,
+    PhysicalObjectsDataPut,
     PhysicalObjectsTypes,
     PhysicalObjectsTypesPost,
     ServicesData,
@@ -92,6 +101,52 @@ async def add_physical_object_with_geometry(
     return await add_physical_object_with_geometry_to_db(physical_object, connection)
 
 
+@physical_objects_router.put(
+    "/physical_objects/{physical_object_id}",
+    response_model=PhysicalObjectsData,
+    status_code=status.HTTP_200_OK,
+)
+async def put_physical_object(
+    physical_object: PhysicalObjectsDataPut,
+    physical_object_id: int = Path(..., description="Physical object id"),
+    connection: AsyncConnection = Depends(get_connection),
+) -> PhysicalObjectsData:
+    """
+    Summary:
+        Put physical object
+
+    Description:
+        Put a physical object
+    """
+
+    physical_object_dto = await put_physical_object_to_db(physical_object, physical_object_id, connection)
+
+    return PhysicalObjectsData.from_dto(physical_object_dto)
+
+
+@physical_objects_router.patch(
+    "/physical_objects/{physical_object_id}",
+    response_model=PhysicalObjectsData,
+    status_code=status.HTTP_200_OK,
+)
+async def patch_physical_object(
+    physical_object: PhysicalObjectsDataPatch,
+    physical_object_id: int = Path(..., description="Physical object id"),
+    connection: AsyncConnection = Depends(get_connection),
+) -> PhysicalObjectsData:
+    """
+    Summary:
+        Patch physical object
+
+    Description:
+        Patch physical object
+    """
+
+    physical_object_dto = await patch_physical_object_to_db(physical_object, physical_object_id, connection)
+
+    return PhysicalObjectsData.from_dto(physical_object_dto)
+
+
 @physical_objects_router.post(
     "/living_buildings",
     response_model=LivingBuildingsData,
@@ -109,6 +164,52 @@ async def add_living_building(
     """
 
     living_building_dto = await add_living_building_to_db(living_building, connection)
+
+    return LivingBuildingsData.from_dto(living_building_dto)
+
+
+@physical_objects_router.put(
+    "/living_buildings/{living_building_id}",
+    response_model=LivingBuildingsData,
+    status_code=status.HTTP_200_OK,
+)
+async def put_living_building(
+    living_building: LivingBuildingsDataPut,
+    living_building_id: int = Path(..., description="Living building id"),
+    connection: AsyncConnection = Depends(get_connection),
+) -> LivingBuildingsData:
+    """
+    Summary:
+        Put living building
+
+    Description:
+        Put a living building
+    """
+
+    living_building_dto = await put_living_building_to_db(living_building, living_building_id, connection)
+
+    return LivingBuildingsData.from_dto(living_building_dto)
+
+
+@physical_objects_router.patch(
+    "/living_buildings/{living_building_id}",
+    response_model=LivingBuildingsData,
+    status_code=status.HTTP_200_OK,
+)
+async def patch_living_building(
+    living_building: LivingBuildingsDataPatch,
+    living_building_id: int = Path(..., description="Living building id"),
+    connection: AsyncConnection = Depends(get_connection),
+) -> LivingBuildingsData:
+    """
+    Summary:
+        Patch living building
+
+    Description:
+        Patch living building
+    """
+
+    living_building_dto = await patch_living_building_to_db(living_building, living_building_id, connection)
 
     return LivingBuildingsData.from_dto(living_building_dto)
 

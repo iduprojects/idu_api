@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.responses import JSONResponse
+from fastapi_pagination import add_pagination
 from loguru import logger
 
 from .config.app_settings_global import app_settings
@@ -59,6 +60,8 @@ def get_app(prefix: str = "/api") -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    add_pagination(application)
 
     return application
 

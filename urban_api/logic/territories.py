@@ -3,12 +3,12 @@ Territories endpoints logic of getting entities from the database is defined her
 """
 
 from datetime import date, datetime
-from typing import Callable, List, Literal, Optional, Tuple
+from typing import Callable, List, Literal, Optional
 
 import shapely.geometry as geom
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, exists, func, insert, select, text, update
+from sqlalchemy import cast, func, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -41,6 +41,7 @@ from urban_api.dto import (
     TerritoryWithoutGeometryDTO,
 )
 from urban_api.schemas import TerritoriesDataPatch, TerritoriesDataPost, TerritoriesDataPut, TerritoryTypesPost
+from urban_api.schemas.geometries import Geometry
 
 func: Callable
 
@@ -52,7 +53,7 @@ async def get_territory_types_from_db(session: AsyncConnection) -> list[Territor
 
     statement = select(territory_types_dict).order_by(territory_types_dict.c.territory_type_id)
 
-    return [TerritoryTypeDTO(*data) for data in await session.execute(statement)]
+    return [TerritoryTypeDTO(**data) for data in (await session.execute(statement)).mappings().all()]
 
 
 async def add_territory_type_to_db(
@@ -120,6 +121,7 @@ async def get_territory_by_id_from_db(territory_id: int, session: AsyncConnectio
     """
     Get territory object by id
     """
+
     results = await get_territories_by_id_from_db([territory_id], session)
     if len(results) == 0:
         raise HTTPException(status_code=404, detail="Given id is not found")
@@ -137,9 +139,9 @@ async def add_territory_to_db(
 
     if territory.parent_id is not None:
         statement = select(territories_data).where(territories_data.c.territory_id == territory.parent_id)
-        check_parent_id = (await session.execute(statement)).one_or_none()
-        if check_parent_id is None:
-            raise HTTPException(status_code=404, detail="Given parent_id is not found")
+        parent_territory = (await session.execute(statement)).one_or_none()
+        if parent_territory is None:
+            raise HTTPException(status_code=404, detail="Given parent id is not found")
 
     statement = (
         insert(territories_data)
@@ -167,6 +169,7 @@ async def get_services_by_territory_id_from_db(
     territory_id: int,
     session: AsyncConnection,
     service_type_id: Optional[int],
+    name: Optional[str],
 ) -> list[ServiceDTO]:
     """
     Get service objects by territory id
@@ -205,6 +208,8 @@ async def get_services_by_territory_id_from_db(
 
     if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
+    if name is not None:
+        statement = statement.where(services_data.c.name.ilike(f"%{name}%"))
 
     result = (await session.execute(statement)).mappings().all()
 
@@ -215,6 +220,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
     territory_id: int,
     session: AsyncConnection,
     service_type_id: Optional[int],
+    name: Optional[str],
 ) -> list[ServiceWithGeometryDTO]:
     """
     Get service objects with geometry by territory id
@@ -255,6 +261,8 @@ async def get_services_with_geometry_by_territory_id_from_db(
 
     if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
+    if name is not None:
+        statement = statement.where(services_data.c.name.ilike(f"%{name}%"))
 
     result = (await session.execute(statement)).mappings().all()
 
@@ -271,8 +279,8 @@ async def get_services_capacity_by_territory_id_from_db(
     """
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    is_found_territory_id = (await session.execute(statement)).one_or_none()
-    if is_found_territory_id is None:
+    territory = (await session.execute(statement)).one_or_none()
+    if territory is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = (
@@ -302,8 +310,8 @@ async def get_indicators_by_territory_id_from_db(
     """
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    is_found_territory_id = (await session.execute(statement)).one_or_none()
-    if is_found_territory_id is None:
+    territory = (await session.execute(statement)).one_or_none()
+    if territory is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = (
@@ -331,8 +339,9 @@ async def get_indicator_values_by_territory_id_from_db(
     Get indicator values by territory id, optional time period
     """
 
-    statement = select(exists().where(territories_data.c.territory_id == territory_id))
-    if not (await session.execute(statement)).scalar_one():
+    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    territory = (await session.execute(statement)).one_or_none()
+    if territory is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = select(territory_indicators_data).where(territory_indicators_data.c.territory_id == territory_id)
@@ -348,15 +357,15 @@ async def get_indicator_values_by_territory_id_from_db(
 
 
 async def get_physical_objects_by_territory_id_from_db(
-    territory_id: int, session: AsyncConnection, physical_object_type: Optional[int]
+    territory_id: int, session: AsyncConnection, physical_object_type: Optional[int], name: Optional[str]
 ) -> List[PhysicalObjectsDataDTO]:
     """
     Get physical objects by territory id, optional physical object type
     """
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    is_found_territory_id = (await session.execute(statement)).one_or_none()
-    if is_found_territory_id is None:
+    territory = (await session.execute(statement)).one_or_none()
+    if territory is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = (
@@ -387,6 +396,8 @@ async def get_physical_objects_by_territory_id_from_db(
 
     if physical_object_type is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type)
+    if name is not None:
+        statement = statement.where(physical_objects_data.c.name.ilike(f"%{name}%"))
 
     result = (await session.execute(statement)).mappings().all()
 
@@ -394,15 +405,15 @@ async def get_physical_objects_by_territory_id_from_db(
 
 
 async def get_physical_objects_with_geometry_by_territory_id_from_db(
-    territory_id: int, session: AsyncConnection, physical_object_type: Optional[int]
+    territory_id: int, session: AsyncConnection, physical_object_type: Optional[int], name: Optional[str]
 ) -> List[PhysicalObjectWithGeometryDTO]:
     """
     Get physical objects with geometry by territory id, optional physical object type
     """
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    is_found_territory_id = (await session.execute(statement)).one_or_none()
-    if is_found_territory_id is None:
+    territory = (await session.execute(statement)).one_or_none()
+    if territory is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = (
@@ -429,10 +440,10 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
 
     if physical_object_type is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type)
+    if name is not None:
+        statement = statement.where(physical_objects_data.c.name.ilike(f"%{name}%"))
 
     result = (await session.execute(statement)).mappings().all()
-    if result is None:
-        raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     return [PhysicalObjectWithGeometryDTO(**physical_object) for physical_object in result]
 
@@ -446,8 +457,8 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
     """
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    is_found_territory_id = (await session.execute(statement)).one_or_none()
-    if is_found_territory_id is None:
+    territory = (await session.execute(statement)).one_or_none()
+    if territory is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = (
@@ -461,7 +472,7 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
             physical_objects_data.c.properties.label("physical_object_properties"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
-            object_geometries_data.c.address.label("physical_object_type_address"),
+            object_geometries_data.c.address.label("physical_object_address"),
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         )
@@ -500,6 +511,11 @@ async def get_functional_zones_by_territory_id_from_db(
     Get functional zones with geometry by territory id
     """
 
+    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    territory = (await session.execute(statement)).one_or_none()
+    if territory is None:
+        raise HTTPException(status_code=404, detail="Given territory id is not found")
+
     statement = select(
         functional_zones_data.c.functional_zone_id,
         functional_zones_data.c.territory_id,
@@ -524,8 +540,8 @@ async def get_territories_by_parent_id_from_db(
 
     if parent_id is not None:
         statement = select(territories_data.c.territory_id).where(territories_data.c.territory_id == parent_id)
-        is_found_parent_id = (await session.execute(statement)).one_or_none()
-        if is_found_parent_id is None:
+        parent_territory = (await session.execute(statement)).one_or_none()
+        if parent_territory is None:
             raise HTTPException(status_code=404, detail="Given parent id is not found")
 
     statement = select(
@@ -584,11 +600,8 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     order_by: Optional[Literal["created_at", "updated_at"]],
     created_at: Optional[date],
     name: Optional[str],
-    page: int,
-    page_size: int,
     ordering: Optional[Literal["asc", "desc"]] = "asc",
-    # after: int
-) -> Tuple[int, List[TerritoryWithoutGeometryDTO]]:
+) -> List[TerritoryWithoutGeometryDTO]:
     """
     Get a territory or list of territories without geometry by parent,
     ordering and filters can be specified in parameters
@@ -596,8 +609,8 @@ async def get_territories_without_geometry_by_parent_id_from_db(
 
     if parent_id is not None:
         statement = select(territories_data).where(territories_data.c.territory_id == parent_id)
-        is_found_parent_id = (await session.execute(statement)).one_or_none()
-        if is_found_parent_id is None:
+        parent_territory = (await session.execute(statement)).one_or_none()
+        if parent_territory is None:
             raise HTTPException(status_code=404, detail="Given parent id is not found")
 
     statement = select(
@@ -638,13 +651,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
             else territories_data.c.parent_id.is_(None)
         )
 
-    total_count = (await session.execute(select(func.count()).select_from(statement.subquery()))).scalar()
-
-    # if after is not None:
-    #     statement = statement.where(territories_data.c.territory_id > after)
-
     requested_territories = statement.cte("requested_territories")
-
     statement = select(requested_territories)
 
     if name is not None:
@@ -659,11 +666,9 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     else:
         statement = statement.order_by(requested_territories.c.territory_id)
 
-    statement = statement.offset((page - 1) * page_size).limit(page_size)
-
     result = (await session.execute(statement)).mappings().all()
 
-    return total_count, [TerritoryWithoutGeometryDTO(**territory) for territory in result]
+    return [TerritoryWithoutGeometryDTO(**territory) for territory in result]
 
 
 async def get_common_territory_for_geometry(
@@ -781,13 +786,26 @@ async def patch_territory_to_db(
     )
 
     values_to_update = {}
-    for k, v in territory.model_dump().items():
+    for k, v in territory.model_dump(exclude={"geometry", "centre_point"}).items():
         if v is not None:
-            if k in ("geometry", "centre_point"):
-                values_to_update.update({k: ST_GeomFromText(str(v.as_shapely_geometry()), text("4326"))})
+            if k == "territory_type_id":
+                new_statement = select(territory_types_dict).where(
+                    territory_types_dict.c.territory_type_id == territory.territory_type_id
+                )
+                territory_type = (await session.execute(new_statement)).one_or_none()
+                if territory_type is None:
+                    raise HTTPException(status_code=404, detail="Given territory type id is not found")
+                values_to_update.update({k: v})
             else:
                 values_to_update.update({k: v})
+
+    values_to_update.update({"geometry": ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text("4326"))})
+    values_to_update.update(
+        {"centre_point": ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326"))}
+    )
+
     statement = statement.values(**values_to_update)
     result = (await session.execute(statement)).mappings().one()
     await session.commit()
+
     return await get_territory_by_id_from_db(result.territory_id, session)

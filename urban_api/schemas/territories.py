@@ -152,19 +152,19 @@ class TerritoriesDataPut(BaseModel):
     Schema of territory for POST request
     """
 
-    territory_type_id: int = Field(example=1)
-    parent_id: Optional[int] = Field(example=1)
-    name: str = Field(example="--", description="Territory name")
-    geometry: Geometry = Field(description="Territory geometry")
-    level: int = Field(example=1)
+    territory_type_id: int = Field(..., example=1)
+    parent_id: Optional[int] = Field(..., example=1)
+    name: str = Field(..., example="--", description="Territory name")
+    geometry: Geometry = Field(..., description="Territory geometry")
+    level: int = Field(..., example=1)
     properties: Dict[str, Any] = Field(
-        default_factory=dict,
+        ...,
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
-    centre_point: Optional[Geometry] = Field(description="Centre coordinates")
-    admin_center: Optional[int] = Field(example=1)
-    okato_code: Optional[str] = Field(example="1")
+    centre_point: Optional[Geometry] = Field(..., description="Centre coordinates")
+    admin_center: Optional[int] = Field(..., example=1)
+    okato_code: Optional[str] = Field(..., example="1")
 
     @field_validator("geometry")
     @staticmethod
@@ -232,14 +232,14 @@ class TerritoriesDataPatch(BaseModel):
         Ensure the request body is not empty.
         """
         if not values:
-            raise ValueError("Request body cannot be empty.")
+            raise ValueError("request body cannot be empty")
         return values
 
     @model_validator(mode="before")
     @classmethod
     def disallow_nulls(cls, values):
         """
-        Ensure the request body is not empty.
+        Ensure the request body hasn't nulls.
         """
         for k, v in values.items():
             if v is None:

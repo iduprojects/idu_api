@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "urban-api"
-version = "0.5.0"
+version = "0.6.0"
 description = "This is a Digital Territories Platform API to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
@@ -21,6 +21,7 @@ geoalchemy2 = "^0.15.0"
 shapely = "^2.0.4"
 pandas = "^2.2.2"
 exceptiongroup = "^1.2.1"
+fastapi-pagination = "^0.12.25"
 
 [tool.poetry.scripts]
 launch_urban_api = "urban_api.__main__:main"

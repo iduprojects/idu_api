@@ -33,7 +33,7 @@ async def get_service_types_from_db(
     if urban_function_id is not None:
         statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
 
-    return [ServiceTypesDTO(*data) for data in await session.execute(statement)]
+    return [ServiceTypesDTO(**data) for data in (await session.execute(statement)).mappings().all()]
 
 
 async def add_service_type_to_db(
@@ -48,13 +48,6 @@ async def add_service_type_to_db(
     result = (await session.execute(statement)).one_or_none()
     if result is not None:
         raise HTTPException(status_code=400, detail="Invalid input (service type already exists)")
-
-    statement = select(urban_functions_dict).where(
-        urban_functions_dict.c.urban_function_id == service_type.urban_function_id
-    )
-    urban_function = (await session.execute(statement)).one_or_none()
-    if urban_function is None:
-        raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
 
     statement = (
         insert(service_types_dict)
@@ -181,7 +174,7 @@ async def get_service_types_normatives_from_db(
     if territory_id is not None:
         statement = statement.filter(service_types_normatives_data.c.territory_id == territory_id)
 
-    return [ServiceTypesNormativesDTO(*data) for data in await session.execute(statement)]
+    return [ServiceTypesNormativesDTO(**data) for data in (await session.execute(statement)).mappings().all()]
 
 
 async def add_service_type_normative_to_db(

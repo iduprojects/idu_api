@@ -1,6 +1,6 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from urban_api.dto import ServiceDTO, ServiceWithGeometryDTO
 from urban_api.schemas.geometries import Geometry
@@ -13,9 +13,9 @@ class ServicesData(BaseModel):
     service_type: ServiceTypes = Field(
         example={"service_type_id": 1, "urban_function_id": 1, "name": "Школа", "capacity_modeled": 1, "code": "1"}
     )
-    territory_type: TerritoryTypes = Field(example={"territory_type_id": 1, "name": "Город"})
-    name: str = Field(description="Service name", example="--")
-    capacity_real: int = Field(example=1)
+    territory_type: Optional[TerritoryTypes] = Field(example={"territory_type_id": 1, "name": "Город"})
+    name: Optional[str] = Field(description="Service name", example="--")
+    capacity_real: Optional[int] = Field(example=1)
     properties: Dict[str, Any] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
@@ -46,13 +46,59 @@ class ServicesDataPost(BaseModel):
     physical_object_id: int = Field(example=1)
     object_geometry_id: int = Field(example=1)
     service_type_id: int = Field(example=1)
-    territory_type_id: int = Field(example=1)
-    name: str = Field(description="Service name", example="--")
-    capacity_real: int = Field(example=1)
+    territory_type_id: Optional[int] = Field(None, example=1)
+    name: Optional[str] = Field(None, description="Service name", example="--")
+    capacity_real: Optional[int] = Field(None, example=1)
     properties: Dict[str, Any] = Field(
+        default_factory=dict,
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
+
+
+class ServicesDataPut(BaseModel):
+    service_type_id: int = Field(..., example=1)
+    territory_type_id: Optional[int] = Field(..., example=1)
+    name: Optional[str] = Field(..., description="Service name", example="--")
+    capacity_real: Optional[int] = Field(..., example=1)
+    properties: Dict[str, Any] = Field(
+        ...,
+        description="Service additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+
+
+class ServicesDataPatch(BaseModel):
+    service_type_id: Optional[int] = Field(None, example=1)
+    territory_type_id: Optional[int] = Field(None, example=1)
+    name: Optional[str] = Field(None, description="Service name", example="--")
+    capacity_real: Optional[int] = Field(None, example=1)
+    properties: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Service additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_empty_request(cls, values):
+        """
+        Ensure the request body is not empty.
+        """
+        if not values:
+            raise ValueError("request body cannot be empty")
+        return values
+
+    @model_validator(mode="before")
+    @classmethod
+    def disallow_nulls(cls, values):
+        """
+        Ensure the request body hasn't nulls.
+        """
+        for k, v in values.items():
+            if v is None:
+                raise ValueError(f"{k} cannot be null")
+        return values
 
 
 class ServicesDataWithGeometry(BaseModel):
@@ -60,9 +106,9 @@ class ServicesDataWithGeometry(BaseModel):
     service_type: ServiceTypes = Field(
         example={"service_type_id": 1, "urban_function_id": 1, "name": "Школа", "capacity_modeled": 1, "code": "1"}
     )
-    territory_type: TerritoryTypes = Field(example={"territory_type_id": 1, "name": "Город"})
-    name: str = Field(description="Service name", example="--")
-    capacity_real: int = Field(example=1)
+    territory_type: Optional[TerritoryTypes] = Field(example={"territory_type_id": 1, "name": "Город"})
+    name: Optional[str] = Field(description="Service name", example="--")
+    capacity_real: Optional[int] = Field(example=1)
     properties: Dict[str, Any] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},

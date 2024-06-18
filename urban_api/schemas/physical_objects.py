@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -40,7 +40,7 @@ class PhysicalObjectsData(BaseModel):
     physical_object_type: PhysicalObjectsTypes = Field(example={"physical_object_type_id": 1, "name": "Здание"})
     name: Optional[str] = Field(None, description="Physical object name", example="--")
     address: Optional[str] = Field(None, description="Physical object address", example="--")
-    properties: dict[str, Any] = Field(
+    properties: Dict[str, Any] = Field(
         {},
         description="Physical object additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
@@ -67,7 +67,7 @@ class PhysicalObjectWithGeometry(BaseModel):
     physical_object_type_id: int = Field(example=1)
     name: Optional[str] = Field(None, description="Physical object name", example="--")
     address: Optional[str] = Field(None, description="Physical object address", example="--")
-    properties: dict[str, Any] = Field(
+    properties: Dict[str, Any] = Field(
         {},
         description="Physical object additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
@@ -98,12 +98,12 @@ class PhysicalObjectsDataPost(BaseModel):
 
     territory_id: int = Field(example=1)
     geometry: Geometry = Field(description="Object geometry")
-    centre_point: Geometry = Field(None, description="Centre coordinates")
-    address: str = Field(None, description="Physical object address", example="--")
+    centre_point: Optional[Geometry] = Field(None, description="Centre coordinates")
+    address: Optional[str] = Field(None, description="Physical object address", example="--")
     physical_object_type_id: int = Field(example=1)
     name: Optional[str] = Field(None, description="Physical object name", example="--")
-    properties: dict[str, Any] = Field(
-        {},
+    properties: Dict[str, Any] = Field(
+        default_factory=dict,
         description="Physical object additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
@@ -146,3 +146,52 @@ class PhysicalObjectsDataPost(BaseModel):
         if model.centre_point is None:
             model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
         return model
+
+
+class PhysicalObjectsDataPut(BaseModel):
+    """
+    Schema of physical object for POST request
+    """
+
+    physical_object_type_id: int = Field(..., example=1)
+    name: Optional[str] = Field(..., description="Physical object name", example="--")
+    properties: Dict[str, Any] = Field(
+        ...,
+        description="Physical object additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+
+
+class PhysicalObjectsDataPatch(BaseModel):
+    """
+    Schema of physical object for POST request
+    """
+
+    physical_object_type_id: Optional[int] = Field(None, example=1)
+    name: Optional[str] = Field(None, description="Physical object name", example="--")
+    properties: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Physical object additional properties",
+        example={"additional_attribute_name": "additional_attribute_value"},
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_empty_request(cls, values):
+        """
+        Ensure the request body is not empty.
+        """
+        if not values:
+            raise ValueError("request body cannot be empty")
+        return values
+
+    @model_validator(mode="before")
+    @classmethod
+    def disallow_nulls(cls, values):
+        """
+        Ensure the request body hasn't nulls.
+        """
+        for k, v in values.items():
+            if v is None:
+                raise ValueError(f"{k} cannot be null")
+        return values
