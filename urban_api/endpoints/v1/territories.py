@@ -7,7 +7,6 @@ from typing import List, Optional
 
 from fastapi import Depends, HTTPException, Path, Query
 from fastapi_pagination import paginate
-from fastapi_pagination.links import Page
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
@@ -52,6 +51,7 @@ from urban_api.schemas import (
 )
 from urban_api.schemas.enums import DateType, Ordering
 from urban_api.schemas.geometries import Geometry
+from urban_api.schemas.pages import Page
 from urban_api.schemas.territories import TerritoriesOrderByField
 
 from .routers import territories_router

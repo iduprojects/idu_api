@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "urban-api"
-version = "0.6.0"
+version = "0.6.1"
 description = "This is a Digital Territories Platform API to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
