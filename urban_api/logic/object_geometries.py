@@ -22,7 +22,6 @@ from urban_api.dto import (
     PhysicalObjectsDataDTO,
 )
 from urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPut
-from urban_api.schemas.geometries import Geometry
 
 func: Callable
 

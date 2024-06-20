@@ -12,6 +12,7 @@ from .living_buildings import (
     LivingBuildingsDataPut,
     LivingBuildingsWithGeometry,
 )
+from .normatives import Normative, NormativePatch, NormativePost
 from .object_geometries import ObjectGeometries, ObjectGeometriesPatch, ObjectGeometriesPut
 from .pages import Page
 from .physical_objects import (
@@ -65,6 +66,9 @@ __all__ = [
     "IndicatorValue",
     "MeasurementUnit",
     "MeasurementUnitPost",
+    "Normative",
+    "NormativePatch",
+    "NormativePost",
     "ObjectGeometries",
     "ObjectGeometriesPatch",
     "ObjectGeometriesPut",

@@ -169,11 +169,11 @@ async def add_physical_object_with_geometry_to_db(
 
     await session.commit()
 
-    return dict(
-        physical_object_id=physical_object_id,
-        object_geometry_id=object_geometry_id,
-        territory_id=physical_object.territory_id,
-    )
+    return {
+        "physical_object_id": physical_object_id,
+        "object_geometry_id": object_geometry_id,
+        "territory_id": physical_object.territory_id,
+    }
 
 
 async def put_physical_object_to_db(

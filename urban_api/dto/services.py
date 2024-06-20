@@ -9,7 +9,7 @@ import shapely.geometry as geom
 
 
 @dataclass(frozen=True)
-class ServiceDTO:
+class ServiceDTO:  # pylint: disable=too-many-instance-attributes
     service_id: int
     service_type_id: int
     urban_function_id: int
@@ -24,7 +24,7 @@ class ServiceDTO:
 
 
 @dataclass()
-class ServiceWithGeometryDTO:
+class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     service_id: int
     service_type_id: int
     urban_function_id: int

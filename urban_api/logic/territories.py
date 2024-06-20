@@ -41,7 +41,6 @@ from urban_api.dto import (
     TerritoryWithoutGeometryDTO,
 )
 from urban_api.schemas import TerritoriesDataPatch, TerritoriesDataPost, TerritoriesDataPut, TerritoryTypesPost
-from urban_api.schemas.geometries import Geometry
 
 func: Callable
 

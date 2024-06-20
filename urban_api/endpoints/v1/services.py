@@ -2,8 +2,6 @@
 Services endpoints are defined here.
 """
 
-from typing import List, Optional
-
 from fastapi import Depends, Path
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status

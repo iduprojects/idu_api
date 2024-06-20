@@ -22,7 +22,7 @@ class JSONAPIParams(BaseModel, AbstractParams):
         )
 
 
-class Page(AbstractPage[T], Generic[T]):
+class Page(AbstractPage[T], Generic[T]):  # pylint: disable=too-few-public-methods
     count: int
     prev: Optional[str] = None
     next: Optional[str] = None
