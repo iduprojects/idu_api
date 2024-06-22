@@ -1,6 +1,4 @@
-"""
-FastApi dependencies are defined here.
-"""
+"""FastApi keycloak are defined here."""
 
 import asyncio
 from typing import Annotated
@@ -10,22 +8,27 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from keycloak import KeycloakOpenID
 
-from urban_api.config.app_settings_global import app_settings
 from urban_api.dto.users import UserDTO
 
-keycloak_openid = KeycloakOpenID(
-    server_url=app_settings.keycloak_server_url,
-    client_id=app_settings.client_id,
-    realm_name=app_settings.realm,
-    client_secret_key=app_settings.client_secret,
-    verify=True,
-)
+# TODO: remove or refactor as dependency class
+_keycloak_openid: KeycloakOpenID
 
 cache = TTLCache(maxsize=100, ttl=60)
 
 
+def configure_keycloak(keycloak_server_url: str, client_id: str, realm: str, client_secret: str):
+    global _keycloak_openid  # pylint: disable=global-statement
+    _keycloak_openid = KeycloakOpenID(
+        server_url=keycloak_server_url,
+        client_id=client_id,
+        realm_name=realm,
+        client_secret_key=client_secret,
+        verify=True,
+    )
+
+
 async def get_idp_public_key():
-    return "-----BEGIN PUBLIC KEY-----\n" f"{keycloak_openid.public_key()}" "\n-----END PUBLIC KEY-----"
+    return "-----BEGIN PUBLIC KEY-----\n" f"{_keycloak_openid.public_key()}" "\n-----END PUBLIC KEY-----"
 
 
 async def access_token_dependency(
@@ -38,7 +41,7 @@ async def access_token_dependency(
         return result
 
     try:
-        result = keycloak_openid.decode_token(
+        result = _keycloak_openid.decode_token(
             access_token.credentials,
             key=await get_idp_public_key(),
             options={"verify_signature": True, "verify_aud": False, "exp": True},

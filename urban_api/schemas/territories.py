@@ -42,7 +42,7 @@ class TerritoryTypesPost(BaseModel):
     name: str = Field(description="Territory type unit name", example="Город")
 
 
-class TerritoriesData(BaseModel):
+class TerritorryData(BaseModel):
     """
     Territory with all its attributes
     """
@@ -68,7 +68,7 @@ class TerritoriesData(BaseModel):
     )
 
     @classmethod
-    def from_dto(cls, dto: TerritoryDTO) -> "TerritoriesData":
+    def from_dto(cls, dto: TerritoryDTO) -> "TerritorryData":
         """
         Construct from DTO.
         """

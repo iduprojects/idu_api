@@ -7,8 +7,7 @@ import click
 import uvicorn
 from loguru import logger
 
-from .config import AppSettings
-from .config.app_settings_global import app_settings
+from .config import UrbanAPIConfig
 from .utils.dotenv import try_load_envfile
 
 LogLevel = tp.Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR"]
@@ -152,7 +151,7 @@ def main(  # pylint: disable=too-many-arguments
     via command line parameters and environment variables.
     """
     additional_loggers = list(itertools.chain.from_iterable(additional_loggers))
-    settings = AppSettings(
+    settings = UrbanAPIConfig(
         host=host,
         port=port,
         db_addr=db_addr,
@@ -163,7 +162,9 @@ def main(  # pylint: disable=too-many-arguments
         db_pool_size=db_pool_size,
         debug=debug,
     )
-    app_settings.update(settings)
+    config = UrbanAPIConfig.try_from_env()
+    config.update(settings)
+    config.to_env()
     if __name__ in ("__main__", "urban_api.__main__"):
         if debug:
             uvicorn.run("urban_api:app", host=host, port=port, reload=True, log_level=logger_verbosity.lower())

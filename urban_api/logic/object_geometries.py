@@ -1,6 +1,4 @@
-"""
-Physical objects endpoints logic of getting entities from the database is defined here.
-"""
+"""Physical objects handlers logic of getting entities from the database is defined here."""
 
 from typing import Callable, List
 
@@ -27,15 +25,15 @@ func: Callable
 
 
 async def get_physical_objects_by_object_geometry_id_from_db(
+    conn: AsyncConnection,
     object_geometry_id: int,
-    session: AsyncConnection,
 ) -> List[PhysicalObjectsDataDTO]:
     """
     Get physical object or list of physical objects by object geometry id
     """
 
     statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-    object_geometry = (await session.execute(statement)).one_or_none()
+    object_geometry = (await conn.execute(statement)).one_or_none()
     if object_geometry is None:
         raise HTTPException(status_code=404, detail="Given object geometry id is not found")
 
@@ -65,14 +63,14 @@ async def get_physical_objects_by_object_geometry_id_from_db(
         .where(urban_objects_data.c.object_geometry_id == object_geometry_id)
     )
 
-    result = (await session.execute(statement)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     return [PhysicalObjectsDataDTO(**physical_object) for physical_object in result]
 
 
 async def get_object_geometry_by_id_from_db(
+    conn: AsyncConnection,
     object_geometry_id: int,
-    session: AsyncConnection,
 ) -> ObjectGeometryDTO:
     """
     Create living building object
@@ -86,28 +84,28 @@ async def get_object_geometry_by_id_from_db(
         object_geometries_data.c.address,
     ).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
 
-    result = (await session.execute(statement)).mappings().one()
-    await session.commit()
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
 
     return ObjectGeometryDTO(**result)
 
 
 async def put_object_geometry_to_db(
+    conn: AsyncConnection,
     object_geometry: ObjectGeometriesPut,
     object_geometry_id: int,
-    session: AsyncConnection,
 ) -> ObjectGeometryDTO:
     """
     Put object geometry
     """
 
     statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-    requested_object_geometry = (await session.execute(statement)).one_or_none()
+    requested_object_geometry = (await conn.execute(statement)).one_or_none()
     if requested_object_geometry is None:
         raise HTTPException(status_code=404, detail="Given object geometry id is not found")
 
     statement = select(territories_data).where(territories_data.c.territory_id == object_geometry.territory_id)
-    territory = (await session.execute(statement)).one_or_none()
+    territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
@@ -123,23 +121,23 @@ async def put_object_geometry_to_db(
         .returning(object_geometries_data)
     )
 
-    result = (await session.execute(statement)).mappings().one()
-    await session.commit()
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
 
-    return await get_object_geometry_by_id_from_db(result.object_geometry_id, session)
+    return await get_object_geometry_by_id_from_db(conn, result.object_geometry_id)
 
 
 async def patch_object_geometry_to_db(
+    conn: AsyncConnection,
     object_geometry: ObjectGeometriesPatch,
     object_geometry_id: int,
-    session: AsyncConnection,
 ) -> ObjectGeometryDTO:
     """
     Patch object geometry
     """
 
     statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-    requested_object_geometry = (await session.execute(statement)).one_or_none()
+    requested_object_geometry = (await conn.execute(statement)).one_or_none()
     if requested_object_geometry is None:
         raise HTTPException(status_code=404, detail="Given object geometry id is not found")
 
@@ -156,7 +154,7 @@ async def patch_object_geometry_to_db(
                 new_statement = select(territories_data).where(
                     territories_data.c.territory_id == object_geometry.territory_id
                 )
-                territory = (await session.execute(new_statement)).one_or_none()
+                territory = (await conn.execute(new_statement)).one_or_none()
                 if territory is None:
                     raise HTTPException(status_code=404, detail="Given territory id is not found")
             values_to_update.update({k: v})
@@ -169,7 +167,7 @@ async def patch_object_geometry_to_db(
     )
 
     statement = statement.values(**values_to_update)
-    result = (await session.execute(statement)).mappings().one()
-    await session.commit()
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
 
-    return await get_object_geometry_by_id_from_db(result.object_geometry_id, session)
+    return await get_object_geometry_by_id_from_db(conn, result.object_geometry_id)

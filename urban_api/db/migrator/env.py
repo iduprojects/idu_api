@@ -1,18 +1,10 @@
-"""
-Environment preparation for Alembic.
-"""
+# pylint: disable=wrong-import-position
+"""Environment preparation for Alembic."""
 
+import asyncio
 import os
 import pathlib
 import sys
-
-project_dir = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-sys.path.append(str(project_dir))
-from urban_api.utils.dotenv import try_load_envfile
-
-try_load_envfile(os.environ.get("ENVFILE", str(project_dir / ".env")))
-
-import asyncio
 from logging.config import fileConfig
 
 from alembic import context
@@ -20,14 +12,21 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from urban_api.config.app_settings_global import AppSettings, app_settings
+project_dir = pathlib.Path(__file__).resolve().parent.parent.parent.parent
+sys.path.append(str(project_dir))
+
+from urban_api.config import UrbanAPIConfig
 from urban_api.db import DeclarativeBase
-from urban_api.db.entities import *
+from urban_api.db.entities import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from urban_api.utils.dotenv import try_load_envfile
+
+try_load_envfile(os.environ.get("ENVFILE", str(project_dir / ".env")))
+
 
 config = context.config
 section = config.config_ini_section
 
-app_settings.update(AppSettings.try_from_env())
+app_settings = UrbanAPIConfig.try_from_env()
 
 config.set_section_option(section, "POSTGRES_DB", app_settings.db_name)
 config.set_section_option(section, "POSTGRES_HOST", app_settings.db_addr)
@@ -50,7 +49,6 @@ def run_migrations_offline() -> None:
 
     Calls to context.execute() here emit the given string to the
     script output.
-
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
@@ -74,7 +72,6 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
-
     """
 
     connectable = async_engine_from_config(

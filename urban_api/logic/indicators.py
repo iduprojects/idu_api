@@ -1,6 +1,4 @@
-"""
-Indicators endpoints logic of getting entities from the database is defined here.
-"""
+"""Indicators handlers logic of getting entities from the database is defined here."""
 
 from datetime import datetime
 from typing import List, Optional
@@ -23,26 +21,26 @@ from urban_api.schemas import IndicatorsPost, IndicatorValue, MeasurementUnitPos
 from urban_api.schemas.enums import DateType
 
 
-async def get_measurement_units_from_db(session: AsyncConnection) -> list[MeasurementUnitDTO]:
+async def get_measurement_units_from_db(conn: AsyncConnection) -> list[MeasurementUnitDTO]:
     """
     Get all measurement unit objects
     """
 
     statement = select(measurement_units_dict).order_by(measurement_units_dict.c.measurement_unit_id)
 
-    return [MeasurementUnitDTO(*unit) for unit in await session.execute(statement)]
+    return [MeasurementUnitDTO(*unit) for unit in await conn.execute(statement)]
 
 
 async def add_measurement_unit_to_db(
+    conn: AsyncConnection,
     measurement_unit: MeasurementUnitPost,
-    session: AsyncConnection,
 ) -> MeasurementUnitDTO:
     """
     Create measurement unit object
     """
 
     statement = select(measurement_units_dict).where(measurement_units_dict.c.name == measurement_unit.name)
-    result = (await session.execute(statement)).scalar()
+    result = (await conn.execute(statement)).scalar()
     if result is not None:
         raise HTTPException(status_code=400, detail="Invalid input (measurement unit already exists)")
 
@@ -53,18 +51,18 @@ async def add_measurement_unit_to_db(
         )
         .returning(measurement_units_dict)
     )
-    result = (await session.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one()
 
-    await session.commit()
+    await conn.commit()
 
     return MeasurementUnitDTO(**result)
 
 
 async def get_indicators_by_parent_id_from_db(
+    conn: AsyncConnection,
     parent_id: Optional[int],
     name: Optional[str],
     territory_id: Optional[int],
-    session: AsyncConnection,
     get_all_subtree: bool,
 ) -> List[IndicatorDTO]:
     """
@@ -73,7 +71,7 @@ async def get_indicators_by_parent_id_from_db(
 
     if parent_id is not None:
         statement = select(indicators_dict).where(indicators_dict.c.indicator_id == parent_id)
-        is_found_parent_id = (await session.execute(statement)).one_or_none()
+        is_found_parent_id = (await conn.execute(statement)).one_or_none()
         if is_found_parent_id is None:
             raise HTTPException(status_code=404, detail="Given parent id is not found")
 
@@ -129,15 +127,13 @@ async def get_indicators_by_parent_id_from_db(
             requested_indicators.c.name_full.ilike(f"%{name}%") | requested_indicators.c.name_short.ilike(f"%{name}%")
         )
 
-    result = (await session.execute(statement)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     return [IndicatorDTO(**indicator) for indicator in result]
 
 
-async def get_indicator_by_id_from_db(indicator_id: int, session: AsyncConnection) -> IndicatorDTO:
-    """
-    Get indicator object by id
-    """
+async def get_indicator_by_id_from_db(conn: AsyncConnection, indicator_id: int) -> IndicatorDTO:
+    """Get indicator object by id."""
 
     statement = (
         select(
@@ -153,29 +149,24 @@ async def get_indicator_by_id_from_db(indicator_id: int, session: AsyncConnectio
         .where(indicators_dict.c.indicator_id == indicator_id)
     )
 
-    result = (await session.execute(statement)).mappings().one_or_none()
+    result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
     return IndicatorDTO(**result)
 
 
-async def add_indicator_to_db(
-    indicator: IndicatorsPost,
-    session: AsyncConnection,
-) -> IndicatorDTO:
-    """
-    Create indicator object
-    """
+async def add_indicator_to_db(conn: AsyncConnection, indicator: IndicatorsPost) -> IndicatorDTO:
+    """Create indicator object."""
 
     if indicator.parent_id is not None:
         statement = select(indicators_dict).where(indicators_dict.c.indicator_id == indicator.parent_id)
-        check_parent_id = (await session.execute(statement)).one_or_none()
+        check_parent_id = (await conn.execute(statement)).one_or_none()
         if check_parent_id is None:
             raise HTTPException(status_code=404, detail="Given parent_id is not found")
 
     statement = select(indicators_dict).where(indicators_dict.c.name_full == indicator.name_full)
-    check_indicator_name = (await session.execute(statement)).one_or_none()
+    check_indicator_name = (await conn.execute(statement)).one_or_none()
     if check_indicator_name is not None:
         raise HTTPException(status_code=400, detail="Invalid input (indicator already exists)")
 
@@ -191,19 +182,17 @@ async def add_indicator_to_db(
         )
         .returning(indicators_dict)
     )
-    result = (await session.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one()
 
-    await session.commit()
+    await conn.commit()
 
-    return await get_indicator_by_id_from_db(result.indicator_id, session)
+    return await get_indicator_by_id_from_db(conn, result.indicator_id)
 
 
 async def get_indicator_value_by_id_from_db(
-    indicator_id: int, territory_id: int, date_type: DateType, date_value: datetime, session: AsyncConnection
+    conn: AsyncConnection, indicator_id: int, territory_id: int, date_type: DateType, date_value: datetime
 ) -> IndicatorValueDTO:
-    """
-    Get indicator value object by id
-    """
+    """Get indicator value object by id."""
 
     statement = select(territory_indicators_data).where(
         territory_indicators_data.c.indicator_id == indicator_id,
@@ -211,7 +200,7 @@ async def get_indicator_value_by_id_from_db(
         territory_indicators_data.c.date_type == date_type,
         territory_indicators_data.c.date_value == date_value,
     )
-    result = (await session.execute(statement)).mappings().one_or_none()
+    result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
@@ -219,12 +208,10 @@ async def get_indicator_value_by_id_from_db(
 
 
 async def add_indicator_value_to_db(
+    conn: AsyncConnection,
     indicator_value: IndicatorValue,
-    session: AsyncConnection,
 ) -> IndicatorValueDTO:
-    """
-    Create indicator value object
-    """
+    """Create indicator value object."""
 
     statement = select(territory_indicators_data).where(
         territory_indicators_data.c.indicator_id == indicator_value.indicator_id,
@@ -232,7 +219,7 @@ async def add_indicator_value_to_db(
         territory_indicators_data.c.date_type == indicator_value.date_type,
         territory_indicators_data.c.date_value == indicator_value.date_value,
     )
-    result = (await session.execute(statement)).one_or_none()
+    result = (await conn.execute(statement)).one_or_none()
     if result is not None:
         raise HTTPException(status_code=400, detail="Invalid input (indicator already exists)")
 
@@ -249,23 +236,21 @@ async def add_indicator_value_to_db(
         )
         .returning(territory_indicators_data)
     )
-    result = (await session.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one()
 
-    await session.commit()
+    await conn.commit()
 
     return IndicatorValueDTO(**result)
 
 
 async def get_indicator_values_by_id_from_db(
+    conn: AsyncConnection,
     indicator_id: int,
     territory_id: Optional[int],
     date_type: Optional[str],
     date_value: Optional[datetime],
-    session: AsyncConnection,
 ) -> List[IndicatorValueDTO]:
-    """
-    Get indicator value objects by id
-    """
+    """Get indicator value objects by id."""
 
     statement = select(territory_indicators_data).where(territory_indicators_data.c.indicator_id == indicator_id)
 
@@ -276,7 +261,7 @@ async def get_indicator_values_by_id_from_db(
     if date_value is not None:
         statement = statement.where(territory_indicators_data.c.date_value == date_value)
 
-    result = (await session.execute(statement)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
 

@@ -1,8 +1,6 @@
-"""
-Physical objects endpoints logic of getting entities from the database is defined here.
-"""
+"""Physical objects handlers logic of getting entities from the database is defined here."""
 
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Optional
 
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
@@ -42,26 +40,22 @@ from urban_api.schemas import (
 func: Callable
 
 
-async def get_physical_object_types_from_db(session: AsyncConnection) -> List[PhysicalObjectsTypesDTO]:
-    """
-    Get all physical object type objects
-    """
+async def get_physical_object_types_from_db(conn: AsyncConnection) -> list[PhysicalObjectsTypesDTO]:
+    """Get all physical object type objects."""
 
     statement = select(physical_object_types_dict).order_by(physical_object_types_dict.c.physical_object_type_id)
 
-    return [PhysicalObjectsTypesDTO(**data) for data in (await session.execute(statement)).mappings().all()]
+    return [PhysicalObjectsTypesDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
 
 
 async def add_physical_object_type_to_db(
+    conn: AsyncConnection,
     physical_object_type: PhysicalObjectsTypesPost,
-    session: AsyncConnection,
 ) -> PhysicalObjectsTypesDTO:
-    """
-    Create physical object type object
-    """
+    """Create physical object type object."""
 
     statement = select(physical_object_types_dict).where(physical_object_types_dict.c.name == physical_object_type.name)
-    result = (await session.execute(statement)).one_or_none()
+    result = (await conn.execute(statement)).one_or_none()
     if result is not None:
         raise HTTPException(status_code=400, detail="Invalid input (physical object type already exists)")
 
@@ -72,19 +66,15 @@ async def add_physical_object_type_to_db(
         )
         .returning(physical_object_types_dict)
     )
-    result = (await session.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one()
 
-    await session.commit()
+    await conn.commit()
 
     return PhysicalObjectsTypesDTO(**result)
 
 
-async def get_physical_object_by_id_from_db(
-    physical_object_id: int, session: AsyncConnection
-) -> PhysicalObjectsDataDTO:
-    """
-    Get physical object by id
-    """
+async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_object_id: int) -> PhysicalObjectsDataDTO:
+    """Get physical object by id."""
 
     statement = (
         select(
@@ -109,7 +99,7 @@ async def get_physical_object_by_id_from_db(
         .where(physical_objects_data.c.physical_object_id == physical_object_id)
     )
 
-    result = (await session.execute(statement)).mappings().one_or_none()
+    result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
@@ -117,22 +107,19 @@ async def get_physical_object_by_id_from_db(
 
 
 async def add_physical_object_with_geometry_to_db(
-    physical_object: PhysicalObjectsDataPost,
-    session: AsyncConnection,
-) -> Dict[str, int]:
-    """
-    Create physical object with geometry
-    """
+    conn: AsyncConnection, physical_object: PhysicalObjectsDataPost
+) -> dict[str, int]:
+    """Create physical object with geometry."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == physical_object.territory_id)
-    territory = (await session.execute(statement)).one_or_none()
+    territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
         raise HTTPException(status_code=404, detail="Given territory id is not found")
 
     statement = select(physical_object_types_dict).where(
         physical_object_types_dict.c.physical_object_type_id == physical_object.physical_object_type_id
     )
-    physical_object_type = (await session.execute(statement)).one_or_none()
+    physical_object_type = (await conn.execute(statement)).one_or_none()
     if physical_object_type is None:
         raise HTTPException(status_code=404, detail="Given physical object type id is not found")
 
@@ -146,7 +133,7 @@ async def add_physical_object_with_geometry_to_db(
         .returning(physical_objects_data.c.physical_object_id)
     )
 
-    physical_object_id = (await session.execute(statement)).scalar_one()
+    physical_object_id = (await conn.execute(statement)).scalar_one()
 
     statement = (
         insert(object_geometries_data)
@@ -159,15 +146,15 @@ async def add_physical_object_with_geometry_to_db(
         .returning(object_geometries_data.c.object_geometry_id)
     )
 
-    object_geometry_id = (await session.execute(statement)).scalar_one()
+    object_geometry_id = (await conn.execute(statement)).scalar_one()
 
     statement = insert(urban_objects_data).values(
         physical_object_id=physical_object_id, object_geometry_id=object_geometry_id
     )
 
-    await session.execute(statement)
+    await conn.execute(statement)
 
-    await session.commit()
+    await conn.commit()
 
     return {
         "physical_object_id": physical_object_id,
@@ -177,23 +164,23 @@ async def add_physical_object_with_geometry_to_db(
 
 
 async def put_physical_object_to_db(
+    conn: AsyncConnection,
     physical_object: PhysicalObjectsDataPut,
     physical_object_id: int,
-    session: AsyncConnection,
 ) -> PhysicalObjectsDataDTO:
     """
     Put physical object
     """
 
     statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
-    requested_physical_object = (await session.execute(statement)).one_or_none()
+    requested_physical_object = (await conn.execute(statement)).one_or_none()
     if requested_physical_object is None:
         raise HTTPException(status_code=404, detail="Given physical object id is not found")
 
     statement = select(physical_object_types_dict).where(
         physical_object_types_dict.c.physical_object_type_id == physical_object.physical_object_type_id
     )
-    physical_object_type = (await session.execute(statement)).one_or_none()
+    physical_object_type = (await conn.execute(statement)).one_or_none()
     if physical_object_type is None:
         raise HTTPException(status_code=404, detail="Given physical object type id is not found")
 
@@ -208,23 +195,23 @@ async def put_physical_object_to_db(
         .returning(physical_objects_data)
     )
 
-    result = (await session.execute(statement)).mappings().one()
-    await session.commit()
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
 
-    return await get_physical_object_by_id_from_db(result.physical_object_id, session)
+    return await get_physical_object_by_id_from_db(conn, result.physical_object_id)
 
 
 async def patch_physical_object_to_db(
+    conn: AsyncConnection,
     physical_object: PhysicalObjectsDataPatch,
     physical_object_id: int,
-    session: AsyncConnection,
 ) -> PhysicalObjectsDataDTO:
     """
     Patch physical object
     """
 
     statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
-    requested_physical_object = (await session.execute(statement)).one_or_none()
+    requested_physical_object = (await conn.execute(statement)).one_or_none()
     if requested_physical_object is None:
         raise HTTPException(status_code=404, detail="Given physical object id is not found")
 
@@ -241,21 +228,21 @@ async def patch_physical_object_to_db(
                 new_statement = select(physical_object_types_dict).where(
                     physical_object_types_dict.c.physical_object_type_id == physical_object.physical_object_type_id
                 )
-                physical_object_type = (await session.execute(new_statement)).one_or_none()
+                physical_object_type = (await conn.execute(new_statement)).one_or_none()
                 if physical_object_type is None:
                     raise HTTPException(status_code=404, detail="Given physical object type id is not found")
             values_to_update.update({k: v})
 
     statement = statement.values(**values_to_update)
-    result = (await session.execute(statement)).mappings().one()
-    await session.commit()
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
 
-    return await get_physical_object_by_id_from_db(result.physical_object_id, session)
+    return await get_physical_object_by_id_from_db(conn, result.physical_object_id)
 
 
 async def get_living_building_by_id_from_db(
+    conn: AsyncConnection,
     living_building_id: int,
-    session: AsyncConnection,
 ) -> LivingBuildingsDTO:
     """
     Create living building object
@@ -295,16 +282,16 @@ async def get_living_building_by_id_from_db(
         .where(living_buildings_data.c.living_building_id == living_building_id)
     )
 
-    result = (await session.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one()
 
-    await session.commit()
+    await conn.commit()
 
     return LivingBuildingsDTO(**result)
 
 
 async def add_living_building_to_db(
+    conn: AsyncConnection,
     living_building: LivingBuildingsDataPost,
-    session: AsyncConnection,
 ) -> LivingBuildingsDTO:
     """
     Create living building object
@@ -313,7 +300,7 @@ async def add_living_building_to_db(
     statement = select(physical_objects_data).where(
         physical_objects_data.c.physical_object_id == living_building.physical_object_id
     )
-    physical_object = (await session.execute(statement)).one_or_none()
+    physical_object = (await conn.execute(statement)).one_or_none()
     if physical_object is None:
         raise HTTPException(status_code=404, detail="Given physical object id is not found")
 
@@ -328,31 +315,31 @@ async def add_living_building_to_db(
         .returning(living_buildings_data.c.living_building_id)
     )
 
-    living_building_id = (await session.execute(statement)).scalar_one()
+    living_building_id = (await conn.execute(statement)).scalar_one()
 
-    await session.commit()
+    await conn.commit()
 
-    return await get_living_building_by_id_from_db(living_building_id, session)
+    return await get_living_building_by_id_from_db(conn, living_building_id)
 
 
 async def put_living_building_to_db(
+    conn: AsyncConnection,
     living_building: LivingBuildingsDataPut,
     living_building_id: int,
-    session: AsyncConnection,
 ) -> LivingBuildingsDTO:
     """
     Put living building object
     """
 
     statement = select(living_buildings_data).where(living_buildings_data.c.living_building_id == living_building_id)
-    requested_living_building = (await session.execute(statement)).one_or_none()
+    requested_living_building = (await conn.execute(statement)).one_or_none()
     if requested_living_building is None:
         raise HTTPException(status_code=404, detail="Given living building id is not found")
 
     statement = select(physical_objects_data).where(
         physical_objects_data.c.physical_object_id == living_building.physical_object_id
     )
-    physical_object = (await session.execute(statement)).one_or_none()
+    physical_object = (await conn.execute(statement)).one_or_none()
     if physical_object is None:
         raise HTTPException(status_code=404, detail="Given physical object id is not found")
 
@@ -368,23 +355,23 @@ async def put_living_building_to_db(
         .returning(living_buildings_data)
     )
 
-    result = (await session.execute(statement)).mappings().one()
-    await session.commit()
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
 
-    return await get_living_building_by_id_from_db(result.living_building_id, session)
+    return await get_living_building_by_id_from_db(conn, result.living_building_id)
 
 
 async def patch_living_building_to_db(
+    conn: AsyncConnection,
     living_building: LivingBuildingsDataPatch,
     living_building_id: int,
-    session: AsyncConnection,
 ) -> LivingBuildingsDTO:
     """
     Patch living building object
     """
 
     statement = select(living_buildings_data).where(living_buildings_data.c.living_building_id == living_building_id)
-    requested_living_building = (await session.execute(statement)).one_or_none()
+    requested_living_building = (await conn.execute(statement)).one_or_none()
     if requested_living_building is None:
         raise HTTPException(status_code=404, detail="Given living building id is not found")
 
@@ -401,31 +388,31 @@ async def patch_living_building_to_db(
                 new_statement = select(physical_objects_data).where(
                     physical_objects_data.c.physical_object_id == living_building.physical_object_id
                 )
-                physical_object = (await session.execute(new_statement)).one_or_none()
+                physical_object = (await conn.execute(new_statement)).one_or_none()
                 if physical_object is None:
                     raise HTTPException(status_code=404, detail="Given physical object id is not found")
             values_to_update.update({k: v})
 
     statement = statement.values(**values_to_update)
-    result = (await session.execute(statement)).mappings().one()
-    await session.commit()
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
 
-    return await get_living_building_by_id_from_db(result.living_building_id, session)
+    return await get_living_building_by_id_from_db(conn, result.living_building_id)
 
 
 async def get_services_by_physical_object_id_from_db(
+    conn: AsyncConnection,
     physical_object_id: int,
     service_type_id: Optional[int],
     territory_type_id: Optional[int],
-    session: AsyncConnection,
-) -> List[ServiceDTO]:
+) -> list[ServiceDTO]:
     """
     Get service or list of services by physical object id,
     could be specified by service type id and territory type id
     """
 
     statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
-    physical_object = (await session.execute(statement)).one_or_none()
+    physical_object = (await conn.execute(statement)).one_or_none()
     if physical_object is None:
         raise HTTPException(status_code=404, detail="Given physical object id is not found")
 
@@ -457,24 +444,24 @@ async def get_services_by_physical_object_id_from_db(
     if territory_type_id is not None:
         statement = statement.where(territory_types_dict.c.territory_type_id == territory_type_id)
 
-    result = (await session.execute(statement)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     return [ServiceDTO(**service) for service in result]
 
 
 async def get_services_with_geometry_by_physical_object_id_from_db(
+    conn: AsyncConnection,
     physical_object_id: int,
     service_type_id: Optional[int],
     territory_type_id: Optional[int],
-    session: AsyncConnection,
-) -> List[ServiceWithGeometryDTO]:
+) -> list[ServiceWithGeometryDTO]:
     """
     Get service or list of services with geometry by physical object id,
     could be specified by service type id and territory type id
     """
 
     statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
-    physical_object = (await session.execute(statement)).one_or_none()
+    physical_object = (await conn.execute(statement)).one_or_none()
     if physical_object is None:
         raise HTTPException(status_code=404, detail="Given physical object id is not found")
 
@@ -512,21 +499,21 @@ async def get_services_with_geometry_by_physical_object_id_from_db(
     if territory_type_id is not None:
         statement = statement.where(territory_types_dict.c.territory_type_id == territory_type_id)
 
-    result = (await session.execute(statement)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     return [ServiceWithGeometryDTO(**service) for service in result]
 
 
 async def get_physical_object_geometries_from_db(
+    conn: AsyncConnection,
     physical_object_id: int,
-    session: AsyncConnection,
-) -> List[ObjectGeometryDTO]:
+) -> list[ObjectGeometryDTO]:
     """
     Get geometry or list of geometries by physical object id
     """
 
     statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
-    physical_object = (await session.execute(statement)).one_or_none()
+    physical_object = (await conn.execute(statement)).one_or_none()
     if physical_object is None:
         raise HTTPException(status_code=404, detail="Given physical object id is not found")
 
@@ -547,6 +534,6 @@ async def get_physical_object_geometries_from_db(
         .where(urban_objects_data.c.physical_object_id == physical_object_id)
     )
 
-    result = (await session.execute(statement)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     return [ObjectGeometryDTO(**geometry) for geometry in result]
