@@ -13,12 +13,12 @@ from urban_api.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from urban_api.dto import PhysicalObjectsDataDTO, PhysicalObjectWithGeometryDTO
+from urban_api.dto import PhysicalObjectDataDTO, PhysicalObjectWithGeometryDTO
 
 
 async def get_physical_objects_by_territory_id_from_db(
     conn: AsyncConnection, territory_id: int, physical_object_type: int | None, name: str | None
-) -> list[PhysicalObjectsDataDTO]:
+) -> list[PhysicalObjectDataDTO]:
     """Get physical objects by territory id, optional physical object type."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
@@ -59,7 +59,7 @@ async def get_physical_objects_by_territory_id_from_db(
 
     result = (await conn.execute(statement)).mappings().all()
 
-    return [PhysicalObjectsDataDTO(**physical_object) for physical_object in result]
+    return [PhysicalObjectDataDTO(**physical_object) for physical_object in result]
 
 
 async def get_physical_objects_with_geometry_by_territory_id_from_db(
