@@ -27,8 +27,6 @@ async def get_functional_zones_for_territory(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    zones = await territories_service.get_functional_zones_by_territory_id_from_db(
-        territory_id, functional_zone_type_id
-    )
+    zones = await territories_service.get_functional_zones_by_territory_id(territory_id, functional_zone_type_id)
 
     return [FunctionalZoneData.from_dto(zone) for zone in zones]

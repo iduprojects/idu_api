@@ -51,7 +51,7 @@ async def get_physical_objects_by_ids(conn: AsyncConnection, ids: list[int]) -> 
     results = (await conn.execute(statement)).mappings().all()
     if results is None:
         raise HTTPException(  # TODO replace with custom exception
-            status_code=404, detail=f"At least one of given ids ({len(ids)} vs ({len(results)})) is not found"
+            status_code=404, detail=f"At least one of given ids ({len(ids)} vs {len(results)}) is not found"
         )
 
     return [PhysicalObjectDataDTO(**physical_object) for physical_object in results]

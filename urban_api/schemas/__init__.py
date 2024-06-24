@@ -34,23 +34,23 @@ from .service_types import (
 )
 from .services import ServicesData, ServicesDataPatch, ServicesDataPost, ServicesDataPut, ServicesDataWithGeometry
 from .territories import (
-    TerritoriesDataPatch,
-    TerritoriesDataPost,
-    TerritoriesDataPut,
-    TerritorryData,
-    TerritoryTypes,
+    TerritoryData,
+    TerritoryDataPatch,
+    TerritoryDataPost,
+    TerritoryDataPut,
+    TerritoryType,
     TerritoryTypesPost,
     TerritoryWithoutGeometry,
 )
 
 __all__ = [
     "PingResponse",
-    "TerritoryTypes",
+    "TerritoryType",
     "TerritoryTypesPost",
-    "TerritorryData",
-    "TerritoriesDataPost",
-    "TerritoriesDataPatch",
-    "TerritoriesDataPut",
+    "TerritoryData",
+    "TerritoryDataPost",
+    "TerritoryDataPatch",
+    "TerritoryDataPut",
     "TerritoryWithoutGeometry",
     "ServicesData",
     "ServicesDataPatch",

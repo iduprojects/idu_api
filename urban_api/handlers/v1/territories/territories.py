@@ -8,10 +8,10 @@ from starlette import status
 
 from urban_api.logic.territories import TerritoriesService
 from urban_api.schemas import (
-    TerritoriesDataPatch,
-    TerritoriesDataPost,
-    TerritoriesDataPut,
-    TerritorryData,
+    TerritoryData,
+    TerritoryDataPatch,
+    TerritoryDataPost,
+    TerritoryDataPut,
     TerritoryWithoutGeometry,
 )
 from urban_api.schemas.enums import Ordering
@@ -23,42 +23,42 @@ from .routers import territories_router
 
 
 @territories_router.get(
-    "/territory",
-    response_model=TerritorryData,
+    "/territory/{territory_id}",
+    response_model=TerritoryData,
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_by_id(
     request: Request,
-    territory_id: int = Query(description="territory id", gt=0),
-) -> TerritorryData:
+    territory_id: int = Path(description="territory id", gt=0),
+) -> TerritoryData:
     """Get a territory by id."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    territory = await territories_service.get_territory_by_id_from_db(territory_id)
+    territory = await territories_service.get_territory_by_id(territory_id)
 
-    return TerritorryData.from_dto(territory)
+    return TerritoryData.from_dto(territory)
 
 
 @territories_router.post(
     "/territory",
-    response_model=TerritorryData,
+    response_model=TerritoryData,
     status_code=status.HTTP_201_CREATED,
 )
 async def add_territory(
     request: Request,
-    territory: TerritoriesDataPost,
-) -> TerritorryData:
+    territory: TerritoryDataPost,
+) -> TerritoryData:
     """Add territory."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    territory_dto = await territories_service.add_territory_to_db(territory)
+    territory_dto = await territories_service.add_territory(territory)
 
-    return TerritorryData.from_dto(territory_dto)
+    return TerritoryData.from_dto(territory_dto)
 
 
 @territories_router.get(
     "/territories",
-    response_model=Page[TerritorryData],
+    response_model=Page[TerritoryData],
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_by_parent_id(
@@ -71,17 +71,15 @@ async def get_territory_by_parent_id(
         False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
     territory_type_id: int | None = Query(None, description="Specifying territory type"),
-) -> Page[TerritorryData]:
+) -> Page[TerritoryData]:
     """.Get a territory or list of territories by parent.
 
     territory type could be specified in parameters.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    territories = await territories_service.get_territories_by_parent_id_from_db(
-        parent_id, get_all_levels, territory_type_id
-    )
-    territories = [TerritorryData.from_dto(territory) for territory in territories]
+    territories = await territories_service.get_territories_by_parent_id(parent_id, get_all_levels, territory_type_id)
+    territories = [TerritoryData.from_dto(territory) for territory in territories]
 
     return paginate(territories)
 
@@ -113,7 +111,7 @@ async def get_territory_without_geometry_by_parent_id(
 
     order_by_value = order_by.value if order_by is not None else "null"
 
-    territories = await territories_service.get_territories_without_geometry_by_parent_id_from_db(
+    territories = await territories_service.get_territories_without_geometry_by_parent_id(
         parent_id, get_all_levels, order_by_value, created_at, name, ordering.value
     )
 
@@ -124,13 +122,13 @@ async def get_territory_without_geometry_by_parent_id(
 
 @territories_router.post(
     "/common_territory",
-    response_model=TerritorryData,
+    response_model=TerritoryData,
     status_code=status.HTTP_200_OK,
 )
 async def get_common_territory(
     request: Request,
     geometry: Geometry,
-) -> TerritorryData:
+) -> TerritoryData:
     """Get the most deep territory which fully covers given geometry."""
     territories_service: TerritoriesService = request.state.territories_service
 
@@ -139,19 +137,19 @@ async def get_common_territory(
     if territory is None:
         raise HTTPException(404, "no common territory exists in the database")
 
-    return TerritorryData.from_dto(territory)
+    return TerritoryData.from_dto(territory)
 
 
 @territories_router.post(
     "/territory/{parent_territory_id}/intersecting_territories",
-    response_model=list[TerritorryData],
+    response_model=list[TerritoryData],
     status_code=status.HTTP_200_OK,
 )
 async def intersecting_territories(
     request: Request,
     geometry: Geometry,
     parent_territory_id: int = Path(description="parent territory id", gt=0),
-) -> list[TerritorryData]:
+) -> list[TerritoryData]:
     """Get list of inner territories of a given parent territory which intersect with given geometry."""
     territories_service: TerritoriesService = request.state.territories_service
 
@@ -159,40 +157,40 @@ async def intersecting_territories(
         parent_territory_id, geometry.as_shapely_geometry()
     )
 
-    return [TerritorryData.from_dto(territory) for territory in territories]
+    return [TerritoryData.from_dto(territory) for territory in territories]
 
 
 @territories_router.put(
     "/territory/{territory_id}",
-    response_model=TerritorryData,
+    response_model=TerritoryData,
     status_code=status.HTTP_201_CREATED,
 )
 async def put_territory(
     request: Request,
-    territory: TerritoriesDataPut,
+    territory: TerritoryDataPut,
     territory_id: int = Path(description="territory id", gt=0),
-) -> TerritorryData:
+) -> TerritoryData:
     """Update the given territory - all attributes."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    territory_dto = await territories_service.put_territory_to_db(territory_id, territory)
+    territory_dto = await territories_service.put_territory(territory_id, territory)
 
-    return TerritorryData.from_dto(territory_dto)
+    return TerritoryData.from_dto(territory_dto)
 
 
 @territories_router.patch(
     "/territory/{territory_id}",
-    response_model=TerritorryData,
+    response_model=TerritoryData,
     status_code=status.HTTP_201_CREATED,
 )
 async def patch_territory(
     request: Request,
-    territory: TerritoriesDataPatch,
+    territory: TerritoryDataPatch,
     territory_id: int = Path(description="territory id", gt=0),
-) -> TerritorryData:
+) -> TerritoryData:
     """Update the given territory - only given attributes."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    territory_dto = await territories_service.patch_territory_to_db(territory_id, territory)
+    territory_dto = await territories_service.patch_territory(territory_id, territory)
 
-    return TerritorryData.from_dto(territory_dto)
+    return TerritoryData.from_dto(territory_dto)

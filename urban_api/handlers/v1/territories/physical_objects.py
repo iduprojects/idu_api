@@ -28,7 +28,7 @@ async def get_physical_objects_by_territory_id(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    physical_objects = await territories_service.get_physical_objects_by_territory_id_from_db(
+    physical_objects = await territories_service.get_physical_objects_by_territory_id(
         territory_id, physical_object_type_id, name
     )
     physical_objects = [PhysicalObjectsData.from_dto(physical_object) for physical_object in physical_objects]
@@ -53,10 +53,8 @@ async def get_physical_objects_with_geometry_by_territory_id(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    physical_objects_with_geometry_dto = (
-        await territories_service.get_physical_objects_with_geometry_by_territory_id_from_db(
-            territory_id, physical_object_type_id, name
-        )
+    physical_objects_with_geometry_dto = await territories_service.get_physical_objects_with_geometry_by_territory_id(
+        territory_id, physical_object_type_id, name
     )
     physical_objects = [PhysicalObjectWithGeometry.from_dto(obj) for obj in physical_objects_with_geometry_dto]
 

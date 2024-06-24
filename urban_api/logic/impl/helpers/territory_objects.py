@@ -1,6 +1,6 @@
 """Territories objects internal logic is defined here."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Callable, Literal, Optional
 
 import shapely.geometry as geom
@@ -12,18 +12,21 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from urban_api.db.entities import territories_data, territory_types_dict
 from urban_api.dto import TerritoryDTO, TerritoryWithoutGeometryDTO
-from urban_api.schemas import TerritoriesDataPatch, TerritoriesDataPost, TerritoriesDataPut
+from urban_api.schemas import TerritoryDataPatch, TerritoryDataPost, TerritoryDataPut
 
 func: Callable
 
 
-async def get_territories_by_id_from_db(conn: AsyncConnection, territory_ids: list[int]) -> list[TerritoryDTO]:
+async def get_territories_by_ids(conn: AsyncConnection, territory_ids: list[int]) -> list[TerritoryDTO]:
     """Get territory objects by ids list."""
+    territories_data_parents = territories_data.alias("territories_data_parents")
     statement = (
         select(
             territories_data.c.territory_id,
             territories_data.c.territory_type_id,
+            territory_types_dict.c.name.label("territory_type_name"),
             territories_data.c.parent_id,
+            territories_data_parents.c.name.label("parent_name"),
             territories_data.c.name,
             cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
             territories_data.c.level,
@@ -33,11 +36,14 @@ async def get_territories_by_id_from_db(conn: AsyncConnection, territory_ids: li
             territories_data.c.okato_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
-            territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(
             territories_data.join(
                 territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
+            ).join(
+                territories_data_parents,
+                territories_data.c.parent_id == territories_data_parents.c.territory_id,
+                isouter=True,
             )
         )
         .where(territories_data.c.territory_id.in_(territory_ids))
@@ -48,9 +54,9 @@ async def get_territories_by_id_from_db(conn: AsyncConnection, territory_ids: li
     return [TerritoryDTO(**territory) for territory in results]
 
 
-async def get_territory_by_id_from_db(conn: AsyncConnection, territory_id: int) -> TerritoryDTO:
+async def get_territory_by_id(conn: AsyncConnection, territory_id: int) -> TerritoryDTO:
     """Get territory object by id."""
-    results = await get_territories_by_id_from_db(conn, [territory_id])
+    results = await get_territories_by_ids(conn, [territory_id])
     if len(results) == 0:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
@@ -59,7 +65,7 @@ async def get_territory_by_id_from_db(conn: AsyncConnection, territory_id: int) 
 
 async def add_territory_to_db(
     conn: AsyncConnection,
-    territory: TerritoriesDataPost,
+    territory: TerritoryDataPost,
 ) -> TerritoryDTO:
     """Create territory object."""
     if territory.parent_id is not None:
@@ -81,13 +87,109 @@ async def add_territory_to_db(
             admin_center=territory.admin_center,
             okato_code=territory.okato_code,
         )
-        .returning(territories_data)
+        .returning(territories_data.c.territory_id)
     )
-    result = (await conn.execute(statement)).mappings().one()
+    result_id = (await conn.execute(statement)).scalar_one()
+    result = await get_territory_by_id(conn, result_id)
 
     await conn.commit()
 
-    return await get_territory_by_id_from_db(conn, result.territory_id)
+    return result
+
+
+async def put_territory_to_db(
+    conn: AsyncConnection,
+    territory_id: int,
+    territory: TerritoryDataPut,
+) -> TerritoryDTO:
+    """Update territory object (put, update all of the fields)."""
+    if territory.parent_id is not None:
+        statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
+        check_parent_id = (await conn.execute(statement)).one_or_none()
+        if check_parent_id is None:
+            raise HTTPException(status_code=404, detail="Given parent_id is not found")
+
+    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    requested_territory = (await conn.execute(statement)).one_or_none()
+    if requested_territory is None:
+        raise HTTPException(status_code=404, detail="Given territory_id is not found")
+
+    statement = (
+        update(territories_data)
+        .where(territories_data.c.territory_id == territory_id)
+        .values(
+            territory_type_id=territory.territory_type_id,
+            parent_id=territory.parent_id,
+            name=territory.name,
+            geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text("4326")),
+            level=territory.level,
+            properties=territory.properties,
+            centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326")),
+            admin_center=territory.admin_center,
+            okato_code=territory.okato_code,
+            updated_at=datetime.utcnow(),
+        )
+        .returning(territories_data.c.territory_id)
+    )
+    result_id = (await conn.execute(statement)).scalar_one()
+    result = await get_territories_by_ids(conn, [result_id])[0]
+
+    await conn.commit()
+
+    return result
+
+
+async def patch_territory_to_db(
+    conn: AsyncConnection,
+    territory_id: int,
+    territory: TerritoryDataPatch,
+) -> TerritoryDTO:
+    """Patch territory object (patch, update only non-None fields)."""
+    if territory.parent_id is not None:
+        statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
+        check_parent_id = (await conn.execute(statement)).one_or_none()
+        if check_parent_id is None:
+            raise HTTPException(status_code=404, detail="Given parent_id is not found")
+
+    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    requested_territory = (await conn.execute(statement)).one_or_none()
+    if requested_territory is None:
+        raise HTTPException(status_code=404, detail="Given territory_id is not found")
+
+    statement = (
+        update(territories_data)
+        .where(territories_data.c.territory_id == territory_id)
+        .returning(territories_data)
+        .values(updated_at=datetime.now(timezone.utc))
+    )
+
+    values_to_update = {}
+    for k, v in territory.model_dump(exclude={"geometry", "centre_point"}).items():
+        if v is not None:
+            if k == "territory_type_id":
+                new_statement = select(territory_types_dict).where(
+                    territory_types_dict.c.territory_type_id == territory.territory_type_id
+                )
+                territory_type = (await conn.execute(new_statement)).one_or_none()
+                if territory_type is None:
+                    raise HTTPException(status_code=404, detail="Given territory type id is not found")
+                values_to_update.update({k: v})
+            else:
+                values_to_update.update({k: v})
+
+    if territory.geometry is not None:
+        values_to_update.update(
+            {"geometry": ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text("4326"))}
+        )
+        values_to_update.update(
+            {"centre_point": ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326"))}
+        )
+
+    statement = statement.values(**values_to_update)
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
+
+    return await get_territory_by_id(conn, result.territory_id)
 
 
 async def get_territories_by_parent_id_from_db(
@@ -100,10 +202,13 @@ async def get_territories_by_parent_id_from_db(
         if parent_territory is None:
             raise HTTPException(status_code=404, detail="Given parent id is not found")
 
+    territories_data_parents = territories_data.alias("territories_data_parents")
     statement = select(
         territories_data.c.territory_id,
         territories_data.c.territory_type_id,
+        territory_types_dict.c.name.label("territory_type_name"),
         territories_data.c.parent_id,
+        territories_data_parents.c.name.label("parent_name"),
         territories_data.c.name,
         cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
         territories_data.c.level,
@@ -113,10 +218,13 @@ async def get_territories_by_parent_id_from_db(
         territories_data.c.okato_code,
         territories_data.c.created_at,
         territories_data.c.updated_at,
-        territory_types_dict.c.name.label("territory_type_name"),
     ).select_from(
         territories_data.join(
             territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
+        ).join(
+            territories_data_parents,
+            territories_data.c.parent_id == territories_data_parents.c.territory_id,
+            isouter=True,
         )
     )
 
@@ -170,6 +278,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     statement = select(
         territories_data.c.territory_id,
         territories_data.c.territory_type_id,
+        territory_types_dict.c.name.label("territory_type_name"),
         territories_data.c.parent_id,
         territories_data.c.name,
         territories_data.c.level,
@@ -178,7 +287,6 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         territories_data.c.okato_code,
         territories_data.c.created_at,
         territories_data.c.updated_at,
-        territory_types_dict.c.name.label("territory_type_name"),
     ).select_from(
         territories_data.join(
             territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
@@ -236,12 +344,14 @@ async def get_common_territory_for_geometry(
         .limit(1)
     )
 
-    territory_id = (await conn.execute(statement)).scalar()
+    territory_id = (await conn.execute(statement)).scalar_one_or_none()
 
     if territory_id is None:
         return None
 
-    return await get_territory_by_id_from_db(conn, territory_id)
+    result = await get_territories_by_ids(conn, [territory_id])[0]
+
+    return result
 
 
 async def get_intersecting_territories_for_geometry(
@@ -267,95 +377,4 @@ async def get_intersecting_territories_for_geometry(
 
     territory_ids = (await conn.execute(statement)).scalars().all()
 
-    return await get_territories_by_id_from_db(conn, territory_ids)
-
-
-async def put_territory_to_db(
-    conn: AsyncConnection,
-    territory_id: int,
-    territory: TerritoriesDataPut,
-) -> TerritoryDTO:
-    """Update territory object (put, update all of the fields)."""
-    if territory.parent_id is not None:
-        statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
-        check_parent_id = (await conn.execute(statement)).one_or_none()
-        if check_parent_id is None:
-            raise HTTPException(status_code=404, detail="Given parent_id is not found")
-
-    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    requested_territory = (await conn.execute(statement)).one_or_none()
-    if requested_territory is None:
-        raise HTTPException(status_code=404, detail="Given territory_id is not found")
-
-    statement = (
-        update(territories_data)
-        .where(territories_data.c.territory_id == territory_id)
-        .values(
-            territory_type_id=territory.territory_type_id,
-            parent_id=territory.parent_id,
-            name=territory.name,
-            geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text("4326")),
-            level=territory.level,
-            properties=territory.properties,
-            centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326")),
-            admin_center=territory.admin_center,
-            okato_code=territory.okato_code,
-            updated_at=datetime.utcnow(),
-        )
-        .returning(territories_data)
-    )
-    result = (await conn.execute(statement)).mappings().one()
-
-    await conn.commit()
-
-    return await get_territory_by_id_from_db(conn, result.territory_id)
-
-
-async def patch_territory_to_db(
-    conn: AsyncConnection,
-    territory_id: int,
-    territory: TerritoriesDataPatch,
-) -> TerritoryDTO:
-    """Patch territory object (patch, update only non-None fields)."""
-    if territory.parent_id is not None:
-        statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
-        check_parent_id = (await conn.execute(statement)).one_or_none()
-        if check_parent_id is None:
-            raise HTTPException(status_code=404, detail="Given parent_id is not found")
-
-    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    requested_territory = (await conn.execute(statement)).one_or_none()
-    if requested_territory is None:
-        raise HTTPException(status_code=404, detail="Given territory_id is not found")
-
-    statement = (
-        update(territories_data)
-        .where(territories_data.c.territory_id == territory_id)
-        .returning(territories_data)
-        .values(updated_at=datetime.utcnow())
-    )
-
-    values_to_update = {}
-    for k, v in territory.model_dump(exclude={"geometry", "centre_point"}).items():
-        if v is not None:
-            if k == "territory_type_id":
-                new_statement = select(territory_types_dict).where(
-                    territory_types_dict.c.territory_type_id == territory.territory_type_id
-                )
-                territory_type = (await conn.execute(new_statement)).one_or_none()
-                if territory_type is None:
-                    raise HTTPException(status_code=404, detail="Given territory type id is not found")
-                values_to_update.update({k: v})
-            else:
-                values_to_update.update({k: v})
-
-    values_to_update.update({"geometry": ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text("4326"))})
-    values_to_update.update(
-        {"centre_point": ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326"))}
-    )
-
-    statement = statement.values(**values_to_update)
-    result = (await conn.execute(statement)).mappings().one()
-    await conn.commit()
-
-    return await get_territory_by_id_from_db(conn, result.territory_id)
+    return await get_territories_by_ids(conn, territory_ids)
