@@ -65,7 +65,7 @@ services:
         max-file: "10"
 
   api:
-    container_name: urban_api_and_city_api
+    container_name: urban_api
     build:
       context: .
       dockerfile: Dockerfile

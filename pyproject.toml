@@ -24,7 +24,8 @@ exceptiongroup = "^1.2.1"
 fastapi-pagination = "^0.12.25"
 
 [tool.poetry.scripts]
-launch_urban_api = "urban_api.__main__:main"
+launch_urban_api = "idu_app.urban_api.__main__:main"
+launch_city_api = "idu_app.city_api.__main__:main"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
