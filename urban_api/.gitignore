@@ -1,0 +1,10 @@
+`# Ignore docker volumes
+kc_data/
+pg_data/
+
+# Ignore editor-specific files
+.vscode/
+.idea/
+*.sublime-*
+
+/dist

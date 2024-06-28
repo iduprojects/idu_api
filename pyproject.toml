@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "urban-api"
-version = "0.8.0"
-description = "This is a Digital Territories Platform API to access and manipulate basic territories data."
+name = "idu-api"
+version = "1.0.0"
+description = "This is a Digital Territories Platform API in two versions to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
 
@@ -24,7 +24,8 @@ exceptiongroup = "^1.2.1"
 fastapi-pagination = "^0.12.25"
 
 [tool.poetry.scripts]
-launch_urban_api = "urban_api.__main__:main"
+launch_urban_api = "idu_api.urban_api.__main__:main"
+launch_city_api = "idu_api.city_api.__main__:main"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
@@ -62,3 +63,4 @@ use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 120
 split_on_trailing_comma = true
+profile = "black"
