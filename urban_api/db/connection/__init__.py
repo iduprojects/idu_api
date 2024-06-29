@@ -2,9 +2,8 @@
 Module responsible for managing database connections.
 """
 
-from urban_api.db.connection.session import SessionManager, get_connection
+from urban_api.db.connection.manager import PostgresConnectionManager
 
 __all__ = [
-    "get_connection",
-    "SessionManager",
+    "PostgresConnectionManager",
 ]

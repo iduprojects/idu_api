@@ -1,6 +1,4 @@
-"""
-All FastApi endpoints are exported from this module.
-"""
+"""All FastApi handlers are exported from this module."""
 
 import importlib
 from pathlib import Path

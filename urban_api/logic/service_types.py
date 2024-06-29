@@ -1,6 +1,4 @@
-"""
-Service types endpoints logic of getting entities from the database is defined here.
-"""
+"""Service types handlers logic of getting entities from the database is defined here."""
 
 from typing import Callable, List, Optional
 
@@ -21,8 +19,8 @@ func: Callable
 
 
 async def get_service_types_from_db(
+    conn: AsyncConnection,
     urban_function_id: Optional[int],
-    session: AsyncConnection,
 ) -> List[ServiceTypesDTO]:
     """
     Get all service type objects
@@ -33,19 +31,19 @@ async def get_service_types_from_db(
     if urban_function_id is not None:
         statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
 
-    return [ServiceTypesDTO(**data) for data in (await session.execute(statement)).mappings().all()]
+    return [ServiceTypesDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
 
 
 async def add_service_type_to_db(
+    conn: AsyncConnection,
     service_type: ServiceTypesPost,
-    session: AsyncConnection,
 ) -> ServiceTypesDTO:
     """
     Create service type object
     """
 
     statement = select(service_types_dict).where(service_types_dict.c.name == service_type.name)
-    result = (await session.execute(statement)).one_or_none()
+    result = (await conn.execute(statement)).one_or_none()
     if result is not None:
         raise HTTPException(status_code=400, detail="Invalid input (service type already exists)")
 
@@ -59,17 +57,17 @@ async def add_service_type_to_db(
         )
         .returning(service_types_dict)
     )
-    result = (await session.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one()
 
-    await session.commit()
+    await conn.commit()
 
     return ServiceTypesDTO(**result)
 
 
 async def get_urban_functions_by_parent_id_from_db(
+    conn: AsyncConnection,
     parent_id: Optional[int],
     name: Optional[str],
-    session: AsyncConnection,
     get_all_subtree: bool,
 ) -> List[UrbanFunctionDTO]:
     """
@@ -78,7 +76,7 @@ async def get_urban_functions_by_parent_id_from_db(
 
     if parent_id is not None:
         statement = select(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == parent_id)
-        parent_urban_function = (await session.execute(statement)).one_or_none()
+        parent_urban_function = (await conn.execute(statement)).one_or_none()
         if parent_urban_function is None:
             raise HTTPException(status_code=404, detail="Given parent id is not found")
 
@@ -111,14 +109,14 @@ async def get_urban_functions_by_parent_id_from_db(
     if name is not None:
         statement = statement.where(requested_urban_functions.c.name.ilike(f"%{name}%"))
 
-    result = (await session.execute(statement)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     return [UrbanFunctionDTO(**indicator) for indicator in result]
 
 
 async def add_urban_function_to_db(
+    conn: AsyncConnection,
     urban_function: UrbanFunctionPost,
-    session: AsyncConnection,
 ) -> UrbanFunctionDTO:
     """
     Create urban function object
@@ -128,12 +126,12 @@ async def add_urban_function_to_db(
         statement = select(urban_functions_dict).where(
             urban_functions_dict.c.urban_function_id == urban_function.parent_id
         )
-        parent_urban_function = (await session.execute(statement)).one_or_none()
+        parent_urban_function = (await conn.execute(statement)).one_or_none()
         if parent_urban_function is None:
             raise HTTPException(status_code=404, detail="Given parent_id is not found")
 
     statement = select(urban_functions_dict).where(urban_functions_dict.c.name == urban_function.name)
-    check_urban_function_name = (await session.execute(statement)).one_or_none()
+    check_urban_function_name = (await conn.execute(statement)).one_or_none()
     if check_urban_function_name is not None:
         raise HTTPException(status_code=400, detail="Invalid input (urban function already exists)")
 
@@ -148,18 +146,18 @@ async def add_urban_function_to_db(
         )
         .returning(urban_functions_dict)
     )
-    result = (await session.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one()
 
-    await session.commit()
+    await conn.commit()
 
     return UrbanFunctionDTO(**result)
 
 
 async def get_service_types_normatives_from_db(
+    conn: AsyncConnection,
     service_type_id: Optional[int],
     urban_function_id: Optional[int],
     territory_id: Optional[int],
-    session: AsyncConnection,
 ) -> List[ServiceTypesNormativesDTO]:
     """
     Get all service type normative objects
@@ -174,12 +172,12 @@ async def get_service_types_normatives_from_db(
     if territory_id is not None:
         statement = statement.filter(service_types_normatives_data.c.territory_id == territory_id)
 
-    return [ServiceTypesNormativesDTO(**data) for data in (await session.execute(statement)).mappings().all()]
+    return [ServiceTypesNormativesDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
 
 
 async def add_service_type_normative_to_db(
+    conn: AsyncConnection,
     service_type_normative: ServiceTypesNormativesDataPost,
-    session: AsyncConnection,
 ) -> ServiceTypesNormativesDTO:
     """
     Create service type normative object
@@ -189,7 +187,7 @@ async def add_service_type_normative_to_db(
         statement = select(service_types_dict).where(
             service_types_dict.c.service_type_id == service_type_normative.service_type_id
         )
-        service_type = (await session.execute(statement)).one_or_none()
+        service_type = (await conn.execute(statement)).one_or_none()
         if service_type is None:
             raise HTTPException(status_code=404, detail="Given service_type_id is not found")
 
@@ -197,12 +195,12 @@ async def add_service_type_normative_to_db(
         statement = select(urban_functions_dict).where(
             urban_functions_dict.c.urban_function_id == service_type_normative.urban_function_id
         )
-        urban_function = (await session.execute(statement)).one_or_none()
+        urban_function = (await conn.execute(statement)).one_or_none()
         if urban_function is None:
             raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
 
     statement = select(territories_data).where(territories_data.c.territory_id == service_type_normative.territory_id)
-    territory = (await session.execute(statement)).one_or_none()
+    territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
         raise HTTPException(status_code=404, detail="Given territory_id is not found")
 
@@ -220,8 +218,8 @@ async def add_service_type_normative_to_db(
         )
         .returning(service_types_normatives_data)
     )
-    result = (await session.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one()
 
-    await session.commit()
+    await conn.commit()
 
     return ServiceTypesNormativesDTO(**result)

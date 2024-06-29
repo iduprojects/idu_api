@@ -1,14 +1,9 @@
-"""
-Object geometries endpoints are defined here.
-"""
+"""Object geometries handlers are defined here."""
 
-from typing import List
-
-from fastapi import Depends, Path
+from fastapi import Path, Request
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
-from urban_api.db.connection import get_connection
 from urban_api.logic.object_geometries import (
     get_physical_objects_by_object_geometry_id_from_db,
     patch_object_geometry_to_db,
@@ -21,22 +16,17 @@ from .routers import object_geometries_router
 
 @object_geometries_router.get(
     "/object_geometries/{object_geometry_id}/physical_objects",
-    response_model=List[PhysicalObjectsData],
+    response_model=list[PhysicalObjectsData],
     status_code=status.HTTP_200_OK,
 )
 async def get_physical_object_by_geometry_id(
+    request: Request,
     object_geometry_id: int = Path(..., description="Object geometry id"),
-    connection: AsyncConnection = Depends(get_connection),
-) -> List[PhysicalObjectsData]:
-    """
-    Summary:
-        Get physical objects by object geometry id
+) -> list[PhysicalObjectsData]:
+    """Get physical objects for the given object geometry."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Get a list of all physical objects by object geometry id
-    """
-
-    physical_objects = await get_physical_objects_by_object_geometry_id_from_db(object_geometry_id, connection)
+    physical_objects = await get_physical_objects_by_object_geometry_id_from_db(conn, object_geometry_id)
 
     return [PhysicalObjectsData.from_dto(physical_object) for physical_object in physical_objects]
 
@@ -47,19 +37,14 @@ async def get_physical_object_by_geometry_id(
     status_code=status.HTTP_200_OK,
 )
 async def put_object_geometry(
+    request: Request,
     object_geometry: ObjectGeometriesPut,
     object_geometry_id: int = Path(..., description="Object geometry id"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> ObjectGeometries:
-    """
-    Summary:
-        Put object geometry
+    """Update object geometry - all attributes."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Put object geometry
-    """
-
-    object_geometry_dto = await put_object_geometry_to_db(object_geometry, object_geometry_id, connection)
+    object_geometry_dto = await put_object_geometry_to_db(conn, object_geometry, object_geometry_id)
 
     return ObjectGeometries.from_dto(object_geometry_dto)
 
@@ -70,18 +55,13 @@ async def put_object_geometry(
     status_code=status.HTTP_200_OK,
 )
 async def patch_object_geometry(
+    request: Request,
     object_geometry: ObjectGeometriesPatch,
     object_geometry_id: int = Path(..., description="Object geometry id"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> ObjectGeometries:
-    """
-    Summary:
-        Patch object geometry
+    """Update object geometry - only given attributes."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Patch object geometry
-    """
-
-    object_geometry_dto = await patch_object_geometry_to_db(object_geometry, object_geometry_id, connection)
+    object_geometry_dto = await patch_object_geometry_to_db(conn, object_geometry, object_geometry_id)
 
     return ObjectGeometries.from_dto(object_geometry_dto)

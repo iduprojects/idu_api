@@ -1,8 +1,17 @@
+"""Service types and urban function models are defined here."""
+
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
 from urban_api.dto import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
+
+
+class ServiceTypeBasic(BaseModel):
+    """Basic service type model to encapsulate in other models."""
+
+    id: int
+    name: str
 
 
 class ServiceTypes(BaseModel):
@@ -71,6 +80,13 @@ class ServiceTypesNormativesDataPost(BaseModel):
     time_availability_minutes: Optional[int] = Field(None, example=1)
     services_per_1000_normative: Optional[float] = Field(None, example=1.0)
     services_capacity_per_1000_normative: Optional[float] = Field(None, example=1.0)
+
+
+class UrbanFunctionBasic(BaseModel):
+    """Basic urban function model to encapsulate in other models."""
+
+    id: int
+    name: str
 
 
 class UrbanFunction(BaseModel):

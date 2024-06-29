@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "urban-api"
-version = "0.6.1"
+version = "0.7.1"
 description = "This is a Digital Territories Platform API to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
@@ -46,6 +46,7 @@ max-locals = 20
 max-attributes = 10
 max-args = 9
 extension-pkg-allow-list = ["networkit"]
+ignored-modules = ["alembic.context"]
 disable = [
     "duplicate-code",
     "missing-module-docstring",

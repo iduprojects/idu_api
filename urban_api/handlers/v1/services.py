@@ -1,14 +1,9 @@
-"""
-Services endpoints are defined here.
-"""
+"""Services handlers are defined here."""
 
-from typing import List, Optional
-
-from fastapi import Depends, Path
+from fastapi import Path, Request
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
-from urban_api.db.connection import get_connection
 from urban_api.logic.services import add_service_to_db, patch_service_to_db, put_service_to_db
 from urban_api.schemas import ServicesData, ServicesDataPatch, ServicesDataPost, ServicesDataPut
 
@@ -20,16 +15,11 @@ from .routers import services_router
     response_model=ServicesData,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_service(service: ServicesDataPost, connection: AsyncConnection = Depends(get_connection)) -> ServicesData:
-    """
-    Summary:
-        Add service
+async def add_service(request: Request, service: ServicesDataPost) -> ServicesData:
+    """Add a service to a given physical object."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Add a service
-    """
-
-    service_dto = await add_service_to_db(service, connection)
+    service_dto = await add_service_to_db(conn, service)
 
     return ServicesData.from_dto(service_dto)
 
@@ -40,19 +30,14 @@ async def add_service(service: ServicesDataPost, connection: AsyncConnection = D
     status_code=status.HTTP_201_CREATED,
 )
 async def put_service(
+    request: Request,
     service: ServicesDataPut,
     service_id: int = Path(..., description="Service id", gt=0),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> ServicesData:
-    """
-    Summary:
-        Put service
+    """Update the given service - all attributes."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Put a service
-    """
-
-    service_dto = await put_service_to_db(service, service_id, connection)
+    service_dto = await put_service_to_db(conn, service, service_id)
 
     return ServicesData.from_dto(service_dto)
 
@@ -63,18 +48,13 @@ async def put_service(
     status_code=status.HTTP_201_CREATED,
 )
 async def patch_service(
+    request: Request,
     service: ServicesDataPatch,
     service_id: int = Path(..., description="Service id", gt=0),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> ServicesData:
-    """
-    Summary:
-        Patch service
+    """Update the given service - only given attributes."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Patch a service
-    """
-
-    service_dto = await patch_service_to_db(service, service_id, connection)
+    service_dto = await patch_service_to_db(conn, service, service_id)
 
     return ServicesData.from_dto(service_dto)

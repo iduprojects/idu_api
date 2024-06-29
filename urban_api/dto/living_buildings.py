@@ -9,7 +9,7 @@ import shapely.geometry as geom
 
 
 @dataclass()
-class LivingBuildingsWithGeometryDTO:
+class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     living_building_id: int
     physical_object_id: int
     physical_object_type_id: int

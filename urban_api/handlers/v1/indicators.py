@@ -1,15 +1,12 @@
-"""
-Indicators endpoints are defined here.
-"""
+"""Indicators handlers are defined here."""
 
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import Depends, Path, Query
+from fastapi import Path, Query, Request
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
-from urban_api.db.connection import get_connection
 from urban_api.logic.indicators import (
     add_indicator_to_db,
     add_indicator_value_to_db,
@@ -31,16 +28,11 @@ from .routers import indicators_router
     response_model=List[MeasurementUnit],
     status_code=status.HTTP_200_OK,
 )
-async def get_measurement_units(connection: AsyncConnection = Depends(get_connection)) -> List[MeasurementUnit]:
-    """
-    Summary:
-        Get existing measurement units
+async def get_measurement_units(request: Request) -> List[MeasurementUnit]:
+    """Get existing measurement units."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Get a list of all measurement units added
-    """
-
-    measurement_units = await get_measurement_units_from_db(connection)
+    measurement_units = await get_measurement_units_from_db(conn)
 
     return [MeasurementUnit.from_dto(measurement_unit) for measurement_unit in measurement_units]
 
@@ -50,18 +42,11 @@ async def get_measurement_units(connection: AsyncConnection = Depends(get_connec
     response_model=MeasurementUnit,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_measurement_unit(
-    measurement_unit: MeasurementUnitPost, connection: AsyncConnection = Depends(get_connection)
-) -> MeasurementUnit:
-    """
-    Summary:
-        Add a new measurement unit
+async def add_measurement_unit(request: Request, measurement_unit: MeasurementUnitPost) -> MeasurementUnit:
+    """Add measurement unit."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Add a new measurement unit by name
-    """
-
-    unit = await add_measurement_unit_to_db(measurement_unit, connection)
+    unit = await add_measurement_unit_to_db(conn, measurement_unit)
 
     return MeasurementUnit.from_dto(unit)
 
@@ -72,23 +57,18 @@ async def add_measurement_unit(
     status_code=status.HTTP_200_OK,
 )
 async def get_indicators_by_parent_id(
+    request: Request,
     parent_id: Optional[int] = Query(
         None, description="Parent indicator id to filter, should be skipped to get top level indicators"
     ),
     name: Optional[str] = Query(None, description="Filter by indicator name"),
     territory_id: Optional[int] = Query(None, description="Filter by territory id (not including inner territories)"),
     get_all_subtree: bool = Query(False, description="Getting full subtree of indicators"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> List[Indicator]:
-    """
-    Summary:
-        Get indicators dictionary
+    """Get a list of indicators by parent id."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Get a list of indicators by parent id
-    """
-
-    indicators = await get_indicators_by_parent_id_from_db(parent_id, name, territory_id, connection, get_all_subtree)
+    indicators = await get_indicators_by_parent_id_from_db(conn, parent_id, name, territory_id, get_all_subtree)
 
     return [Indicator.from_dto(indicator) for indicator in indicators]
 
@@ -99,18 +79,13 @@ async def get_indicators_by_parent_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_by_id(
+    request: Request,
     indicator_id: int = Query(description="Getting indicator by id"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> Indicator:
-    """
-    Summary:
-        Get indicator
+    """Get indicator."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Get indicator by id
-    """
-
-    indicator = await get_indicator_by_id_from_db(indicator_id, connection)
+    indicator = await get_indicator_by_id_from_db(conn, indicator_id)
 
     return Indicator.from_dto(indicator)
 
@@ -120,16 +95,11 @@ async def get_indicator_by_id(
     response_model=Indicator,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_indicator(indicator: IndicatorsPost, connection: AsyncConnection = Depends(get_connection)) -> Indicator:
-    """
-    Summary:
-        Add a new indicator
+async def add_indicator(request: Request, indicator: IndicatorsPost) -> Indicator:
+    """Add indicator."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Add a new indicator
-    """
-
-    indicator_dto = await add_indicator_to_db(indicator, connection)
+    indicator_dto = await add_indicator_to_db(conn, indicator)
 
     return Indicator.from_dto(indicator_dto)
 
@@ -140,23 +110,16 @@ async def add_indicator(indicator: IndicatorsPost, connection: AsyncConnection =
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_value_by_id(
+    request: Request,
     indicator_id: int = Query(description="indicator id"),
     territory_id: int = Query(description="territory id"),
     date_type: DateType = Query(description="date type"),
     date_value: datetime = Query(description="time value"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> IndicatorValue:
-    """
-    Summary:
-        Get indicator value
+    """Get indicator value for a given territory and date perood"""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Get indicator value by id
-    """
-
-    indicator_value = await get_indicator_value_by_id_from_db(
-        indicator_id, territory_id, date_type, date_value, connection
-    )
+    indicator_value = await get_indicator_value_by_id_from_db(conn, indicator_id, territory_id, date_type, date_value)
 
     return IndicatorValue.from_dto(indicator_value)
 
@@ -166,18 +129,11 @@ async def get_indicator_value_by_id(
     response_model=IndicatorValue,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_indicator_value(
-    indicator_value: IndicatorValue, connection: AsyncConnection = Depends(get_connection)
-) -> IndicatorValue:
-    """
-    Summary:
-        Add a new indicator value
+async def add_indicator_value(request: Request, indicator_value: IndicatorValue) -> IndicatorValue:
+    """Add a new indicator value for a gien territory and date period."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Add a new indicator value
-    """
-
-    indicator_value_dto = await add_indicator_value_to_db(indicator_value, connection)
+    indicator_value_dto = await add_indicator_value_to_db(conn, indicator_value)
 
     return IndicatorValue.from_dto(indicator_value_dto)
 
@@ -188,11 +144,11 @@ async def add_indicator_value(
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_values_by_id(
+    request: Request,
     indicator_id: int = Path(description="indicator id"),
     territory_id: Optional[int] = Query(None, description="territory id"),
     date_type: Optional[DateType] = Query(None, description="date type"),
     date_value: Optional[datetime] = Query(None, description="time value"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> List[IndicatorValue]:
     """
     Summary:
@@ -202,9 +158,8 @@ async def get_indicator_values_by_id(
         Get indicator values by id, territory and date could be specified in parameters.
         If parameter not specified there should be all available values for this indicator
     """
+    conn: AsyncConnection = request.state.conn
 
-    indicator_values = await get_indicator_values_by_id_from_db(
-        indicator_id, territory_id, date_type, date_value, connection
-    )
+    indicator_values = await get_indicator_values_by_id_from_db(conn, indicator_id, territory_id, date_type, date_value)
 
     return [IndicatorValue.from_dto(value) for value in indicator_values]

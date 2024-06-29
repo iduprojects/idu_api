@@ -1,6 +1,4 @@
-"""
-Service endpoints logic of getting entities from the database is defined here.
-"""
+"""Service handlers logic of getting entities from the database is defined here."""
 
 from typing import Callable
 
@@ -21,8 +19,8 @@ func: Callable
 
 
 async def get_service_by_id_from_db(
+    conn: AsyncConnection,
     service_id: int,
-    session: AsyncConnection,
 ) -> ServiceDTO:
     """
     Get service object by id
@@ -50,16 +48,16 @@ async def get_service_by_id_from_db(
         .where(services_data.c.service_id == service_id)
     )
 
-    result = (await session.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one()
 
-    await session.commit()
+    await conn.commit()
 
     return ServiceDTO(**result)
 
 
 async def add_service_to_db(
+    conn: AsyncConnection,
     service: ServicesDataPost,
-    session: AsyncConnection,
 ) -> ServiceDTO:
     """
     Create service object
@@ -71,12 +69,12 @@ async def add_service_to_db(
             urban_objects_data.c.object_geometry_id == service.object_geometry_id,
         )
     )
-    urban_object = (await session.execute(statement)).one_or_none()
+    urban_object = (await conn.execute(statement)).one_or_none()
     if urban_object is None:
         raise HTTPException(status_code=404, detail="Given physical object id and object geometry id are not found")
 
     statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service.service_type_id)
-    service_type = (await session.execute(statement)).one_or_none()
+    service_type = (await conn.execute(statement)).one_or_none()
     if service_type is None:
         raise HTTPException(status_code=404, detail="Given service type id is not found")
 
@@ -84,7 +82,7 @@ async def add_service_to_db(
         statement = select(territory_types_dict).where(
             territory_types_dict.c.territory_type_id == service.territory_type_id
         )
-        territory_type = (await session.execute(statement)).one_or_none()
+        territory_type = (await conn.execute(statement)).one_or_none()
         if territory_type is None:
             raise HTTPException(status_code=404, detail="Given territory type id is not found")
 
@@ -100,7 +98,7 @@ async def add_service_to_db(
         .returning(services_data.c.service_id)
     )
 
-    service_id = (await session.execute(statement)).scalar_one()
+    service_id = (await conn.execute(statement)).scalar_one()
 
     statement = (
         update(urban_objects_data)
@@ -113,29 +111,29 @@ async def add_service_to_db(
         .values(service_id=service_id)
     )
 
-    await session.execute(statement)
+    await conn.execute(statement)
 
-    await session.commit()
+    await conn.commit()
 
-    return await get_service_by_id_from_db(service_id, session)
+    return await get_service_by_id_from_db(conn, service_id)
 
 
 async def put_service_to_db(
+    conn: AsyncConnection,
     service: ServicesDataPut,
     service_id: int,
-    session: AsyncConnection,
 ) -> ServiceDTO:
     """
     Put service object
     """
 
     statement = select(services_data).where(services_data.c.service_id == service_id)
-    requested_service = (await session.execute(statement)).one_or_none()
+    requested_service = (await conn.execute(statement)).one_or_none()
     if requested_service is None:
         raise HTTPException(status_code=404, detail="Given service id is not found")
 
     statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service.service_type_id)
-    service_type = (await session.execute(statement)).one_or_none()
+    service_type = (await conn.execute(statement)).one_or_none()
     if service_type is None:
         raise HTTPException(status_code=404, detail="Given service type id is not found")
 
@@ -143,7 +141,7 @@ async def put_service_to_db(
         statement = select(territory_types_dict).where(
             territory_types_dict.c.territory_type_id == service.territory_type_id
         )
-        territory_type = (await session.execute(statement)).one_or_none()
+        territory_type = (await conn.execute(statement)).one_or_none()
         if territory_type is None:
             raise HTTPException(status_code=404, detail="Given territory type id is not found")
 
@@ -160,23 +158,23 @@ async def put_service_to_db(
         .returning(services_data)
     )
 
-    result = (await session.execute(statement)).mappings().one()
-    await session.commit()
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
 
-    return await get_service_by_id_from_db(result.service_id, session)
+    return await get_service_by_id_from_db(conn, result.service_id)
 
 
 async def patch_service_to_db(
+    conn: AsyncConnection,
     service: ServicesDataPatch,
     service_id: int,
-    session: AsyncConnection,
 ) -> ServiceDTO:
     """
     Patch service object
     """
 
     statement = select(services_data).where(services_data.c.service_id == service_id)
-    requested_service = (await session.execute(statement)).one_or_none()
+    requested_service = (await conn.execute(statement)).one_or_none()
     if requested_service is None:
         raise HTTPException(status_code=404, detail="Given service id is not found")
 
@@ -189,20 +187,20 @@ async def patch_service_to_db(
                 new_statement = select(service_types_dict).where(
                     service_types_dict.c.service_type_id == service.service_type_id
                 )
-                service_type = (await session.execute(new_statement)).one_or_none()
+                service_type = (await conn.execute(new_statement)).one_or_none()
                 if service_type is None:
                     raise HTTPException(status_code=404, detail="Given service type id is not found")
             elif k == "territory_type_id":
                 new_statement = select(territory_types_dict).where(
                     territory_types_dict.c.territory_type_id == service.territory_type_id
                 )
-                territory_type = (await session.execute(new_statement)).one_or_none()
+                territory_type = (await conn.execute(new_statement)).one_or_none()
                 if territory_type is None:
                     raise HTTPException(status_code=404, detail="Given territory type id is not found")
             values_to_update.update({k: v})
 
     statement = statement.values(**values_to_update)
-    result = (await session.execute(statement)).mappings().one()
-    await session.commit()
+    result = (await conn.execute(statement)).mappings().one()
+    await conn.commit()
 
-    return await get_service_by_id_from_db(result.service_id, session)
+    return await get_service_by_id_from_db(conn, result.service_id)

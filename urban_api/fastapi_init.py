@@ -1,43 +1,43 @@
-import itertools
-import traceback
+"""FastAPI application initialization is performed here."""
 
-from fastapi import FastAPI, Request
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
-from fastapi.responses import JSONResponse
 from fastapi_pagination import add_pagination
-from loguru import logger
 
-from .config.app_settings_global import app_settings
-from .db.connection.session import SessionManager
-from .endpoints import list_of_routes
+from urban_api.config import UrbanAPIConfig
+from urban_api.logic.impl.territories import TerritoriesServiceImpl
+from urban_api.middlewares.dependency_injection import PassServicesDependencies
+from urban_api.middlewares.exception_handler import ExceptionHandlerMiddleware
+
+from .db.connection.manager import PostgresConnectionManager
+from .handlers import list_of_routes
 from .version import LAST_UPDATE, VERSION
 
 
 def bind_routes(application: FastAPI, prefix: str) -> None:
-    """
-    Bind all routes to application.
-    """
+    """Bind all routes to application."""
     for route in list_of_routes:
         application.include_router(route, prefix=(prefix if "/" not in {r.path for r in route.routes} else ""))
 
 
-def get_app(prefix: str = "/api") -> FastAPI:
-    """
-    Create application and all dependable objects.
-    """
+def get_app(config: UrbanAPIConfig, prefix: str = "/api") -> FastAPI:
+    """Create application and all dependable objects."""
+
     description = "This is a Digital Territories Platform API to access and manipulate basic territories data."
 
     application = FastAPI(
         title="Digital Territories Platform Data API",
         description=description,
-        # docs_url=f"{prefix}/docs",
         docs_url=None,
         openapi_url=f"{prefix}/openapi",
         version=f"{VERSION} ({LAST_UPDATE})",
         terms_of_service="http://swagger.io/terms/",
         contact={"email": "idu@itmo.ru"},
         license_info={"name": "Apache 2.0", "url": "http://www.apache.org/licenses/LICENSE-2.0.html"},
+        lifespan=lifespan,
     )
     bind_routes(application, prefix)
 
@@ -63,58 +63,44 @@ def get_app(prefix: str = "/api") -> FastAPI:
 
     add_pagination(application)
 
+    connection_manager = PostgresConnectionManager(
+        config.db_addr,
+        config.db_port,
+        config.db_name,
+        config.db_user,
+        config.db_pass,
+        config.db_pool_size,
+        config.application_name,
+    )
+
+    application.add_middleware(ExceptionHandlerMiddleware, debug=config.debug)
+    application.add_middleware(
+        PassServicesDependencies,
+        connection_manager=connection_manager,
+        territories_service=TerritoriesServiceImpl,
+    )
+
     return application
 
 
-app = get_app()
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Lifespan function.
 
-
-@app.exception_handler(Exception)
-async def internal_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    Initializes database connection in pass_services_dependencies middleware
     """
-    Function that handles exceptions to become http response code 500 - Internal Server Error.
+    for middleware in application.user_middleware:
+        if middleware.cls == PassServicesDependencies:
+            connection_manager: PostgresConnectionManager = middleware.kwargs["connection_manager"]
+            await connection_manager.refresh()
 
-    If debug is activated in app configuration, then stack trace is returned, otherwise only a generic error message.
-    Message is sent to logger error stream anyway.
-    """
-    if len(error_message := repr(exc)) > 300:
-        error_message = f"{error_message[:300]}...({len(error_message) - 300} ommitted)"
-    logger.opt(colors=True).error(
-        "<cyan>{} {}</cyan> - '<red>{}</red>': {}",
-        (f"{request.client.host}:{request.client.port}" if request.client is not None else "<unknown user>"),
-        request.method,
-        exc,
-        error_message,
-    )
+    yield
 
-    logger.debug("{} Traceback:\n{}", error_message, exc, "".join(traceback.format_tb(exc.__traceback__)))
-    if app_settings.debug:
-        return JSONResponse(
-            {
-                "error": str(exc),
-                "error_type": str(type(exc)),
-                "path": request.url.path,
-                "params": request.url.query,
-                "trace": list(
-                    itertools.chain.from_iterable(map(lambda x: x.split("\n"), traceback.format_tb(exc.__traceback__)))
-                ),
-            },
-            status_code=500,
-        )
-    return JSONResponse({"code": 500, "message": "exception occured"}, status_code=500)
+    for middleware in application.user_middleware:
+        if middleware.cls == PassServicesDependencies:
+            connection_manager: PostgresConnectionManager = middleware.kwargs["connection_manager"]
+            await connection_manager.shutdown()
 
 
-@app.on_event("startup")
-async def startup_event():
-    """
-    Function that runs on an application startup. Database connection pool is initialized here.
-    """
-    await SessionManager().refresh()
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """
-    Function that runs on an application shutdown. Database connection pool is destructed here.
-    """
-    await SessionManager().shutdown()
+app_config = UrbanAPIConfig.try_from_env()
+app = get_app(app_config)

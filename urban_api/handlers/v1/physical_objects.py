@@ -1,14 +1,9 @@
-"""
-Physical object endpoints are defined here.
-"""
+"""Physical object handlers are defined here."""
 
-from typing import Dict, List
-
-from fastapi import Depends, Path, Query
+from fastapi import Path, Query, Request
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
-from urban_api.db.connection import get_connection
 from urban_api.logic.physical_objects import (
     add_living_building_to_db,
     add_physical_object_type_to_db,
@@ -43,21 +38,14 @@ from .routers import physical_objects_router
 
 @physical_objects_router.get(
     "/physical_object_types",
-    response_model=List[PhysicalObjectsTypes],
+    response_model=list[PhysicalObjectsTypes],
     status_code=status.HTTP_200_OK,
 )
-async def get_physical_object_types(
-    connection: AsyncConnection = Depends(get_connection),
-) -> List[PhysicalObjectsTypes]:
-    """
-    Summary:
-        Get physical object types list
+async def get_physical_object_types(request: Request) -> list[PhysicalObjectsTypes]:
+    """Get all physical object types."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Get a list of all physical object types
-    """
-
-    physical_object_types = await get_physical_object_types_from_db(connection)
+    physical_object_types = await get_physical_object_types_from_db(conn)
 
     return [PhysicalObjectsTypes.from_dto(object_type) for object_type in physical_object_types]
 
@@ -68,17 +56,12 @@ async def get_physical_object_types(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_physical_object_type(
-    physical_object_type: PhysicalObjectsTypesPost, connection: AsyncConnection = Depends(get_connection)
+    request: Request, physical_object_type: PhysicalObjectsTypesPost
 ) -> PhysicalObjectsTypes:
-    """
-    Summary:
-        Add physical object type
+    """Add a physical object type."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Add a physical object type
-    """
-
-    physical_object_type_dto = await add_physical_object_type_to_db(physical_object_type, connection)
+    physical_object_type_dto = await add_physical_object_type_to_db(conn, physical_object_type)
 
     return PhysicalObjectsTypes.from_dto(physical_object_type_dto)
 
@@ -88,17 +71,12 @@ async def add_physical_object_type(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_physical_object_with_geometry(
-    physical_object: PhysicalObjectsDataPost, connection: AsyncConnection = Depends(get_connection)
-) -> Dict[str, int]:
-    """
-    Summary:
-        Add physical object with geometry
+    request: Request, physical_object: PhysicalObjectsDataPost
+) -> dict[str, int]:
+    """Add a physical object with geometry."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Add a physical object with geometry
-    """
-
-    return await add_physical_object_with_geometry_to_db(physical_object, connection)
+    return await add_physical_object_with_geometry_to_db(conn, physical_object)
 
 
 @physical_objects_router.put(
@@ -107,19 +85,14 @@ async def add_physical_object_with_geometry(
     status_code=status.HTTP_200_OK,
 )
 async def put_physical_object(
+    request: Request,
     physical_object: PhysicalObjectsDataPut,
     physical_object_id: int = Path(..., description="Physical object id"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> PhysicalObjectsData:
-    """
-    Summary:
-        Put physical object
+    """Update physical object - all attributes."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Put a physical object
-    """
-
-    physical_object_dto = await put_physical_object_to_db(physical_object, physical_object_id, connection)
+    physical_object_dto = await put_physical_object_to_db(conn, physical_object, physical_object_id)
 
     return PhysicalObjectsData.from_dto(physical_object_dto)
 
@@ -130,19 +103,14 @@ async def put_physical_object(
     status_code=status.HTTP_200_OK,
 )
 async def patch_physical_object(
+    request: Request,
     physical_object: PhysicalObjectsDataPatch,
     physical_object_id: int = Path(..., description="Physical object id"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> PhysicalObjectsData:
-    """
-    Summary:
-        Patch physical object
+    """Update physical objects - only given fields."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Patch physical object
-    """
-
-    physical_object_dto = await patch_physical_object_to_db(physical_object, physical_object_id, connection)
+    physical_object_dto = await patch_physical_object_to_db(conn, physical_object, physical_object_id)
 
     return PhysicalObjectsData.from_dto(physical_object_dto)
 
@@ -152,18 +120,11 @@ async def patch_physical_object(
     response_model=LivingBuildingsData,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_living_building(
-    living_building: LivingBuildingsDataPost, connection: AsyncConnection = Depends(get_connection)
-) -> LivingBuildingsData:
-    """
-    Summary:
-        Add living building
+async def add_living_building(request: Request, living_building: LivingBuildingsDataPost) -> LivingBuildingsData:
+    """Add new living building"""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Add a living building
-    """
-
-    living_building_dto = await add_living_building_to_db(living_building, connection)
+    living_building_dto = await add_living_building_to_db(conn, living_building)
 
     return LivingBuildingsData.from_dto(living_building_dto)
 
@@ -174,19 +135,14 @@ async def add_living_building(
     status_code=status.HTTP_200_OK,
 )
 async def put_living_building(
+    request: Request,
     living_building: LivingBuildingsDataPut,
     living_building_id: int = Path(..., description="Living building id"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> LivingBuildingsData:
-    """
-    Summary:
-        Put living building
+    """Update living building - all attributes."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Put a living building
-    """
-
-    living_building_dto = await put_living_building_to_db(living_building, living_building_id, connection)
+    living_building_dto = await put_living_building_to_db(conn, living_building, living_building_id)
 
     return LivingBuildingsData.from_dto(living_building_dto)
 
@@ -197,44 +153,34 @@ async def put_living_building(
     status_code=status.HTTP_200_OK,
 )
 async def patch_living_building(
+    request: Request,
     living_building: LivingBuildingsDataPatch,
     living_building_id: int = Path(..., description="Living building id"),
-    connection: AsyncConnection = Depends(get_connection),
 ) -> LivingBuildingsData:
-    """
-    Summary:
-        Patch living building
+    """Update living buildings - only given attributes."""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Patch living building
-    """
-
-    living_building_dto = await patch_living_building_to_db(living_building, living_building_id, connection)
+    living_building_dto = await patch_living_building_to_db(conn, living_building, living_building_id)
 
     return LivingBuildingsData.from_dto(living_building_dto)
 
 
 @physical_objects_router.get(
     "/physical_objects/{physical_object_id}/services",
-    response_model=List[ServicesData],
+    response_model=list[ServicesData],
     status_code=status.HTTP_200_OK,
 )
 async def get_services_by_physical_object_id(
+    request: Request,
     physical_object_id: int = Path(..., description="Physical object id"),
     service_type_id: int = Query(None, description="To filter by service type"),
     territory_type_id: int = Query(None, description="To filter by territory type"),
-    connection: AsyncConnection = Depends(get_connection),
-) -> List[ServicesData]:
-    """
-    Summary:
-        Get services list by physical object id
-
-    Description:
-        Get a list of all services by physical object id
-    """
+) -> list[ServicesData]:
+    """Get all services inside a given physical object."""
+    conn: AsyncConnection = request.state.conn
 
     services = await get_services_by_physical_object_id_from_db(
-        physical_object_id, service_type_id, territory_type_id, connection
+        conn, physical_object_id, service_type_id, territory_type_id
     )
 
     return [ServicesData.from_dto(service) for service in services]
@@ -242,25 +188,20 @@ async def get_services_by_physical_object_id(
 
 @physical_objects_router.get(
     "/physical_objects/{physical_object_id}/services_with_geometry",
-    response_model=List[ServicesDataWithGeometry],
+    response_model=list[ServicesDataWithGeometry],
     status_code=status.HTTP_200_OK,
 )
 async def get_services_with_geometry_by_physical_object_id(
+    request: Request,
     physical_object_id: int = Path(..., description="Physical object id"),
     service_type_id: int = Query(None, description="To filter by service type"),
     territory_type_id: int = Query(None, description="To filter by territory type"),
-    connection: AsyncConnection = Depends(get_connection),
-) -> List[ServicesDataWithGeometry]:
-    """
-    Summary:
-        Get services with geometry list by physical object id
-
-    Description:
-        Get a list of all services with geometry by physical object id
-    """
+) -> list[ServicesDataWithGeometry]:
+    """Get all services without geometries inside a given physical object."""
+    conn: AsyncConnection = request.state.conn
 
     services = await get_services_with_geometry_by_physical_object_id_from_db(
-        physical_object_id, service_type_id, territory_type_id, connection
+        conn, physical_object_id, service_type_id, territory_type_id
     )
 
     return [ServicesDataWithGeometry.from_dto(service) for service in services]
@@ -268,21 +209,16 @@ async def get_services_with_geometry_by_physical_object_id(
 
 @physical_objects_router.get(
     "/physical_objects/{physical_object_id}/geometries",
-    response_model=List[ObjectGeometries],
+    response_model=list[ObjectGeometries],
     status_code=status.HTTP_200_OK,
 )
 async def get_physical_object_geometries(
+    request: Request,
     physical_object_id: int = Path(..., description="Physical object id"),
-    connection: AsyncConnection = Depends(get_connection),
-) -> List[ObjectGeometries]:
-    """
-    Summary:
-        Get geometries by physical object id
+) -> list[ObjectGeometries]:
+    """Get geometries for a given physical object"""
+    conn: AsyncConnection = request.state.conn
 
-    Description:
-        Get a list of all geometries by physical object id
-    """
-
-    geometries = await get_physical_object_geometries_from_db(physical_object_id, connection)
+    geometries = await get_physical_object_geometries_from_db(conn, physical_object_id)
 
     return [ObjectGeometries.from_dto(geometry) for geometry in geometries]

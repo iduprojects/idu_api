@@ -12,6 +12,7 @@ from .living_buildings import (
     LivingBuildingsDataPut,
     LivingBuildingsWithGeometry,
 )
+from .normatives import Normative, NormativePatch, NormativePost
 from .object_geometries import ObjectGeometries, ObjectGeometriesPatch, ObjectGeometriesPut
 from .pages import Page
 from .physical_objects import (
@@ -33,10 +34,10 @@ from .service_types import (
 )
 from .services import ServicesData, ServicesDataPatch, ServicesDataPost, ServicesDataPut, ServicesDataWithGeometry
 from .territories import (
-    TerritoriesData,
     TerritoriesDataPatch,
     TerritoriesDataPost,
     TerritoriesDataPut,
+    TerritorryData,
     TerritoryTypes,
     TerritoryTypesPost,
     TerritoryWithoutGeometry,
@@ -46,7 +47,7 @@ __all__ = [
     "PingResponse",
     "TerritoryTypes",
     "TerritoryTypesPost",
-    "TerritoriesData",
+    "TerritorryData",
     "TerritoriesDataPost",
     "TerritoriesDataPatch",
     "TerritoriesDataPut",
@@ -65,6 +66,9 @@ __all__ = [
     "IndicatorValue",
     "MeasurementUnit",
     "MeasurementUnitPost",
+    "Normative",
+    "NormativePatch",
+    "NormativePost",
     "ObjectGeometries",
     "ObjectGeometriesPatch",
     "ObjectGeometriesPut",
