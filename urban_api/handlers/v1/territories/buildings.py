@@ -23,7 +23,7 @@ async def get_living_buildings_with_geometry_by_territory_id(
     """Get living buildings with geometry for territory."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    buildings = await territories_service.get_living_buildings_with_geometry_by_territory_id_from_db(territory_id)
+    buildings = await territories_service.get_living_buildings_with_geometry_by_territory_id(territory_id)
     buildings = [LivingBuildingsWithGeometry.from_dto(building) for building in buildings]
 
     return paginate(buildings)

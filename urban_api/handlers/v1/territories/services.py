@@ -28,7 +28,7 @@ async def get_services_by_territory_id(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    services = await territories_service.get_services_by_territory_id_from_db(territory_id, service_type_id, name)
+    services = await territories_service.get_services_by_territory_id(territory_id, service_type_id, name)
     services = [ServicesData.from_dto(service) for service in services]
 
     return paginate(services)
@@ -51,9 +51,7 @@ async def get_services_with_geometry_by_territory_id(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    services = await territories_service.get_services_with_geometry_by_territory_id_from_db(
-        territory_id, service_type_id, name
-    )
+    services = await territories_service.get_services_with_geometry_by_territory_id(territory_id, service_type_id, name)
     services = [ServicesDataWithGeometry.from_dto(service) for service in services]
 
     return paginate(services)
@@ -61,18 +59,18 @@ async def get_services_with_geometry_by_territory_id(
 
 @territories_router.get(
     "/territory/{territory_id}/services_capacity",
-    response_model=int,
+    response_model=int | None,
     status_code=status.HTTP_200_OK,
 )
 async def get_total_services_capacity_by_territory_id(
     request: Request,
     territory_id: int = Path(description="territory id", gt=0),
     service_type_id: int | None = Query(None, description="Service type id", gt=0),
-) -> int:
+) -> int | None:
     """Get aggregated capacity of services for territory."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    capacity = await territories_service.get_services_capacity_by_territory_id_from_db(
+    capacity = await territories_service.get_services_capacity_by_territory_id(
         territory_id, service_type_id=service_type_id
     )
 

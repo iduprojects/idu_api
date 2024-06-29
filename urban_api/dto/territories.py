@@ -28,6 +28,7 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
     territory_id: int
     territory_type_id: int
     territory_type_name: str
+    parent_name: int
     parent_id: int
     name: str
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point

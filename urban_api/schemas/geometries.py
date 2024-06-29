@@ -93,7 +93,7 @@ class Geometry(BaseModel):
                 return cls(type="Polygon", coordinates=[list(geometry.exterior.coords)])
             case geom.MultiPolygon:
                 return cls(
-                    type="MultiPolygon", coordinates=[list(polygon.exterior.coords) for polygon in geometry.geoms]
+                    type="MultiPolygon", coordinates=[[list(polygon.exterior.coords)] for polygon in geometry.geoms]
                 )
             case geom.LineString:
                 return cls(type="LineString", coordinates=geometry.coords)

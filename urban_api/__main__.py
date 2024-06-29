@@ -167,7 +167,11 @@ def main(  # pylint: disable=too-many-arguments
     config.to_env()
     if __name__ in ("__main__", "urban_api.__main__"):
         if debug:
-            uvicorn.run("urban_api:app", host=host, port=port, reload=True, log_level=logger_verbosity.lower())
+            try:
+                uvicorn.run("urban_api:app", host=host, port=port, reload=True, log_level=logger_verbosity.lower())
+            except:  # pylint: disable=bare-except
+                print("Debug reload is disabled")
+                uvicorn.run("urban_api:app", host=host, port=port, log_level=logger_verbosity.lower())
         else:
             uvicorn.run("urban_api:app", host=host, port=port, log_level=logger_verbosity.lower())
     else:

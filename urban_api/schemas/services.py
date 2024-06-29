@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, model_validator
 from urban_api.dto import ServiceDTO, ServiceWithGeometryDTO
 from urban_api.schemas.geometries import Geometry
 from urban_api.schemas.service_types import ServiceTypes
-from urban_api.schemas.territories import TerritoryTypes
+from urban_api.schemas.territories import TerritoryType
 
 
 class ServicesData(BaseModel):
@@ -13,7 +13,7 @@ class ServicesData(BaseModel):
     service_type: ServiceTypes = Field(
         example={"service_type_id": 1, "urban_function_id": 1, "name": "Школа", "capacity_modeled": 1, "code": "1"}
     )
-    territory_type: Optional[TerritoryTypes] = Field(example={"territory_type_id": 1, "name": "Город"})
+    territory_type: Optional[TerritoryType] = Field(example={"territory_type_id": 1, "name": "Город"})
     name: Optional[str] = Field(description="Service name", example="--")
     capacity_real: Optional[int] = Field(example=1)
     properties: Dict[str, Any] = Field(
@@ -35,7 +35,7 @@ class ServicesData(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=TerritoryTypes(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
+            territory_type=TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
@@ -106,7 +106,7 @@ class ServicesDataWithGeometry(BaseModel):
     service_type: ServiceTypes = Field(
         example={"service_type_id": 1, "urban_function_id": 1, "name": "Школа", "capacity_modeled": 1, "code": "1"}
     )
-    territory_type: Optional[TerritoryTypes] = Field(example={"territory_type_id": 1, "name": "Город"})
+    territory_type: Optional[TerritoryType] = Field(example={"territory_type_id": 1, "name": "Город"})
     name: Optional[str] = Field(description="Service name", example="--")
     capacity_real: Optional[int] = Field(example=1)
     properties: Dict[str, Any] = Field(
@@ -130,7 +130,7 @@ class ServicesDataWithGeometry(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=TerritoryTypes(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
+            territory_type=TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,

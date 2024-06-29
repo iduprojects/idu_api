@@ -18,19 +18,27 @@ class TerritoriesOrderByField(str, Enum):
     UPDATED_AT = "updated_at"
 
 
-class TerritoryTypes(BaseModel):
-    """
-    Territory type with all its attributes
-    """
+class TerritoryType(BaseModel):
+    """Territory type with all its attributes."""
 
     territory_type_id: Optional[int] = Field(example=1, description="Territory type id, if set")
     name: str = Field(description="Territory type unit name", example="Город")
 
     @classmethod
-    def from_dto(cls, dto: TerritoryTypeDTO) -> "TerritoryTypes":
-        """
-        Construct from DTO.
-        """
+    def from_dto(cls, dto: TerritoryTypeDTO) -> "TerritoryType":
+        """Construct from DTO."""
+        return cls(territory_type_id=dto.territory_type_id, name=dto.name)
+
+
+class TerritoryShortInfo(BaseModel):
+    """Minimal territory information - identifier and name."""
+
+    id: Optional[int] = Field(example=1, description="Territory identifier")
+    name: str = Field(description="Territory name", example="Санкт-Петербург")
+
+    @classmethod
+    def from_dto(cls, dto: TerritoryDTO) -> "TerritoryShortInfo":
+        """Construct from DTO."""
         return cls(territory_type_id=dto.territory_type_id, name=dto.name)
 
 
@@ -42,15 +50,13 @@ class TerritoryTypesPost(BaseModel):
     name: str = Field(description="Territory type unit name", example="Город")
 
 
-class TerritorryData(BaseModel):
-    """
-    Territory with all its attributes
-    """
+class TerritoryData(BaseModel):
+    """Territory with all its attributes."""
 
     territory_id: int = Field(examples=[1])
-    territory_type: TerritoryTypes = Field(example={"territory_type_id": 1, "name": "name"})
-    parent_id: Optional[int] = Field(
-        example=1, description="Parent territory identifier, null only for the one territory"
+    territory_type: TerritoryType = Field(example={"territory_type_id": 1, "name": "name"})
+    parent: TerritoryShortInfo | None = Field(
+        description="Parent territory short information", example=TerritoryShortInfo(id=1, name="Россия")
     )
     name: str = Field(example="--", description="Territory name")
     geometry: Geometry = Field(description="Territory geometry")
@@ -68,14 +74,13 @@ class TerritorryData(BaseModel):
     )
 
     @classmethod
-    def from_dto(cls, dto: TerritoryDTO) -> "TerritorryData":
-        """
-        Construct from DTO.
-        """
+    def from_dto(cls, dto: TerritoryDTO) -> "TerritoryData":
+        """Construct from DTO."""
+
         return cls(
             territory_id=dto.territory_id,
-            territory_type=TerritoryTypes(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
-            parent_id=dto.parent_id,
+            territory_type=TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
+            parent=(TerritoryShortInfo(id=dto.parent_id, name=dto.parent_name) if dto.parent_id is not None else None),
             name=dto.name,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             level=dto.level,
@@ -88,10 +93,8 @@ class TerritorryData(BaseModel):
         )
 
 
-class TerritoriesDataPost(BaseModel):
-    """
-    Schema of territory for POST request
-    """
+class TerritoryDataPost(BaseModel):
+    """Schema of territory for POST request."""
 
     territory_type_id: int = Field(example=1)
     parent_id: Optional[int] = Field(example=1)
@@ -110,9 +113,8 @@ class TerritoriesDataPost(BaseModel):
     @field_validator("geometry")
     @staticmethod
     def validate_geometry(geometry: Geometry) -> Geometry:
-        """
-        Validate that given geometry is validity via creating Shapely object.
-        """
+        """Validate that given geometry is validity via creating Shapely object."""
+
         try:
             geometry.as_shapely_geometry()
         except (AttributeError, ValueError, TypeError) as exc:
@@ -123,9 +125,8 @@ class TerritoriesDataPost(BaseModel):
     @field_validator("centre_point")
     @staticmethod
     def validate_center(centre_point: Geometry | None) -> Optional[Geometry]:
-        """
-        Validate that given geometry is Point and validity via creating Shapely object.
-        """
+        """Validate that given geometry is Point and validity via creating Shapely object."""
+
         if centre_point is None:
             return None
         assert centre_point.type == "Point", "Only Point is accepted"
@@ -138,19 +139,16 @@ class TerritoriesDataPost(BaseModel):
 
     @model_validator(mode="after")
     @staticmethod
-    def validate_post(model: "TerritoriesDataPost") -> "TerritoriesDataPost":
-        """
-        Use geometry centroid for centre_point if it is missing.
-        """
+    def validate_post(model: "TerritoryDataPost") -> "TerritoryDataPost":
+        """Use geometry centroid for centre_point if it is missing."""
+
         if model.centre_point is None:
             model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
         return model
 
 
-class TerritoriesDataPut(BaseModel):
-    """
-    Schema of territory for POST request
-    """
+class TerritoryDataPut(BaseModel):
+    """Schema of territory for POST request."""
 
     territory_type_id: int = Field(..., example=1)
     parent_id: Optional[int] = Field(..., example=1)
@@ -169,9 +167,8 @@ class TerritoriesDataPut(BaseModel):
     @field_validator("geometry")
     @staticmethod
     def validate_geometry(geometry: Geometry) -> Geometry:
-        """
-        Validate that given geometry is validity via creating Shapely object.
-        """
+        """Validate that given geometry is validity via creating Shapely object."""
+
         try:
             geometry.as_shapely_geometry()
         except (AttributeError, ValueError, TypeError) as exc:
@@ -182,9 +179,8 @@ class TerritoriesDataPut(BaseModel):
     @field_validator("centre_point")
     @staticmethod
     def validate_center(centre_point: Geometry | None) -> Optional[Geometry]:
-        """
-        Validate that given geometry is Point and validity via creating Shapely object.
-        """
+        """Validate that given geometry is Point and validity via creating Shapely object."""
+
         if centre_point is None:
             return None
         assert centre_point.type == "Point", "Only Point is accepted"
@@ -197,19 +193,16 @@ class TerritoriesDataPut(BaseModel):
 
     @model_validator(mode="after")
     @staticmethod
-    def validate_post(model: "TerritoriesDataPost") -> "TerritoriesDataPost":
-        """
-        Use geometry centroid for centre_point if it is missing.
-        """
+    def validate_post(model: "TerritoryDataPost") -> "TerritoryDataPost":
+        """Use geometry centroid for centre_point if it is missing."""
+
         if model.centre_point is None:
             model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
         return model
 
 
-class TerritoriesDataPatch(BaseModel):
-    """
-    Schema of territory for POST request
-    """
+class TerritoryDataPatch(BaseModel):
+    """Schema of territory for POST request."""
 
     territory_type_id: Optional[int] = Field(None, example=1)
     parent_id: Optional[int] = Field(None, example=1)
@@ -228,9 +221,8 @@ class TerritoriesDataPatch(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def check_empty_request(cls, values):
-        """
-        Ensure the request body is not empty.
-        """
+        """Ensure the request body is not empty."""
+
         if not values:
             raise ValueError("request body cannot be empty")
         return values
@@ -238,9 +230,8 @@ class TerritoriesDataPatch(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def disallow_nulls(cls, values):
-        """
-        Ensure the request body hasn't nulls.
-        """
+        """Ensure the request body hasn't nulls."""
+
         for k, v in values.items():
             if v is None:
                 raise ValueError(f"{k} cannot be null")
@@ -249,9 +240,8 @@ class TerritoriesDataPatch(BaseModel):
     @field_validator("geometry")
     @staticmethod
     def validate_geometry(geometry: Optional[Geometry]) -> Optional[Geometry]:
-        """
-        Validate that given geometry is validity via creating Shapely object.
-        """
+        """Validate that given geometry is validity via creating Shapely object."""
+
         if geometry is None:
             return None
         try:
@@ -264,9 +254,8 @@ class TerritoriesDataPatch(BaseModel):
     @field_validator("centre_point")
     @staticmethod
     def validate_center(centre_point: Geometry | None) -> Geometry | None:
-        """
-        Validate that given geometry is Point and validity via creating Shapely object.
-        """
+        """Validate that given geometry is Point and validity via creating Shapely object."""
+
         if centre_point is None:
             return None
         assert centre_point.type == "Point", "Only Point is accepted"
@@ -279,22 +268,18 @@ class TerritoriesDataPatch(BaseModel):
 
     @model_validator(mode="after")
     @staticmethod
-    def validate_post(model: "TerritoriesDataPost") -> "TerritoriesDataPost":
-        """
-        Use geometry centroid for centre_point if it is missing.
-        """
+    def validate_post(model: "TerritoryDataPost") -> "TerritoryDataPost":
+        """Use geometry centroid for centre_point if it is missing."""
         if model.centre_point is None and model.geometry is not None:
             model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
         return model
 
 
 class TerritoryWithoutGeometry(BaseModel):
-    """
-    Territory with all its attributes
-    """
+    """Territory with all its attributes, but without center and geometry."""
 
     territory_id: int = Field(examples=[1])
-    territory_type: TerritoryTypes = Field(example={"territory_type_id": 1, "name": "name"})
+    territory_type: TerritoryType = Field(example={"territory_type_id": 1, "name": "name"})
     parent_id: Optional[int] = Field(
         examples=[1], description="Parent territory identifier, null only for the one territory"
     )
@@ -313,12 +298,10 @@ class TerritoryWithoutGeometry(BaseModel):
 
     @classmethod
     def from_dto(cls, dto: TerritoryWithoutGeometryDTO) -> "TerritoryWithoutGeometry":
-        """
-        Construct from DTO.
-        """
+        """Construct from DTO."""
         return cls(
             territory_id=dto.territory_id,
-            territory_type=TerritoryTypes(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
+            territory_type=TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
             parent_id=dto.parent_id,
             name=dto.name,
             level=dto.level,

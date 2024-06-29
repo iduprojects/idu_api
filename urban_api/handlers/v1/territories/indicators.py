@@ -23,7 +23,7 @@ async def get_indicators_by_territory_id(
     """Get indicators for a given territory."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    indicators = await territories_service.get_indicators_by_territory_id_from_db(territory_id)
+    indicators = await territories_service.get_indicators_by_territory_id(territory_id)
 
     return [Indicator.from_dto(indicator) for indicator in indicators]
 
@@ -42,7 +42,7 @@ async def get_indicator_values_by_territory_id(
     """Get indicators values for a given territory and date period"""
     territories_service: TerritoriesService = request.state.territories_service
 
-    indicator_values = await territories_service.get_indicator_values_by_territory_id_from_db(
+    indicator_values = await territories_service.get_indicator_values_by_territory_id(
         territory_id, date_type, date_value
     )
 
