@@ -1,6 +1,4 @@
-"""
-Physical objects DTO are defined here.
-"""
+"""Physical objects DTOs are defined here."""
 
 from dataclasses import dataclass
 from typing import Dict, Optional
@@ -9,17 +7,15 @@ import shapely.geometry as geom
 
 
 @dataclass(frozen=True)
-class PhysicalObjectsTypesDTO:
-    """
-    Physical object type with all its attributes
-    """
+class PhysicalObjectTypeDTO:
+    """Physical object type with all its attributes."""
 
-    physical_object_type_id: Optional[int]
+    physical_object_type_id: int
     name: str
 
 
 @dataclass(frozen=True)
-class PhysicalObjectsDataDTO:
+class PhysicalObjectDataDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str

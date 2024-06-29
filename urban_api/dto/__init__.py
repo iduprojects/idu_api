@@ -6,7 +6,7 @@ from .functional_zones import FunctionalZoneDataDTO
 from .indicators import IndicatorDTO, IndicatorValueDTO, MeasurementUnitDTO
 from .living_buildings import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
 from .object_geometries import ObjectGeometryDTO
-from .physical_objects import PhysicalObjectsDataDTO, PhysicalObjectsTypesDTO, PhysicalObjectWithGeometryDTO
+from .physical_objects import PhysicalObjectDataDTO, PhysicalObjectTypeDTO, PhysicalObjectWithGeometryDTO
 from .service_types import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServiceWithGeometryDTO
 from .territories import TerritoryDTO, TerritoryTypeDTO, TerritoryWithoutGeometryDTO
@@ -25,8 +25,8 @@ __all__ = [
     "IndicatorValueDTO",
     "MeasurementUnitDTO",
     "ObjectGeometryDTO",
-    "PhysicalObjectsDataDTO",
-    "PhysicalObjectsTypesDTO",
+    "PhysicalObjectDataDTO",
+    "PhysicalObjectTypeDTO",
     "PhysicalObjectWithGeometryDTO",
     "LivingBuildingsDTO",
     "LivingBuildingsWithGeometryDTO",

@@ -8,6 +8,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi_pagination import add_pagination
 
 from urban_api.config import UrbanAPIConfig
+from urban_api.logic.impl.physical_objects import PhysicalObjectsServiceImpl
 from urban_api.logic.impl.territories import TerritoriesServiceImpl
 from urban_api.middlewares.dependency_injection import PassServicesDependencies
 from urban_api.middlewares.exception_handler import ExceptionHandlerMiddleware
@@ -78,6 +79,7 @@ def get_app(config: UrbanAPIConfig, prefix: str = "/api") -> FastAPI:
         PassServicesDependencies,
         connection_manager=connection_manager,
         territories_service=TerritoriesServiceImpl,
+        physical_objects_service=PhysicalObjectsServiceImpl,
     )
 
     return application

@@ -2,7 +2,7 @@
 
 import abc
 from datetime import date, datetime
-from typing import Callable, List, Literal, Optional, Protocol
+from typing import Literal, Optional, Protocol
 
 import shapely.geometry as geom
 
@@ -11,7 +11,7 @@ from urban_api.dto import (
     IndicatorDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
-    PhysicalObjectsDataDTO,
+    PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
     ServiceWithGeometryDTO,
@@ -20,9 +20,6 @@ from urban_api.dto import (
     TerritoryWithoutGeometryDTO,
 )
 from urban_api.schemas import TerritoriesDataPatch, TerritoriesDataPost, TerritoriesDataPut, TerritoryTypesPost
-
-func: Callable
-
 
 class TerritoriesService(Protocol):
     """Service to manipulate territories objects."""
@@ -36,7 +33,7 @@ class TerritoriesService(Protocol):
         """Create territory type object."""
 
     @abc.abstractmethod
-    async def get_territories_by_id_from_db(self, territory_ids: list[int]) -> List[TerritoryDTO]:
+    async def get_territories_by_id_from_db(self, territory_ids: list[int]) -> list[TerritoryDTO]:
         """Get territory objects by ids list."""
 
     @abc.abstractmethod
@@ -66,43 +63,43 @@ class TerritoriesService(Protocol):
         """Get aggregated capacity of services by territory id."""
 
     @abc.abstractmethod
-    async def get_indicators_by_territory_id_from_db(self, territory_id: int) -> List[IndicatorDTO]:
+    async def get_indicators_by_territory_id_from_db(self, territory_id: int) -> list[IndicatorDTO]:
         """Get indicators by territory id."""
 
     async def get_indicator_values_by_territory_id_from_db(
         self, territory_id: int, date_type: Optional[str], date_value: Optional[datetime]
-    ) -> List[IndicatorValueDTO]:
+    ) -> list[IndicatorValueDTO]:
         """Get indicator values by territory id, optional time period."""
 
     @abc.abstractmethod
     async def get_physical_objects_by_territory_id_from_db(
         self, territory_id: int, physical_object_type: Optional[int], name: Optional[str]
-    ) -> List[PhysicalObjectsDataDTO]:
+    ) -> list[PhysicalObjectDataDTO]:
         """Get physical objects by territory id, optional physical object type."""
 
     @abc.abstractmethod
     async def get_physical_objects_with_geometry_by_territory_id_from_db(
         self, territory_id: int, physical_object_type: Optional[int], name: Optional[str]
-    ) -> List[PhysicalObjectWithGeometryDTO]:
+    ) -> list[PhysicalObjectWithGeometryDTO]:
         """Get physical objects with geometry by territory id, optional physical object type."""
 
     @abc.abstractmethod
     async def get_living_buildings_with_geometry_by_territory_id_from_db(
         self,
         territory_id: int,
-    ) -> List[LivingBuildingsWithGeometryDTO]:
+    ) -> list[LivingBuildingsWithGeometryDTO]:
         """Get living buildings with geometry by territory id."""
 
     @abc.abstractmethod
     async def get_functional_zones_by_territory_id_from_db(
         self, territory_id: int, functional_zone_type_id: Optional[int]
-    ) -> List[FunctionalZoneDataDTO]:
+    ) -> list[FunctionalZoneDataDTO]:
         """Get functional zones with geometry by territory id."""
 
     @abc.abstractmethod
     async def get_territories_by_parent_id_from_db(
         self, parent_id: Optional[int], get_all_levels: Optional[bool], territory_type_id: Optional[int]
-    ) -> List[TerritoryDTO]:
+    ) -> list[TerritoryDTO]:
         """Get a territory or list of territories by parent, territory type could be specified in parameters."""
 
     @abc.abstractmethod
@@ -114,7 +111,7 @@ class TerritoriesService(Protocol):
         created_at: Optional[date],
         name: Optional[str],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> List[TerritoryWithoutGeometryDTO]:
+    ) -> list[TerritoryWithoutGeometryDTO]:
         """Get a territory or list of territories without geometry by parent,
         ordering and filters can be specified in parameters.
         """

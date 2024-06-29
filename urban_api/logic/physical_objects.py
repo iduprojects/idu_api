@@ -1,9 +1,10 @@
 """Physical objects handlers logic of getting entities from the database is defined here."""
 
-from typing import Callable, Optional
+from typing import Optional, Protocol
 
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from sqlalchemy import cast, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -22,8 +23,8 @@ from urban_api.db.entities import (
 from urban_api.dto import (
     LivingBuildingsDTO,
     ObjectGeometryDTO,
-    PhysicalObjectsDataDTO,
-    PhysicalObjectsTypesDTO,
+    PhysicalObjectDataDTO,
+    PhysicalObjectTypeDTO,
     ServiceDTO,
     ServiceWithGeometryDTO,
 )
@@ -37,21 +38,31 @@ from urban_api.schemas import (
     PhysicalObjectsTypesPost,
 )
 
-func: Callable
+Geom = Point | Polygon | MultiPolygon | LineString
 
 
-async def get_physical_object_types_from_db(conn: AsyncConnection) -> list[PhysicalObjectsTypesDTO]:
+class PhysicalObjectsService(Protocol):
+    async def get_physical_objects_by_ids(self, ids: list[int]) -> list[PhysicalObjectDataDTO]:
+        """Get physical objects by list of ids."""
+
+    async def get_physical_objects_around(
+        self, geometry: Geom, physical_object_type_id: int, buffer_meters: int
+    ) -> list[PhysicalObjectDataDTO]:
+        """Get physical objects which are in buffer area of the given geometry."""
+
+
+async def get_physical_object_types_from_db(conn: AsyncConnection) -> list[PhysicalObjectTypeDTO]:
     """Get all physical object type objects."""
 
     statement = select(physical_object_types_dict).order_by(physical_object_types_dict.c.physical_object_type_id)
 
-    return [PhysicalObjectsTypesDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
+    return [PhysicalObjectTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
 
 
 async def add_physical_object_type_to_db(
     conn: AsyncConnection,
     physical_object_type: PhysicalObjectsTypesPost,
-) -> PhysicalObjectsTypesDTO:
+) -> PhysicalObjectTypeDTO:
     """Create physical object type object."""
 
     statement = select(physical_object_types_dict).where(physical_object_types_dict.c.name == physical_object_type.name)
@@ -70,10 +81,10 @@ async def add_physical_object_type_to_db(
 
     await conn.commit()
 
-    return PhysicalObjectsTypesDTO(**result)
+    return PhysicalObjectTypeDTO(**result)
 
 
-async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_object_id: int) -> PhysicalObjectsDataDTO:
+async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_object_id: int) -> PhysicalObjectDataDTO:
     """Get physical object by id."""
 
     statement = (
@@ -103,7 +114,7 @@ async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_obje
     if result is None:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
-    return PhysicalObjectsDataDTO(**result)
+    return PhysicalObjectDataDTO(**result)
 
 
 async def add_physical_object_with_geometry_to_db(
@@ -167,7 +178,7 @@ async def put_physical_object_to_db(
     conn: AsyncConnection,
     physical_object: PhysicalObjectsDataPut,
     physical_object_id: int,
-) -> PhysicalObjectsDataDTO:
+) -> PhysicalObjectDataDTO:
     """
     Put physical object
     """
@@ -205,7 +216,7 @@ async def patch_physical_object_to_db(
     conn: AsyncConnection,
     physical_object: PhysicalObjectsDataPatch,
     physical_object_id: int,
-) -> PhysicalObjectsDataDTO:
+) -> PhysicalObjectDataDTO:
     """
     Patch physical object
     """

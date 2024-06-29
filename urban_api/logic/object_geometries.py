@@ -17,7 +17,7 @@ from urban_api.db.entities import (
 )
 from urban_api.dto import (
     ObjectGeometryDTO,
-    PhysicalObjectsDataDTO,
+    PhysicalObjectDataDTO,
 )
 from urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPut
 
@@ -27,7 +27,7 @@ func: Callable
 async def get_physical_objects_by_object_geometry_id_from_db(
     conn: AsyncConnection,
     object_geometry_id: int,
-) -> List[PhysicalObjectsDataDTO]:
+) -> List[PhysicalObjectDataDTO]:
     """
     Get physical object or list of physical objects by object geometry id
     """
@@ -65,7 +65,7 @@ async def get_physical_objects_by_object_geometry_id_from_db(
 
     result = (await conn.execute(statement)).mappings().all()
 
-    return [PhysicalObjectsDataDTO(**physical_object) for physical_object in result]
+    return [PhysicalObjectDataDTO(**physical_object) for physical_object in result]
 
 
 async def get_object_geometry_by_id_from_db(

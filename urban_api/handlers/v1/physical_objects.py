@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
 from urban_api.logic.physical_objects import (
+    PhysicalObjectsService,
     add_living_building_to_db,
     add_physical_object_type_to_db,
     add_physical_object_with_geometry_to_db,
@@ -32,6 +33,8 @@ from urban_api.schemas import (
     ServicesData,
     ServicesDataWithGeometry,
 )
+from urban_api.schemas.geometries import Geometry
+from urban_api.schemas.physical_objects import PhysicalObjectWithGeometry
 
 from .routers import physical_objects_router
 
@@ -216,9 +219,31 @@ async def get_physical_object_geometries(
     request: Request,
     physical_object_id: int = Path(..., description="Physical object id"),
 ) -> list[ObjectGeometries]:
-    """Get geometries for a given physical object"""
+    """Get geometries for a given physical object."""
     conn: AsyncConnection = request.state.conn
 
     geometries = await get_physical_object_geometries_from_db(conn, physical_object_id)
 
     return [ObjectGeometries.from_dto(geometry) for geometry in geometries]
+
+
+@physical_objects_router.post(
+    "/physical_objects/around",
+    response_model=list[PhysicalObjectWithGeometry],
+    status_code=status.HTTP_200_OK,
+)
+async def get_physical_objects_around_geometry(
+    request: Request,
+    geometry: Geometry,
+    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
+) -> list[PhysicalObjectWithGeometry]:
+    """Get physical_objects for territory.
+
+    physical_object_type could be specified in parameters.
+    """
+    physical_object_service: PhysicalObjectsService = request.state.physical_objects_service
+
+    physical_objects_with_geometry_dto = await physical_object_service.get_physical_objects_around(
+        geometry.as_shapely_geometry(), physical_object_type_id, 50
+    )
+    return [PhysicalObjectWithGeometry.from_dto(obj) for obj in physical_objects_with_geometry_dto]

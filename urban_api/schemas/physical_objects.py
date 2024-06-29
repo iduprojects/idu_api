@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from urban_api.dto import PhysicalObjectsDataDTO, PhysicalObjectsTypesDTO, PhysicalObjectWithGeometryDTO
+from urban_api.dto import PhysicalObjectDataDTO, PhysicalObjectTypeDTO, PhysicalObjectWithGeometryDTO
 from urban_api.schemas.geometries import Geometry
 
 
@@ -16,7 +16,7 @@ class PhysicalObjectsTypes(BaseModel):
     name: str = Field(description="Physical object type unit name", example="Здание")
 
     @classmethod
-    def from_dto(cls, dto: PhysicalObjectsTypesDTO) -> "PhysicalObjectsTypes":
+    def from_dto(cls, dto: PhysicalObjectTypeDTO) -> "PhysicalObjectsTypes":
         """
         Construct from DTO.
         """
@@ -47,7 +47,7 @@ class PhysicalObjectsData(BaseModel):
     )
 
     @classmethod
-    def from_dto(cls, dto: PhysicalObjectsDataDTO) -> "PhysicalObjectsData":
+    def from_dto(cls, dto: PhysicalObjectDataDTO) -> "PhysicalObjectsData":
         """
         Construct from DTO.
         """

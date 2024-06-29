@@ -1,9 +1,10 @@
-"""Territories handlers logic of getting entities from the database is defined here."""
+"""Territories handlers logic is defined here."""
 
 from datetime import date, datetime
 from typing import Callable, Literal, Optional
 
 import shapely.geometry as geom
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from urban_api.dto import (
@@ -11,7 +12,7 @@ from urban_api.dto import (
     IndicatorDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
-    PhysicalObjectsDataDTO,
+    PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
     ServiceWithGeometryDTO,
@@ -52,10 +53,11 @@ from urban_api.logic.territories import TerritoriesService
 from urban_api.schemas import TerritoriesDataPatch, TerritoriesDataPost, TerritoriesDataPut, TerritoryTypesPost
 
 func: Callable
+Geom = Point | Polygon | MultiPolygon | LineString
 
 
 class TerritoriesServiceImpl(TerritoriesService):
-    """Service to manipulate territories objects.
+    """Service to manipulate territories entities.
 
     Based on async SQLAlchemy connection.
     """
@@ -103,7 +105,7 @@ class TerritoriesServiceImpl(TerritoriesService):
 
     async def get_physical_objects_by_territory_id_from_db(
         self, territory_id: int, physical_object_type: int | None, name: str | None
-    ) -> list[PhysicalObjectsDataDTO]:
+    ) -> list[PhysicalObjectDataDTO]:
         return await get_physical_objects_by_territory_id_from_db(self._conn, territory_id, physical_object_type, name)
 
     async def get_physical_objects_with_geometry_by_territory_id_from_db(
