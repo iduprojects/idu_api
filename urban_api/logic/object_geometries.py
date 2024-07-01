@@ -4,7 +4,7 @@ from typing import Callable, List
 
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, select, text, update
+from sqlalchemy import cast, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -19,7 +19,7 @@ from urban_api.dto import (
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
 )
-from urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPut
+from urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
 
 func: Callable
 
@@ -42,7 +42,6 @@ async def get_physical_objects_by_object_geometry_id_from_db(
             physical_objects_data.c.physical_object_id,
             physical_objects_data.c.name,
             physical_objects_data.c.properties,
-            object_geometries_data.c.address,
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
         )
@@ -171,3 +170,39 @@ async def patch_object_geometry_to_db(
     await conn.commit()
 
     return await get_object_geometry_by_id_from_db(conn, result.object_geometry_id)
+
+
+async def add_object_geometry_to_physical_object_in_db(
+    conn: AsyncConnection, physical_object_id: int, object_geometry: ObjectGeometriesPost
+) -> ObjectGeometryDTO:
+    """Create object geometry connected with physical object"""
+
+    statement = select(territories_data).where(territories_data.c.territory_id == object_geometry.territory_id)
+    territory = (await conn.execute(statement)).one_or_none()
+    if territory is None:
+        raise HTTPException(status_code=404, detail="Given territory id is not found")
+
+    statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
+    physical_object = (await conn.execute(statement)).one_or_none()
+    if physical_object is None:
+        raise HTTPException(status_code=404, detail="Given physical object id is not found")
+
+    statement = (
+        insert(object_geometries_data)
+        .values(
+            territory_id=object_geometry.territory_id,
+            geometry=ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326")),
+            centre_point=ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326")),
+            address=object_geometry.address,
+        )
+        .returning(object_geometries_data.c.object_geometry_id)
+    )
+    object_geometry_id = (await conn.execute(statement)).scalar_one()
+
+    statement = insert(urban_objects_data).values(
+        physical_object_id=physical_object_id, object_geometry_id=object_geometry_id
+    )
+    await conn.execute(statement)
+    await conn.commit()
+
+    return await get_object_geometry_by_id_from_db(conn, object_geometry_id)

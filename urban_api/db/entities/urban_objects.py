@@ -15,7 +15,7 @@ urban_objects_data = Table(
     Column("physical_object_id", ForeignKey("physical_objects_data.physical_object_id"), nullable=False),
     Column("object_geometry_id", ForeignKey("object_geometries_data.object_geometry_id"), nullable=False),
     Column("service_id", ForeignKey("services_data.service_id")),
-    UniqueConstraint("physical_object_id", "object_geometry_id"),
+    UniqueConstraint("physical_object_id", "object_geometry_id", "service_id"),
 )
 
 """

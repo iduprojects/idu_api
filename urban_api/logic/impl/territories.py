@@ -87,14 +87,28 @@ class TerritoriesServiceImpl(TerritoriesService):
         return await patch_territory_to_db(self._conn, territory_id, territory)
 
     async def get_services_by_territory_id(
-        self, territory_id: int, service_type_id: int | None, name: str | None
+        self,
+        territory_id: int,
+        service_type_id: Optional[int],
+        name: Optional[str],
+        order_by: Optional[Literal["created_at", "updated_at"]],
+        ordering: Optional[Literal["asc", "desc"]] = "asc",
     ) -> list[ServiceDTO]:
-        return await get_services_by_territory_id_from_db(self._conn, territory_id, service_type_id, name)
+        return await get_services_by_territory_id_from_db(
+            self._conn, territory_id, service_type_id, name, order_by, ordering
+        )
 
     async def get_services_with_geometry_by_territory_id(
-        self, territory_id: int, service_type_id: int | None, name: str | None
+        self,
+        territory_id: int,
+        service_type_id: int | None,
+        name: str | None,
+        order_by: Optional[Literal["created_at", "updated_at"]],
+        ordering: Optional[Literal["asc", "desc"]] = "asc",
     ) -> list[ServiceWithGeometryDTO]:
-        return await get_services_with_geometry_by_territory_id_from_db(self._conn, territory_id, service_type_id, name)
+        return await get_services_with_geometry_by_territory_id_from_db(
+            self._conn, territory_id, service_type_id, name, order_by, ordering
+        )
 
     async def get_services_capacity_by_territory_id(self, territory_id: int, service_type_id: int | None) -> int:
         return await get_services_capacity_by_territory_id_from_db(self._conn, territory_id, service_type_id)
@@ -108,15 +122,27 @@ class TerritoriesServiceImpl(TerritoriesService):
         return await get_indicator_values_by_territory_id_from_db(self._conn, territory_id, date_type, date_value)
 
     async def get_physical_objects_by_territory_id(
-        self, territory_id: int, physical_object_type: int | None, name: str | None
+        self,
+        territory_id: int,
+        physical_object_type: int | None,
+        name: str | None,
+        order_by: Optional[Literal["created_at", "updated_at"]],
+        ordering: Optional[Literal["asc", "desc"]] = "asc",
     ) -> list[PhysicalObjectDataDTO]:
-        return await get_physical_objects_by_territory_id_from_db(self._conn, territory_id, physical_object_type, name)
+        return await get_physical_objects_by_territory_id_from_db(
+            self._conn, territory_id, physical_object_type, name, order_by, ordering
+        )
 
     async def get_physical_objects_with_geometry_by_territory_id(
-        self, territory_id: int, physical_object_type: int | None, name: str | None
+        self,
+        territory_id: int,
+        physical_object_type: int | None,
+        name: str | None,
+        order_by: Optional[Literal["created_at", "updated_at"]],
+        ordering: Optional[Literal["asc", "desc"]] = "asc",
     ) -> list[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_with_geometry_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name
+            self._conn, territory_id, physical_object_type, name, order_by, ordering
         )
 
     async def get_living_buildings_with_geometry_by_territory_id(

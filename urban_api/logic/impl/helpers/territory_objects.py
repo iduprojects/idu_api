@@ -102,7 +102,7 @@ async def put_territory_to_db(
     territory_id: int,
     territory: TerritoryDataPut,
 ) -> TerritoryDTO:
-    """Update territory object (put, update all of the fields)."""
+    """Update territory object (put, update all the fields)."""
     if territory.parent_id is not None:
         statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
         check_parent_id = (await conn.execute(statement)).one_or_none()
@@ -132,11 +132,10 @@ async def put_territory_to_db(
         .returning(territories_data.c.territory_id)
     )
     result_id = (await conn.execute(statement)).scalar_one()
-    result = await get_territories_by_ids(conn, [result_id])[0]
 
     await conn.commit()
 
-    return result
+    return await get_territory_by_id(conn, result_id)
 
 
 async def patch_territory_to_db(
@@ -326,7 +325,10 @@ async def get_territories_without_geometry_by_parent_id_from_db(
             order = order.desc()
         statement = statement.order_by(order)
     else:
-        statement = statement.order_by(requested_territories.c.territory_id)
+        if ordering == "desc":
+            statement = statement.order_by(requested_territories.c.territory_id.desc())
+        else:
+            statement = statement.order_by(requested_territories.c.territory_id)
 
     result = (await conn.execute(statement)).mappings().all()
 

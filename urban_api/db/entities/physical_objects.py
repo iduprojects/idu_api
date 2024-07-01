@@ -2,7 +2,7 @@
 Physical objects data table is defined here
 """
 
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table, Text, text
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from urban_api.db import metadata
@@ -16,6 +16,8 @@ physical_objects_data = Table(
     Column("physical_object_type_id", ForeignKey("physical_object_types_dict.physical_object_type_id"), nullable=False),
     Column("name", String(300)),
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
 )
 
 """
