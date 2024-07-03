@@ -9,7 +9,11 @@ class AdministrativeUnitsService:
     def __init__(self, conn: AsyncConnection):
         self.conn = conn
 
-    async def get_administrative_units_by_city_id(self, city_id: int, type_id: int) -> list[AdministrativeUnitsDTO]:
+    async def get_administrative_units_by_city_id(
+            self,
+            city_id: int,
+            type_id: int | None = None
+    ) -> list[AdministrativeUnitsDTO]:
         """
 
         """

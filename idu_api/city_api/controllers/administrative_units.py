@@ -14,6 +14,6 @@ async def get_administrative_units_by_city_id(
 ) -> list[AdministrativeUnitsData]:
     administrative_units_service: AdministrativeUnitsService = request.state.administrative_units_service
     # TODO: change type id
-    result: list[AdministrativeUnitsDTO] = await administrative_units_service.get_administrative_units_by_city_id(city, 3)
+    result: list[AdministrativeUnitsDTO] = await administrative_units_service.get_administrative_units_by_city_id(city)
 
     return [await AdministrativeUnitsData.from_dto(adm_unit) for adm_unit in result]
