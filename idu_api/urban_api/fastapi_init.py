@@ -13,7 +13,7 @@ from idu_api.urban_api.logic.impl.territories import TerritoriesServiceImpl
 from idu_api.urban_api.middlewares.dependency_injection import PassServicesDependencies
 from idu_api.urban_api.middlewares.exception_handler import ExceptionHandlerMiddleware
 
-from .db.connection.manager import PostgresConnectionManager
+from idu_api.common.db.connection.manager import PostgresConnectionManager
 from .handlers import list_of_routes
 from .version import LAST_UPDATE, VERSION
 
