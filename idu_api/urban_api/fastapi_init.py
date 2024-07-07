@@ -24,7 +24,7 @@ def bind_routes(application: FastAPI, prefix: str) -> None:
         application.include_router(route, prefix=(prefix if "/" not in {r.path for r in route.routes} else ""))
 
 
-def get_app(config: UrbanAPIConfig, prefix: str = "/api") -> FastAPI:
+def get_app(prefix: str = "/api") -> FastAPI:
     """Create application and all dependable objects."""
 
     description = "This is a Digital Territories Platform API to access and manipulate basic territories data."
@@ -64,20 +64,15 @@ def get_app(config: UrbanAPIConfig, prefix: str = "/api") -> FastAPI:
 
     add_pagination(application)
 
-    connection_manager = PostgresConnectionManager(
-        config.db_addr,
-        config.db_port,
-        config.db_name,
-        config.db_user,
-        config.db_pass,
-        config.db_pool_size,
-        config.application_name,
-    )
+    connection_manager = PostgresConnectionManager("", 0, "", "", "", 0, "")
 
-    application.add_middleware(ExceptionHandlerMiddleware, debug=config.debug)
+    application.add_middleware(
+        ExceptionHandlerMiddleware,
+        debug=[False],  # reinitialized on startup
+    )
     application.add_middleware(
         PassServicesDependencies,
-        connection_manager=connection_manager,
+        connection_manager=connection_manager,  # reinitialized on startup
         territories_service=TerritoriesServiceImpl,
         physical_objects_service=PhysicalObjectsServiceImpl,
     )
@@ -93,8 +88,20 @@ async def lifespan(application: FastAPI):
     """
     for middleware in application.user_middleware:
         if middleware.cls == PassServicesDependencies:
+            app_config = UrbanAPIConfig.try_from_env()
             connection_manager: PostgresConnectionManager = middleware.kwargs["connection_manager"]
+            await connection_manager.update(
+                app_config.db_addr,
+                app_config.db_port,
+                app_config.db_name,
+                app_config.db_user,
+                app_config.db_pass,
+                app_config.db_pool_size,
+                app_config.application_name,
+            )
             await connection_manager.refresh()
+        elif middleware.cls == ExceptionHandlerMiddleware:
+            middleware.kwargs["debug"][0] = app_config.debug
 
     yield
 
@@ -104,5 +111,4 @@ async def lifespan(application: FastAPI):
             await connection_manager.shutdown()
 
 
-app_config = UrbanAPIConfig.try_from_env()
-app = get_app(app_config)
+app = get_app()

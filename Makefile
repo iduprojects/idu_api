@@ -7,8 +7,11 @@ format:
 	poetry run isort $(CODE)
 	poetry run black $(CODE)
 
-run:
-	poetry run launch_urban_api
+database-docker:
+	cd urban_api && docker compose up -d database
+
+run-urban-api:
+	ENVFILE=urban_api/.env poetry run launch_urban_api
 
 install:
 	pip install .

@@ -49,13 +49,12 @@ class UrbanAPIConfig:  # pylint: disable=too-many-instance-attributes
                 setattr(res, param, type(value)(os.environ[env]))
         return res
 
-    def to_env(self) -> None:
-        """Call default class constructor, and then tries to find attributes
-        values in environment variables by upper({name}).
-        """
-        for param, value in self.__dict__.items():
-            env = param.upper()
-            os.environ[env] = str(value)
+    def to_envfile(self, filename: str) -> None:
+        """Save config values as envfile with given filename."""
+        with open(filename, "w", encoding='utf-8') as file:
+            for param, value in self.__dict__.items():
+                env = param.upper()
+                print(f"{env}={value}", file=file)
 
     def update(self, other: "UrbanAPIConfig") -> None:
         """

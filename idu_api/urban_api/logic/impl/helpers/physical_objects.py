@@ -97,8 +97,6 @@ async def get_physical_objects_around(
         .distinct()
     )
 
-    print(statement)
-
     ids = (await conn.execute(statement)).scalars().all()
 
     if len(ids) == 0:

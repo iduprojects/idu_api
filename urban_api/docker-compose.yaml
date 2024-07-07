@@ -36,6 +36,34 @@ services:
       database:
         condition: service_healthy
 
+  api:
+    container_name: urban_api
+    build:
+      context: ..
+      dockerfile: urban_api/Dockerfile
+    restart: on-failure
+    ports:
+      - ${EXPORT_API_PORT:-8000}:${PORT:-8000}
+    env_file:
+      - ./.env
+    environment:
+      - DEBUG
+    depends_on:
+      # keycloak:
+      #   condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: curl -f http://localhost:8000/health_check/ping
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+
   # unused anyway
 
   # keycloak:
@@ -67,31 +95,3 @@ services:
   #     options:
   #       max-size: "200k"
   #       max-file: "10"
-
-  api:
-    container_name: urban_api
-    build:
-      context: ..
-      dockerfile: urban_api/Dockerfile
-    restart: on-failure
-    ports:
-      - ${EXPORT_API_PORT:-8000}:${PORT:-8000}
-    env_file:
-      - ./.env
-    environment:
-      - DEBUG
-    depends_on:
-      # keycloak:
-      #   condition: service_healthy
-      migrator:
-        condition: service_completed_successfully
-    healthcheck:
-      test: curl -f http://localhost:8000/health_check/ping
-      interval: 10s
-      timeout: 5s
-      start_period: 5s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "200k"
-        max-file: "10"
