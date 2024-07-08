@@ -10,16 +10,11 @@ RUN sed -i '0,/version = .*/ s//version = "0.1.0"/' /app/pyproject.toml && touch
 
 WORKDIR /app
 RUN poetry config virtualenvs.create false
-RUN poetry install --with dev
+RUN poetry install
 
 COPY README.md /app/README.md
 COPY idu_api /app/idu_api
 
 RUN pip3 install .
 
-RUN echo "cd /app/idu_api/common/db" > /entrypoint.sh && \
-    echo "poetry run alembic upgrade head" >> /entrypoint.sh && \
-    echo 'if [ $? = 0 ]; then echo "Database schema syncronized"; else echo "alembic upgrade has failed, database state is not determined"; exit 1; fi' >> /entrypoint.sh
-
-ENTRYPOINT ["/bin/sh"]
-CMD ["/entrypoint.sh"]
+CMD ["launch_urban_api"]
