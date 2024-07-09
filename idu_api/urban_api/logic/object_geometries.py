@@ -41,6 +41,8 @@ async def get_physical_objects_by_object_geometry_id_from_db(
             physical_objects_data.c.properties,
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_objects_data.c.created_at,
+            physical_objects_data.c.updated_at,
         )
         .select_from(
             physical_objects_data.join(

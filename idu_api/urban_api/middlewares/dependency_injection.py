@@ -23,11 +23,11 @@ class PassServicesDependencies(BaseHTTPMiddleware):
         self._lock = Lock()
 
     async def refresh(self):
-        async with self._lock: # pylint: disable=not-async-context-manager
+        async with self._lock:  # pylint: disable=not-async-context-manager
             await self._connection_manager.refresh()
 
     async def shutdown(self):
-        async with self._lock: # pylint: disable=not-async-context-manager
+        async with self._lock:  # pylint: disable=not-async-context-manager
             await self._connection_manager.shutdown()
 
     async def dispatch(self, request: Request, call_next):

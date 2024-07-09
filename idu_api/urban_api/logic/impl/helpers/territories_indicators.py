@@ -7,7 +7,12 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from idu_api.common.db.entities import indicators_dict, measurement_units_dict, territories_data, territory_indicators_data
+from idu_api.common.db.entities import (
+    indicators_dict,
+    measurement_units_dict,
+    territories_data,
+    territory_indicators_data,
+)
 from idu_api.urban_api.dto import IndicatorDTO, IndicatorValueDTO
 
 func: Callable

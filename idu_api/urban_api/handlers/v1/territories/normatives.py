@@ -4,34 +4,10 @@
 from fastapi import Path, Request
 from starlette import status
 
-from idu_api.urban_api.schemas.normatives import Normative, NormativeDelete, NormativePatch, NormativePost, NormativeType
-from idu_api.urban_api.schemas.service_types import ServiceTypeBasic, UrbanFunctionBasic
+from idu_api.urban_api.logic.territories import TerritoriesService
+from idu_api.urban_api.schemas.normatives import Normative, NormativeDelete, NormativePatch, NormativePost
 
 from .routers import territories_router
-
-get_mock = [
-    Normative(
-        service_type=ServiceTypeBasic(id=22, name="Школа"),
-        radius_availability_meters=600,
-        services_per_1000_normative=2,
-        is_regulated=True,
-        normative_type=NormativeType.SELF,
-    ),
-    Normative(
-        service_type=ServiceTypeBasic(id=21, name="Детский сад"),
-        radius_availability_meters=300,
-        services_capacity_per_1000_normative=100,
-        is_regulated=True,
-        normative_type=NormativeType.PARENT,
-    ),
-    Normative(
-        urban_function=UrbanFunctionBasic(id=2, name="Зеленые зоны"),
-        time_availability_minutes=30,
-        services_capacity_per_1000_normative=20,
-        is_regulated=False,
-        normative_type=NormativeType.GLOBAL,
-    ),
-]
 
 
 @territories_router.get(
@@ -39,78 +15,94 @@ get_mock = [
     response_model=list[Normative],
     status_code=status.HTTP_200_OK,
 )
-def get_territory_normatives(
+async def get_territory_normatives(
     request: Request, territory_id: int = Path(description="territory id", gt=0)
 ) -> list[Normative]:
-    """This is MOCK endpoint, it always returns the same data.
-    Get territory normatives.
-    """
-    return get_mock
+    """Get territory normatives."""
+    territories_service: TerritoriesService = request.state.territories_service
+
+    normatives = await territories_service.get_normatives_by_territory_id(territory_id)
+
+    return [Normative.from_dto(normative) for normative in normatives]
 
 
 @territories_router.post(
     "/territory/{territory_id}/normatives",
-    response_model=bool,
+    response_model=list[Normative],
     status_code=status.HTTP_200_OK,
 )
-def post_territory_normatives(
+async def post_territory_normatives(
     request: Request,
     normatives: list[NormativePost],
     territory_id: int = Path(description="territory id", gt=0),
-) -> bool:
-    """This is MOCK endpoint, it always returns the same data.
+) -> list[Normative]:
+    """
     Post batch of territory normatives. If at least one normative already exist,
     400 error is returned and none are added.
     """
-    return True
+    territories_service: TerritoriesService = request.state.territories_service
+
+    normative_dtos = await territories_service.add_normatives_to_territory(territory_id, normatives)
+
+    return [Normative.from_dto(normative) for normative in normative_dtos]
 
 
 @territories_router.put(
     "/territory/{territory_id}/normatives",
-    response_model=bool,
+    response_model=list[Normative],
     status_code=status.HTTP_200_OK,
 )
-def put_territory_normatives(
+async def put_territory_normatives(
     request: Request,
     normatives: list[NormativePost],
     territory_id: int = Path(description="territory id", gt=0),
-) -> bool:
-    """This is MOCK endpoint, it always returns the same data.
+) -> list[Normative]:
+    """
     Post batch of territory normatives. If at least one of normatives does not exist, 400 error is returned and no
     normatives are updated.
     """
-    return True
+    territories_service: TerritoriesService = request.state.territories_service
+
+    normative_dtos = await territories_service.put_normatives_by_territory_id(territory_id, normatives)
+
+    return [Normative.from_dto(normative) for normative in normative_dtos]
 
 
 @territories_router.patch(
     "/territory/{territory_id}/normatives",
-    response_model=bool,
+    response_model=list[Normative],
     status_code=status.HTTP_200_OK,
 )
-def patch_territory_normatives(
+async def patch_territory_normatives(
     request: Request,
     normatives: list[NormativePatch],
     territory_id: int = Path(description="territory id", gt=0),
-) -> bool:
-    """This is MOCK endpoint, it always returns the same data.
+) -> list[Normative]:
+    """
     Patch batch of territory normatives. If at least one of normatives does not exist, 400 error is returned and no
     normatives are updated.
     """
-    return True
+    territories_service: TerritoriesService = request.state.territories_service
+
+    normative_dtos = await territories_service.patch_normatives_by_territory_id(territory_id, normatives)
+
+    return [Normative.from_dto(normative) for normative in normative_dtos]
 
 
 @territories_router.delete(
     "/territory/{territory_id}/normatives",
-    response_model=bool,
+    response_model=dict,
     status_code=status.HTTP_200_OK,
 )
-def delete_territory_normatives(
+async def delete_territory_normatives(
     request: Request,
     normatives: list[NormativeDelete],
     territory_id: int = Path(description="territory id", gt=0),
-) -> bool:
-    """This is MOCK endpoint, it always returns the same data.
+) -> dict:
+    """
     Delete batch of territory normatives. If at least one of normatives does not exist, 400 error is returned and no
     normatives are deleted.
     """
-    return True
+    territories_service: TerritoriesService = request.state.territories_service
+
+    return await territories_service.delete_normatives_by_territory_id(territory_id, normatives)

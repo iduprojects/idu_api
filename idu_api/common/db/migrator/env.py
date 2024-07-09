@@ -12,9 +12,9 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.common.db import DeclarativeBase
 from idu_api.common.db.entities import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.utils.dotenv import try_load_envfile
 
 try_load_envfile(os.environ.get("ENVFILE", ".env"))

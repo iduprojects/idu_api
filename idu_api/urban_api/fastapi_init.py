@@ -7,13 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi_pagination import add_pagination
 
+from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.logic.impl.physical_objects import PhysicalObjectsServiceImpl
 from idu_api.urban_api.logic.impl.territories import TerritoriesServiceImpl
 from idu_api.urban_api.middlewares.dependency_injection import PassServicesDependencies
 from idu_api.urban_api.middlewares.exception_handler import ExceptionHandlerMiddleware
 
-from idu_api.common.db.connection.manager import PostgresConnectionManager
 from .handlers import list_of_routes
 from .version import LAST_UPDATE, VERSION
 

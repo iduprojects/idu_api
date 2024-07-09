@@ -46,7 +46,7 @@ class ServiceTypesNormativesData(BaseModel):
     normative_id: int = Field(example=1)
     service_type_id: Optional[int] = Field(None, example=1)
     urban_function_id: Optional[int] = Field(None, example=1)
-    territory_id: int = Field(example=1)
+    territory_id: Optional[int] = Field(None, example=1)
     is_regulated: bool
     radius_availability_meters: Optional[int] = Field(None, example=1)
     time_availability_minutes: Optional[int] = Field(None, example=1)
@@ -74,7 +74,7 @@ class ServiceTypesNormativesData(BaseModel):
 class ServiceTypesNormativesDataPost(BaseModel):
     service_type_id: Optional[int] = Field(None, example=1)
     urban_function_id: Optional[int] = Field(None, example=1)
-    territory_id: int = Field(example=1)
+    territory_id: Optional[int] = Field(None, example=1)
     is_regulated: bool
     radius_availability_meters: Optional[int] = Field(None, example=1)
     time_availability_minutes: Optional[int] = Field(None, example=1)

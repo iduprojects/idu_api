@@ -1,5 +1,5 @@
 """
-Service types normatives DTO are defined here.
+Service types DTO are defined here.
 """
 
 from dataclasses import dataclass
@@ -20,7 +20,7 @@ class ServiceTypesNormativesDTO:
     normative_id: int
     service_type_id: Optional[int]
     urban_function_id: Optional[int]
-    territory_id: int
+    territory_id: Optional[int]
     is_regulated: bool
     radius_availability_meters: Optional[int]
     time_availability_minutes: Optional[int]

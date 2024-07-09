@@ -46,7 +46,7 @@ async def get_service_by_id_from_db(
         .where(services_data.c.service_id == service_id)
     )
 
-    result = (await conn.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one_or_none()
 
     return ServiceDTO(**result)
 
@@ -233,7 +233,9 @@ async def get_service_with_territories_by_id_from_db(
         .where(services_data.c.service_id == service_id)
     )
 
-    result = (await conn.execute(statement)).mappings().one()
+    result = (await conn.execute(statement)).mappings().one_or_none()
+    if result is None:
+        raise HTTPException(status_code=404, detail="Given service id is not found")
 
     statement = (
         select(
@@ -281,15 +283,8 @@ async def add_service_to_object_in_db(
     if service is None:
         raise HTTPException(status_code=404, detail="Given service id is not found")
 
-    statement = (
-        update(urban_objects_data)
-        .where(
-            and_(
-                urban_objects_data.c.physical_object_id == physical_object_id,
-                urban_objects_data.c.object_geometry_id == object_geometry_id,
-            )
-        )
-        .values(service_id=service_id)
+    statement = insert(urban_objects_data).values(
+        service_id=service_id, physical_object_id=physical_object_id, object_geometry_id=object_geometry_id
     )
 
     await conn.execute(statement)

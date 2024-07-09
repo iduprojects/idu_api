@@ -51,7 +51,7 @@ class UrbanAPIConfig:  # pylint: disable=too-many-instance-attributes
 
     def to_envfile(self, filename: str) -> None:
         """Save config values as envfile with given filename."""
-        with open(filename, "w", encoding='utf-8') as file:
+        with open(filename, "w", encoding="utf-8") as file:
             for param, value in self.__dict__.items():
                 env = param.upper()
                 print(f"{env}={value}", file=file)

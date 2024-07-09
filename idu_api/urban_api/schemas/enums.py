@@ -12,3 +12,9 @@ class DateType(str, Enum):
 class Ordering(str, Enum):
     ASC = "asc"
     DESC = "desc"
+
+
+class NormativeType(Enum):
+    SELF = "self"
+    PARENT = "parent"
+    GLOBAL = "global"
