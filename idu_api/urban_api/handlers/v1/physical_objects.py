@@ -1,16 +1,18 @@
 """Physical object handlers are defined here."""
 
-from fastapi import Path, Query, Request
+from fastapi import Body, Path, Query, Request
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
 from idu_api.urban_api.logic.physical_objects import (
     PhysicalObjectsService,
     add_living_building_to_db,
+    add_physical_object_to_object_geometry_in_db,
     add_physical_object_type_to_db,
     add_physical_object_with_geometry_to_db,
     get_physical_object_geometries_from_db,
     get_physical_object_types_from_db,
+    get_physical_object_with_territories_by_id_from_db,
     get_services_by_physical_object_id_from_db,
     get_services_with_geometry_by_physical_object_id_from_db,
     patch_living_building_to_db,
@@ -30,6 +32,8 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPut,
     PhysicalObjectsTypes,
     PhysicalObjectsTypesPost,
+    PhysicalObjectsWithTerritory,
+    PhysicalObjectWithGeometryPost,
     ServicesData,
     ServicesDataWithGeometry,
 )
@@ -74,7 +78,7 @@ async def add_physical_object_type(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_physical_object_with_geometry(
-    request: Request, physical_object: PhysicalObjectsDataPost
+    request: Request, physical_object: PhysicalObjectWithGeometryPost
 ) -> dict[str, int]:
     """Add a physical object with geometry."""
     conn: AsyncConnection = request.state.conn
@@ -247,3 +251,38 @@ async def get_physical_objects_around_geometry(
         geometry.as_shapely_geometry(), physical_object_type_id, 50
     )
     return [PhysicalObjectWithGeometry.from_dto(obj) for obj in physical_objects_with_geometry_dto]
+
+
+@physical_objects_router.post(
+    "/physical_objects/{object_geometry_id}",
+    response_model=PhysicalObjectsData,
+    status_code=status.HTTP_200_OK,
+)
+async def add_physical_object_to_object_geometry(
+    request: Request,
+    object_geometry_id: int = Path(..., description="Object geometry id"),
+    physical_object: PhysicalObjectsDataPost = Body(..., description="Physical object"),
+) -> PhysicalObjectsData:
+    """Add physical object to object geometry"""
+    conn: AsyncConnection = request.state.conn
+
+    physical_object_dto = await add_physical_object_to_object_geometry_in_db(conn, object_geometry_id, physical_object)
+
+    return PhysicalObjectsData.from_dto(physical_object_dto)
+
+
+@physical_objects_router.get(
+    "/physical_object/{physical_object_id}",
+    response_model=PhysicalObjectsWithTerritory,
+    status_code=status.HTTP_200_OK,
+)
+async def get_physical_object_by_id_with_territory(
+    request: Request,
+    physical_object_id: int = Path(..., description="Physical object id", gt=0),
+) -> PhysicalObjectsWithTerritory:
+    """Get physical object by id with parent territory"""
+    conn: AsyncConnection = request.state.conn
+
+    physical_object = await get_physical_object_with_territories_by_id_from_db(conn, physical_object_id)
+
+    return PhysicalObjectsWithTerritory.from_dto(physical_object)

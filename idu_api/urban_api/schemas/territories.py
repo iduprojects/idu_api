@@ -278,19 +278,19 @@ class TerritoryDataPatch(BaseModel):
 class TerritoryWithoutGeometry(BaseModel):
     """Territory with all its attributes, but without center and geometry."""
 
-    territory_id: int = Field(examples=[1])
+    territory_id: int = Field(example=1)
     territory_type: TerritoryType = Field(example={"territory_type_id": 1, "name": "name"})
     parent_id: Optional[int] = Field(
-        examples=[1], description="Parent territory identifier, null only for the one territory"
+        example=1, description="Parent territory identifier, null only for the one territory"
     )
-    name: str = Field(examples=["--"], description="Territory name")
-    level: int = Field(examples=[1])
+    name: str = Field(example="--", description="Territory name")
+    level: int = Field(example=1)
     properties: Dict[str, Any] = Field(
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
-    admin_center: Optional[int] = Field(examples=[1])
-    okato_code: Optional[str] = Field(examples=["1"])
+    admin_center: Optional[int] = Field(example=1)
+    okato_code: Optional[str] = Field(example="1")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="The time when the territory was last updated"
@@ -311,3 +311,10 @@ class TerritoryWithoutGeometry(BaseModel):
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
+
+
+class ShortTerritory(BaseModel):
+    """Territory with only id and name."""
+
+    territory_id: int = Field(example=1)
+    name: str = Field(example="--", description="Territory name")

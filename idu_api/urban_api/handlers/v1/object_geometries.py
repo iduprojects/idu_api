@@ -1,15 +1,22 @@
 """Object geometries handlers are defined here."""
 
-from fastapi import Path, Request
+from fastapi import Body, Path, Request
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
 from idu_api.urban_api.logic.object_geometries import (
+    add_object_geometry_to_physical_object_in_db,
     get_physical_objects_by_object_geometry_id_from_db,
     patch_object_geometry_to_db,
     put_object_geometry_to_db,
 )
-from idu_api.urban_api.schemas import ObjectGeometries, ObjectGeometriesPatch, ObjectGeometriesPut, PhysicalObjectsData
+from idu_api.urban_api.schemas import (
+    ObjectGeometries,
+    ObjectGeometriesPatch,
+    ObjectGeometriesPost,
+    ObjectGeometriesPut,
+    PhysicalObjectsData,
+)
 
 from .routers import object_geometries_router
 
@@ -65,3 +72,21 @@ async def patch_object_geometry(
     object_geometry_dto = await patch_object_geometry_to_db(conn, object_geometry, object_geometry_id)
 
     return ObjectGeometries.from_dto(object_geometry_dto)
+
+
+@object_geometries_router.post(
+    "/object_geometries/{physical_object_id}",
+    response_model=ObjectGeometries,
+    status_code=status.HTTP_200_OK,
+)
+async def add_object_geometry_to_physical_object(
+    request: Request,
+    physical_object_id: int = Path(..., description="Physical object id"),
+    object_geometry: ObjectGeometriesPost = Body(..., description="Object Geometry"),
+) -> ObjectGeometries:
+    """Add object geometry to physical object"""
+    conn: AsyncConnection = request.state.conn
+
+    geometry_dto = await add_object_geometry_to_physical_object_in_db(conn, physical_object_id, object_geometry)
+
+    return ObjectGeometries.from_dto(geometry_dto)

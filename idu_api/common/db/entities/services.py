@@ -2,7 +2,7 @@
 Services data table is defined here
 """
 
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table, Text, text
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
@@ -18,6 +18,8 @@ services_data = Table(
     Column("name", String(200)),
     Column("capacity_real", Integer),
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
 )
 
 """

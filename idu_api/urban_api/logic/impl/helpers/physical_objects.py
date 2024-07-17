@@ -22,25 +22,15 @@ func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString
 
 
-async def get_physical_objects_by_ids(conn: AsyncConnection, ids: list[int]) -> PhysicalObjectDataDTO:
+async def get_physical_objects_by_ids(conn: AsyncConnection, ids: list[int]) -> list[PhysicalObjectDataDTO]:
     """Get physical objects by list of ids."""
-
     statement = (
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
-            object_geometries_data.c.address,
         )
         .select_from(
             physical_objects_data.join(
-                urban_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            )
-            .join(
-                object_geometries_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            )
-            .join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
@@ -106,8 +96,6 @@ async def get_physical_objects_around(
         )
         .distinct()
     )
-
-    print(statement)
 
     ids = (await conn.execute(statement)).scalars().all()
 

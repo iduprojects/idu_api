@@ -14,7 +14,7 @@ service_types_normatives_data = Table(
     Column("normative_id", Integer, primary_key=True, server_default=service_types_normatives_data_id_seq.next_value()),
     Column("service_type_id", ForeignKey("service_types_dict.service_type_id")),
     Column("urban_function_id", ForeignKey("urban_functions_dict.urban_function_id")),
-    Column("territory_id", ForeignKey("territories_data.territory_id"), nullable=False),
+    Column("territory_id", ForeignKey("territories_data.territory_id")),
     Column("is_regulated", Boolean, nullable=False),
     Column("radius_availability_meters", Integer),
     Column("time_availability_minutes", Integer),

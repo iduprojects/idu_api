@@ -16,7 +16,10 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
     Message is sent to logger error stream anyway.
     """
 
-    def __init__(self, app: FastAPI, debug: bool):
+    def __init__(self, app: FastAPI, debug: list[bool]):
+        """Passing debug as a list is a hack to be able to change the value
+        on the application startup.
+        """
         super().__init__(app)
         self._debug = debug
 
@@ -35,7 +38,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
             )
 
             logger.debug("{} Traceback:\n{}", error_message, exc, "".join(traceback.format_tb(exc.__traceback__)))
-            if self._debug:
+            if self._debug[0]:
                 return JSONResponse(
                     {
                         "error": str(exc),

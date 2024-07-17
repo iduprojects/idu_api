@@ -1,4 +1,4 @@
-CODE := urban_api
+CODE := idu_api
 
 lint:
 	poetry run pylint $(CODE)
@@ -7,8 +7,11 @@ format:
 	poetry run isort $(CODE)
 	poetry run black $(CODE)
 
-run:
-	poetry run launch_urban_api
+database-docker:
+	cd urban_api && docker compose up -d database
+
+run-urban-api:
+	ENVFILE=urban_api/.env poetry run launch_urban_api
 
 install:
 	pip install .
@@ -26,10 +29,10 @@ build:
 	poetry build
 
 install-from-build:
-	python -m wheel install dist/urban_api-*.whl
+	python -m wheel install dist/idu_api-*.whl
 
 prepare-migration:
-	cd urban_api/db; poetry run alembic revision --autogen
+	cd idu_api/common/db; poetry run alembic revision --autogen
 
 apply-migrations:
-	cd urban_api/db; poetry run alembic upgrade head
+	cd idu_api/common/db; poetry run alembic upgrade head

@@ -13,7 +13,7 @@ T = TypeVar("T")
 
 class JSONAPIParams(BaseModel, AbstractParams):
     page: int = Query(1, ge=1, alias="page")
-    size: int = Query(10, ge=1, le=100, alias="page_size")
+    size: int = Query(10, ge=1, alias="page_size")
 
     def to_raw_params(self) -> RawParams:
         return RawParams(

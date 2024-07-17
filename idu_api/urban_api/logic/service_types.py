@@ -199,10 +199,13 @@ async def add_service_type_normative_to_db(
         if urban_function is None:
             raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
 
-    statement = select(territories_data).where(territories_data.c.territory_id == service_type_normative.territory_id)
-    territory = (await conn.execute(statement)).one_or_none()
-    if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory_id is not found")
+    if service_type_normative.territory_id is not None:
+        statement = select(territories_data).where(
+            territories_data.c.territory_id == service_type_normative.territory_id
+        )
+        territory = (await conn.execute(statement)).one_or_none()
+        if territory is None:
+            raise HTTPException(status_code=404, detail="Given territory_id is not found")
 
     statement = (
         insert(service_types_normatives_data)

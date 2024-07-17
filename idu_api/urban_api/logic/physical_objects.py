@@ -1,5 +1,6 @@
 """Physical objects handlers logic of getting entities from the database is defined here."""
 
+from datetime import datetime, timezone
 from typing import Optional, Protocol
 
 from fastapi import HTTPException
@@ -25,6 +26,7 @@ from idu_api.urban_api.dto import (
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
     PhysicalObjectTypeDTO,
+    PhysicalObjectWithTerritoryDTO,
     ServiceDTO,
     ServiceWithGeometryDTO,
 )
@@ -36,6 +38,7 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPost,
     PhysicalObjectsDataPut,
     PhysicalObjectsTypesPost,
+    PhysicalObjectWithGeometryPost,
 )
 
 Geom = Point | Polygon | MultiPolygon | LineString
@@ -91,18 +94,9 @@ async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_obje
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
-            object_geometries_data.c.address,
         )
         .select_from(
             physical_objects_data.join(
-                urban_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            )
-            .join(
-                object_geometries_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            )
-            .join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
@@ -118,7 +112,7 @@ async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_obje
 
 
 async def add_physical_object_with_geometry_to_db(
-    conn: AsyncConnection, physical_object: PhysicalObjectsDataPost
+    conn: AsyncConnection, physical_object: PhysicalObjectWithGeometryPost
 ) -> dict[str, int]:
     """Create physical object with geometry."""
 
@@ -143,7 +137,6 @@ async def add_physical_object_with_geometry_to_db(
         )
         .returning(physical_objects_data.c.physical_object_id)
     )
-
     physical_object_id = (await conn.execute(statement)).scalar_one()
 
     statement = (
@@ -156,15 +149,12 @@ async def add_physical_object_with_geometry_to_db(
         )
         .returning(object_geometries_data.c.object_geometry_id)
     )
-
     object_geometry_id = (await conn.execute(statement)).scalar_one()
 
     statement = insert(urban_objects_data).values(
         physical_object_id=physical_object_id, object_geometry_id=object_geometry_id
     )
-
     await conn.execute(statement)
-
     await conn.commit()
 
     return {
@@ -202,6 +192,7 @@ async def put_physical_object_to_db(
             physical_object_type_id=physical_object.physical_object_type_id,
             name=physical_object.name,
             properties=physical_object.properties,
+            updated_at=datetime.utcnow(),
         )
         .returning(physical_objects_data)
     )
@@ -230,6 +221,7 @@ async def patch_physical_object_to_db(
         update(physical_objects_data)
         .where(physical_objects_data.c.physical_object_id == physical_object_id)
         .returning(physical_objects_data)
+        .values(updated_at=datetime.now(timezone.utc))
     )
 
     values_to_update = {}
@@ -429,16 +421,11 @@ async def get_services_by_physical_object_id_from_db(
 
     statement = (
         select(
-            services_data.c.service_id,
-            services_data.c.name,
-            services_data.c.capacity_real,
-            services_data.c.properties,
-            service_types_dict.c.service_type_id,
+            services_data,
             service_types_dict.c.urban_function_id,
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
-            territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(
@@ -447,7 +434,7 @@ async def get_services_by_physical_object_id_from_db(
             .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
         )
         .where(urban_objects_data.c.physical_object_id == physical_object_id)
-    )
+    ).distinct()
 
     if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
@@ -478,16 +465,11 @@ async def get_services_with_geometry_by_physical_object_id_from_db(
 
     statement = (
         select(
-            services_data.c.service_id,
-            services_data.c.name,
-            services_data.c.capacity_real,
-            services_data.c.properties,
-            service_types_dict.c.service_type_id,
+            services_data,
             service_types_dict.c.urban_function_id,
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
-            territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
@@ -502,7 +484,7 @@ async def get_services_with_geometry_by_physical_object_id_from_db(
             .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
         )
         .where(urban_objects_data.c.physical_object_id == physical_object_id)
-    )
+    ).distinct()
 
     if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
@@ -548,3 +530,80 @@ async def get_physical_object_geometries_from_db(
     result = (await conn.execute(statement)).mappings().all()
 
     return [ObjectGeometryDTO(**geometry) for geometry in result]
+
+
+async def add_physical_object_to_object_geometry_in_db(
+    conn: AsyncConnection, object_geometry_id: int, physical_object: PhysicalObjectsDataPost
+) -> PhysicalObjectDataDTO:
+    """Create object geometry connected with physical object"""
+
+    statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
+    object_geometry = (await conn.execute(statement)).one_or_none()
+    if object_geometry is None:
+        raise HTTPException(status_code=404, detail="Given physical object id is not found")
+
+    statement = (
+        insert(physical_objects_data)
+        .values(
+            physical_object_type_id=physical_object.physical_object_type_id,
+            name=physical_object.name,
+            properties=physical_object.properties,
+        )
+        .returning(physical_objects_data.c.physical_object_id)
+    )
+    physical_object_id = (await conn.execute(statement)).scalar_one()
+
+    statement = insert(urban_objects_data).values(
+        physical_object_id=physical_object_id, object_geometry_id=object_geometry_id
+    )
+    await conn.execute(statement)
+    await conn.commit()
+
+    return await get_physical_object_by_id_from_db(conn, physical_object_id)
+
+
+async def get_physical_object_with_territories_by_id_from_db(
+    conn: AsyncConnection,
+    physical_object_id: int,
+) -> PhysicalObjectWithTerritoryDTO:
+    """
+    Get service object by id
+    """
+
+    statement = (
+        select(
+            physical_objects_data,
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+        )
+        .select_from(
+            physical_objects_data.join(
+                physical_object_types_dict,
+                physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+        )
+        .where(physical_objects_data.c.physical_object_id == physical_object_id)
+    )
+    result = (await conn.execute(statement)).mappings().one()
+
+    statement = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.name,
+        )
+        .select_from(
+            physical_objects_data.join(
+                urban_objects_data,
+                urban_objects_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+            )
+            .join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
+        )
+        .where(physical_objects_data.c.physical_object_id == physical_object_id)
+    ).distinct()
+
+    territories = (await conn.execute(statement)).mappings().all()
+
+    return PhysicalObjectWithTerritoryDTO(**result, territories=territories)

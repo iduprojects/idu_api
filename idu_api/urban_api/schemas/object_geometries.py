@@ -28,6 +28,52 @@ class ObjectGeometries(BaseModel):
         )
 
 
+class ObjectGeometriesPost(BaseModel):
+    territory_id: int = Field(..., example=1)
+    geometry: Geometry = Field(..., description="Object geometry")
+    centre_point: Optional[Geometry] = Field(..., description="Centre coordinates")
+    address: Optional[str] = Field(None, description="Physical object address", example="--")
+
+    @field_validator("geometry")
+    @staticmethod
+    def validate_geometry(geometry: Geometry) -> Geometry:
+        """
+        Validate that given geometry is validity via creating Shapely object.
+        """
+        try:
+            geometry.as_shapely_geometry()
+        except (AttributeError, ValueError, TypeError) as exc:
+            logger.debug("Exception on passing geometry: {!r}", exc)
+            raise ValueError("Invalid geometry passed") from exc
+        return geometry
+
+    @field_validator("centre_point")
+    @staticmethod
+    def validate_center(centre_point: Geometry | None) -> Optional[Geometry]:
+        """
+        Validate that given geometry is Point and validity via creating Shapely object.
+        """
+        if centre_point is None:
+            return None
+        assert centre_point.type == "Point", "Only Point is accepted"
+        try:
+            centre_point.as_shapely_geometry()
+        except (AttributeError, ValueError, TypeError) as exc:
+            logger.debug("Exception on passing geometry: {!r}", exc)
+            raise ValueError("Invalid geometry passed") from exc
+        return centre_point
+
+    @model_validator(mode="after")
+    @staticmethod
+    def validate_post(model: "ObjectGeometriesPost") -> "ObjectGeometriesPost":
+        """
+        Use geometry centroid for centre_point if it is missing.
+        """
+        if model.centre_point is None:
+            model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
+        return model
+
+
 class ObjectGeometriesPut(BaseModel):
     territory_id: int = Field(..., example=1)
     geometry: Geometry = Field(..., description="Object geometry")

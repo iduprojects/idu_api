@@ -1,6 +1,6 @@
 """Territories services internal logic is defined here."""
 
-from typing import Callable
+from typing import Callable, Literal, Optional
 
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON
@@ -26,6 +26,8 @@ async def get_services_by_territory_id_from_db(
     territory_id: int,
     service_type_id: int | None,
     name: str | None,
+    order_by: Optional[Literal["created_at", "updated_at"]],
+    ordering: Optional[Literal["asc", "desc"]] = "asc",
 ) -> list[ServiceDTO]:
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
@@ -34,16 +36,11 @@ async def get_services_by_territory_id_from_db(
 
     statement = (
         select(
-            services_data.c.service_id,
-            services_data.c.name,
-            services_data.c.capacity_real,
-            services_data.c.properties,
-            service_types_dict.c.service_type_id,
+            services_data,
             service_types_dict.c.urban_function_id,
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
-            territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(
@@ -56,12 +53,22 @@ async def get_services_by_territory_id_from_db(
             .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
         )
         .where(object_geometries_data.c.territory_id == territory_id)
-    )
+    ).distinct()
 
     if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
     if name is not None:
         statement = statement.where(services_data.c.name.ilike(f"%{name}%"))
+    if order_by is not None:
+        order = services_data.c.created_at if order_by == "created_at" else services_data.c.updated_at
+        if ordering == "desc":
+            order = order.desc()
+        statement = statement.order_by(order)
+    else:
+        if ordering == "desc":
+            statement = statement.order_by(services_data.c.service_id.desc())
+        else:
+            statement = statement.order_by(services_data.c.service_id)
 
     result = (await conn.execute(statement)).mappings().all()
 
@@ -73,6 +80,8 @@ async def get_services_with_geometry_by_territory_id_from_db(
     territory_id: int,
     service_type_id: int | None,
     name: str | None,
+    order_by: Optional[Literal["created_at", "updated_at"]],
+    ordering: Optional[Literal["asc", "desc"]] = "asc",
 ) -> list[ServiceWithGeometryDTO]:
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
@@ -82,16 +91,11 @@ async def get_services_with_geometry_by_territory_id_from_db(
 
     statement = (
         select(
-            services_data.c.service_id,
-            services_data.c.name,
-            services_data.c.capacity_real,
-            services_data.c.properties,
-            service_types_dict.c.service_type_id,
+            services_data,
             service_types_dict.c.urban_function_id,
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
-            territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
@@ -106,12 +110,22 @@ async def get_services_with_geometry_by_territory_id_from_db(
             .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
         )
         .where(object_geometries_data.c.territory_id == territory_id)
-    )
+    ).distinct()
 
     if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
     if name is not None:
         statement = statement.where(services_data.c.name.ilike(f"%{name}%"))
+    if order_by is not None:
+        order = services_data.c.created_at if order_by == "created_at" else services_data.c.updated_at
+        if ordering == "desc":
+            order = order.desc()
+        statement = statement.order_by(order)
+    else:
+        if ordering == "desc":
+            statement = statement.order_by(services_data.c.service_id.desc())
+        else:
+            statement = statement.order_by(services_data.c.service_id)
 
     result = (await conn.execute(statement)).mappings().all()
 

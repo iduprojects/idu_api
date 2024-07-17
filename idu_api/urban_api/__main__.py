@@ -1,11 +1,10 @@
 import itertools
 import os
-import sys
+import tempfile
 import typing as tp
 
 import click
 import uvicorn
-from loguru import logger
 
 from .config import UrbanAPIConfig
 from .utils.dotenv import try_load_envfile
@@ -164,24 +163,37 @@ def main(  # pylint: disable=too-many-arguments
     )
     config = UrbanAPIConfig.try_from_env()
     config.update(settings)
-    config.to_env()
-    if __name__ in ("__main__", "urban_api.__main__"):
+    with tempfile.NamedTemporaryFile() as temp_envfile:
+        # config.to_envfile(temp_envfile.name)
         if debug:
             try:
-                uvicorn.run("urban_api:app", host=host, port=port, reload=True, log_level=logger_verbosity.lower())
+                uvicorn.run(
+                    "idu_api.urban_api:app",
+                    host=host,
+                    port=port,
+                    reload=True,
+                    log_level=logger_verbosity.lower(),
+                    # env_file=temp_envfile.name,
+                )
             except:  # pylint: disable=bare-except
                 print("Debug reload is disabled")
-                uvicorn.run("urban_api:app", host=host, port=port, log_level=logger_verbosity.lower())
+                uvicorn.run(
+                    "idu_api.urban_api:app",
+                    host=host,
+                    port=port,
+                    log_level=logger_verbosity.lower(),
+                    # env_file=temp_envfile.name,
+                )
         else:
-            uvicorn.run("urban_api:app", host=host, port=port, log_level=logger_verbosity.lower())
-    else:
-        if logger_verbosity != "DEBUG":
-            logger.remove()
-            logger.add(sys.stderr, level=logger_verbosity)
-        for log_level, filename in additional_loggers:
-            logger.add(filename, level=log_level)
+            uvicorn.run(
+                "idu_api.urban_api:app",
+                host=host,
+                port=port,
+                log_level=logger_verbosity.lower(),
+                # env_file=temp_envfile.name,
+            )
 
 
-if __name__ in ("__main__", "urban_api.__main__"):
+if __name__ in ("__main__", "idu_api.urban_api.__main__"):
     try_load_envfile(os.environ.get("ENVFILE", ".env"))
     main()  # pylint: disable=no-value-for-parameter

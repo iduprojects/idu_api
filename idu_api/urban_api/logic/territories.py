@@ -11,6 +11,7 @@ from idu_api.urban_api.dto import (
     IndicatorDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
+    NormativeDTO,
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
@@ -19,7 +20,15 @@ from idu_api.urban_api.dto import (
     TerritoryTypeDTO,
     TerritoryWithoutGeometryDTO,
 )
-from idu_api.urban_api.schemas import TerritoryDataPatch, TerritoryDataPost, TerritoryDataPut, TerritoryTypesPost
+from idu_api.urban_api.schemas import (
+    NormativeDelete,
+    NormativePatch,
+    NormativePost,
+    TerritoryDataPatch,
+    TerritoryDataPost,
+    TerritoryDataPut,
+    TerritoryTypesPost,
+)
 
 
 class TerritoriesService(Protocol):
@@ -65,10 +74,37 @@ class TerritoriesService(Protocol):
     async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:
         """Get indicators by territory id."""
 
+    @abc.abstractmethod
     async def get_indicator_values_by_territory_id(
         self, territory_id: int, date_type: Optional[str], date_value: Optional[datetime]
     ) -> list[IndicatorValueDTO]:
         """Get indicator values by territory id, optional time period."""
+
+    @abc.abstractmethod
+    async def get_normatives_by_territory_id(self, territory_id: int) -> list[NormativeDTO]:
+        """Get normatives by territory id"""
+
+    @abc.abstractmethod
+    async def add_normatives_to_territory(
+        self, territory_id: int, normatives: list[NormativePost]
+    ) -> list[NormativeDTO]:
+        """Add normatives to territory"""
+
+    @abc.abstractmethod
+    async def put_normatives_by_territory_id(
+        self, territory_id: int, normatives: list[NormativePost]
+    ) -> list[NormativeDTO]:
+        """Put normatives by territory id"""
+
+    @abc.abstractmethod
+    async def patch_normatives_by_territory_id(
+        self, territory_id: int, normatives: list[NormativePatch]
+    ) -> list[NormativeDTO]:
+        """Patch normatives by territory id"""
+
+    @abc.abstractmethod
+    async def delete_normatives_by_territory_id(self, territory_id: int, normatives: list[NormativeDelete]) -> dict:
+        """Delete normatives by territory id"""
 
     @abc.abstractmethod
     async def get_physical_objects_by_territory_id(

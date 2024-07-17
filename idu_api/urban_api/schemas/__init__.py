@@ -12,8 +12,8 @@ from .living_buildings import (
     LivingBuildingsDataPut,
     LivingBuildingsWithGeometry,
 )
-from .normatives import Normative, NormativePatch, NormativePost
-from .object_geometries import ObjectGeometries, ObjectGeometriesPatch, ObjectGeometriesPut
+from .normatives import Normative, NormativeDelete, NormativePatch, NormativePost
+from .object_geometries import ObjectGeometries, ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
 from .pages import Page
 from .physical_objects import (
     PhysicalObjectsData,
@@ -22,7 +22,9 @@ from .physical_objects import (
     PhysicalObjectsDataPut,
     PhysicalObjectsTypes,
     PhysicalObjectsTypesPost,
+    PhysicalObjectsWithTerritory,
     PhysicalObjectWithGeometry,
+    PhysicalObjectWithGeometryPost,
 )
 from .service_types import (
     ServiceTypes,
@@ -32,7 +34,14 @@ from .service_types import (
     UrbanFunction,
     UrbanFunctionPost,
 )
-from .services import ServicesData, ServicesDataPatch, ServicesDataPost, ServicesDataPut, ServicesDataWithGeometry
+from .services import (
+    ServicesData,
+    ServicesDataPatch,
+    ServicesDataPost,
+    ServicesDataPut,
+    ServicesDataWithGeometry,
+    ServiceWithTerritories,
+)
 from .territories import (
     TerritoryData,
     TerritoryDataPatch,
@@ -56,7 +65,7 @@ __all__ = [
     "ServicesDataPatch",
     "ServicesDataPost",
     "ServicesDataPut",
-    "ServicesDataWithGeometry",
+    "ServiceWithTerritories",
     "ServiceTypes",
     "ServiceTypesPost",
     "ServiceTypesNormativesData",
@@ -67,14 +76,17 @@ __all__ = [
     "MeasurementUnit",
     "MeasurementUnitPost",
     "Normative",
+    "NormativeDelete",
     "NormativePatch",
     "NormativePost",
     "ObjectGeometries",
     "ObjectGeometriesPatch",
+    "ObjectGeometriesPost",
     "ObjectGeometriesPut",
     "PhysicalObjectsData",
     "PhysicalObjectsDataPatch",
     "PhysicalObjectsDataPost",
+    "PhysicalObjectWithGeometryPost",
     "PhysicalObjectsDataPut",
     "PhysicalObjectWithGeometry",
     "PhysicalObjectsTypes",
