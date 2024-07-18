@@ -19,6 +19,9 @@ from idu_api.urban_api.dto import (
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
+    TerritoryWithIndicatorDTO,
+    TerritoryWithIndicatorsDTO,
+    TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_buildings import (
@@ -28,13 +31,16 @@ from idu_api.urban_api.logic.impl.helpers.territories_functional_zones import (
     get_functional_zones_by_territory_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_indicators import (
+    get_indicator_values_by_parent_id_from_db,
     get_indicator_values_by_territory_id_from_db,
     get_indicators_by_territory_id_from_db,
+    get_indicators_values_by_parent_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_normatives import (
     add_normatives_to_territory_to_db,
     delete_normatives_by_territory_id_in_db,
     get_normatives_by_territory_id_from_db,
+    get_normatives_values_by_parent_id_from_db,
     patch_normatives_by_territory_id_in_db,
     put_normatives_by_territory_id_in_db,
 )
@@ -139,6 +145,18 @@ class TerritoriesServiceImpl(TerritoriesService):
     ) -> list[IndicatorValueDTO]:
         return await get_indicator_values_by_territory_id_from_db(self._conn, territory_id, date_type, date_value)
 
+    async def get_indicator_values_by_parent_id(
+        self, parent_id: Optional[int], date_type: str, date_value: datetime, indicator_id: int
+    ) -> list[TerritoryWithIndicatorDTO]:
+        return await get_indicator_values_by_parent_id_from_db(
+            self._conn, parent_id, date_type, date_value, indicator_id
+        )
+
+    async def get_indicators_values_by_parent_id(
+        self, parent_id: Optional[int], date_type: str, date_value: datetime
+    ) -> list[TerritoryWithIndicatorsDTO]:
+        return await get_indicators_values_by_parent_id_from_db(self._conn, parent_id, date_type, date_value)
+
     async def get_normatives_by_territory_id(self, territory_id: int) -> list[NormativeDTO]:
         return await get_normatives_by_territory_id_from_db(self._conn, territory_id)
 
@@ -159,6 +177,13 @@ class TerritoriesServiceImpl(TerritoriesService):
 
     async def delete_normatives_by_territory_id(self, territory_id: int, normatives: list[NormativeDelete]) -> dict:
         return await delete_normatives_by_territory_id_in_db(self._conn, territory_id, normatives)
+
+    async def get_normatives_values_by_parent_id(
+        self, territory_id: int, service_type_id: Optional[int], urban_function_id: Optional[int]
+    ) -> list[TerritoryWithNormativesDTO]:
+        return await get_normatives_values_by_parent_id_from_db(
+            self._conn, territory_id, service_type_id, urban_function_id
+        )
 
     async def get_physical_objects_by_territory_id(
         self,

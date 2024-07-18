@@ -15,7 +15,14 @@ from .physical_objects import (
 )
 from .service_types import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
-from .territories import TerritoryDTO, TerritoryTypeDTO, TerritoryWithoutGeometryDTO
+from .territories import (
+    TerritoryDTO,
+    TerritoryTypeDTO,
+    TerritoryWithIndicatorDTO,
+    TerritoryWithIndicatorsDTO,
+    TerritoryWithNormativesDTO,
+    TerritoryWithoutGeometryDTO,
+)
 from .users import TokensTuple, UserDTO
 
 __all__ = [
@@ -40,6 +47,9 @@ __all__ = [
     "LivingBuildingsDTO",
     "LivingBuildingsWithGeometryDTO",
     "FunctionalZoneDataDTO",
+    "TerritoryWithIndicatorDTO",
+    "TerritoryWithIndicatorsDTO",
+    "TerritoryWithNormativesDTO",
     "TerritoryWithoutGeometryDTO",
     "UrbanFunctionDTO",
 ]

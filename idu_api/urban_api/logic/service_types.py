@@ -2,7 +2,6 @@
 
 from typing import Callable, List, Optional
 
-from fastapi import HTTPException
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -13,6 +12,7 @@ from idu_api.common.db.entities import (
     urban_functions_dict,
 )
 from idu_api.urban_api.dto import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
+from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.schemas import ServiceTypesNormativesDataPost, ServiceTypesPost, UrbanFunctionPost
 
 func: Callable
@@ -42,10 +42,17 @@ async def add_service_type_to_db(
     Create service type object
     """
 
+    statement = select(urban_functions_dict).where(
+        urban_functions_dict.c.urban_function_id == service_type.urban_function_id
+    )
+    result = (await conn.execute(statement)).one_or_none()
+    if result is None:
+        raise EntityNotFoundById(service_type.urban_function_id, "urban function")
+
     statement = select(service_types_dict).where(service_types_dict.c.name == service_type.name)
     result = (await conn.execute(statement)).one_or_none()
     if result is not None:
-        raise HTTPException(status_code=400, detail="Invalid input (service type already exists)")
+        raise EntityAlreadyExists("service type", service_type.name)
 
     statement = (
         insert(service_types_dict)
@@ -78,7 +85,7 @@ async def get_urban_functions_by_parent_id_from_db(
         statement = select(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == parent_id)
         parent_urban_function = (await conn.execute(statement)).one_or_none()
         if parent_urban_function is None:
-            raise HTTPException(status_code=404, detail="Given parent id is not found")
+            raise EntityNotFoundById(parent_id, "urban function")
 
     statement = select(urban_functions_dict)
 
@@ -128,12 +135,17 @@ async def add_urban_function_to_db(
         )
         parent_urban_function = (await conn.execute(statement)).one_or_none()
         if parent_urban_function is None:
-            raise HTTPException(status_code=404, detail="Given parent_id is not found")
+            raise EntityNotFoundById(urban_function.parent_id, "urban function")
 
     statement = select(urban_functions_dict).where(urban_functions_dict.c.name == urban_function.name)
-    check_urban_function_name = (await conn.execute(statement)).one_or_none()
-    if check_urban_function_name is not None:
-        raise HTTPException(status_code=400, detail="Invalid input (urban function already exists)")
+    urban_function_name = (await conn.execute(statement)).one_or_none()
+    if urban_function_name is not None:
+        raise EntityAlreadyExists("urban function", urban_function.name)
+
+    statement = select(urban_functions_dict).where(urban_functions_dict.c.list_label == urban_function.list_label)
+    urban_function_list_label = (await conn.execute(statement)).one_or_none()
+    if urban_function_list_label is not None:
+        raise EntityAlreadyExists("urban function", urban_function.list_label)
 
     statement = (
         insert(urban_functions_dict)
@@ -189,7 +201,7 @@ async def add_service_type_normative_to_db(
         )
         service_type = (await conn.execute(statement)).one_or_none()
         if service_type is None:
-            raise HTTPException(status_code=404, detail="Given service_type_id is not found")
+            raise EntityNotFoundById(service_type_normative.service_type_id, "service type")
 
     if service_type_normative.urban_function_id is not None:
         statement = select(urban_functions_dict).where(
@@ -197,7 +209,7 @@ async def add_service_type_normative_to_db(
         )
         urban_function = (await conn.execute(statement)).one_or_none()
         if urban_function is None:
-            raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
+            raise EntityNotFoundById(service_type_normative.urban_function_id, "urban function")
 
     if service_type_normative.territory_id is not None:
         statement = select(territories_data).where(
@@ -205,7 +217,7 @@ async def add_service_type_normative_to_db(
         )
         territory = (await conn.execute(statement)).one_or_none()
         if territory is None:
-            raise HTTPException(status_code=404, detail="Given territory_id is not found")
+            raise EntityNotFoundById(service_type_normative.territory_id, "territory")
 
     statement = (
         insert(service_types_normatives_data)

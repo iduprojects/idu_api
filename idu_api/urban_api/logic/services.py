@@ -3,7 +3,6 @@
 from datetime import datetime, timezone
 from typing import Callable
 
-from fastapi import HTTPException
 from sqlalchemy import and_, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -16,6 +15,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import ServiceDTO, ServiceWithTerritoriesDTO
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.schemas import ServicesDataPatch, ServicesDataPost, ServicesDataPut
 
 func: Callable
@@ -67,12 +67,12 @@ async def add_service_to_db(
     )
     urban_object = (await conn.execute(statement)).one_or_none()
     if urban_object is None:
-        raise HTTPException(status_code=404, detail="Given physical object id and object geometry id are not found")
+        raise EntityNotFoundByParams("urban object", service.physical_object_id, service.object_geometry_id)
 
     statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service.service_type_id)
     service_type = (await conn.execute(statement)).one_or_none()
     if service_type is None:
-        raise HTTPException(status_code=404, detail="Given service type id is not found")
+        raise EntityNotFoundById(service.service_type_id, "service type")
 
     if service.territory_type_id is not None:
         statement = select(territory_types_dict).where(
@@ -80,7 +80,7 @@ async def add_service_to_db(
         )
         territory_type = (await conn.execute(statement)).one_or_none()
         if territory_type is None:
-            raise HTTPException(status_code=404, detail="Given territory type id is not found")
+            raise EntityNotFoundById(service.territory_type_id, "territory type")
 
     statement = (
         insert(services_data)
@@ -126,12 +126,12 @@ async def put_service_to_db(
     statement = select(services_data).where(services_data.c.service_id == service_id)
     requested_service = (await conn.execute(statement)).one_or_none()
     if requested_service is None:
-        raise HTTPException(status_code=404, detail="Given service id is not found")
+        raise EntityNotFoundById(service_id, "service")
 
     statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service.service_type_id)
     service_type = (await conn.execute(statement)).one_or_none()
     if service_type is None:
-        raise HTTPException(status_code=404, detail="Given service type id is not found")
+        raise EntityNotFoundById(service.service_type_id, "service type")
 
     if service.territory_type_id is not None:
         statement = select(territory_types_dict).where(
@@ -139,7 +139,7 @@ async def put_service_to_db(
         )
         territory_type = (await conn.execute(statement)).one_or_none()
         if territory_type is None:
-            raise HTTPException(status_code=404, detail="Given territory type id is not found")
+            raise EntityNotFoundById(service.territory_type_id, "territory type")
 
     statement = (
         update(services_data)
@@ -173,7 +173,7 @@ async def patch_service_to_db(
     statement = select(services_data).where(services_data.c.service_id == service_id)
     requested_service = (await conn.execute(statement)).one_or_none()
     if requested_service is None:
-        raise HTTPException(status_code=404, detail="Given service id is not found")
+        raise EntityNotFoundById(service_id, "service")
 
     statement = (
         update(services_data)
@@ -191,14 +191,14 @@ async def patch_service_to_db(
                 )
                 service_type = (await conn.execute(new_statement)).one_or_none()
                 if service_type is None:
-                    raise HTTPException(status_code=404, detail="Given service type id is not found")
+                    raise EntityNotFoundById(service.service_type_id, "service type")
             elif k == "territory_type_id":
                 new_statement = select(territory_types_dict).where(
                     territory_types_dict.c.territory_type_id == service.territory_type_id
                 )
                 territory_type = (await conn.execute(new_statement)).one_or_none()
                 if territory_type is None:
-                    raise HTTPException(status_code=404, detail="Given territory type id is not found")
+                    raise EntityNotFoundById(service.territory_type_id, "teritory type")
             values_to_update.update({k: v})
 
     statement = statement.values(**values_to_update)
@@ -235,7 +235,7 @@ async def get_service_with_territories_by_id_from_db(
 
     result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
-        raise HTTPException(status_code=404, detail="Given service id is not found")
+        raise EntityNotFoundById(service_id, "service")
 
     statement = (
         select(
@@ -276,12 +276,12 @@ async def add_service_to_object_in_db(
     )
     urban_object = (await conn.execute(statement)).one_or_none()
     if urban_object is None:
-        raise HTTPException(status_code=404, detail="Given physical object id and object geometry id are not found")
+        raise EntityNotFoundByParams("urban object", physical_object_id, object_geometry_id)
 
     statement = select(services_data).where(services_data.c.service_id == service_id)
     service = (await conn.execute(statement)).one_or_none()
     if service is None:
-        raise HTTPException(status_code=404, detail="Given service id is not found")
+        raise EntityNotFoundById(service_id, "service")
 
     statement = insert(urban_objects_data).values(
         service_id=service_id, physical_object_id=physical_object_id, object_geometry_id=object_geometry_id

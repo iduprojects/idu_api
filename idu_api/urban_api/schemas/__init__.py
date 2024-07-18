@@ -49,6 +49,9 @@ from .territories import (
     TerritoryDataPut,
     TerritoryType,
     TerritoryTypesPost,
+    TerritoryWithIndicator,
+    TerritoryWithIndicators,
+    TerritoryWithNormatives,
     TerritoryWithoutGeometry,
 )
 
@@ -60,6 +63,9 @@ __all__ = [
     "TerritoryDataPost",
     "TerritoryDataPatch",
     "TerritoryDataPut",
+    "TerritoryWithIndicator",
+    "TerritoryWithIndicators",
+    "TerritoryWithNormatives",
     "TerritoryWithoutGeometry",
     "ServicesData",
     "ServicesDataPatch",

@@ -8,6 +8,13 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from idu_api.urban_api.exceptions.logic.common import (
+    EntitiesNotFoundByIds,
+    EntityAlreadyExists,
+    EntityNotFoundById,
+    EntityNotFoundByParams,
+)
+
 
 class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """Handle exceptions, so they become http response code 500 - Internal Server Error.
@@ -28,7 +35,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
             return await call_next(request)
         except Exception as exc:  # pylint: disable=broad-except
             if len(error_message := repr(exc)) > 300:
-                error_message = f"{error_message[:300]}...({len(error_message) - 300} ommitted)"
+                error_message = f"{error_message[:300]}...({len(error_message) - 300} committed)"
             logger.opt(colors=True).error(
                 "<cyan>{} {}</cyan> - '<red>{}</red>': {}",
                 (f"{request.client.host}:{request.client.port}" if request.client is not None else "<unknown user>"),
@@ -36,6 +43,12 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                 exc,
                 error_message,
             )
+
+            error_status = 500
+            if isinstance(exc, (EntitiesNotFoundByIds, EntityNotFoundById, EntityNotFoundByParams)):
+                error_status = exc.status_code
+            elif isinstance(exc, EntityAlreadyExists):
+                error_status = exc.status_code
 
             logger.debug("{} Traceback:\n{}", error_message, exc, "".join(traceback.format_tb(exc.__traceback__)))
             if self._debug[0]:
@@ -51,6 +64,6 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                             )
                         ),
                     },
-                    status_code=500,
+                    status_code=error_status,
                 )
-            return JSONResponse({"code": 500, "message": "exception occured"}, status_code=500)
+            return JSONResponse({"code": error_status, "message": "exception occured"}, status_code=error_status)

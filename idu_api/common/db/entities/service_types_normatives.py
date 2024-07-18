@@ -2,7 +2,19 @@
 Service types normatives data table is defined here
 """
 
-from sqlalchemy import Boolean, Column, Float, ForeignKey, Integer, Sequence, Table, UniqueConstraint
+from sqlalchemy import (
+    TIMESTAMP,
+    Boolean,
+    Column,
+    Float,
+    ForeignKey,
+    Integer,
+    Sequence,
+    String,
+    Table,
+    UniqueConstraint,
+    func,
+)
 
 from idu_api.common.db import metadata
 
@@ -20,14 +32,20 @@ service_types_normatives_data = Table(
     Column("time_availability_minutes", Integer),
     Column("services_per_1000_normative", Float(53)),
     Column("services_capacity_per_1000_normative", Float(53)),
+    Column("source", String(300)),
+    Column("year", Integer, nullable=False),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     UniqueConstraint(
         "service_type_id",
         "territory_id",
+        "year",
         name="service_types_normatives_data_service_type_territory_key",  # postgres max column name len = 63
     ),
     UniqueConstraint(
         "urban_function_id",
         "territory_id",
+        "year",
         name="service_types_normatives_data_urban_func_territory_key",  # postgres max column name len = 63
     ),
 )
@@ -43,4 +61,8 @@ Service types normatives:
 - time_availability_minutes int
 - services_per_1000_normative float(53)
 - services_capacity_per_1000_normative float(53)
+- source string(300)
+- year int
+- created_at timestamp
+- updated_at timestamp
 """

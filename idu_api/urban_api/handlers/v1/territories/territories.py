@@ -4,6 +4,7 @@ from datetime import date
 
 from fastapi import HTTPException, Path, Query, Request
 from fastapi_pagination import paginate
+from geojson_pydantic.geometries import Geometry as FeatureGeometry
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
@@ -15,7 +16,7 @@ from idu_api.urban_api.schemas import (
     TerritoryWithoutGeometry,
 )
 from idu_api.urban_api.schemas.enums import Ordering
-from idu_api.urban_api.schemas.geometries import Geometry
+from idu_api.urban_api.schemas.geometries import Feature, GeoJSONResponse, Geometry
 from idu_api.urban_api.schemas.pages import Page
 from idu_api.urban_api.schemas.territories import TerritoriesOrderByField
 
@@ -85,6 +86,30 @@ async def get_territory_by_parent_id(
 
 
 @territories_router.get(
+    "/all_territories",
+    response_model=GeoJSONResponse[Feature[FeatureGeometry, TerritoryWithoutGeometry]],
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_territories_by_parent_id(
+    request: Request,
+    parent_id: int = Query(
+        None,
+        description="Parent territory id to filter, should be skipped to get top level territories",
+    ),
+    get_all_levels: bool = Query(
+        False, description="Getting full subtree of territories (unsafe for high level parents)"
+    ),
+    territory_type_id: int | None = Query(None, description="Specifying territory type"),
+) -> GeoJSONResponse[Feature[FeatureGeometry, TerritoryWithoutGeometry]]:
+    """Get FeatureCollection with all territories information by parent id."""
+    territories_service: TerritoriesService = request.state.territories_service
+
+    territories = await territories_service.get_territories_by_parent_id(parent_id, get_all_levels, territory_type_id)
+
+    return await GeoJSONResponse.from_list([territory.to_geojson_dict() for territory in territories])
+
+
+@territories_router.get(
     "/territories_without_geometry",
     response_model=Page[TerritoryWithoutGeometry],
     status_code=status.HTTP_200_OK,
@@ -118,6 +143,40 @@ async def get_territory_without_geometry_by_parent_id(
     results = [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
 
     return paginate(results)
+
+
+@territories_router.get(
+    "/all_territories_without_geometry",
+    response_model=list[TerritoryWithoutGeometry],
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_territories_without_geometry_by_parent_id(
+    request: Request,
+    parent_id: int | None = Query(
+        None, description="Parent territory id to filter, should be skipped to get top level territories"
+    ),
+    get_all_levels: bool = Query(
+        False, description="Getting full subtree of territories (unsafe for high level parents)"
+    ),
+    order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+        None, description="Attribute to set ordering (created_at or updated_at)"
+    ),
+    ordering: Ordering = Query(
+        Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
+    ),
+    created_at: date | None = Query(None, description="Filter by created date"),
+    name: str | None = Query(None, description="Filter territories by name substring (case-insensitive)"),
+) -> list[TerritoryWithoutGeometry]:
+    """Get territories by parent id."""
+    territories_service: TerritoriesService = request.state.territories_service
+
+    order_by_value = order_by.value if order_by is not None else "null"
+
+    territories = await territories_service.get_territories_without_geometry_by_parent_id(
+        parent_id, get_all_levels, order_by_value, created_at, name, ordering.value
+    )
+
+    return [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
 
 
 @territories_router.post(

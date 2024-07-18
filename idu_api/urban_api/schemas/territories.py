@@ -11,6 +11,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from idu_api.urban_api.dto import TerritoryDTO, TerritoryTypeDTO, TerritoryWithoutGeometryDTO
 from idu_api.urban_api.schemas.geometries import Geometry
+from idu_api.urban_api.schemas.indicators import ShortIndicatorValueInfo
+from idu_api.urban_api.schemas.normatives import ShortNormativeInfo
 
 
 class TerritoriesOrderByField(str, Enum):
@@ -318,3 +320,35 @@ class ShortTerritory(BaseModel):
 
     territory_id: int = Field(example=1)
     name: str = Field(example="--", description="Territory name")
+
+
+class TerritoryWithIndicator(BaseModel):
+    """Short territory info with geometry and requested indicator."""
+
+    territory_id: int = Field(example=1)
+    name: str = Field(example="--", description="Territory name")
+    indicator_name: str = Field(
+        description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории"
+    )
+    indicator_value: float = Field(description="Indicator value for territory at time", example=23)
+    measurement_unit_name: str = Field(description="Measurement unit name", example="Количество людей")
+
+
+class TerritoryWithIndicators(BaseModel):
+    """Short territory info with geometry and all indicators."""
+
+    territory_id: int = Field(example=1)
+    name: str = Field(example="--", description="Territory name")
+    indicators: list[ShortIndicatorValueInfo] = Field(
+        ..., description="List of all indicators with values for the territory"
+    )
+
+
+class TerritoryWithNormatives(BaseModel):
+    """Short territory info with geometry and list of all normatives."""
+
+    territory_id: int = Field(example=1)
+    name: str = Field(example="--", description="Territory name")
+    normatives: list[ShortNormativeInfo] = Field(
+        ..., description="List of all normatives with values for the territory"
+    )

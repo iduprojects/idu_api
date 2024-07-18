@@ -18,6 +18,9 @@ from idu_api.urban_api.dto import (
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
+    TerritoryWithIndicatorDTO,
+    TerritoryWithIndicatorsDTO,
+    TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
 )
 from idu_api.urban_api.schemas import (
@@ -56,13 +59,23 @@ class TerritoriesService(Protocol):
 
     @abc.abstractmethod
     async def get_services_by_territory_id(
-        self, territory_id: int, service_type_id: Optional[int], name: Optional[str]
+        self,
+        territory_id: int,
+        service_type_id: Optional[int],
+        name: Optional[str],
+        order_by: Optional[Literal["created_at", "updated_at"]],
+        ordering: Optional[Literal["asc", "desc"]] = "asc",
     ) -> list[ServiceDTO]:
         """Get service objects by territory id."""
 
     @abc.abstractmethod
     async def get_services_with_geometry_by_territory_id(
-        self, territory_id: int, service_type_id: Optional[int], name: Optional[str]
+        self,
+        territory_id: int,
+        service_type_id: int | None,
+        name: str | None,
+        order_by: Optional[Literal["created_at", "updated_at"]],
+        ordering: Optional[Literal["asc", "desc"]] = "asc",
     ) -> list[ServiceWithGeometryDTO]:
         """Get service objects with geometry by territory id."""
 
@@ -79,6 +92,18 @@ class TerritoriesService(Protocol):
         self, territory_id: int, date_type: Optional[str], date_value: Optional[datetime]
     ) -> list[IndicatorValueDTO]:
         """Get indicator values by territory id, optional time period."""
+
+    @abc.abstractmethod
+    async def get_indicator_values_by_parent_id(
+        self, parent_id: Optional[int], date_type: str, date_value: datetime, indicator_id: int
+    ) -> list[TerritoryWithIndicatorDTO]:
+        """Get requested indicator values for child territories by parent id and time period."""
+
+    @abc.abstractmethod
+    async def get_indicators_values_by_parent_id(
+        self, parent_id: Optional[int], date_type: str, date_value: datetime
+    ) -> list[TerritoryWithIndicatorsDTO]:
+        """Get all indicators values for child territories by parent id and time period."""
 
     @abc.abstractmethod
     async def get_normatives_by_territory_id(self, territory_id: int) -> list[NormativeDTO]:
@@ -107,14 +132,30 @@ class TerritoriesService(Protocol):
         """Delete normatives by territory id"""
 
     @abc.abstractmethod
+    async def get_normatives_values_by_parent_id(
+        self, territory_id: int, service_type_id: Optional[int], urban_function_id: Optional[int]
+    ) -> list[TerritoryWithNormativesDTO]:
+        """Get list of normatives with values for territory by parent id and service type|urban function id."""
+
+    @abc.abstractmethod
     async def get_physical_objects_by_territory_id(
-        self, territory_id: int, physical_object_type: Optional[int], name: Optional[str]
+        self,
+        territory_id: int,
+        physical_object_type: int | None,
+        name: str | None,
+        order_by: Optional[Literal["created_at", "updated_at"]],
+        ordering: Optional[Literal["asc", "desc"]] = "asc",
     ) -> list[PhysicalObjectDataDTO]:
         """Get physical objects by territory id, optional physical object type."""
 
     @abc.abstractmethod
     async def get_physical_objects_with_geometry_by_territory_id(
-        self, territory_id: int, physical_object_type: Optional[int], name: Optional[str]
+        self,
+        territory_id: int,
+        physical_object_type: int | None,
+        name: str | None,
+        order_by: Optional[Literal["created_at", "updated_at"]],
+        ordering: Optional[Literal["asc", "desc"]] = "asc",
     ) -> list[PhysicalObjectWithGeometryDTO]:
         """Get physical objects with geometry by territory id, optional physical object type."""
 
@@ -148,8 +189,7 @@ class TerritoriesService(Protocol):
         ordering: Optional[Literal["asc", "desc"]] = "asc",
     ) -> list[TerritoryWithoutGeometryDTO]:
         """Get a territory or list of territories without geometry by parent,
-        ordering and filters can be specified in parameters.
-        """
+        ordering and filters can be specified in parameters."""
 
     @abc.abstractmethod
     async def get_common_territory_for_geometry(

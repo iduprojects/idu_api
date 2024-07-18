@@ -2,11 +2,13 @@
 Territories DTO are defined here.
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import shapely.geometry as geom
+
+from idu_api.urban_api.dto.normatives import NormativeDTO
 
 
 @dataclass(frozen=True)
@@ -20,7 +22,7 @@ class TerritoryTypeDTO:
 
 
 @dataclass()
-class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
+class TerritoryDTO:
     """
     Territory DTO used to transfer territory data
     """
@@ -48,11 +50,17 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
         if isinstance(self.geometry, dict):
             self.geometry = geom.shape(self.geometry)
 
+    def to_geojson_dict(self) -> Dict[str, Any]:
+        territory = asdict(self)
+        territory_type = territory.pop("territory_type_id", None), territory.pop("territory_type_name", None)
+        territory["territory_type"] = {"territory_type_id": territory_type[0], "name": territory_type[1]}
+        return territory
+
 
 @dataclass(frozen=True)
-class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attributes
+class TerritoryWithoutGeometryDTO:
     """
-    Territory DTO used to transfer territory data
+    Territory DTO used to transfer territory data without geometry
     """
 
     territory_id: int
@@ -66,3 +74,91 @@ class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attribut
     okato_code: str
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass()
+class TerritoryWithIndicatorDTO:
+    """
+    Territory DTO used to transfer short territory data with indicator
+    """
+
+    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    centre_point: geom.Point
+    territory_id: int
+    name: str
+    indicator_name: str
+    indicator_value: float
+    measurement_unit_name: Optional[str]
+
+    def __post_init__(self) -> None:
+        if isinstance(self.centre_point, dict):
+            self.centre_point = geom.shape(self.centre_point)
+        if self.geometry is None:
+            self.geometry = self.centre_point
+        if isinstance(self.geometry, dict):
+            self.geometry = geom.shape(self.geometry)
+
+    def to_geojson_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass()
+class TerritoryWithIndicatorsDTO:
+    """
+    Territory DTO used to transfer short territory data with list of indicators
+    """
+
+    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    centre_point: geom.Point
+    territory_id: int
+    name: str
+    indicators: List[Dict[str, Any]]
+
+    def __post_init__(self) -> None:
+        if isinstance(self.centre_point, dict):
+            self.centre_point = geom.shape(self.centre_point)
+        if self.geometry is None:
+            self.geometry = self.centre_point
+        if isinstance(self.geometry, dict):
+            self.geometry = geom.shape(self.geometry)
+
+    def to_geojson_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass()
+class TerritoryWithNormativesDTO:
+    """
+    Territory DTO used to transfer short territory data with list of indicators
+    """
+
+    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    centre_point: geom.Point
+    territory_id: int
+    name: str
+    normatives: List[NormativeDTO]
+
+    def __post_init__(self) -> None:
+        if isinstance(self.centre_point, dict):
+            self.centre_point = geom.shape(self.centre_point)
+        if self.geometry is None:
+            self.geometry = self.centre_point
+        if isinstance(self.geometry, dict):
+            self.geometry = geom.shape(self.geometry)
+
+    def to_geojson_dict(self) -> Dict[str, Any]:
+        territory = asdict(self)
+        for normative in territory["normatives"]:
+            del normative["normative_type"]
+            del normative["service_type_id"]
+            del normative["urban_function_id"]
+            del normative["created_at"]
+            del normative["updated_at"]
+            if normative["service_type_name"] is not None:
+                normative["type"] = normative.pop("service_type_name")
+                del normative["urban_function_name"]
+            else:
+                normative["type"] = normative.pop("urban_function_name")
+                del normative["service_type_name"]
+
+        return territory

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date
 from enum import Enum
 from typing import Any, Literal, Optional
 
@@ -91,6 +91,18 @@ class IndicatorsPost(BaseModel):
     parent_id: Optional[int] = Field(description="Indicator parent id", example=1)
 
 
+class ShortIndicatorValueInfo(BaseModel):
+    """
+    Indicator value with only name, value and measurement unit.
+    """
+
+    name_full: str = Field(
+        description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории"
+    )
+    value: float = Field(description="Indicator value for territory at time", example=23.5)
+    measurement_unit_name: Optional[str] = Field(description="Measurement unit name", example="Количество людей")
+
+
 class IndicatorValue(BaseModel):
     """
     Indicator value with all its attributes
@@ -101,7 +113,7 @@ class IndicatorValue(BaseModel):
     date_type: Literal["year", "half_year", "quarter", "month", "day"] = Field(
         description="Time interval", example="year"
     )
-    date_value: datetime = Field(
+    date_value: date = Field(
         description="first day of the year for 'year' period, first of june for 'half_year',"
         " first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
         example="2024-01-01",

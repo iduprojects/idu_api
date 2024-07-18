@@ -2,7 +2,6 @@
 
 from typing import Callable, Literal, Optional
 
-from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import cast, func, select
 from sqlalchemy.dialects.postgresql import JSONB
@@ -17,6 +16,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import ServiceDTO, ServiceWithGeometryDTO
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 
 func: Callable
 
@@ -32,7 +32,7 @@ async def get_services_by_territory_id_from_db(
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
     statement = (
         select(
@@ -87,7 +87,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
     statement = (
         select(
@@ -141,7 +141,7 @@ async def get_services_capacity_by_territory_id_from_db(
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
     statement = (
         select(func.sum(services_data.c.capacity_real))
@@ -152,10 +152,17 @@ async def get_services_capacity_by_territory_id_from_db(
             )
         )
         .where(
-            object_geometries_data.c.territory_id == territory_id, services_data.c.service_type_id == service_type_id
+            object_geometries_data.c.territory_id == territory_id,
+            urban_objects_data.c.service_id.is_not(None),
         )
     )
 
-    result = (await conn.execute(statement)).scalar()
+    if service_type_id is not None:
+        statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
+        service_type = (await conn.execute(statement)).one_or_none()
+        if service_type is None:
+            raise EntityNotFoundById(service_type_id, "service type")
 
-    return result
+    result = (await conn.execute(statement)).scalar_one_or_none()
+
+    return result if result is not None else 0

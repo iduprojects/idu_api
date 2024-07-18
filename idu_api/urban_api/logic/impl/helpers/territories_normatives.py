@@ -1,7 +1,9 @@
-from typing import Callable
+from datetime import datetime, timezone
+from typing import Callable, Optional
 
-from fastapi import HTTPException
-from sqlalchemy import and_, case, delete, func, insert, literal, select, update
+from geoalchemy2.functions import ST_AsGeoJSON
+from sqlalchemy import and_, case, cast, delete, func, insert, literal, select, update
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -10,7 +12,8 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_functions_dict,
 )
-from idu_api.urban_api.dto import NormativeDTO
+from idu_api.urban_api.dto import NormativeDTO, TerritoryWithNormativesDTO
+from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.schemas import NormativeDelete, NormativePatch, NormativePost
 
 func: Callable
@@ -27,7 +30,7 @@ async def get_normatives_by_territory_id_from_db(conn: AsyncConnection, territor
     ).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
     # Recursive request to obtain a "branch" of territories
     cte_statement = statement.cte(name="territories_recursive", recursive=True)
@@ -62,6 +65,10 @@ async def get_normatives_by_territory_id_from_db(conn: AsyncConnection, territor
             service_types_normatives_data.c.services_per_1000_normative,
             service_types_normatives_data.c.services_capacity_per_1000_normative,
             case((cte_statement.c.territory_id == territory_id, "self"), else_="parent").label("normative_type"),
+            service_types_normatives_data.c.year,
+            service_types_normatives_data.c.source,
+            service_types_normatives_data.c.created_at,
+            service_types_normatives_data.c.updated_at,
         )
         .join(cte_statement, service_types_normatives_data.c.territory_id == cte_statement.c.territory_id)
         .join(
@@ -99,6 +106,10 @@ async def get_normatives_by_territory_id_from_db(conn: AsyncConnection, territor
             service_types_normatives_data.c.services_per_1000_normative,
             service_types_normatives_data.c.services_capacity_per_1000_normative,
             case((cte_statement.c.territory_id == territory_id, "self"), else_="parent").label("normative_type"),
+            service_types_normatives_data.c.year,
+            service_types_normatives_data.c.source,
+            service_types_normatives_data.c.created_at,
+            service_types_normatives_data.c.updated_at,
         )
         .join(cte_statement, service_types_normatives_data.c.territory_id == cte_statement.c.territory_id)
         .join(
@@ -136,6 +147,10 @@ async def get_normatives_by_territory_id_from_db(conn: AsyncConnection, territor
             service_types_normatives_data.c.services_per_1000_normative,
             service_types_normatives_data.c.services_capacity_per_1000_normative,
             literal("global").label("normative_type"),
+            service_types_normatives_data.c.year,
+            service_types_normatives_data.c.source,
+            service_types_normatives_data.c.created_at,
+            service_types_normatives_data.c.updated_at,
         )
         .outerjoin(
             service_types_dict, service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id
@@ -170,6 +185,10 @@ async def get_normatives_by_ids_from_db(conn: AsyncConnection, normative_ids: li
             service_types_normatives_data.c.services_per_1000_normative,
             service_types_normatives_data.c.services_capacity_per_1000_normative,
             literal("self").label("normative_type"),
+            service_types_normatives_data.c.year,
+            service_types_normatives_data.c.source,
+            service_types_normatives_data.c.created_at,
+            service_types_normatives_data.c.updated_at,
         )
         .outerjoin(
             service_types_dict, service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id
@@ -196,9 +215,8 @@ async def add_normatives_to_territory_to_db(
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory_id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
-    normative_ids = []
     for normative in normatives:
         if normative.service_type_id is not None:
             statement = select(service_types_dict).where(
@@ -206,7 +224,16 @@ async def add_normatives_to_territory_to_db(
             )
             service_type = (await conn.execute(statement)).one_or_none()
             if service_type is None:
-                raise HTTPException(status_code=404, detail="Given service_type_id is not found")
+                raise EntityNotFoundById(normative.service_type_id, "service type")
+
+            statement = select(service_types_normatives_data).where(
+                service_types_normatives_data.c.service_type_id == normative.service_type_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+            requested_normative = (await conn.execute(statement)).one_or_none()
+            if requested_normative is not None:
+                raise EntityAlreadyExists("normative", normative.service_type_id, territory_id, normative.year)
 
         if normative.urban_function_id is not None:
             statement = select(urban_functions_dict).where(
@@ -214,8 +241,19 @@ async def add_normatives_to_territory_to_db(
             )
             urban_function = (await conn.execute(statement)).one_or_none()
             if urban_function is None:
-                raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
+                raise EntityNotFoundById(normative.urban_function_id, "urban function")
 
+            statement = select(service_types_normatives_data).where(
+                service_types_normatives_data.c.urban_function_id == normative.urban_function_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+            requested_normative = (await conn.execute(statement)).one_or_none()
+            if requested_normative is not None:
+                raise EntityAlreadyExists("normative", normative.urban_function_id, territory_id, normative.year)
+
+    normative_ids = []
+    for normative in normatives:
         statement = (
             insert(service_types_normatives_data)
             .values(
@@ -227,6 +265,8 @@ async def add_normatives_to_territory_to_db(
                 time_availability_minutes=normative.time_availability_minutes,
                 services_per_1000_normative=normative.services_per_1000_normative,
                 services_capacity_per_1000_normative=normative.services_capacity_per_1000_normative,
+                year=normative.year,
+                source=normative.source,
             )
             .returning(service_types_normatives_data.c.normative_id)
         )
@@ -244,9 +284,8 @@ async def put_normatives_by_territory_id_in_db(
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory_id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
-    normative_ids = []
     for normative in normatives:
         if normative.service_type_id is not None:
             statement = select(service_types_dict).where(
@@ -254,11 +293,16 @@ async def put_normatives_by_territory_id_in_db(
             )
             service_type = (await conn.execute(statement)).one_or_none()
             if service_type is None:
-                raise HTTPException(status_code=404, detail="Given service_type_id is not found")
-            where_clause = and_(
-                service_types_normatives_data.c.territory_id == territory_id,
+                raise EntityNotFoundById(normative.service_type_id, "service type")
+
+            statement = select(service_types_normatives_data).where(
                 service_types_normatives_data.c.service_type_id == normative.service_type_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
             )
+            requested_normative = (await conn.execute(statement)).one_or_none()
+            if requested_normative is None:
+                raise EntityNotFoundByParams("normative", normative.service_type_id, territory_id, normative.year)
 
         if normative.urban_function_id is not None:
             statement = select(urban_functions_dict).where(
@@ -266,10 +310,30 @@ async def put_normatives_by_territory_id_in_db(
             )
             urban_function = (await conn.execute(statement)).one_or_none()
             if urban_function is None:
-                raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
-            where_clause = and_(
-                service_types_normatives_data.c.territory_id == territory_id,
+                raise EntityNotFoundById(normative.urban_function_id, "urban function")
+
+            statement = select(service_types_normatives_data).where(
                 service_types_normatives_data.c.urban_function_id == normative.urban_function_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+            requested_normative = (await conn.execute(statement)).one_or_none()
+            if requested_normative is None:
+                raise EntityNotFoundByParams("normative", normative.urban_function_id, territory_id, normative.year)
+
+    normative_ids = []
+    for normative in normatives:
+        if normative.service_type_id is not None:
+            where_clause = and_(
+                service_types_normatives_data.c.service_type_id == normative.service_type_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+        else:
+            where_clause = and_(
+                service_types_normatives_data.c.urban_function_id == normative.urban_function_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
             )
 
         statement = (
@@ -284,6 +348,9 @@ async def put_normatives_by_territory_id_in_db(
                 time_availability_minutes=normative.time_availability_minutes,
                 services_per_1000_normative=normative.services_per_1000_normative,
                 services_capacity_per_1000_normative=normative.services_capacity_per_1000_normative,
+                year=normative.year,
+                source=normative.source,
+                updated_at=datetime.now(timezone.utc),
             )
             .returning(service_types_normatives_data.c.normative_id)
         )
@@ -300,9 +367,8 @@ async def patch_normatives_by_territory_id_in_db(
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory_id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
-    normative_ids = []
     for normative in normatives:
         if normative.service_type_id is not None:
             statement = select(service_types_dict).where(
@@ -310,11 +376,16 @@ async def patch_normatives_by_territory_id_in_db(
             )
             service_type = (await conn.execute(statement)).one_or_none()
             if service_type is None:
-                raise HTTPException(status_code=404, detail="Given service_type_id is not found")
-            where_clause = and_(
-                service_types_normatives_data.c.territory_id == territory_id,
+                raise EntityNotFoundById(normative.service_type_id, "service type")
+
+            statement = select(service_types_normatives_data).where(
                 service_types_normatives_data.c.service_type_id == normative.service_type_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
             )
+            requested_normative = (await conn.execute(statement)).one_or_none()
+            if requested_normative is None:
+                raise EntityNotFoundByParams("normative", normative.service_type_id, territory_id, normative.year)
 
         if normative.urban_function_id is not None:
             statement = select(urban_functions_dict).where(
@@ -322,15 +393,36 @@ async def patch_normatives_by_territory_id_in_db(
             )
             urban_function = (await conn.execute(statement)).one_or_none()
             if urban_function is None:
-                raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
-            where_clause = and_(
-                service_types_normatives_data.c.territory_id == territory_id,
+                raise EntityNotFoundById(normative.urban_function_id, "urban function")
+
+            statement = select(service_types_normatives_data).where(
                 service_types_normatives_data.c.urban_function_id == normative.urban_function_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+            requested_normative = (await conn.execute(statement)).one_or_none()
+            if requested_normative is None:
+                raise EntityNotFoundByParams("normative", normative.urban_function_id, territory_id, normative.year)
+
+    normative_ids = []
+    for normative in normatives:
+        if normative.service_type_id is not None:
+            where_clause = and_(
+                service_types_normatives_data.c.service_type_id == normative.service_type_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+        else:
+            where_clause = and_(
+                service_types_normatives_data.c.urban_function_id == normative.urban_function_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
             )
 
         statement = (
             update(service_types_normatives_data)
             .where(where_clause)
+            .values(updated_at=datetime.now(timezone.utc))
             .returning(service_types_normatives_data.c.normative_id)
         )
 
@@ -353,7 +445,7 @@ async def delete_normatives_by_territory_id_in_db(
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory_id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
     for normative in normatives:
         if normative.service_type_id is not None:
@@ -362,16 +454,16 @@ async def delete_normatives_by_territory_id_in_db(
             )
             service_type = (await conn.execute(statement)).one_or_none()
             if service_type is None:
-                raise HTTPException(status_code=404, detail="Given service_type_id is not found")
-            where_clause = and_(
-                service_types_normatives_data.c.territory_id == territory_id,
-                service_types_normatives_data.c.service_type_id == normative.service_type_id,
-            )
+                raise EntityNotFoundById(normative.service_type_id, "service type")
 
-            statement = select(service_types_normatives_data).where(where_clause)
-            requested_normative = (await conn.execute(statement)).mappings().one_or_none()
+            statement = select(service_types_normatives_data).where(
+                service_types_normatives_data.c.service_type_id == normative.service_type_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+            requested_normative = (await conn.execute(statement)).one_or_none()
             if requested_normative is None:
-                raise HTTPException(status_code=404, detail="Given normative is not found")
+                raise EntityNotFoundByParams("normative", normative.service_type_id, territory_id, normative.year)
 
         if normative.urban_function_id is not None:
             statement = select(urban_functions_dict).where(
@@ -379,16 +471,38 @@ async def delete_normatives_by_territory_id_in_db(
             )
             urban_function = (await conn.execute(statement)).one_or_none()
             if urban_function is None:
-                raise HTTPException(status_code=404, detail="Given urban_function_id is not found")
-            where_clause = and_(
-                service_types_normatives_data.c.territory_id == territory_id,
-                service_types_normatives_data.c.urban_function_id == normative.urban_function_id,
-            )
+                raise EntityNotFoundById(normative.urban_function_id, "urban function")
 
-            statement = select(service_types_normatives_data).where(where_clause)
-            requested_normative = (await conn.execute(statement)).mappings().one_or_none()
+            statement = select(service_types_normatives_data).where(
+                service_types_normatives_data.c.urban_function_id == normative.urban_function_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+            requested_normative = (await conn.execute(statement)).one_or_none()
             if requested_normative is None:
-                raise HTTPException(status_code=404, detail="Given normative is not found")
+                raise EntityNotFoundByParams("normative", normative.urban_function_id, territory_id, normative.year)
+
+    for normative in normatives:
+        if normative.service_type_id is not None:
+            where_clause = and_(
+                service_types_normatives_data.c.service_type_id == normative.service_type_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+        else:
+            where_clause = and_(
+                service_types_normatives_data.c.urban_function_id == normative.urban_function_id,
+                service_types_normatives_data.c.territory_id == territory_id,
+                service_types_normatives_data.c.year == normative.year,
+            )
+        statement = select(service_types_normatives_data).where(where_clause)
+        requested_normative = (await conn.execute(statement)).mappings().one_or_none()
+        if requested_normative is None:
+            raise EntityNotFoundByParams(
+                "normative",
+                territory_id,
+                normative.service_type_id if normative.service_type_id is not None else normative.urban_function_id,
+            )
 
         statement = delete(service_types_normatives_data).where(where_clause)
         await conn.execute(statement)
@@ -396,3 +510,44 @@ async def delete_normatives_by_territory_id_in_db(
     await conn.commit()
 
     return {"result": "ok"}
+
+
+async def get_normatives_values_by_parent_id_from_db(
+    conn: AsyncConnection, parent_id: Optional[int], service_type_id: Optional[int], urban_function_id: Optional[int]
+) -> list[TerritoryWithNormativesDTO]:
+    """Get list of normatives with values for territory by parent id and service type|urban function id."""
+
+    if parent_id is not None:
+        statement = select(territories_data).where(territories_data.c.territory_id == parent_id)
+        territory = (await conn.execute(statement)).one_or_none()
+        if territory is None:
+            raise EntityNotFoundById(parent_id, "territory")
+
+    if service_type_id is not None:
+        statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
+        service_type = (await conn.execute(statement)).one_or_none()
+        if service_type is None:
+            raise EntityNotFoundById(service_type_id, "service_type")
+
+    if urban_function_id is not None:
+        statement = select(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == urban_function_id)
+        urban_function = (await conn.execute(statement)).one_or_none()
+        if urban_function is None:
+            raise EntityNotFoundById(urban_function_id, "urban function")
+
+    statement = select(
+        territories_data.c.territory_id,
+        territories_data.c.name,
+        cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
+        cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
+    ).where(
+        territories_data.c.parent_id == parent_id if parent_id is not None else territories_data.c.parent_id.is_(None),
+    )
+    child_territories = (await conn.execute(statement)).mappings().all()
+
+    results = []
+    for child_territory in child_territories:
+        normatives = await get_normatives_by_territory_id_from_db(conn, child_territory.territory_id)
+        results.append(TerritoryWithNormativesDTO(**child_territory, normatives=normatives))
+
+    return results

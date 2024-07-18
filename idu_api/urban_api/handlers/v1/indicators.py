@@ -130,7 +130,7 @@ async def get_indicator_value_by_id(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_indicator_value(request: Request, indicator_value: IndicatorValue) -> IndicatorValue:
-    """Add a new indicator value for a gien territory and date period."""
+    """Add a new indicator value for a given territory and date period."""
     conn: AsyncConnection = request.state.conn
 
     indicator_value_dto = await add_indicator_value_to_db(conn, indicator_value)

@@ -2,9 +2,8 @@
 
 from typing import Literal, Optional
 
-from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, select
+from sqlalchemy import cast, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -16,6 +15,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import PhysicalObjectDataDTO, PhysicalObjectWithGeometryDTO
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 
 
 async def get_physical_objects_by_territory_id_from_db(
@@ -31,7 +31,16 @@ async def get_physical_objects_by_territory_id_from_db(
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
+
+    subquery = (
+        select(
+            urban_objects_data.c.physical_object_id,
+            func.max(urban_objects_data.c.object_geometry_id).label("object_geometry_id"),
+        )
+        .group_by(urban_objects_data.c.physical_object_id)
+        .subquery()
+    )
 
     statement = (
         select(
@@ -40,12 +49,12 @@ async def get_physical_objects_by_territory_id_from_db(
         )
         .select_from(
             physical_objects_data.join(
-                urban_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+                subquery,
+                physical_objects_data.c.physical_object_id == subquery.c.physical_object_id,
             )
             .join(
                 object_geometries_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+                subquery.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(
                 physical_object_types_dict,
@@ -53,7 +62,7 @@ async def get_physical_objects_by_territory_id_from_db(
             )
         )
         .where(object_geometries_data.c.territory_id == territory_id)
-    ).distinct()
+    )
 
     if physical_object_type is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type)
@@ -88,7 +97,16 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
+
+    subquery = (
+        select(
+            urban_objects_data.c.physical_object_id,
+            func.max(urban_objects_data.c.object_geometry_id).label("object_geometry_id"),
+        )
+        .group_by(urban_objects_data.c.physical_object_id)
+        .subquery()
+    )
 
     statement = (
         select(
@@ -100,12 +118,12 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
         )
         .select_from(
             physical_objects_data.join(
-                urban_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+                subquery,
+                physical_objects_data.c.physical_object_id == subquery.c.physical_object_id,
             )
             .join(
                 object_geometries_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+                subquery.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(
                 physical_object_types_dict,
@@ -113,7 +131,7 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
             )
         )
         .where(object_geometries_data.c.territory_id == territory_id)
-    ).distinct()
+    )
 
     if physical_object_type is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type)

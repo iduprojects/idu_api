@@ -4,7 +4,6 @@ from datetime import date, datetime, timezone
 from typing import Callable, Literal, Optional
 
 import shapely.geometry as geom
-from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
 from sqlalchemy import cast, func, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
@@ -12,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import territories_data, territory_types_dict
 from idu_api.urban_api.dto import TerritoryDTO, TerritoryWithoutGeometryDTO
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.schemas import TerritoryDataPatch, TerritoryDataPost, TerritoryDataPut
 
 func: Callable
@@ -58,7 +58,7 @@ async def get_territory_by_id(conn: AsyncConnection, territory_id: int) -> Terri
     """Get territory object by id."""
     results = await get_territories_by_ids(conn, [territory_id])
     if len(results) == 0:
-        raise HTTPException(status_code=404, detail="Given id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
     return results[0]
 
@@ -72,7 +72,14 @@ async def add_territory_to_db(
         statement = select(territories_data).where(territories_data.c.territory_id == territory.parent_id)
         parent_territory = (await conn.execute(statement)).one_or_none()
         if parent_territory is None:
-            raise HTTPException(status_code=404, detail="Given parent id is not found")
+            raise EntityNotFoundById(territory.parent_id, "territory")
+
+    statement = select(territory_types_dict).where(
+        territory_types_dict.c.territory_type_id == territory.territory_type_id
+    )
+    territory_type = (await conn.execute(statement)).one_or_none()
+    if territory_type is None:
+        raise EntityNotFoundById(territory.territory_type_id, "territory type")
 
     statement = (
         insert(territories_data)
@@ -107,12 +114,19 @@ async def put_territory_to_db(
         statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
         check_parent_id = (await conn.execute(statement)).one_or_none()
         if check_parent_id is None:
-            raise HTTPException(status_code=404, detail="Given parent_id is not found")
+            raise EntityNotFoundById(territory.parent_id, "territory")
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     requested_territory = (await conn.execute(statement)).one_or_none()
     if requested_territory is None:
-        raise HTTPException(status_code=404, detail="Given territory_id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
+
+    statement = select(territory_types_dict).where(
+        territory_types_dict.c.territory_type_id == territory.territory_type_id
+    )
+    territory_type = (await conn.execute(statement)).one_or_none()
+    if territory_type is None:
+        raise EntityNotFoundById(territory.territory_type_id, "territory type")
 
     statement = (
         update(territories_data)
@@ -148,12 +162,12 @@ async def patch_territory_to_db(
         statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
         check_parent_id = (await conn.execute(statement)).one_or_none()
         if check_parent_id is None:
-            raise HTTPException(status_code=404, detail="Given parent_id is not found")
+            raise EntityNotFoundById(territory.parent_id, "territory")
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     requested_territory = (await conn.execute(statement)).one_or_none()
     if requested_territory is None:
-        raise HTTPException(status_code=404, detail="Given territory_id is not found")
+        raise EntityNotFoundById(territory_id, "territory")
 
     statement = (
         update(territories_data)
@@ -171,7 +185,7 @@ async def patch_territory_to_db(
                 )
                 territory_type = (await conn.execute(new_statement)).one_or_none()
                 if territory_type is None:
-                    raise HTTPException(status_code=404, detail="Given territory type id is not found")
+                    raise EntityNotFoundById(territory.territory_type_id, "territory type")
                 values_to_update.update({k: v})
             else:
                 values_to_update.update({k: v})
@@ -199,7 +213,7 @@ async def get_territories_by_parent_id_from_db(
         statement = select(territories_data.c.territory_id).where(territories_data.c.territory_id == parent_id)
         parent_territory = (await conn.execute(statement)).one_or_none()
         if parent_territory is None:
-            raise HTTPException(status_code=404, detail="Given parent id is not found")
+            raise EntityNotFoundById(parent_id, "territory")
 
     territories_data_parents = territories_data.alias("territories_data_parents")
     statement = select(
@@ -234,6 +248,12 @@ async def get_territories_by_parent_id_from_db(
             else territories_data.c.parent_id.is_(None)
         )
         if territory_type_id is not None:
+            filter_statement = select(territory_types_dict).where(
+                territory_types_dict.c.territory_type_id == territory_type_id
+            )
+            territory_type = (await conn.execute(filter_statement)).one_or_none()
+            if territory_type is None:
+                raise EntityNotFoundById(territory_type_id, "territory type")
             cte_statement = cte_statement.where(territories_data.c.territory_type_id == territory_type_id)
         cte_statement = cte_statement.cte(name="territories_recursive", recursive=True)
 
@@ -249,6 +269,12 @@ async def get_territories_by_parent_id_from_db(
         )
 
         if territory_type_id is not None:
+            filter_statement = select(territory_types_dict).where(
+                territory_types_dict.c.territory_type_id == territory_type_id
+            )
+            territory_type = (await conn.execute(filter_statement)).one_or_none()
+            if territory_type is None:
+                raise EntityNotFoundById(territory_type_id, "territory type")
             statement = statement.where(territories_data.c.territory_type_id == territory_type_id)
 
     result = (await conn.execute(statement)).mappings().all()
@@ -272,7 +298,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         statement = select(territories_data).where(territories_data.c.territory_id == parent_id)
         parent_territory = (await conn.execute(statement)).one_or_none()
         if parent_territory is None:
-            raise HTTPException(status_code=404, detail="Given parent id is not found")
+            raise EntityNotFoundById(parent_id, "territory")
 
     statement = select(
         territories_data.c.territory_id,

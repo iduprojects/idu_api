@@ -2,7 +2,6 @@
 
 from typing import Callable
 
-from fastapi import HTTPException
 from geoalchemy2 import Geography, Geometry
 from geoalchemy2.functions import ST_GeomFromText
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
@@ -17,6 +16,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import PhysicalObjectDataDTO
+from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds
 
 func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString
@@ -40,9 +40,7 @@ async def get_physical_objects_by_ids(conn: AsyncConnection, ids: list[int]) -> 
 
     results = (await conn.execute(statement)).mappings().all()
     if results is None:
-        raise HTTPException(  # TODO replace with custom exception
-            status_code=404, detail=f"At least one of given ids ({len(ids)} vs {len(results)}) is not found"
-        )
+        raise EntitiesNotFoundByIds(ids, results, "physical_object")
 
     return [PhysicalObjectDataDTO(**physical_object) for physical_object in results]
 

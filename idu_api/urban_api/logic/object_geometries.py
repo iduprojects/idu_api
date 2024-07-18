@@ -2,7 +2,6 @@
 
 from typing import Callable, List
 
-from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
 from sqlalchemy import cast, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
@@ -16,6 +15,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import ObjectGeometryDTO, PhysicalObjectDataDTO
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
 
 func: Callable
@@ -32,7 +32,7 @@ async def get_physical_objects_by_object_geometry_id_from_db(
     statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
     object_geometry = (await conn.execute(statement)).one_or_none()
     if object_geometry is None:
-        raise HTTPException(status_code=404, detail="Given object geometry id is not found")
+        raise EntityNotFoundById(object_geometry_id, "object geometry")
 
     statement = (
         select(
@@ -100,12 +100,12 @@ async def put_object_geometry_to_db(
     statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
     requested_object_geometry = (await conn.execute(statement)).one_or_none()
     if requested_object_geometry is None:
-        raise HTTPException(status_code=404, detail="Given object geometry id is not found")
+        raise EntityNotFoundById(object_geometry_id, "object geometry")
 
     statement = select(territories_data).where(territories_data.c.territory_id == object_geometry.territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory id is not found")
+        raise EntityNotFoundById(object_geometry.territory_id, "territory")
 
     statement = (
         update(object_geometries_data)
@@ -137,7 +137,7 @@ async def patch_object_geometry_to_db(
     statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
     requested_object_geometry = (await conn.execute(statement)).one_or_none()
     if requested_object_geometry is None:
-        raise HTTPException(status_code=404, detail="Given object geometry id is not found")
+        raise EntityNotFoundById(object_geometry_id, "object geometry")
 
     statement = (
         update(object_geometries_data)
@@ -154,7 +154,7 @@ async def patch_object_geometry_to_db(
                 )
                 territory = (await conn.execute(new_statement)).one_or_none()
                 if territory is None:
-                    raise HTTPException(status_code=404, detail="Given territory id is not found")
+                    raise EntityNotFoundById(object_geometry.territory_id, "territory")
             values_to_update.update({k: v})
 
     values_to_update.update(
@@ -179,12 +179,12 @@ async def add_object_geometry_to_physical_object_in_db(
     statement = select(territories_data).where(territories_data.c.territory_id == object_geometry.territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
-        raise HTTPException(status_code=404, detail="Given territory id is not found")
+        raise EntityNotFoundById(object_geometry.territory_id, "territory")
 
     statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
     physical_object = (await conn.execute(statement)).one_or_none()
     if physical_object is None:
-        raise HTTPException(status_code=404, detail="Given physical object id is not found")
+        raise EntityNotFoundById(physical_object_id, "physical object")
 
     statement = (
         insert(object_geometries_data)
