@@ -4,7 +4,7 @@ from idu_api.urban_api.dto import TerritoryDTO
 from idu_api.urban_api.logic.impl.helpers.territory_objects import get_territory_by_id
 
 
-class GeometriesService:
+class CitiesService:
     def __init__(self, conn: AsyncConnection):
         self.conn = conn
 

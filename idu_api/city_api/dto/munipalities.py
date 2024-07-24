@@ -13,3 +13,12 @@ class MunicipalitiesDTO(TerritoryBase):
     geometry: Optional[Polygon | MultiPolygon | Point] = None
     center: Point = None
     type: str = None
+
+
+@dataclass()
+class MunicipalitiesWithoutGeometryDTO(TerritoryBase):
+    id: int = None
+    name: str = None
+    population: int = None
+    center: Point = None
+    type: str = None

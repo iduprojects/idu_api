@@ -16,3 +16,14 @@ class AdministrativeUnitsDTO(TerritoryBase):
     type: str = None
     population: Optional[int] = None
     geometry: Optional[Polygon | MultiPolygon | Point] = None
+
+
+@dataclass()
+class AdministrativeUnitsWithoutGeometryDTO(TerritoryBase):
+    """Administrative unit DTO"""
+
+    id: int = None
+    name: str = None
+    center: Point = None
+    type: str = None
+    population: Optional[int] = None

@@ -24,3 +24,23 @@ class MunicipalitiesData(BaseModel):
             center=Geometry.from_shapely_geometry(dto.center),
             type=dto.type
         )
+
+
+class MunicipalitiesWithoutGeometryData(BaseModel):
+    """Administrative unit schema"""
+
+    id: int = Field(examples=[1, 4443])
+    name: str = Field(example="name1", description="Municipality name")
+    center: Geometry = Field(description="Municipality center coordinates")
+    type: str = Field(example="type1", description="Municipality type")
+
+    @classmethod
+    async def from_dto(cls, dto: MunicipalitiesDTO):
+        """Constructor from DTO"""
+
+        return cls(
+            id=dto.id,
+            name=dto.name,
+            center=Geometry.from_shapely_geometry(dto.center),
+            type=dto.type
+        )
