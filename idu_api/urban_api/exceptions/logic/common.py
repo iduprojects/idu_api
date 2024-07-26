@@ -35,17 +35,15 @@ class EntitiesNotFoundByIds(IduApiError):
     Exception to raise when requested entity was not found in the database by the list of identifiers.
     """
 
-    def __init__(self, ids: list[int], results: list[int], entity: str):
+    def __init__(self, entity: str):
         """
         Construct from requested identifier and entity (table) name.
         """
-        self.ids = ids
-        self.results = results
         self.entity = entity
         super().__init__()
 
     def __str__(self) -> str:
-        return f"At least one '{self.entity}' of given ids ({len(self.ids)} vs {len(self.results)}) is not found"
+        return f"At least one '{self.entity}' of given ids is not found"
 
     def get_status_code(self) -> int:
         """
@@ -91,7 +89,7 @@ class EntityAlreadyExists(IduApiError):
         super().__init__()
 
     def __str__(self) -> str:
-        return f"Invalid input {self.entity} with the same parameters={self.params} already exists)"
+        return f"Invalid input! '{self.entity}' with the same parameters={self.params} already exists)"
 
     def get_status_code(self) -> int:
         """

@@ -89,21 +89,31 @@ class TerritoriesService(Protocol):
 
     @abc.abstractmethod
     async def get_indicator_values_by_territory_id(
-        self, territory_id: int, date_type: Optional[str], date_value: Optional[datetime]
+        self,
+        territory_id: int,
+        indicator_ids: Optional[str],
+        start_date: Optional[datetime],
+        end_date: Optional[datetime],
+        value_type: Optional[Literal["real", "target", "forecast"]],
+        information_source: Optional[str],
+        last_only: bool,
     ) -> list[IndicatorValueDTO]:
-        """Get indicator values by territory id, optional time period."""
+        """Get indicator values by territory id, optional indicator_ids, value_type, source and time period,
+        could be specified by last_only flag to get only current indicator values."""
 
     @abc.abstractmethod
     async def get_indicator_values_by_parent_id(
-        self, parent_id: Optional[int], date_type: str, date_value: datetime, indicator_id: int
-    ) -> list[TerritoryWithIndicatorDTO]:
-        """Get requested indicator values for child territories by parent id and time period."""
-
-    @abc.abstractmethod
-    async def get_indicators_values_by_parent_id(
-        self, parent_id: Optional[int], date_type: str, date_value: datetime
+        self,
+        parent_id: Optional[int],
+        indicator_ids: Optional[str],
+        start_date: Optional[datetime],
+        end_date: Optional[datetime],
+        value_type: Optional[Literal["real", "target", "forecast"]],
+        information_source: Optional[str],
+        last_only: bool,
     ) -> list[TerritoryWithIndicatorsDTO]:
-        """Get all indicators values for child territories by parent id and time period."""
+        """Get indicator values for child territories by parent id, optional indicator_ids, value_type, source and date,
+        could be specified by last_only flag to get only current indicator values."""
 
     @abc.abstractmethod
     async def get_normatives_by_territory_id(self, territory_id: int) -> list[NormativeDTO]:

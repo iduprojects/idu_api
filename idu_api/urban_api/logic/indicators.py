@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from idu_api.common.db.entities import (
     indicators_dict,
     measurement_units_dict,
+    territories_data,
     territory_indicators_data,
 )
 from idu_api.urban_api.dto import (
@@ -18,7 +19,6 @@ from idu_api.urban_api.dto import (
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.schemas import IndicatorsPost, IndicatorValue, MeasurementUnitPost
-from idu_api.urban_api.schemas.enums import DateType
 
 
 async def get_measurement_units_from_db(conn: AsyncConnection) -> list[MeasurementUnitDTO]:
@@ -197,7 +197,13 @@ async def add_indicator_to_db(conn: AsyncConnection, indicator: IndicatorsPost) 
 
 
 async def get_indicator_value_by_id_from_db(
-    conn: AsyncConnection, indicator_id: int, territory_id: int, date_type: DateType, date_value: datetime
+    conn: AsyncConnection,
+    indicator_id: int,
+    territory_id: int,
+    date_type: str,
+    date_value: datetime,
+    value_type: str,
+    information_source: str,
 ) -> IndicatorValueDTO:
     """Get indicator value object by id."""
 
@@ -206,10 +212,20 @@ async def get_indicator_value_by_id_from_db(
         territory_indicators_data.c.territory_id == territory_id,
         territory_indicators_data.c.date_type == date_type,
         territory_indicators_data.c.date_value == date_value,
+        territory_indicators_data.c.value_type == value_type,
+        territory_indicators_data.c.information_source == information_source,
     )
     result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
-        raise EntityNotFoundByParams("indicator value", indicator_id, territory_id, date_type, date_value)
+        raise EntityNotFoundByParams(
+            "indicator value",
+            indicator_id,
+            territory_id,
+            date_type,
+            date_value,
+            value_type,
+            information_source,
+        )
 
     return IndicatorValueDTO(**result)
 
@@ -230,6 +246,8 @@ async def add_indicator_value_to_db(
         territory_indicators_data.c.territory_id == indicator_value.territory_id,
         territory_indicators_data.c.date_type == indicator_value.date_type,
         territory_indicators_data.c.date_value == indicator_value.date_value,
+        territory_indicators_data.c.value_type == indicator_value.value_type,
+        territory_indicators_data.c.information_source == indicator_value.information_source,
     )
     result = (await conn.execute(statement)).one_or_none()
     if result is not None:
@@ -239,6 +257,8 @@ async def add_indicator_value_to_db(
             indicator_value.territory_id,
             indicator_value.date_type,
             indicator_value.date_value,
+            indicator_value.value_type,
+            indicator_value.information_source,
         )
 
     statement = (
@@ -267,8 +287,10 @@ async def get_indicator_values_by_id_from_db(
     territory_id: Optional[int],
     date_type: Optional[str],
     date_value: Optional[datetime],
+    value_type: Optional[str],
+    information_source: Optional[str],
 ) -> List[IndicatorValueDTO]:
-    """Get indicator value objects by id."""
+    """Get indicator values objects by indicator id."""
 
     statement = select(indicators_dict).where(indicators_dict.c.indicator_id == indicator_id)
     parent_indicator = (await conn.execute(statement)).one_or_none()
@@ -278,11 +300,19 @@ async def get_indicator_values_by_id_from_db(
     statement = select(territory_indicators_data).where(territory_indicators_data.c.indicator_id == indicator_id)
 
     if territory_id is not None:
+        query = select(territories_data).where(territories_data.c.territory_id == territory_id)
+        territory = (await conn.execute(query)).one_or_none()
+        if territory is None:
+            raise EntityNotFoundById(territory_id, "territory")
         statement = statement.where(territory_indicators_data.c.territory_id == territory_id)
     if date_type is not None:
         statement = statement.where(territory_indicators_data.c.date_type == date_type)
     if date_value is not None:
         statement = statement.where(territory_indicators_data.c.date_value == date_value)
+    if value_type is not None:
+        statement = statement.where(territory_indicators_data.c.value_type == value_type)
+    if information_source is not None:
+        statement = statement.where(territory_indicators_data.c.information_source.ilike(f"%{information_source}%"))
 
     result = (await conn.execute(statement)).mappings().all()
 

@@ -39,8 +39,8 @@ async def get_physical_objects_by_ids(conn: AsyncConnection, ids: list[int]) -> 
     )
 
     results = (await conn.execute(statement)).mappings().all()
-    if results is None:
-        raise EntitiesNotFoundByIds(ids, results, "physical_object")
+    if not list(results):
+        raise EntitiesNotFoundByIds("physical_object")
 
     return [PhysicalObjectDataDTO(**physical_object) for physical_object in results]
 

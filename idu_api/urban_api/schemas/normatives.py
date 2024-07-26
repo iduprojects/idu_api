@@ -24,12 +24,10 @@ class Normative(BaseModel):
     services_capacity_per_1000_normative: int | None = Field(None, example=None)
     normative_type: NormativeType = Field(NormativeType.SELF, example=NormativeType.SELF)
     is_regulated: bool = Field(..., example=True)
-    source: str | None = (
-        Field(
-            ...,
-            example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
-            "structure_version/229/",
-        ),
+    source: str | None = Field(
+        description="Information source",
+        example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+        "structure_version/229/",
     )
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -117,8 +115,8 @@ class NormativePost(BaseModel):
     services_per_1000_normative: int | None = Field(None, example=1)
     services_capacity_per_1000_normative: int | None = Field(None, example=None)
     is_regulated: bool = Field(..., example=True)
-    source: str = Field(
-        ...,
+    source: str | None = Field(
+        description="Information source",
         example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
         "structure_version/229/",
     )
@@ -165,8 +163,8 @@ class NormativePatch(BaseModel):
     services_per_1000_normative: int | None = Field(None, example=1)
     services_capacity_per_1000_normative: int | None = Field(None, example=None)
     is_regulated: bool = Field(..., example=True)
-    source: str = Field(
-        ...,
+    source: str | None = Field(
+        description="Information source",
         example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
         "structure_version/229/",
     )

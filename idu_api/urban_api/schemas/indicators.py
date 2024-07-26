@@ -93,14 +93,27 @@ class IndicatorsPost(BaseModel):
 
 class ShortIndicatorValueInfo(BaseModel):
     """
-    Indicator value with only name, value and measurement unit.
+    Indicator value with short information
     """
 
     name_full: str = Field(
         description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории"
     )
-    value: float = Field(description="Indicator value for territory at time", example=23.5)
     measurement_unit_name: Optional[str] = Field(description="Measurement unit name", example="Количество людей")
+    value: float = Field(description="Indicator value for territory at time", example=23.5)
+    value_type: Literal["real", "forecast", "target"] = Field(description="Indicator value type", example="real")
+    information_source: str = Field(
+        description="Information source",
+        example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+        "structure_version/229/",
+    )
+
+    @field_validator("value_type", mode="before")
+    @staticmethod
+    def value_type_to_string(value_type: Any) -> str:
+        if isinstance(value_type, Enum):
+            return value_type.value
+        return value_type
 
 
 class IndicatorValue(BaseModel):
@@ -120,7 +133,7 @@ class IndicatorValue(BaseModel):
     )
     value: float = Field(description="Indicator value for territory at time", example=23.5)
     value_type: Literal["real", "forecast", "target"] = Field(description="Indicator value type", example="real")
-    information_source: Optional[str] = Field(
+    information_source: str = Field(
         description="Information source",
         example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
         "structure_version/229/",

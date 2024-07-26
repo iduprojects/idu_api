@@ -19,7 +19,6 @@ from idu_api.urban_api.dto import (
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
-    TerritoryWithIndicatorDTO,
     TerritoryWithIndicatorsDTO,
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
@@ -34,7 +33,6 @@ from idu_api.urban_api.logic.impl.helpers.territories_indicators import (
     get_indicator_values_by_parent_id_from_db,
     get_indicator_values_by_territory_id_from_db,
     get_indicators_by_territory_id_from_db,
-    get_indicators_values_by_parent_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_normatives import (
     add_normatives_to_territory_to_db,
@@ -141,21 +139,32 @@ class TerritoriesServiceImpl(TerritoriesService):
         return await get_indicators_by_territory_id_from_db(self._conn, territory_id)
 
     async def get_indicator_values_by_territory_id(
-        self, territory_id: int, date_type: str | None, date_value: datetime | None
+        self,
+        territory_id: int,
+        indicator_ids: Optional[str],
+        start_date: Optional[datetime],
+        end_date: Optional[datetime],
+        value_type: Optional[Literal["real", "target", "forecast"]],
+        information_source: Optional[str],
+        last_only: bool,
     ) -> list[IndicatorValueDTO]:
-        return await get_indicator_values_by_territory_id_from_db(self._conn, territory_id, date_type, date_value)
-
-    async def get_indicator_values_by_parent_id(
-        self, parent_id: Optional[int], date_type: str, date_value: datetime, indicator_id: int
-    ) -> list[TerritoryWithIndicatorDTO]:
-        return await get_indicator_values_by_parent_id_from_db(
-            self._conn, parent_id, date_type, date_value, indicator_id
+        return await get_indicator_values_by_territory_id_from_db(
+            self._conn, territory_id, indicator_ids, start_date, end_date, value_type, information_source, last_only
         )
 
-    async def get_indicators_values_by_parent_id(
-        self, parent_id: Optional[int], date_type: str, date_value: datetime
+    async def get_indicator_values_by_parent_id(
+        self,
+        parent_id: Optional[int],
+        indicator_ids: Optional[str],
+        start_date: Optional[datetime],
+        end_date: Optional[datetime],
+        value_type: Optional[Literal["real", "target", "forecast"]],
+        information_source: Optional[str],
+        last_only: bool,
     ) -> list[TerritoryWithIndicatorsDTO]:
-        return await get_indicators_values_by_parent_id_from_db(self._conn, parent_id, date_type, date_value)
+        return await get_indicator_values_by_parent_id_from_db(
+            self._conn, parent_id, indicator_ids, start_date, end_date, value_type, information_source, last_only
+        )
 
     async def get_normatives_by_territory_id(self, territory_id: int) -> list[NormativeDTO]:
         return await get_normatives_by_territory_id_from_db(self._conn, territory_id)

@@ -18,7 +18,7 @@ from idu_api.urban_api.logic.indicators import (
     get_measurement_units_from_db,
 )
 from idu_api.urban_api.schemas import Indicator, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
-from idu_api.urban_api.schemas.enums import DateType
+from idu_api.urban_api.schemas.enums import DateType, ValueType
 
 from .routers import indicators_router
 
@@ -115,11 +115,15 @@ async def get_indicator_value_by_id(
     territory_id: int = Query(description="territory id"),
     date_type: DateType = Query(description="date type"),
     date_value: datetime = Query(description="time value"),
+    value_type: ValueType = Query(description="value type"),
+    information_source: str = Query(description="information source"),
 ) -> IndicatorValue:
-    """Get indicator value for a given territory and date perood"""
+    """Get indicator value for a given territory, date period, value type and source."""
     conn: AsyncConnection = request.state.conn
 
-    indicator_value = await get_indicator_value_by_id_from_db(conn, indicator_id, territory_id, date_type, date_value)
+    indicator_value = await get_indicator_value_by_id_from_db(
+        conn, indicator_id, territory_id, date_type.value, date_value, value_type.value, information_source
+    )
 
     return IndicatorValue.from_dto(indicator_value)
 
@@ -147,19 +151,26 @@ async def get_indicator_values_by_id(
     request: Request,
     indicator_id: int = Path(description="indicator id"),
     territory_id: Optional[int] = Query(None, description="territory id"),
-    date_type: Optional[DateType] = Query(None, description="date type"),
+    date_type: DateType = Query(None, description="date type"),
     date_value: Optional[datetime] = Query(None, description="time value"),
+    value_type: ValueType = Query(None, description="value type"),
+    information_source: Optional[str] = Query(None, description="information source"),
 ) -> List[IndicatorValue]:
     """
     Summary:
         Get indicator values
 
     Description:
-        Get indicator values by id, territory and date could be specified in parameters.
-        If parameter not specified there should be all available values for this indicator
+        Get indicator values by id, territory, date, value type and source could be specified in parameters.
+        If parameters not specified there should be all available values for this indicator.
     """
     conn: AsyncConnection = request.state.conn
 
-    indicator_values = await get_indicator_values_by_id_from_db(conn, indicator_id, territory_id, date_type, date_value)
+    date_type_field = date_type.value if date_type is not None else None
+    value_type_field = value_type.value if value_type is not None else None
+
+    indicator_values = await get_indicator_values_by_id_from_db(
+        conn, indicator_id, territory_id, date_type_field, date_value, value_type_field, information_source
+    )
 
     return [IndicatorValue.from_dto(value) for value in indicator_values]
