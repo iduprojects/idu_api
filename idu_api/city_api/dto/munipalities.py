@@ -2,11 +2,11 @@ from dataclasses import dataclass
 from typing import Optional
 from shapely.geometry import Polygon, MultiPolygon, Point
 
-from idu_api.city_api.dto.territory_base import TerritoryBase
+from idu_api.city_api.dto.base import Base
 
 
 @dataclass()
-class MunicipalitiesDTO(TerritoryBase):
+class MunicipalitiesDTO(Base):
     id: int = None
     name: str = None
     population: int = None
@@ -16,7 +16,7 @@ class MunicipalitiesDTO(TerritoryBase):
 
 
 @dataclass()
-class MunicipalitiesWithoutGeometryDTO(TerritoryBase):
+class MunicipalitiesWithoutGeometryDTO(Base):
     id: int = None
     name: str = None
     population: int = None

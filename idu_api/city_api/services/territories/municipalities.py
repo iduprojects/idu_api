@@ -13,6 +13,10 @@ class MunicipalitiesService:
     def __init__(self, conn: AsyncConnection):
         self.conn = conn
 
+    async def get_municipality_by_id(self, municipality_id: int) -> TerritoryDTO:
+        result: TerritoryDTO = await get_territory_by_id(self.conn, municipality_id)
+        return result
+
     async def get_municipalities_by_city_id(
             self,
             city_id: int

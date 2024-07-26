@@ -3,11 +3,11 @@ from typing import Optional
 
 from shapely.geometry import Polygon, MultiPolygon, Point
 
-from idu_api.city_api.dto.territory_base import TerritoryBase
+from idu_api.city_api.dto.base import Base
 
 
 @dataclass()
-class AdministrativeUnitsDTO(TerritoryBase):
+class AdministrativeUnitsDTO(Base):
     """Administrative unit DTO"""
 
     id: int = None
@@ -19,7 +19,7 @@ class AdministrativeUnitsDTO(TerritoryBase):
 
 
 @dataclass()
-class AdministrativeUnitsWithoutGeometryDTO(TerritoryBase):
+class AdministrativeUnitsWithoutGeometryDTO(Base):
     """Administrative unit DTO"""
 
     id: int = None

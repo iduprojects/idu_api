@@ -1,7 +1,7 @@
 from typing import Optional
 
 
-class TerritoryBase:
+class Base:
     """Base DTO entity for territories"""
 
     async def map_from_territory_dto(
@@ -30,3 +30,18 @@ class TerritoryBase:
             for key, value in other["properties"].items():
                 if key in self.__annotations__.keys():
                     setattr(self, key, value)
+
+    def as_dict(self, attribute_mapper: dict[str, str], exclude: list[str]) -> dict:
+        result = {}
+        for key, value in self.__dict__.items():
+            if exclude is not None and key in exclude:
+                continue
+            if attribute_mapper is not None and key in attribute_mapper:
+                result[attribute_mapper[key]] = value
+            else:
+                if key != "properties" and key in self.__annotations__.keys():
+                    result[key] = value
+        if "properties" not in exclude and self.__dict__["properties"] is not None:
+            for key, value in self.__dict__["properties"].items():
+                result[key] = value
+        return result

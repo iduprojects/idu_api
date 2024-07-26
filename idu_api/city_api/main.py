@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from idu_api.city_api.services.objects.physical_objects import PhysicalObjectsService
 from idu_api.city_api.services.objects.services import ServicesService
 from idu_api.city_api.services.territories.administrative_units import AdministrativeUnitsService
 from idu_api.city_api.services.territories.cities import CitiesService
@@ -19,4 +20,5 @@ app.add_middleware(
     municipalities_service=MunicipalitiesService,
     cities_service=CitiesService,
     services_service=ServicesService,
+    physical_objects_service=PhysicalObjectsService,
 )

@@ -7,10 +7,9 @@ from idu_api.city_api.dto.base import Base
 
 
 @dataclass()
-class CityServiceDTO(Base):
-    id: int
+class PhysicalObjectsDTO(Base):
+    physical_object_id: int
     name: Optional[str]
-    capacity: Optional[int]
     properties: Dict[str, Any]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
