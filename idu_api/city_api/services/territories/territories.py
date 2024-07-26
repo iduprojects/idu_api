@@ -7,6 +7,7 @@ from sqlalchemy.sql.selectable import NamedFromClause, Select
 
 from idu_api.common.db.entities import territories_data, territory_types_dict
 from idu_api.urban_api.dto import TerritoryDTO, TerritoryWithoutGeometryDTO
+from idu_api.urban_api.logic.impl.helpers.territory_objects import get_territories_by_parent_id_from_db
 
 
 async def get_territories_by_parent_id_and_level(
@@ -55,6 +56,14 @@ async def get_territories_by_parent_id_and_level(
     result = (await conn.execute(statement)).mappings().all()
 
     return [TerritoryDTO(**territory) for territory in result]
+
+
+async def get_territory_ids_by_parent_id(
+        conn: AsyncConnection,
+        parent_id: int
+) -> list[int]:
+    result: list[TerritoryDTO] = await get_territories_by_parent_id_from_db(conn, parent_id, True, None)
+    return [territory.territory_id for territory in result]
 
 
 def generate_select(

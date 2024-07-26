@@ -1,15 +1,18 @@
 from typing import Annotated
 
 from fastapi.params import Query
+from geojson import FeatureCollection
 
 from idu_api.city_api import app
+from idu_api.city_api.common.feature import Feature
 from idu_api.city_api.dto.administrative_units import AdministrativeUnitsDTO
-from idu_api.city_api.dto.munipalities import MunicipalitiesDTO, MunicipalitiesWithoutGeometryDTO
-from idu_api.city_api.schemas.adminstrative_units import AdministrativeUnitsData
-from idu_api.city_api.schemas.municipalities import MunicipalitiesData, MunicipalitiesWithoutGeometryData
+from idu_api.city_api.dto.munipalities import MunicipalitiesDTO
+from idu_api.city_api.dto.services import CityServiceDTO
+from idu_api.city_api.schemas.municipalities import MunicipalitiesData
+from idu_api.city_api.services.objects.services import ServicesService
 from idu_api.city_api.services.territories.administrative_units import AdministrativeUnitsService
 from idu_api.city_api.services.territories.municipalities import MunicipalitiesService
-from idu_api.urban_api.schemas.geometries import Geometry
+from idu_api.urban_api.schemas.geometries import Geometry, GeoJSONResponse
 from fastapi import Request, Path
 
 tag = ["administrative-unit-controller"]
@@ -41,3 +44,36 @@ async def get_administrative_unit_with_city_id(
         administrative_unit,
     )
     return [await MunicipalitiesData.from_dto(municipality) for municipality in result]
+
+
+@app.get("/city/{city}/administrative_unit/{administrative_unit}/services", tags=tag)
+async def get_services_by_adm_unit_with_city_id(
+        request: Request,
+        city: Annotated[int, Path(description="city id or name")],
+        administrative_unit: Annotated[int, Path(description="administrative unit id or name")],
+):
+    services_service: ServicesService = request.state.services_service
+    result: list[CityServiceDTO] = await services_service.get_services_by_territory_id(administrative_unit)
+    features: list[dict] = []
+    for elem in result:
+        if elem.geometry is None:
+            features.append(
+                await Feature.generate_feature(
+                    elem.centre_point,
+                    elem.as_dict(
+                        {},
+                        ["centre_point", "geometry"]
+                    )
+                )
+            )
+        else:
+            features.append(
+                await Feature.generate_feature(
+                    elem.geometry,
+                    elem.as_dict(
+                        {},
+                        ["geometry", "centre_point"]
+                    )
+                )
+            )
+    return FeatureCollection(features)

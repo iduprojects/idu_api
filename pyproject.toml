@@ -23,6 +23,7 @@ pandas = "^2.2.2"
 exceptiongroup = "^1.2.1"
 fastapi-pagination = "^0.12.25"
 python-dotenv = "^1.0.1"
+geojson = "^3.1.0"
 
 [tool.poetry.scripts]
 launch_urban_api = "idu_api.urban_api.__main__:main"
