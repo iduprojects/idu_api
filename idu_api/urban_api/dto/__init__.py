@@ -23,6 +23,7 @@ from .territories import (
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
 )
+from .urban_objects import UrbanObjectDTO
 from .users import TokensTuple, UserDTO
 
 __all__ = [
@@ -52,4 +53,5 @@ __all__ = [
     "TerritoryWithNormativesDTO",
     "TerritoryWithoutGeometryDTO",
     "UrbanFunctionDTO",
+    "UrbanObjectDTO",
 ]

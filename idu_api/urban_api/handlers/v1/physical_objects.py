@@ -10,6 +10,9 @@ from idu_api.urban_api.logic.physical_objects import (
     add_physical_object_to_object_geometry_in_db,
     add_physical_object_type_to_db,
     add_physical_object_with_geometry_to_db,
+    delete_living_building_in_db,
+    delete_physical_object_in_db,
+    get_living_buildings_by_physical_object_id_from_db,
     get_physical_object_geometries_from_db,
     get_physical_object_types_from_db,
     get_physical_object_with_territories_by_id_from_db,
@@ -39,6 +42,7 @@ from idu_api.urban_api.schemas import (
 )
 from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectWithGeometry
+from idu_api.urban_api.schemas.urban_objects import UrbanObject
 
 from .routers import physical_objects_router
 
@@ -75,15 +79,18 @@ async def add_physical_object_type(
 
 @physical_objects_router.post(
     "/physical_objects",
+    response_model=UrbanObject,
     status_code=status.HTTP_201_CREATED,
 )
 async def add_physical_object_with_geometry(
     request: Request, physical_object: PhysicalObjectWithGeometryPost
-) -> dict[str, int]:
+) -> UrbanObject:
     """Add a physical object with geometry."""
     conn: AsyncConnection = request.state.conn
 
-    return await add_physical_object_with_geometry_to_db(conn, physical_object)
+    urban_object = await add_physical_object_with_geometry_to_db(conn, physical_object)
+
+    return UrbanObject.from_dto(urban_object)
 
 
 @physical_objects_router.put(
@@ -120,6 +127,21 @@ async def patch_physical_object(
     physical_object_dto = await patch_physical_object_to_db(conn, physical_object, physical_object_id)
 
     return PhysicalObjectsData.from_dto(physical_object_dto)
+
+
+@physical_objects_router.delete(
+    "/physical_objects/{physical_object_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+)
+async def delete_physical_object(
+    request: Request,
+    physical_object_id: int = Path(..., description="Physical object id"),
+) -> dict:
+    """Delete physical object by given id."""
+    conn: AsyncConnection = request.state.conn
+
+    return await delete_physical_object_in_db(conn, physical_object_id)
 
 
 @physical_objects_router.post(
@@ -170,6 +192,38 @@ async def patch_living_building(
     living_building_dto = await patch_living_building_to_db(conn, living_building, living_building_id)
 
     return LivingBuildingsData.from_dto(living_building_dto)
+
+
+@physical_objects_router.delete(
+    "/living_buildings/{living_building_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+)
+async def delete_living_building(
+    request: Request,
+    living_building_id: int = Path(..., description="Living building id"),
+) -> dict:
+    """Delete living building by given id."""
+    conn: AsyncConnection = request.state.conn
+
+    return await delete_living_building_in_db(conn, living_building_id)
+
+
+@physical_objects_router.get(
+    "/physical_objects/{physical_object_id}/living_buildings",
+    response_model=list[LivingBuildingsData],
+    status_code=status.HTTP_200_OK,
+)
+async def get_living_buildings_by_physical_object_id(
+    request: Request,
+    physical_object_id: int = Path(..., description="Physical object id"),
+) -> list[LivingBuildingsData]:
+    """Get all living buildings inside a given physical object."""
+    conn: AsyncConnection = request.state.conn
+
+    buildings = await get_living_buildings_by_physical_object_id_from_db(conn, physical_object_id)
+
+    return [LivingBuildingsData.from_dto(building) for building in buildings]
 
 
 @physical_objects_router.get(
@@ -255,20 +309,20 @@ async def get_physical_objects_around_geometry(
 
 @physical_objects_router.post(
     "/physical_objects/{object_geometry_id}",
-    response_model=PhysicalObjectsData,
+    response_model=UrbanObject,
     status_code=status.HTTP_200_OK,
 )
 async def add_physical_object_to_object_geometry(
     request: Request,
     object_geometry_id: int = Path(..., description="Object geometry id"),
     physical_object: PhysicalObjectsDataPost = Body(..., description="Physical object"),
-) -> PhysicalObjectsData:
+) -> UrbanObject:
     """Add physical object to object geometry"""
     conn: AsyncConnection = request.state.conn
 
-    physical_object_dto = await add_physical_object_to_object_geometry_in_db(conn, object_geometry_id, physical_object)
+    urban_object = await add_physical_object_to_object_geometry_in_db(conn, object_geometry_id, physical_object)
 
-    return PhysicalObjectsData.from_dto(physical_object_dto)
+    return UrbanObject.from_dto(urban_object)
 
 
 @physical_objects_router.get(

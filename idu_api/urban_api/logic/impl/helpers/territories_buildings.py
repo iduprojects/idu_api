@@ -1,7 +1,7 @@
 """Territories buildings internal logic is defined here."""
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, func, select
+from sqlalchemy import cast, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -28,15 +28,6 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
-    subquery = (
-        select(
-            urban_objects_data.c.physical_object_id,
-            func.max(urban_objects_data.c.object_geometry_id).label("object_geometry_id"),
-        )
-        .group_by(urban_objects_data.c.physical_object_id)
-        .subquery()
-    )
-
     statement = (
         select(
             living_buildings_data.c.living_building_id,
@@ -46,6 +37,8 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
             physical_objects_data.c.physical_object_id,
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
+            physical_objects_data.c.created_at.label("physical_object_created_at"),
+            physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             object_geometries_data.c.address.label("physical_object_address"),
@@ -62,12 +55,12 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
             .join(
-                subquery,
-                physical_objects_data.c.physical_object_id == subquery.c.physical_object_id,
+                urban_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
             )
             .join(
                 object_geometries_data,
-                subquery.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
         )
         .where(object_geometries_data.c.territory_id == territory_id)

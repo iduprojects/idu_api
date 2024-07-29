@@ -377,9 +377,7 @@ async def get_common_territory_for_geometry(
     if territory_id is None:
         return None
 
-    result = await get_territories_by_ids(conn, [territory_id])[0]
-
-    return result
+    return (await get_territories_by_ids(conn, [territory_id]))[0]
 
 
 async def get_intersecting_territories_for_geometry(

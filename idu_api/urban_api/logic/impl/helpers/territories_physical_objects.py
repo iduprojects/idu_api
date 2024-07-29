@@ -3,7 +3,7 @@
 from typing import Literal, Optional
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, func, select
+from sqlalchemy import cast, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -33,15 +33,6 @@ async def get_physical_objects_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
-    subquery = (
-        select(
-            urban_objects_data.c.physical_object_id,
-            func.max(urban_objects_data.c.object_geometry_id).label("object_geometry_id"),
-        )
-        .group_by(urban_objects_data.c.physical_object_id)
-        .subquery()
-    )
-
     statement = (
         select(
             physical_objects_data,
@@ -49,12 +40,12 @@ async def get_physical_objects_by_territory_id_from_db(
         )
         .select_from(
             physical_objects_data.join(
-                subquery,
-                physical_objects_data.c.physical_object_id == subquery.c.physical_object_id,
+                urban_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
             )
             .join(
                 object_geometries_data,
-                subquery.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(
                 physical_object_types_dict,
@@ -62,6 +53,7 @@ async def get_physical_objects_by_territory_id_from_db(
             )
         )
         .where(object_geometries_data.c.territory_id == territory_id)
+        .distinct()
     )
 
     if physical_object_type is not None:
@@ -99,15 +91,6 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
-    subquery = (
-        select(
-            urban_objects_data.c.physical_object_id,
-            func.max(urban_objects_data.c.object_geometry_id).label("object_geometry_id"),
-        )
-        .group_by(urban_objects_data.c.physical_object_id)
-        .subquery()
-    )
-
     statement = (
         select(
             physical_objects_data,
@@ -118,12 +101,12 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
         )
         .select_from(
             physical_objects_data.join(
-                subquery,
-                physical_objects_data.c.physical_object_id == subquery.c.physical_object_id,
+                urban_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
             )
             .join(
                 object_geometries_data,
-                subquery.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(
                 physical_object_types_dict,
@@ -131,6 +114,7 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
             )
         )
         .where(object_geometries_data.c.territory_id == territory_id)
+        .distinct()
     )
 
     if physical_object_type is not None:

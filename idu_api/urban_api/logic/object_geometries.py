@@ -3,7 +3,7 @@
 from typing import Callable, List
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, insert, select, text, update
+from sqlalchemy import cast, delete, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -14,8 +14,9 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import ObjectGeometryDTO, PhysicalObjectDataDTO
-from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.dto import ObjectGeometryDTO, PhysicalObjectDataDTO, UrbanObjectDTO
+from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById
+from idu_api.urban_api.logic.urban_objects import get_urban_object_by_id_from_db
 from idu_api.urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
 
 func: Callable
@@ -66,12 +67,12 @@ async def get_physical_objects_by_object_geometry_id_from_db(
     return [PhysicalObjectDataDTO(**physical_object) for physical_object in result]
 
 
-async def get_object_geometry_by_id_from_db(
+async def get_object_geometry_by_ids_from_db(
     conn: AsyncConnection,
-    object_geometry_id: int,
-) -> ObjectGeometryDTO:
+    object_geometry_ids: list[int],
+) -> list[ObjectGeometryDTO]:
     """
-    Create living building object
+    Get list of object geometries by list of identifiers.
     """
 
     statement = select(
@@ -80,12 +81,14 @@ async def get_object_geometry_by_id_from_db(
         cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
         cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         object_geometries_data.c.address,
-    ).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
+    ).where(object_geometries_data.c.object_geometry_id.in_(object_geometry_ids))
 
-    result = (await conn.execute(statement)).mappings().one()
-    await conn.commit()
+    result = (await conn.execute(statement)).mappings().all()
 
-    return ObjectGeometryDTO(**result)
+    if len(object_geometry_ids) > len(list(result)):
+        raise EntitiesNotFoundByIds("object geometry")
+
+    return [ObjectGeometryDTO(**geom) for geom in result]
 
 
 async def put_object_geometry_to_db(
@@ -122,7 +125,7 @@ async def put_object_geometry_to_db(
     result = (await conn.execute(statement)).mappings().one()
     await conn.commit()
 
-    return await get_object_geometry_by_id_from_db(conn, result.object_geometry_id)
+    return (await get_object_geometry_by_ids_from_db(conn, [result.object_geometry_id]))[0]
 
 
 async def patch_object_geometry_to_db(
@@ -168,12 +171,30 @@ async def patch_object_geometry_to_db(
     result = (await conn.execute(statement)).mappings().one()
     await conn.commit()
 
-    return await get_object_geometry_by_id_from_db(conn, result.object_geometry_id)
+    return (await get_object_geometry_by_ids_from_db(conn, [result.object_geometry_id]))[0]
+
+
+async def delete_object_geometry_in_db(
+    conn: AsyncConnection,
+    object_geometry_id: int,
+) -> dict:
+    """Delete object geometry."""
+
+    statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
+    requested_object_geometry = (await conn.execute(statement)).one_or_none()
+    if requested_object_geometry is None:
+        raise EntityNotFoundById(object_geometry_id, "object geometry")
+
+    statement = delete(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
+    await conn.execute(statement)
+    await conn.commit()
+
+    return {"result": "ok"}
 
 
 async def add_object_geometry_to_physical_object_in_db(
     conn: AsyncConnection, physical_object_id: int, object_geometry: ObjectGeometriesPost
-) -> ObjectGeometryDTO:
+) -> UrbanObjectDTO:
     """Create object geometry connected with physical object"""
 
     statement = select(territories_data).where(territories_data.c.territory_id == object_geometry.territory_id)
@@ -198,10 +219,13 @@ async def add_object_geometry_to_physical_object_in_db(
     )
     object_geometry_id = (await conn.execute(statement)).scalar_one()
 
-    statement = insert(urban_objects_data).values(
-        physical_object_id=physical_object_id, object_geometry_id=object_geometry_id
+    statement = (
+        insert(urban_objects_data)
+        .values(physical_object_id=physical_object_id, object_geometry_id=object_geometry_id)
+        .returning(urban_objects_data.c.urban_object_id)
     )
-    await conn.execute(statement)
+
+    urban_object_id = (await conn.execute(statement)).scalar_one_or_none()
     await conn.commit()
 
-    return await get_object_geometry_by_id_from_db(conn, object_geometry_id)
+    return await get_urban_object_by_id_from_db(conn, urban_object_id)

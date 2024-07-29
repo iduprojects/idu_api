@@ -3,6 +3,7 @@ Living buildings DTO are defined here.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Dict, Optional
 
 import shapely.geometry as geom
@@ -15,13 +16,15 @@ class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attri
     physical_object_type_id: int
     physical_object_type_name: str
     physical_object_name: Optional[str]
-    physical_object_address: Optional[str]
     physical_object_properties: Dict[str, str]
+    physical_object_created_at: datetime
+    physical_object_updated_at: datetime
     residents_number: Optional[int]
     living_area: Optional[float]
     properties: Dict[str, str]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
+    physical_object_address: Optional[str]
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
@@ -39,8 +42,9 @@ class LivingBuildingsDTO:
     physical_object_type_id: int
     physical_object_type_name: str
     physical_object_name: Optional[str]
-    physical_object_address: Optional[str]
     physical_object_properties: Dict[str, str]
+    physical_object_created_at: datetime
+    physical_object_updated_at: datetime
     residents_number: Optional[int]
     living_area: Optional[float]
     properties: Dict[str, str]

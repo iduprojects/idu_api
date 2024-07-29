@@ -22,10 +22,11 @@ class ServicesData(BaseModel):
     service_type: ServiceTypes = Field(
         example={"service_type_id": 1, "urban_function_id": 1, "name": "Школа", "capacity_modeled": 1, "code": "1"}
     )
-    territory_type: Optional[TerritoryType] = Field(example={"territory_type_id": 1, "name": "Город"})
-    name: Optional[str] = Field(description="Service name", example="--")
-    capacity_real: Optional[int] = Field(example=1)
+    territory_type: Optional[TerritoryType] = Field(None, example={"territory_type_id": 1, "name": "Город"})
+    name: Optional[str] = Field(None, description="Service name", example="--")
+    capacity_real: Optional[int] = Field(None, example=1)
     properties: Dict[str, Any] = Field(
+        default_factory=dict,
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
@@ -39,7 +40,7 @@ class ServicesData(BaseModel):
         """
         Construct from DTO.
         """
-        return cls(
+        service = cls(
             service_id=dto.service_id,
             service_type=ServiceTypes(
                 service_type_id=dto.service_type_id,
@@ -48,13 +49,18 @@ class ServicesData(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
+            territory_type=None,
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
+        if dto.territory_type_id is not None:
+            service.territory_type = TerritoryType(
+                territory_type_id=dto.territory_type_id, name=dto.territory_type_name
+            )
+        return service
 
 
 class ServiceWithTerritories(BaseModel):
@@ -82,7 +88,7 @@ class ServiceWithTerritories(BaseModel):
         """
         Construct from DTO.
         """
-        return cls(
+        service = cls(
             service_id=dto.service_id,
             service_type=ServiceTypes(
                 service_type_id=dto.service_type_id,
@@ -91,7 +97,7 @@ class ServiceWithTerritories(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
+            territory_type=None,
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
@@ -102,6 +108,11 @@ class ServiceWithTerritories(BaseModel):
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
+        if dto.territory_type_id is not None:
+            service.territory_type = TerritoryType(
+                territory_type_id=dto.territory_type_id, name=dto.territory_type_name
+            )
+        return service
 
 
 class ServicesDataPost(BaseModel):
@@ -165,10 +176,8 @@ class ServicesDataPatch(BaseModel):
 
 class ServicesDataWithGeometry(BaseModel):
     service_id: int = Field(example=1)
-    service_type: ServiceTypes = Field(
-        example={"service_type_id": 1, "urban_function_id": 1, "name": "Школа", "capacity_modeled": 1, "code": "1"}
-    )
-    territory_type: Optional[TerritoryType] = Field(example={"territory_type_id": 1, "name": "Город"})
+    service_type: ServiceTypes
+    territory_type: Optional[TerritoryType]
     name: Optional[str] = Field(description="Service name", example="--")
     capacity_real: Optional[int] = Field(example=1)
     properties: Dict[str, Any] = Field(
@@ -187,7 +196,7 @@ class ServicesDataWithGeometry(BaseModel):
         """
         Construct from DTO.
         """
-        return cls(
+        service = cls(
             service_id=dto.service_id,
             service_type=ServiceTypes(
                 service_type_id=dto.service_type_id,
@@ -196,7 +205,7 @@ class ServicesDataWithGeometry(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
+            territory_type=None,
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
@@ -205,3 +214,9 @@ class ServicesDataWithGeometry(BaseModel):
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
+        print(service)
+        if dto.territory_type_id is not None:
+            service.territory_type = TerritoryType(
+                territory_type_id=dto.territory_type_id, name=dto.territory_type_name
+            )
+        return service

@@ -23,6 +23,7 @@ class LivingBuildingsWithGeometry(BaseModel):
     )
     geometry: Geometry = Field(description="Object geometry")
     centre_point: Geometry = Field(description="Centre coordinates")
+    address: Optional[str] = Field(None, description="geometry address")
 
     @classmethod
     def from_dto(cls, dto: LivingBuildingsWithGeometryDTO) -> "LivingBuildingsWithGeometry":
@@ -37,9 +38,11 @@ class LivingBuildingsWithGeometry(BaseModel):
                     physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
                 ),
                 name=dto.physical_object_name,
-                address=dto.physical_object_address,
                 properties=dto.physical_object_properties,
+                created_at=dto.physical_object_created_at,
+                updated_at=dto.physical_object_updated_at,
             ),
+            address=dto.physical_object_address,
             residents_number=dto.residents_number,
             living_area=dto.living_area,
             properties=dto.properties,
@@ -78,8 +81,8 @@ class LivingBuildingsData(BaseModel):
                     physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
                 ),
                 name=dto.physical_object_name,
-                address=dto.physical_object_address,
-                properties=dto.physical_object_properties,
+                created_at=dto.physical_object_created_at,
+                updated_at=dto.physical_object_updated_at,
             ),
             residents_number=dto.residents_number,
             living_area=dto.living_area,

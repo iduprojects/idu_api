@@ -5,7 +5,7 @@ from typing import Optional, Protocol
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
-from sqlalchemy import cast, insert, select, text, update
+from sqlalchemy import cast, delete, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -28,8 +28,10 @@ from idu_api.urban_api.dto import (
     PhysicalObjectWithTerritoryDTO,
     ServiceDTO,
     ServiceWithGeometryDTO,
+    UrbanObjectDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
+from idu_api.urban_api.logic.urban_objects import get_urban_object_by_id_from_db
 from idu_api.urban_api.schemas import (
     LivingBuildingsDataPatch,
     LivingBuildingsDataPost,
@@ -113,7 +115,7 @@ async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_obje
 
 async def add_physical_object_with_geometry_to_db(
     conn: AsyncConnection, physical_object: PhysicalObjectWithGeometryPost
-) -> dict[str, int]:
+) -> UrbanObjectDTO:
     """Create physical object with geometry."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == physical_object.territory_id)
@@ -151,17 +153,16 @@ async def add_physical_object_with_geometry_to_db(
     )
     object_geometry_id = (await conn.execute(statement)).scalar_one()
 
-    statement = insert(urban_objects_data).values(
-        physical_object_id=physical_object_id, object_geometry_id=object_geometry_id
+    statement = (
+        insert(urban_objects_data)
+        .values(physical_object_id=physical_object_id, object_geometry_id=object_geometry_id)
+        .returning(urban_objects_data.c.urban_object_id)
     )
-    await conn.execute(statement)
+
+    urban_object_id = (await conn.execute(statement)).scalar_one_or_none()
     await conn.commit()
 
-    return {
-        "physical_object_id": physical_object_id,
-        "object_geometry_id": object_geometry_id,
-        "territory_id": physical_object.territory_id,
-    }
+    return await get_urban_object_by_id_from_db(conn, urban_object_id)
 
 
 async def put_physical_object_to_db(
@@ -243,6 +244,24 @@ async def patch_physical_object_to_db(
     return await get_physical_object_by_id_from_db(conn, result.physical_object_id)
 
 
+async def delete_physical_object_in_db(
+    conn: AsyncConnection,
+    physical_object_id: int,
+) -> dict:
+    """Delete physical object."""
+
+    statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
+    requested_physical_object = (await conn.execute(statement)).one_or_none()
+    if requested_physical_object is None:
+        raise EntityNotFoundById(physical_object_id, "physical object")
+
+    statement = delete(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
+    await conn.execute(statement)
+    await conn.commit()
+
+    return {"result": "ok"}
+
+
 async def get_living_building_by_id_from_db(
     conn: AsyncConnection,
     living_building_id: int,
@@ -260,9 +279,10 @@ async def get_living_building_by_id_from_db(
             physical_objects_data.c.physical_object_id,
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
+            physical_objects_data.c.created_at.label("physical_object_created_at"),
+            physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
-            object_geometries_data.c.address.label("physical_object_address"),
         )
         .select_from(
             living_buildings_data.join(
@@ -287,8 +307,6 @@ async def get_living_building_by_id_from_db(
     )
 
     result = (await conn.execute(statement)).mappings().one()
-
-    await conn.commit()
 
     return LivingBuildingsDTO(**result)
 
@@ -402,6 +420,77 @@ async def patch_living_building_to_db(
     await conn.commit()
 
     return await get_living_building_by_id_from_db(conn, result.living_building_id)
+
+
+async def delete_living_building_in_db(
+    conn: AsyncConnection,
+    living_building_id: int,
+) -> dict:
+    """Delete living building object."""
+
+    statement = select(living_buildings_data).where(living_buildings_data.c.living_building_id == living_building_id)
+    requested_living_building = (await conn.execute(statement)).one_or_none()
+    if requested_living_building is None:
+        raise EntityNotFoundById(living_building_id, "living building")
+
+    statement = delete(living_buildings_data).where(living_buildings_data.c.living_building_id == living_building_id)
+    await conn.execute(statement)
+    await conn.commit()
+
+    return {"result": "ok"}
+
+
+async def get_living_buildings_by_physical_object_id_from_db(
+    conn: AsyncConnection,
+    physical_object_id: int,
+) -> list[LivingBuildingsDTO]:
+    """
+    Get living building or list of living buildings by physical object id.
+    """
+    statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
+    physical_object = (await conn.execute(statement)).one_or_none()
+    if physical_object is None:
+        raise EntityNotFoundById(physical_object_id, "physical object")
+
+    statement = (
+        select(
+            living_buildings_data.c.living_building_id,
+            living_buildings_data.c.residents_number,
+            living_buildings_data.c.living_area,
+            living_buildings_data.c.properties,
+            physical_objects_data.c.physical_object_id,
+            physical_objects_data.c.name.label("physical_object_name"),
+            physical_objects_data.c.properties.label("physical_object_properties"),
+            physical_objects_data.c.created_at.label("physical_object_created_at"),
+            physical_objects_data.c.updated_at.label("physical_object_updated_at"),
+            physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+        )
+        .select_from(
+            living_buildings_data.join(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == living_buildings_data.c.physical_object_id,
+            )
+            .join(
+                physical_object_types_dict,
+                physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+            .join(
+                urban_objects_data,
+                urban_objects_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+            )
+            .join(
+                object_geometries_data,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+        )
+        .where(living_buildings_data.c.physical_object_id == physical_object_id)
+        .distinct()
+    )
+
+    result = (await conn.execute(statement)).mappings().all()
+
+    return [LivingBuildingsDTO(**building) for building in result]
 
 
 async def get_services_by_physical_object_id_from_db(
@@ -535,13 +624,20 @@ async def get_physical_object_geometries_from_db(
 
 async def add_physical_object_to_object_geometry_in_db(
     conn: AsyncConnection, object_geometry_id: int, physical_object: PhysicalObjectsDataPost
-) -> PhysicalObjectDataDTO:
+) -> UrbanObjectDTO:
     """Create object geometry connected with physical object"""
 
     statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
     object_geometry = (await conn.execute(statement)).one_or_none()
     if object_geometry is None:
         raise EntityNotFoundById(object_geometry_id, "object geometry")
+
+    statement = select(physical_object_types_dict).where(
+        physical_object_types_dict.c.physical_object_type_id == physical_object.physical_object_type_id
+    )
+    physical_object_type = (await conn.execute(statement)).one_or_none()
+    if physical_object_type is None:
+        raise EntityNotFoundById(physical_object.physical_object_type_id, "physical object type")
 
     statement = (
         insert(physical_objects_data)
@@ -554,13 +650,16 @@ async def add_physical_object_to_object_geometry_in_db(
     )
     physical_object_id = (await conn.execute(statement)).scalar_one()
 
-    statement = insert(urban_objects_data).values(
-        physical_object_id=physical_object_id, object_geometry_id=object_geometry_id
+    statement = (
+        insert(urban_objects_data)
+        .values(physical_object_id=physical_object_id, object_geometry_id=object_geometry_id)
+        .returning(urban_objects_data.c.urban_object_id)
     )
-    await conn.execute(statement)
+
+    urban_object_id = (await conn.execute(statement)).scalar_one_or_none()
     await conn.commit()
 
-    return await get_physical_object_by_id_from_db(conn, physical_object_id)
+    return await get_urban_object_by_id_from_db(conn, urban_object_id)
 
 
 async def get_physical_object_with_territories_by_id_from_db(

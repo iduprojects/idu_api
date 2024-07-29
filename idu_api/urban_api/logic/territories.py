@@ -18,7 +18,6 @@ from idu_api.urban_api.dto import (
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
-    TerritoryWithIndicatorDTO,
     TerritoryWithIndicatorsDTO,
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,

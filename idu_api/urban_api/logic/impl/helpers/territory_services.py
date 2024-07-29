@@ -50,7 +50,9 @@ async def get_services_by_territory_id_from_db(
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
-            .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
+            .outerjoin(
+                territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
+            )
         )
         .where(object_geometries_data.c.territory_id == territory_id)
     ).distinct()
@@ -107,7 +109,9 @@ async def get_services_with_geometry_by_territory_id_from_db(
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
-            .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
+            .outerjoin(
+                territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
+            )
         )
         .where(object_geometries_data.c.territory_id == territory_id)
     ).distinct()
@@ -128,6 +132,8 @@ async def get_services_with_geometry_by_territory_id_from_db(
             statement = statement.order_by(services_data.c.service_id)
 
     result = (await conn.execute(statement)).mappings().all()
+
+    print(result)
 
     return [ServiceWithGeometryDTO(**service) for service in result]
 
