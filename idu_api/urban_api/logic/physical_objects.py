@@ -24,6 +24,7 @@ from idu_api.urban_api.dto import (
     LivingBuildingsDTO,
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
+    PhysicalObjectWithGeometryDTO,
     PhysicalObjectTypeDTO,
     PhysicalObjectWithTerritoryDTO,
     ServiceDTO,
@@ -47,12 +48,12 @@ Geom = Point | Polygon | MultiPolygon | LineString
 
 
 class PhysicalObjectsService(Protocol):
-    async def get_physical_objects_by_ids(self, ids: list[int]) -> list[PhysicalObjectDataDTO]:
+    async def get_physical_objects_by_ids(self, ids: list[int]) -> list[PhysicalObjectWithGeometryDTO]:
         """Get physical objects by list of ids."""
 
     async def get_physical_objects_around(
-        self, geometry: Geom, physical_object_type_id: int, buffer_meters: int
-    ) -> list[PhysicalObjectDataDTO]:
+        self, geometry: Geom, physical_object_type_id: int | None, buffer_meters: int
+    ) -> list[PhysicalObjectWithGeometryDTO]:
         """Get physical objects which are in buffer area of the given geometry."""
 
 

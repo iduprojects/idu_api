@@ -214,7 +214,6 @@ class ServicesDataWithGeometry(BaseModel):
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
-        print(service)
         if dto.territory_type_id is not None:
             service.territory_type = TerritoryType(
                 territory_type_id=dto.territory_type_id, name=dto.territory_type_name

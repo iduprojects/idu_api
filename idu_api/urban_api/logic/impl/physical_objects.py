@@ -3,7 +3,7 @@
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from idu_api.urban_api.dto.physical_objects import PhysicalObjectDataDTO
+from idu_api.urban_api.dto.physical_objects import PhysicalObjectWithGeometryDTO
 from idu_api.urban_api.logic.impl.helpers.physical_objects import (
     get_physical_objects_around,
     get_physical_objects_by_ids,
@@ -22,10 +22,10 @@ class PhysicalObjectsServiceImpl(PhysicalObjectsService):
     def __init__(self, conn: AsyncConnection):
         self._conn = conn
 
-    async def get_physical_objects_by_ids(self, ids: list[int]) -> list[PhysicalObjectDataDTO]:
+    async def get_physical_objects_by_ids(self, ids: list[int]) -> list[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_by_ids(self._conn, ids)
 
     async def get_physical_objects_around(
-        self, geometry: Geom, physical_object_type_id: int, buffer_meters: int
-    ) -> list[PhysicalObjectDataDTO]:
+        self, geometry: Geom, physical_object_type_id: int | None, buffer_meters: int
+    ) -> list[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_around(self._conn, geometry, physical_object_type_id, buffer_meters)

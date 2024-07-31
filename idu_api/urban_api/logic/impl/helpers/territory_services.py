@@ -133,8 +133,6 @@ async def get_services_with_geometry_by_territory_id_from_db(
 
     result = (await conn.execute(statement)).mappings().all()
 
-    print(result)
-
     return [ServiceWithGeometryDTO(**service) for service in result]
 
 
