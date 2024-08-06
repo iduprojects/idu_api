@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import shapely.geometry as geom
 
+from idu_api.urban_api.dto.indicators import IndicatorValueDTO
 from idu_api.urban_api.dto.normatives import NormativeDTO
 
 
@@ -112,7 +113,7 @@ class TerritoryWithIndicatorsDTO:
     centre_point: geom.Point
     territory_id: int
     name: str
-    indicators: List[Dict[str, Any]]
+    indicators: List[IndicatorValueDTO]
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
@@ -123,7 +124,13 @@ class TerritoryWithIndicatorsDTO:
             self.geometry = geom.shape(self.geometry)
 
     def to_geojson_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        territory = asdict(self)
+        for indicator in territory["indicators"]:
+            del indicator["indicator_id"]
+            del indicator["measurement_unit_id"]
+            del indicator["date_type"]
+            del indicator["territory_id"]
+        return territory
 
 
 @dataclass()

@@ -22,6 +22,9 @@ class IndicatorDTO:
 @dataclass
 class IndicatorValueDTO:
     indicator_id: int
+    name_full: str
+    measurement_unit_id: Optional[int]
+    measurement_unit_name: Optional[str]
     territory_id: int
     date_type: Literal["year", "half_year", "quarter", "month", "day"]
     date_value: datetime

@@ -73,7 +73,7 @@ async def get_indicator_values_by_territory_id_from_db(
                 territory_indicators_data.c.indicator_id,
                 territory_indicators_data.c.value_type,
                 territory_indicators_data.c.information_source,
-                func.max(territory_indicators_data.c.date_value).label("max_date"),
+                func.max(func.date(territory_indicators_data.c.date_value)).label("max_date"),
             )
             .where(territory_indicators_data.c.territory_id == territory_id)
             .group_by(
@@ -84,18 +84,52 @@ async def get_indicator_values_by_territory_id_from_db(
             .subquery()
         )
 
-        statement = select(territory_indicators_data).select_from(
-            territory_indicators_data.join(
-                subquery,
-                (territory_indicators_data.c.indicator_id == subquery.c.indicator_id)
-                & (territory_indicators_data.c.value_type == subquery.c.value_type)
-                & (territory_indicators_data.c.information_source == subquery.c.information_source)
-                & (territory_indicators_data.c.date_value == subquery.c.max_date),
+        statement = (
+            select(
+                territory_indicators_data,
+                indicators_dict.c.name_full,
+                measurement_units_dict.c.measurement_unit_id,
+                measurement_units_dict.c.name.label("measurement_unit_name"),
             )
+            .select_from(
+                territory_indicators_data.join(
+                    subquery,
+                    (territory_indicators_data.c.indicator_id == subquery.c.indicator_id)
+                    & (territory_indicators_data.c.value_type == subquery.c.value_type)
+                    & (territory_indicators_data.c.information_source == subquery.c.information_source)
+                    & (territory_indicators_data.c.date_value == subquery.c.max_date),
+                )
+                .join(
+                    indicators_dict,
+                    indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
+                )
+                .outerjoin(
+                    measurement_units_dict,
+                    measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
+                )
+            )
+            .where(territory_indicators_data.c.territory_id == territory_id)
         )
     else:
-        statement = select(territory_indicators_data).where(
-            territory_indicators_data.c.territory_id == territory_id,
+        statement = (
+            select(
+                territory_indicators_data,
+                indicators_dict.c.name_full,
+                measurement_units_dict.c.measurement_unit_id,
+                measurement_units_dict.c.name.label("measurement_unit_name"),
+            )
+            .select_from(
+                territory_indicators_data.join(
+                    indicators_dict,
+                    indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
+                ).outerjoin(
+                    measurement_units_dict,
+                    measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
+                )
+            )
+            .where(
+                territory_indicators_data.c.territory_id == territory_id,
+            )
         )
 
     if indicator_ids is not None:
@@ -162,29 +196,6 @@ async def get_indicator_values_by_parent_id_from_db(
             information_source,
             last_only,
         )
-        new_indicators = []
-        for indicator in indicators:
-            statement = (
-                select(indicators_dict.c.name_full, measurement_units_dict.c.name.label("measurement_unit_name"))
-                .select_from(
-                    indicators_dict.outerjoin(
-                        measurement_units_dict,
-                        measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
-                    )
-                )
-                .where(indicators_dict.c.indicator_id == indicator.indicator_id)
-            )
-            indicator_info = (await conn.execute(statement)).mappings().one_or_none()
-
-            new_indicators.append(
-                dict(
-                    name_full=indicator_info.name_full,
-                    measurement_unit_name=indicator_info.measurement_unit_name,
-                    value=indicator.value,
-                    value_type=indicator.value_type,
-                    information_source=indicator.information_source,
-                )
-            )
-        results.append(TerritoryWithIndicatorsDTO(**child_territory, indicators=new_indicators))
+        results.append(TerritoryWithIndicatorsDTO(**child_territory, indicators=indicators))
 
     return results

@@ -18,7 +18,7 @@ from idu_api.urban_api.dto import (
     MeasurementUnitDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
-from idu_api.urban_api.schemas import IndicatorsPost, IndicatorValue, MeasurementUnitPost
+from idu_api.urban_api.schemas import IndicatorsPost, IndicatorValuePost, MeasurementUnitPost
 
 
 async def get_measurement_units_from_db(conn: AsyncConnection) -> list[MeasurementUnitDTO]:
@@ -207,13 +207,30 @@ async def get_indicator_value_by_id_from_db(
 ) -> IndicatorValueDTO:
     """Get indicator value object by id."""
 
-    statement = select(territory_indicators_data).where(
-        territory_indicators_data.c.indicator_id == indicator_id,
-        territory_indicators_data.c.territory_id == territory_id,
-        territory_indicators_data.c.date_type == date_type,
-        territory_indicators_data.c.date_value == date_value,
-        territory_indicators_data.c.value_type == value_type,
-        territory_indicators_data.c.information_source == information_source,
+    statement = (
+        select(
+            territory_indicators_data,
+            indicators_dict.c.name_full,
+            measurement_units_dict.c.measurement_unit_id,
+            measurement_units_dict.c.name.label("measurement_unit_name"),
+        )
+        .select_from(
+            territory_indicators_data.join(
+                indicators_dict,
+                indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
+            ).outerjoin(
+                measurement_units_dict,
+                measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
+            )
+        )
+        .where(
+            territory_indicators_data.c.indicator_id == indicator_id,
+            territory_indicators_data.c.territory_id == territory_id,
+            territory_indicators_data.c.date_type == date_type,
+            territory_indicators_data.c.date_value == date_value,
+            territory_indicators_data.c.value_type == value_type,
+            territory_indicators_data.c.information_source == information_source,
+        )
     )
     result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
@@ -232,7 +249,7 @@ async def get_indicator_value_by_id_from_db(
 
 async def add_indicator_value_to_db(
     conn: AsyncConnection,
-    indicator_value: IndicatorValue,
+    indicator_value: IndicatorValuePost,
 ) -> IndicatorValueDTO:
     """Create indicator value object."""
 
@@ -278,7 +295,10 @@ async def add_indicator_value_to_db(
 
     await conn.commit()
 
-    return IndicatorValueDTO(**result)
+    return await get_indicator_value_by_id_from_db(
+        conn, result.indicator_id, result.territory_id, result.date_type,
+        result.date_value, result.value_type, result.information_source
+    )
 
 
 async def get_indicator_values_by_id_from_db(
@@ -297,7 +317,23 @@ async def get_indicator_values_by_id_from_db(
     if parent_indicator is None:
         raise EntityNotFoundById(indicator_id, "indicator")
 
-    statement = select(territory_indicators_data).where(territory_indicators_data.c.indicator_id == indicator_id)
+    statement = (
+        select(
+            territory_indicators_data,
+            indicators_dict.c.name_full,
+            measurement_units_dict.c.measurement_unit_id,
+            measurement_units_dict.c.name.label("measurement_unit_name"),
+        )
+        .select_from(
+            territory_indicators_data.join(
+                indicators_dict,
+                indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
+            ).outerjoin(
+                measurement_units_dict,
+                measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
+            )
+        )
+        .where(territory_indicators_data.c.indicator_id == indicator_id))
 
     if territory_id is not None:
         query = select(territories_data).where(territories_data.c.territory_id == territory_id)

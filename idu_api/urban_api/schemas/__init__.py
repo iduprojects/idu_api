@@ -4,7 +4,14 @@ Response and request schemas are defined here.
 
 from .functional_zones import FunctionalZoneData
 from .health_check import PingResponse
-from .indicators import Indicator, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
+from .indicators import (
+    Indicator,
+    IndicatorsPost,
+    IndicatorValue,
+    IndicatorValuePost,
+    MeasurementUnit,
+    MeasurementUnitPost
+)
 from .living_buildings import (
     LivingBuildingsData,
     LivingBuildingsDataPatch,
@@ -79,6 +86,7 @@ __all__ = [
     "Indicator",
     "IndicatorsPost",
     "IndicatorValue",
+    "IndicatorValuePost",
     "MeasurementUnit",
     "MeasurementUnitPost",
     "Normative",

@@ -32,7 +32,7 @@ install-from-build:
 	python -m wheel install dist/idu_api-*.whl
 
 prepare-migration:
-	cd idu_api/common/db; poetry run alembic revision --autogen
+	cd idu_api/common/db; ENVFILE=../../../urban_api/.env poetry run alembic revision --autogen
 
 apply-migrations:
-	cd idu_api/common/db; poetry run alembic upgrade head
+	cd idu_api/common/db; ENVFILE=../../../urban_api/.env poetry run alembic upgrade head

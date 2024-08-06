@@ -17,7 +17,14 @@ from idu_api.urban_api.logic.indicators import (
     get_indicators_by_parent_id_from_db,
     get_measurement_units_from_db,
 )
-from idu_api.urban_api.schemas import Indicator, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
+from idu_api.urban_api.schemas import (
+    Indicator,
+    IndicatorsPost,
+    IndicatorValue,
+    IndicatorValuePost,
+    MeasurementUnit,
+    MeasurementUnitPost
+)
 from idu_api.urban_api.schemas.enums import DateType, ValueType
 
 from .routers import indicators_router
@@ -133,7 +140,7 @@ async def get_indicator_value_by_id(
     response_model=IndicatorValue,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_indicator_value(request: Request, indicator_value: IndicatorValue) -> IndicatorValue:
+async def add_indicator_value(request: Request, indicator_value: IndicatorValuePost) -> IndicatorValue:
     """Add a new indicator value for a given territory and date period."""
     conn: AsyncConnection = request.state.conn
 
