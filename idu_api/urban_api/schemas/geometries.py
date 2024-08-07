@@ -1,9 +1,9 @@
-"""
-Geojson response models is defined here.
-"""
+"""Geojson response models are defined here."""
 
+import json
 from typing import Any, Dict, Iterable, Literal, Optional
 
+import shapely
 import shapely.geometry as geom
 from geojson_pydantic import Feature, FeatureCollection
 from pydantic import BaseModel, Field
@@ -36,15 +36,7 @@ class Geometry(BaseModel):
         Return Shapely geometry object from the parsed geometry.
         """
         if self._shapely_geom is None:
-            match self.type:
-                case "Point":
-                    self._shapely_geom = geom.Point(self.coordinates)
-                case "Polygon":
-                    self._shapely_geom = geom.Polygon(self.coordinates[0])  # pylint: disable=unsubscriptable-object
-                case "MultiPolygon":
-                    self._shapely_geom = geom.MultiPolygon(self.coordinates)
-                case "LineString":
-                    self._shapely_geom = geom.LineString(self.coordinates)
+            self._shapely_geom = shapely.from_geojson(json.dumps({"type": self.type, "coordinates": self.coordinates}))
         return self._shapely_geom
 
     @classmethod
@@ -56,17 +48,7 @@ class Geometry(BaseModel):
         """
         if geometry is None:
             return None
-        match type(geometry):
-            case geom.Point:
-                return cls(type="Point", coordinates=geometry.coords[0])
-            case geom.Polygon:
-                return cls(type="Polygon", coordinates=[list(geometry.exterior.coords)])
-            case geom.MultiPolygon:
-                return cls(
-                    type="MultiPolygon", coordinates=[[list(polygon.exterior.coords)] for polygon in geometry.geoms]
-                )
-            case geom.LineString:
-                return cls(type="LineString", coordinates=geometry.coords)
+        return cls(**geom.mapping(geometry))
 
 
 class GeoJSONResponse(FeatureCollection):
