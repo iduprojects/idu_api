@@ -27,6 +27,7 @@ from .territories import (
 )
 from .urban_objects import UrbanObjectDTO
 from .users import TokensTuple, UserDTO
+from .projects import ProjectDTO, ProjectTerritoryDTO
 
 __all__ = [
     "TerritoryTypeDTO",
