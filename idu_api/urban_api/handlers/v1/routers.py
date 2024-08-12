@@ -21,6 +21,8 @@ services_router = APIRouter(tags=["services"], prefix="/v1")
 
 urban_objects_router = APIRouter(tags=["urban_objects"], prefix="/v1")
 
+projects_router = APIRouter(tags=["projects"], prefix="/v1")
+
 routers_list = [
     indicators_router,
     services_router,
@@ -30,6 +32,7 @@ routers_list = [
     service_types_router,
     urban_objects_router,
     *territories_routers,
+    projects_router,
 ]
 
 __all__ = [
