@@ -69,16 +69,6 @@ from .territories import (
     TerritoryWithNormatives,
     TerritoryWithoutGeometry,
 )
-from .projects import (
-    Project,
-    ProjectPost,
-    ProjectPut,
-    ProjectPatch,
-    ProjectTerritory,
-    ProjectTerritoryPost,
-    ProjectTerritoryPut,
-    ProjectTerritoryPatch,
-)
 
 __all__ = [
     "PingResponse",
