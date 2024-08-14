@@ -10,7 +10,7 @@ from .indicators import (
     IndicatorValue,
     IndicatorValuePost,
     MeasurementUnit,
-    MeasurementUnitPost
+    MeasurementUnitPost,
 )
 from .living_buildings import (
     LivingBuildingsData,
@@ -32,6 +32,16 @@ from .physical_objects import (
     PhysicalObjectsWithTerritory,
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
+)
+from .projects import (
+    Project,
+    ProjectPatch,
+    ProjectPost,
+    ProjectPut,
+    ProjectTerritory,
+    ProjectTerritoryPatch,
+    ProjectTerritoryPost,
+    ProjectTerritoryPut,
 )
 from .service_types import (
     ServiceTypes,
@@ -60,16 +70,6 @@ from .territories import (
     TerritoryWithIndicators,
     TerritoryWithNormatives,
     TerritoryWithoutGeometry,
-)
-from .projects import (
-    Project,
-    ProjectPost,
-    ProjectPut,
-    ProjectPatch,
-    ProjectTerritory,
-    ProjectTerritoryPost,
-    ProjectTerritoryPut,
-    ProjectTerritoryPatch,
 )
 
 __all__ = [
