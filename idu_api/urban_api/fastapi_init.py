@@ -10,6 +10,7 @@ from fastapi_pagination import add_pagination
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.logic.impl.physical_objects import PhysicalObjectsServiceImpl
+from idu_api.urban_api.logic.impl.projects import UserProjectServiceImpl
 from idu_api.urban_api.logic.impl.territories import TerritoriesServiceImpl
 from idu_api.urban_api.middlewares.dependency_injection import PassServicesDependencies
 from idu_api.urban_api.middlewares.exception_handler import ExceptionHandlerMiddleware
@@ -75,6 +76,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
         connection_manager=connection_manager,  # reinitialized on startup
         territories_service=TerritoriesServiceImpl,
         physical_objects_service=PhysicalObjectsServiceImpl,
+        user_project_service=UserProjectServiceImpl,
     )
 
     return application
