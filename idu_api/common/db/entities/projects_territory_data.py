@@ -1,7 +1,8 @@
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, Table, Text, text
 from geoalchemy2.types import Geometry
-from idu_api.common.db import metadata
+from sqlalchemy import Column, ForeignKey, Integer, Sequence, Table, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
+
+from idu_api.common.db import metadata
 
 project_territory_id_seq = Sequence("project_territory_id_seq", schema="user_projects_unmanaged")
 

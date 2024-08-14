@@ -1,5 +1,7 @@
 from typing import Callable
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table, Boolean, TIMESTAMP, func
+
+from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, func
+
 from idu_api.common.db import metadata
 
 func: Callable
