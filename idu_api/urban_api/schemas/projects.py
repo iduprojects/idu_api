@@ -1,23 +1,21 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
 from loguru import logger
+from pydantic import BaseModel, Field, field_validator, model_validator
 
-from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
+from idu_api.urban_api.schemas.geometries import Geometry
 
 
 class ProjectTerritory(BaseModel):
-    """
-    Schema of project's territory for GET request
-    """
+    """Schema of project's territory for GET request."""
 
     project_territory_id: int = Field(None, primary_key=True, examples=[1])
-    parent_id: Optional[int] = Field(None, description="Project's parent territory id")
+    parent_id: int | None = Field(None, description="Project's parent territory id")
     geometry: Geometry = Field(None, description="Project geometry")
     centre_point: Geometry = Field(None, description="Project centre point")
-    properties: Dict[str, Any] = Field(
+    properties: dict[str, Any] = Field(
         None,
         description="Project's territory additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
@@ -37,14 +35,12 @@ class ProjectTerritory(BaseModel):
 
 
 class ProjectTerritoryPost(BaseModel):
-    """
-    Schema of project's territory for POST request
-    """
+    """Schema of project's territory for POST request."""
 
-    parent_id: Optional[int] = Field(description="Project's parent territory id")
+    parent_id: int | None = Field(description="Project's parent territory id")
     geometry: Geometry = Field(description="Project geometry")
-    centre_point: Optional[Geometry] = Field(description="Project centre point")
-    properties: Dict[str, Any] = Field(
+    centre_point: Geometry | None = Field(description="Project centre point")
+    properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
@@ -53,29 +49,12 @@ class ProjectTerritoryPost(BaseModel):
     @field_validator("geometry")
     @staticmethod
     def validate_geometry(geometry: Geometry) -> Geometry:
-        """Validate that given geometry is validity via creating Shapely object."""
-
-        try:
-            geometry.as_shapely_geometry()
-        except (AttributeError, ValueError, TypeError) as exc:
-            logger.debug("Exception on passing geometry: {!r}", exc)
-            raise ValueError("Invalid geometry passed") from exc
-        return geometry
+        return validate_geometry(geometry)
 
     @field_validator("centre_point")
     @staticmethod
-    def validate_center(centre_point: Geometry | None) -> Optional[Geometry]:
-        """Validate that given geometry is Point and validity via creating Shapely object."""
-
-        if centre_point is None:
-            return None
-        assert centre_point.type == "Point", "Only Point is accepted"
-        try:
-            centre_point.as_shapely_geometry()
-        except (AttributeError, ValueError, TypeError) as exc:
-            logger.debug("Exception on passing geometry: {!r}", exc)
-            raise ValueError("Invalid geometry passed") from exc
-        return centre_point
+    def validate_center(centre_point: Geometry | None) -> Geometry | None:
+        return validate_center(centre_point)
 
     @model_validator(mode="after")
     @staticmethod
@@ -88,14 +67,12 @@ class ProjectTerritoryPost(BaseModel):
 
 
 class ProjectTerritoryPut(BaseModel):
-    """
-    Schema of project's territory for PUT request
-    """
+    """Schema of project's territory for PUT request."""
 
-    parent_id: Optional[int] = Field(description="Project's parent territory id")
+    parent_id: int | None = Field(description="Project's parent territory id")
     geometry: Geometry = Field(description="Project geometry")
-    centre_point: Optional[Geometry] = Field(description="Project centre point")
-    properties: Dict[str, Any] = Field(
+    centre_point: Geometry | None = Field(description="Project centre point")
+    properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
@@ -104,29 +81,12 @@ class ProjectTerritoryPut(BaseModel):
     @field_validator("geometry")
     @staticmethod
     def validate_geometry(geometry: Geometry) -> Geometry:
-        """Validate that given geometry is validity via creating Shapely object."""
-
-        try:
-            geometry.as_shapely_geometry()
-        except (AttributeError, ValueError, TypeError) as exc:
-            logger.debug("Exception on passing geometry: {!r}", exc)
-            raise ValueError("Invalid geometry passed") from exc
-        return geometry
+        return validate_geometry(geometry)
 
     @field_validator("centre_point")
     @staticmethod
-    def validate_center(centre_point: Geometry | None) -> Optional[Geometry]:
-        """Validate that given geometry is Point and validity via creating Shapely object."""
-
-        if centre_point is None:
-            return None
-        assert centre_point.type == "Point", "Only Point is accepted"
-        try:
-            centre_point.as_shapely_geometry()
-        except (AttributeError, ValueError, TypeError) as exc:
-            logger.debug("Exception on passing geometry: {!r}", exc)
-            raise ValueError("Invalid geometry passed") from exc
-        return centre_point
+    def validate_center(centre_point: Geometry | None) -> Geometry | None:
+        return validate_center(centre_point)
 
     @model_validator(mode="after")
     @staticmethod
@@ -139,14 +99,12 @@ class ProjectTerritoryPut(BaseModel):
 
 
 class ProjectTerritoryPatch(BaseModel):
-    """
-    Schema of project's territory for PATCH request
-    """
+    """Schema of project's territory for PATCH request."""
 
-    parent_id: Optional[int] = Field(None, description="Project's parent territory id")
-    geometry: Optional[Geometry] = Field(None, description="Project geometry")
-    centre_point: Optional[Geometry] = Field(None, description="Project centre point")
-    properties: Optional[Dict[str, Any]] = Field(
+    parent_id: int | None = Field(None, description="Project's parent territory id")
+    geometry: Geometry | None = Field(None, description="Project geometry")
+    centre_point: Geometry | None = Field(None, description="Project centre point")
+    properties: dict[str, Any] | None = Field(
         default_factory=dict,
         description="Service additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
@@ -155,50 +113,20 @@ class ProjectTerritoryPatch(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def check_empty_request(cls, values):
-        """
-        Ensure the request body is not empty.
-        """
+        """Ensure the request body is not empty."""
         if not values:
             raise ValueError("request body cannot be empty")
-        return values
-
-    @model_validator(mode="before")
-    @classmethod
-    def disallow_nulls(cls, values):
-        """
-        Ensure the request body hasn't nulls.
-        """
-        for k, v in values.items():
-            if v is None:
-                raise ValueError(f"{k} cannot be null")
         return values
 
     @field_validator("geometry")
     @staticmethod
     def validate_geometry(geometry: Geometry) -> Geometry:
-        """Validate that given geometry is validity via creating Shapely object."""
-
-        try:
-            geometry.as_shapely_geometry()
-        except (AttributeError, ValueError, TypeError) as exc:
-            logger.debug("Exception on passing geometry: {!r}", exc)
-            raise ValueError("Invalid geometry passed") from exc
-        return geometry
+        return validate_geometry(geometry)
 
     @field_validator("centre_point")
     @staticmethod
-    def validate_center(centre_point: Geometry | None) -> Optional[Geometry]:
-        """Validate that given geometry is Point and validity via creating Shapely object."""
-
-        if centre_point is None:
-            return None
-        assert centre_point.type == "Point", "Only Point is accepted"
-        try:
-            centre_point.as_shapely_geometry()
-        except (AttributeError, ValueError, TypeError) as exc:
-            logger.debug("Exception on passing geometry: {!r}", exc)
-            raise ValueError("Invalid geometry passed") from exc
-        return centre_point
+    def validate_center(centre_point: Geometry | None) -> Geometry | None:
+        return validate_center(centre_point)
 
     @model_validator(mode="after")
     @staticmethod
@@ -211,9 +139,7 @@ class ProjectTerritoryPatch(BaseModel):
 
 
 class Project(BaseModel):
-    """
-    Schema of project for GET request
-    """
+    """Schema of project for GET request."""
 
     project_id: int = Field(primary_key=True, examples=[1])
     user_id: int = Field(examples=[1])
@@ -241,9 +167,7 @@ class Project(BaseModel):
 
 
 class ProjectPost(BaseModel):
-    """
-    Schema of project for POST request
-    """
+    """Schema of project for POST request."""
 
     user_id: int = Field(examples=[1])
     name: str = Field(example="--")
@@ -254,9 +178,7 @@ class ProjectPost(BaseModel):
 
 
 class ProjectPut(BaseModel):
-    """
-    Schema of project for PUT request
-    """
+    """Schema of project for PUT request."""
 
     user_id: int = Field(examples=[1])
     name: str = Field(example="--")
@@ -267,34 +189,44 @@ class ProjectPut(BaseModel):
 
 
 class ProjectPatch(BaseModel):
-    """
-    Schema of project for PATCH request
-    """
+    """Schema of project for PATCH request."""
 
-    user_id: Optional[int] = Field(None, examples=[1])
-    name: Optional[str] = Field(None, example="--")
-    project_territory_info: Optional[ProjectTerritoryPatch] = Field(None, description="Project territory info")
-    description: Optional[str] = Field(None, description="Project description")
-    public: Optional[bool] = Field(None, description="Project publicity")
-    image_url: Optional[str] = Field(None, description="Project image url")
+    user_id: int | None = Field(None, examples=[1])
+    name: str | None = Field(None, example="--")
+    project_territory_info: ProjectTerritoryPatch | None = Field(None, description="Project territory info")
+    description: str | None = Field(None, description="Project description")
+    public: bool | None = Field(None, description="Project publicity")
+    image_url: str | None = Field(None, description="Project image url")
 
     @model_validator(mode="before")
     @classmethod
     def check_empty_request(cls, values):
-        """
-        Ensure the request body is not empty.
-        """
+        """Ensure the request body is not empty."""
         if not values:
             raise ValueError("request body cannot be empty")
         return values
 
-    @model_validator(mode="before")
-    @classmethod
-    def disallow_nulls(cls, values):
-        """
-        Ensure the request body hasn't nulls.
-        """
-        for k, v in values.items():
-            if v is None:
-                raise ValueError(f"{k} cannot be null")
-        return values
+
+def validate_geometry(geometry: Geometry) -> Geometry:
+    """Validate that given geometry is validity via creating Shapely object."""
+
+    try:
+        geometry.as_shapely_geometry()
+    except (AttributeError, ValueError, TypeError) as exc:
+        logger.debug("Exception on passing geometry: {!r}", exc)
+        raise ValueError("Invalid geometry passed") from exc
+    return geometry
+
+
+def validate_center(centre_point: Geometry | None) -> Geometry | None:
+    """Validate that given geometry is Point and validity via creating Shapely object."""
+
+    if centre_point is None:
+        return None
+    assert centre_point.type == "Point", "Only Point is accepted"
+    try:
+        centre_point.as_shapely_geometry()
+    except (AttributeError, ValueError, TypeError) as exc:
+        logger.debug("Exception on passing geometry: {!r}", exc)
+        raise ValueError("Invalid geometry passed") from exc
+    return centre_point

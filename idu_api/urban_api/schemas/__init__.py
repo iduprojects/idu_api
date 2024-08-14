@@ -33,6 +33,16 @@ from .physical_objects import (
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
 )
+from .projects import (
+    Project,
+    ProjectPatch,
+    ProjectPost,
+    ProjectPut,
+    ProjectTerritory,
+    ProjectTerritoryPatch,
+    ProjectTerritoryPost,
+    ProjectTerritoryPut,
+)
 from .service_types import (
     ServiceTypes,
     ServiceTypesPost,
@@ -58,16 +68,6 @@ from .territories import (
     TerritoryWithIndicators,
     TerritoryWithNormatives,
     TerritoryWithoutGeometry,
-)
-from .projects import (
-    Project,
-    ProjectPost,
-    ProjectPut,
-    ProjectPatch,
-    ProjectTerritory,
-    ProjectTerritoryPost,
-    ProjectTerritoryPut,
-    ProjectTerritoryPatch,
 )
 
 __all__ = [
