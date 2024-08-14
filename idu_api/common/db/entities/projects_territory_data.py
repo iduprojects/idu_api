@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
 
-project_territory_id_seq = Sequence("project_territory_id_seq", schema="user_projects_unmanaged")
+project_territory_id_seq = Sequence("project_territory_id_seq", schema="user_projects")
 
 projects_territory_data = Table(
     "projects_territory_data",
@@ -13,7 +13,7 @@ projects_territory_data = Table(
     Column(
         "parent_id",
         Integer,
-        ForeignKey("user_projects_unmanaged.projects_territory_data.project_territory_id"),
+        ForeignKey("user_projects.projects_territory_data.project_territory_id"),
         nullable=True,
     ),
     Column(
@@ -27,7 +27,7 @@ projects_territory_data = Table(
         nullable=False,
     ),
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
-    schema="user_projects_unmanaged",
+    schema="user_projects",
 )
 
 """

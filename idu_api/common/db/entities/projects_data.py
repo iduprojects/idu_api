@@ -6,7 +6,7 @@ from idu_api.common.db import metadata
 
 func: Callable
 
-project_id_seq = Sequence("project_id_seq", schema="user_projects_unmanaged")
+project_id_seq = Sequence("project_id_seq", schema="user_projects")
 
 projects_data = Table(
     "projects_data",
@@ -17,7 +17,7 @@ projects_data = Table(
     Column(
         "project_territory_id",
         Integer,
-        ForeignKey("user_projects_unmanaged.projects_territory_data.project_territory_id"),
+        ForeignKey("user_projects.projects_territory_data.project_territory_id"),
         nullable=False,
     ),
     Column("description", String(600), nullable=True, unique=False),
@@ -25,7 +25,7 @@ projects_data = Table(
     Column("image_url", String(200), nullable=True, unique=False),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
-    schema="user_projects_unmanaged",
+    schema="user_projects",
 )
 
 """
