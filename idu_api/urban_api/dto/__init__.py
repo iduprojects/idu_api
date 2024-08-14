@@ -7,14 +7,14 @@ from .indicators import IndicatorDTO, IndicatorValueDTO, MeasurementUnitDTO
 from .living_buildings import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
 from .normatives import NormativeDTO
 from .object_geometries import ObjectGeometryDTO
-from .pages import PageDTO
 from .physical_objects import (
     PhysicalObjectDataDTO,
     PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
 )
-from .service_types import ServiceTypesDTO, UrbanFunctionDTO
+from .projects import ProjectDTO, ProjectTerritoryDTO
+from .service_types import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
     TerritoryDTO,
@@ -26,7 +26,6 @@ from .territories import (
 )
 from .urban_objects import UrbanObjectDTO
 from .users import TokensTuple, UserDTO
-from .projects import ProjectDTO, ProjectTerritoryDTO
 
 __all__ = [
     "TerritoryTypeDTO",
@@ -35,6 +34,7 @@ __all__ = [
     "TokensTuple",
     "ServiceDTO",
     "ServiceTypesDTO",
+    "ServiceTypesNormativesDTO",
     "ServiceWithGeometryDTO",
     "ServiceWithTerritoriesDTO",
     "IndicatorDTO",
@@ -42,7 +42,6 @@ __all__ = [
     "MeasurementUnitDTO",
     "NormativeDTO",
     "ObjectGeometryDTO",
-    "PageDTO",
     "PhysicalObjectDataDTO",
     "PhysicalObjectTypeDTO",
     "PhysicalObjectWithGeometryDTO",

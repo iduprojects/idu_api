@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from datetime import datetime
+from typing import Any, Optional
 
 import shapely.geometry as geom
-from datetime import datetime
 
 
-@dataclass()
+@dataclass
 class ProjectDTO:
     project_id: int
     user_id: int
@@ -18,13 +18,13 @@ class ProjectDTO:
     updated_at: datetime
 
 
-@dataclass()
+@dataclass
 class ProjectTerritoryDTO:
     project_territory_id: int
     parent_id: int
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
-    properties: Optional[Dict[str, Any]]
+    properties: Optional[dict[str, Any]]
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
