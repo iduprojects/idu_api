@@ -9,6 +9,10 @@ class UserProjectService(Protocol):
     """Service to manipulate projects objects."""
 
     @abc.abstractmethod
+    async def get_project_by_id_from_db(self, project_id: int) -> ProjectDTO:
+        """Get project object by id."""
+
+    @abc.abstractmethod
     async def post_project_to_db(self, project: ProjectPost) -> ProjectDTO:
         """Create project object."""
 
