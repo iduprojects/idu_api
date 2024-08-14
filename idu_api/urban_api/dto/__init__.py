@@ -13,6 +13,7 @@ from .physical_objects import (
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
 )
+from .projects import ProjectDTO, ProjectTerritoryDTO
 from .service_types import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
@@ -25,7 +26,6 @@ from .territories import (
 )
 from .urban_objects import UrbanObjectDTO
 from .users import TokensTuple, UserDTO
-from .projects import ProjectDTO, ProjectTerritoryDTO
 
 __all__ = [
     "TerritoryTypeDTO",

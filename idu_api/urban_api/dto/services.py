@@ -26,7 +26,7 @@ class ServiceDTO:  # pylint: disable=too-many-instance-attributes
     updated_at: datetime
 
 
-@dataclass()
+@dataclass
 class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     service_id: int
     service_type_id: int

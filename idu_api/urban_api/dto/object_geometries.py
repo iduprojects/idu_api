@@ -8,7 +8,7 @@ from typing import Optional
 import shapely.geometry as geom
 
 
-@dataclass()
+@dataclass
 class ObjectGeometryDTO:
     object_geometry_id: int
     territory_id: int

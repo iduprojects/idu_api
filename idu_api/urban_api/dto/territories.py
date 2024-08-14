@@ -22,7 +22,7 @@ class TerritoryTypeDTO:
     name: str
 
 
-@dataclass()
+@dataclass
 class TerritoryDTO:
     """
     Territory DTO used to transfer territory data
@@ -77,7 +77,7 @@ class TerritoryWithoutGeometryDTO:
     updated_at: datetime
 
 
-@dataclass()
+@dataclass
 class TerritoryWithIndicatorDTO:
     """
     Territory DTO used to transfer short territory data with indicator
@@ -103,7 +103,7 @@ class TerritoryWithIndicatorDTO:
         return asdict(self)
 
 
-@dataclass()
+@dataclass
 class TerritoryWithIndicatorsDTO:
     """
     Territory DTO used to transfer short territory data with list of indicators
@@ -133,7 +133,7 @@ class TerritoryWithIndicatorsDTO:
         return territory
 
 
-@dataclass()
+@dataclass
 class TerritoryWithNormativesDTO:
     """
     Territory DTO used to transfer short territory data with list of indicators

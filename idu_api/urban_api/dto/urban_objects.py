@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 import shapely.geometry as geom
 
 
-@dataclass()
+@dataclass
 class UrbanObjectDTO:
     urban_object_id: int
     physical_object_id: int

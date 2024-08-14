@@ -9,7 +9,7 @@ from typing import Dict, Optional
 import shapely.geometry as geom
 
 
-@dataclass()
+@dataclass
 class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     living_building_id: int
     physical_object_id: int

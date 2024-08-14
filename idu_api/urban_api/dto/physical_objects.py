@@ -26,7 +26,7 @@ class PhysicalObjectDataDTO:
     updated_at: datetime
 
 
-@dataclass()
+@dataclass
 class PhysicalObjectWithGeometryDTO:
     physical_object_id: int
     physical_object_type_id: int
