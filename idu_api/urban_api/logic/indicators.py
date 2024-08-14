@@ -296,8 +296,13 @@ async def add_indicator_value_to_db(
     await conn.commit()
 
     return await get_indicator_value_by_id_from_db(
-        conn, result.indicator_id, result.territory_id, result.date_type,
-        result.date_value, result.value_type, result.information_source
+        conn,
+        result.indicator_id,
+        result.territory_id,
+        result.date_type,
+        result.date_value,
+        result.value_type,
+        result.information_source,
     )
 
 
@@ -333,7 +338,8 @@ async def get_indicator_values_by_id_from_db(
                 measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
             )
         )
-        .where(territory_indicators_data.c.indicator_id == indicator_id))
+        .where(territory_indicators_data.c.indicator_id == indicator_id)
+    )
 
     if territory_id is not None:
         query = select(territories_data).where(territories_data.c.territory_id == territory_id)

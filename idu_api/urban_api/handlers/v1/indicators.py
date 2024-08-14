@@ -23,7 +23,7 @@ from idu_api.urban_api.schemas import (
     IndicatorValue,
     IndicatorValuePost,
     MeasurementUnit,
-    MeasurementUnitPost
+    MeasurementUnitPost,
 )
 from idu_api.urban_api.schemas.enums import DateType, ValueType
 

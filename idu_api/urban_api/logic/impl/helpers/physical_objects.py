@@ -3,12 +3,11 @@
 from typing import Callable
 
 from geoalchemy2 import Geography, Geometry
-from geoalchemy2.functions import ST_GeomFromText
+from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from sqlalchemy import cast, func, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
-from geoalchemy2.functions import ST_AsGeoJSON
 
 from idu_api.common.db.entities import (
     object_geometries_data,
