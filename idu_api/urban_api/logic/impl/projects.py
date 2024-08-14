@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import projects_data, projects_territory_data
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
-from idu_api.urban_api.logic.impl.helpers.projects import get_project_by_id_from_db
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut
 
@@ -21,6 +20,16 @@ class UserProjectServiceImpl(UserProjectService):
 
     def __init__(self, conn: AsyncConnection):
         self._conn = conn
+
+    async def get_project_by_id_from_db(self, project_id: int) -> ProjectDTO:
+        conn = self._conn
+        statement = select(projects_data).where(projects_data.c.project_id == project_id)
+        try:
+            result = (await conn.execute(statement)).mappings().one()
+        except:
+            raise HTTPException(status_code=404, detail="Given id is not found")
+
+        return ProjectDTO(**result)
         
     async def post_project_to_db(self, project: ProjectPost) -> ProjectDTO:
         conn = self._conn
@@ -57,7 +66,7 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return await get_project_by_id_from_db(conn, result_for_project)
+        return await self.get_project_by_id_from_db(result_for_project)
 
     async def get_projects_from_db(self) -> list[ProjectDTO]:
         conn = self._conn
@@ -150,7 +159,7 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return await get_project_by_id_from_db(conn, result.project_id)
+        return await self.get_project_by_id_from_db(result.project_id)
 
     async def patch_project_to_db(self, project: ProjectPatch, project_id: int) -> ProjectDTO:
         conn = self._conn
@@ -198,4 +207,4 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return await get_project_by_id_from_db(conn, project_id)
+        return await self.get_project_by_id_from_db(project_id)
