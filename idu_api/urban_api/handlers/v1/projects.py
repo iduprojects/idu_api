@@ -2,13 +2,11 @@
 Projects endpoints are defined here.
 """
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import Request
 from starlette import status
 
-from idu_api.urban_api.dto.users import UserDTO
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import Project, ProjectPatch, ProjectPost, ProjectPut, ProjectTerritory
-from idu_api.urban_api.utils.dependencies import user_dependency
 
 from .routers import projects_router
 
@@ -18,23 +16,10 @@ from .routers import projects_router
     response_model=list[Project],
     status_code=status.HTTP_200_OK,
 )
-async def get_all_projects(request: Request, user: UserDTO = Depends(user_dependency)) -> list[Project]:
+async def get_projects(request: Request) -> list[Project]:
     """Get all projects."""
     user_project_service: UserProjectService = request.state.user_project_service
-    projects = await user_project_service.get_all_available_projects_from_db(user.id)
-
-    return [Project.from_dto(project) for project in projects]
-
-
-@projects_router.get(
-    "/user_projects",
-    response_model=list[Project],
-    status_code=status.HTTP_200_OK,
-)
-async def get_user_projects(request: Request, user: UserDTO = Depends(user_dependency)) -> list[Project]:
-    """Get all projects."""
-    user_project_service: UserProjectService = request.state.user_project_service
-    projects = await user_project_service.get_user_projects_from_db(user.id)
+    projects = await user_project_service.get_projects_from_db()
 
     return [Project.from_dto(project) for project in projects]
 
@@ -44,16 +29,12 @@ async def get_user_projects(request: Request, user: UserDTO = Depends(user_depen
     response_model=Project,
     status_code=status.HTTP_200_OK,
 )
-async def get_project_by_id(request: Request, project_id: int, user: UserDTO = Depends(user_dependency)) -> Project:
+async def get_project_by_id(request: Request, project_id: int) -> Project:
     """Get a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.get_project_by_id_from_db(project_id, user.id)
-    if project_dto == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    if project_dto == 404:
-        raise HTTPException(status_code=404, detail="Given id is not found")
+    project = await user_project_service.get_project_by_id_from_db(project_id)
 
-    return Project.from_dto(project_dto)
+    return Project.from_dto(project)
 
 
 @projects_router.get(
@@ -61,16 +42,10 @@ async def get_project_by_id(request: Request, project_id: int, user: UserDTO = D
     response_model=ProjectTerritory,
     status_code=status.HTTP_200_OK,
 )
-async def get_projects_territory_info(
-    request: Request, project_id: int, user: UserDTO = Depends(user_dependency)
-) -> ProjectTerritory:
+async def get_projects_territory_info(request: Request, project_id: int) -> ProjectTerritory:
     """Get territory info of a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_territory_dto = await user_project_service.get_project_territory_by_id_from_db(project_id, user.id)
-    if project_territory_dto == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    if project_territory_dto == 404:
-        raise HTTPException(status_code=404, detail="Territory info not found for given id")
+    project_territory_dto = await user_project_service.get_project_territory_by_id_from_db(project_id)
 
     return ProjectTerritory.from_dto(project_territory_dto)
 
@@ -80,10 +55,10 @@ async def get_projects_territory_info(
     response_model=Project,
     status_code=status.HTTP_201_CREATED,
 )
-async def post_project(request: Request, project: ProjectPost, user: UserDTO = Depends(user_dependency)) -> Project:
+async def post_project(request: Request, project: ProjectPost) -> Project:
     """Add a new project."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.post_project_to_db(project, user.id)
+    project_dto = await user_project_service.post_project_to_db(project)
 
     return Project.from_dto(project_dto)
 
@@ -93,16 +68,10 @@ async def post_project(request: Request, project: ProjectPost, user: UserDTO = D
     response_model=Project,
     status_code=status.HTTP_200_OK,
 )
-async def put_project(
-    request: Request, project: ProjectPut, project_id: int, user: UserDTO = Depends(user_dependency)
-) -> Project:
+async def put_project(request: Request, project: ProjectPut, project_id: int) -> Project:
     """Update a project by setting all of its attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.put_project_to_db(project, project_id, user.id)
-    if project_dto == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    if project_dto == 404:
-        raise HTTPException(status_code=404, detail="Given project_id is not found")
+    project_dto = await user_project_service.put_project_to_db(project, project_id)
 
     return Project.from_dto(project_dto)
 
@@ -112,16 +81,10 @@ async def put_project(
     response_model=Project,
     status_code=status.HTTP_200_OK,
 )
-async def patch_project(
-    request: Request, project: ProjectPatch, project_id: int, user: UserDTO = Depends(user_dependency)
-) -> Project:
+async def patch_project(request: Request, project: ProjectPatch, project_id: int) -> Project:
     """Update a project by setting given attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.patch_project_to_db(project, project_id, user.id)
-    if project_dto == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    if project_dto == 404:
-        raise HTTPException(status_code=404, detail="Given project_id is not found")
+    project_dto = await user_project_service.patch_project_to_db(project, project_id)
 
     return Project.from_dto(project_dto)
 
@@ -130,13 +93,8 @@ async def patch_project(
     "/projects/{project_id}",
     status_code=status.HTTP_200_OK,
 )
-async def delete_project(request: Request, project_id: int, user: UserDTO = Depends(user_dependency)) -> dict:
+async def delete_project(request: Request, project_id: int) -> int:
     """Delete a project."""
     user_project_service: UserProjectService = request.state.user_project_service
-    result = await user_project_service.delete_project_from_db(project_id, user.id)
-    if result == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    if result == 404:
-        raise HTTPException(status_code=404, detail="Project not found")
 
-    return result
+    return await user_project_service.delete_project_from_db(project_id)
