@@ -30,15 +30,16 @@ class UserProjectServiceImpl(UserProjectService):
             raise HTTPException(status_code=404, detail="Given id is not found")
 
         return ProjectDTO(**result)
-        
+
     async def post_project_to_db(self, project: ProjectPost) -> ProjectDTO:
         conn = self._conn
         statement_for_territory = (
             insert(projects_territory_data)
             .values(
                 parent_id=project.project_territory_info.parent_id,
-                geometry=ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()),
-                                         text("4326")),
+                geometry=ST_GeomFromText(
+                    str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")
+                ),
                 centre_point=ST_GeomFromText(
                     str(project.project_territory_info.centre_point.as_shapely_geometry()), text("4326")
                 ),
@@ -78,7 +79,8 @@ class UserProjectServiceImpl(UserProjectService):
     async def get_project_territory_by_id_from_db(self, project_id: int) -> ProjectTerritoryDTO:
         conn = self._conn
         statement_for_project = select(projects_data.c.project_territory_id).where(
-            projects_data.c.project_id == project_id)
+            projects_data.c.project_id == project_id
+        )
         try:
             result_for_project = (await conn.execute(statement_for_project)).mappings().one()
         except:
@@ -131,8 +133,9 @@ class UserProjectServiceImpl(UserProjectService):
             .where(projects_territory_data.c.project_territory_id == requested_project.project_territory_id)
             .values(
                 parent_id=project.project_territory_info.parent_id,
-                geometry=ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()),
-                                         text("4326")),
+                geometry=ST_GeomFromText(
+                    str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")
+                ),
                 centre_point=ST_GeomFromText(
                     str(project.project_territory_info.centre_point.as_shapely_geometry()), text("4326")
                 ),
