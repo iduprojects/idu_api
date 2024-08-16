@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import shapely.geometry as geom
 
@@ -20,20 +20,20 @@ class PhysicalObjectDataDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    name: Optional[str]
-    properties: Dict[str, Any]
+    name: str | None
+    properties: dict[str, Any]
     created_at: datetime
     updated_at: datetime
 
 
-@dataclass()
+@dataclass
 class PhysicalObjectWithGeometryDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    name: Optional[str]
-    address: Optional[str]
-    properties: Dict[str, Any]
+    name: str | None
+    address: str | None
+    properties: dict[str, Any]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
     created_at: datetime
@@ -53,8 +53,8 @@ class PhysicalObjectWithTerritoryDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    name: Optional[str]
-    properties: Dict[str, Any]
-    territories: List[Dict[str, Any]]
+    name: str | None
+    properties: dict[str, Any]
+    territories: list[dict[str, Any]]
     created_at: datetime
     updated_at: datetime

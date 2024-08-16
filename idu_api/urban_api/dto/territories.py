@@ -1,10 +1,8 @@
-"""
-Territories DTO are defined here.
-"""
+"""Territories DTO are defined here."""
 
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import shapely.geometry as geom
 
@@ -18,11 +16,11 @@ class TerritoryTypeDTO:
     Territory type DTO used to transfer territory type data
     """
 
-    territory_type_id: Optional[int]
+    territory_type_id: int | None
     name: str
 
 
-@dataclass()
+@dataclass
 class TerritoryDTO:
     """
     Territory DTO used to transfer territory data
@@ -36,10 +34,10 @@ class TerritoryDTO:
     name: str
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     level: int
-    properties: Optional[Dict[str, Any]]
+    properties: Optional[dict[str, Any]]
     centre_point: geom.Point
-    admin_center: Optional[int]
-    okato_code: Optional[str]
+    admin_center: int | None
+    okato_code: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -51,7 +49,7 @@ class TerritoryDTO:
         if isinstance(self.geometry, dict):
             self.geometry = geom.shape(self.geometry)
 
-    def to_geojson_dict(self) -> Dict[str, Any]:
+    def to_geojson_dict(self) -> dict[str, Any]:
         territory = asdict(self)
         territory_type = territory.pop("territory_type_id", None), territory.pop("territory_type_name", None)
         territory["territory_type"] = {"territory_type_id": territory_type[0], "name": territory_type[1]}
@@ -70,14 +68,14 @@ class TerritoryWithoutGeometryDTO:
     parent_id: int
     name: str
     level: int
-    properties: Dict[str, Any]
+    properties: dict[str, Any]
     admin_center: int
     okato_code: str
     created_at: datetime
     updated_at: datetime
 
 
-@dataclass()
+@dataclass
 class TerritoryWithIndicatorDTO:
     """
     Territory DTO used to transfer short territory data with indicator
@@ -89,7 +87,7 @@ class TerritoryWithIndicatorDTO:
     name: str
     indicator_name: str
     indicator_value: float
-    measurement_unit_name: Optional[str]
+    measurement_unit_name: str | None
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
@@ -99,11 +97,11 @@ class TerritoryWithIndicatorDTO:
         if isinstance(self.geometry, dict):
             self.geometry = geom.shape(self.geometry)
 
-    def to_geojson_dict(self) -> Dict[str, Any]:
+    def to_geojson_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-@dataclass()
+@dataclass
 class TerritoryWithIndicatorsDTO:
     """
     Territory DTO used to transfer short territory data with list of indicators
@@ -113,7 +111,7 @@ class TerritoryWithIndicatorsDTO:
     centre_point: geom.Point
     territory_id: int
     name: str
-    indicators: List[IndicatorValueDTO]
+    indicators: list[IndicatorValueDTO]
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
@@ -123,7 +121,7 @@ class TerritoryWithIndicatorsDTO:
         if isinstance(self.geometry, dict):
             self.geometry = geom.shape(self.geometry)
 
-    def to_geojson_dict(self) -> Dict[str, Any]:
+    def to_geojson_dict(self) -> dict[str, Any]:
         territory = asdict(self)
         for indicator in territory["indicators"]:
             del indicator["indicator_id"]
@@ -133,7 +131,7 @@ class TerritoryWithIndicatorsDTO:
         return territory
 
 
-@dataclass()
+@dataclass
 class TerritoryWithNormativesDTO:
     """
     Territory DTO used to transfer short territory data with list of indicators
@@ -143,7 +141,7 @@ class TerritoryWithNormativesDTO:
     centre_point: geom.Point
     territory_id: int
     name: str
-    normatives: List[NormativeDTO]
+    normatives: list[NormativeDTO]
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
@@ -153,7 +151,7 @@ class TerritoryWithNormativesDTO:
         if isinstance(self.geometry, dict):
             self.geometry = geom.shape(self.geometry)
 
-    def to_geojson_dict(self) -> Dict[str, Any]:
+    def to_geojson_dict(self) -> dict[str, Any]:
         territory = asdict(self)
         for normative in territory["normatives"]:
             del normative["normative_type"]

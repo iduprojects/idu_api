@@ -30,7 +30,7 @@ from .routers import territories_router
 )
 async def get_territory_by_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory id", gt=0),
 ) -> TerritoryData:
     """Get a territory by id."""
     territories_service: TerritoriesService = request.state.territories_service
@@ -75,7 +75,7 @@ async def get_territory_by_parent_id(
 ) -> Page[TerritoryData]:
     """.Get a territory or list of territories by parent.
 
-    territory type could be specified in parameters.
+    Territory type could be specified in parameters.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
@@ -207,7 +207,7 @@ async def get_common_territory(
 async def intersecting_territories(
     request: Request,
     geometry: Geometry,
-    parent_territory_id: int = Path(description="parent territory id", gt=0),
+    parent_territory_id: int = Path(..., description="parent territory id", gt=0),
 ) -> list[TerritoryData]:
     """Get list of inner territories of a given parent territory which intersect with given geometry."""
     territories_service: TerritoriesService = request.state.territories_service
@@ -227,7 +227,7 @@ async def intersecting_territories(
 async def put_territory(
     request: Request,
     territory: TerritoryDataPut,
-    territory_id: int = Path(description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory id", gt=0),
 ) -> TerritoryData:
     """Update the given territory - all attributes."""
     territories_service: TerritoriesService = request.state.territories_service
@@ -245,7 +245,7 @@ async def put_territory(
 async def patch_territory(
     request: Request,
     territory: TerritoryDataPatch,
-    territory_id: int = Path(description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory id", gt=0),
 ) -> TerritoryData:
     """Update the given territory - only given attributes."""
     territories_service: TerritoriesService = request.state.territories_service

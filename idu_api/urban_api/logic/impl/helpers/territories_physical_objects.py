@@ -21,8 +21,8 @@ from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 async def get_physical_objects_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
-    physical_object_type: Optional[int],
-    name: Optional[str],
+    physical_object_type: int | None,
+    name: str | None,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
 ) -> list[PhysicalObjectDataDTO]:
@@ -79,8 +79,8 @@ async def get_physical_objects_by_territory_id_from_db(
 async def get_physical_objects_with_geometry_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
-    physical_object_type: Optional[int],
-    name: Optional[str],
+    physical_object_type: int | None,
+    name: str | None,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
 ) -> list[PhysicalObjectWithGeometryDTO]:

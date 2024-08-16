@@ -1,10 +1,8 @@
-"""
-Services DTO are defined here.
-"""
+"""Services DTO are defined here."""
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import shapely.geometry as geom
 
@@ -17,16 +15,16 @@ class ServiceDTO:  # pylint: disable=too-many-instance-attributes
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
-    territory_type_id: Optional[int]
-    territory_type_name: Optional[str]
-    name: Optional[str]
-    capacity_real: Optional[int]
-    properties: Dict[str, Any]
+    territory_type_id: int | None
+    territory_type_name: str | None
+    name: str | None
+    capacity_real: int | None
+    properties: dict[str, Any]
     created_at: datetime
     updated_at: datetime
 
 
-@dataclass()
+@dataclass
 class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     service_id: int
     service_type_id: int
@@ -34,11 +32,11 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
-    territory_type_id: Optional[int]
-    territory_type_name: Optional[str]
-    name: Optional[str]
-    capacity_real: Optional[int]
-    properties: Dict[str, Any]
+    territory_type_id: int | None
+    territory_type_name: str | None
+    name: str | None
+    capacity_real: int | None
+    properties: dict[str, Any]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
     created_at: datetime
@@ -61,11 +59,11 @@ class ServiceWithTerritoriesDTO:  # pylint: disable=too-many-instance-attributes
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
-    territory_type_id: Optional[int]
-    territory_type_name: Optional[str]
-    name: Optional[str]
-    capacity_real: Optional[int]
-    properties: Dict[str, Any]
-    territories: List[Dict[str, Any]]
+    territory_type_id: int | None
+    territory_type_name: str | None
+    name: str | None
+    capacity_real: int | None
+    properties: dict[str, Any]
+    territories: list[dict[str, Any]]
     created_at: datetime
     updated_at: datetime

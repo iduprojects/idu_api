@@ -1,7 +1,5 @@
 """Physical objects territories-related handlers are defined here."""
 
-from typing import Optional
-
 from fastapi import Path, Query, Request
 from fastapi_pagination import paginate
 from starlette import status
@@ -22,9 +20,9 @@ from .routers import territories_router
 )
 async def get_physical_objects_by_territory_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
-    physical_object_type_id: Optional[int] = Query(None, description="Physical object type id", gt=0),
-    name: Optional[str] = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
+    territory_id: int = Path(..., description="territory id", gt=0),
+    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
+    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
@@ -55,9 +53,9 @@ async def get_physical_objects_by_territory_id(
 )
 async def get_physical_objects_with_geometry_by_territory_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
-    physical_object_type_id: Optional[int] = Query(None, description="Physical object type id", gt=0),
-    name: Optional[str] = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
+    territory_id: int = Path(..., description="territory id", gt=0),
+    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
+    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),

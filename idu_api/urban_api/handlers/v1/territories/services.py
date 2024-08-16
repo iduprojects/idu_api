@@ -1,7 +1,5 @@
 """Services territories-related handlers are defined here."""
 
-from typing import Optional
-
 from fastapi import Path, Query, Request
 from fastapi_pagination import paginate
 from starlette import status
@@ -22,9 +20,9 @@ from .routers import territories_router
 )
 async def get_services_by_territory_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
-    service_type_id: Optional[int] = Query(None, description="Service type id", gt=0),
-    name: Optional[str] = Query(None, description="Filter services by name substring (case-insensitive)"),
+    territory_id: int = Path(..., description="territory id", gt=0),
+    service_type_id: int | None = Query(None, description="Service type id", gt=0),
+    name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
@@ -55,9 +53,9 @@ async def get_services_by_territory_id(
 )
 async def get_services_with_geometry_by_territory_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
-    service_type_id: Optional[int] = Query(None, description="Service type id", gt=0),
-    name: Optional[str] = Query(None, description="Filter services by name substring (case-insensitive)"),
+    territory_id: int = Path(..., description="territory id", gt=0),
+    service_type_id: int | None = Query(None, description="Service type id", gt=0),
+    name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
@@ -83,14 +81,14 @@ async def get_services_with_geometry_by_territory_id(
 
 @territories_router.get(
     "/territory/{territory_id}/services_capacity",
-    response_model=Optional[int],
+    response_model=int | None,
     status_code=status.HTTP_200_OK,
 )
 async def get_total_services_capacity_by_territory_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
-    service_type_id: Optional[int] = Query(None, description="Service type id", gt=0),
-) -> Optional[int]:
+    territory_id: int = Path(..., description="territory id", gt=0),
+    service_type_id: int | None = Query(None, description="Service type id", gt=0),
+) -> int | None:
     """Get aggregated capacity of services for territory."""
     territories_service: TerritoriesService = request.state.territories_service
 

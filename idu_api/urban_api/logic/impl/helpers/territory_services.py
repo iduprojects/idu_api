@@ -29,6 +29,8 @@ async def get_services_by_territory_id_from_db(
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
 ) -> list[ServiceDTO]:
+    """Get list of services by territory id."""
+
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
@@ -85,6 +87,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
 ) -> list[ServiceWithGeometryDTO]:
+    """Get list of services with objects geometries by territory id."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
@@ -141,6 +144,10 @@ async def get_services_capacity_by_territory_id_from_db(
     territory_id: int,
     service_type_id: int | None,
 ) -> int:
+    """Get summary capacity of services for given territory.
+
+    Could be specified by service type.
+    """
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()

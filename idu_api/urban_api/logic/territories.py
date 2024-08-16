@@ -37,7 +37,7 @@ class TerritoriesService(Protocol):
     """Service to manipulate territories objects."""
 
     @abc.abstractmethod
-    async def get_territory_types(self) -> list[TerritoryDTO]:
+    async def get_territory_types(self) -> list[TerritoryTypeDTO]:
         """Get all territory type objects."""
 
     @abc.abstractmethod
@@ -97,8 +97,10 @@ class TerritoriesService(Protocol):
         information_source: Optional[str],
         last_only: bool,
     ) -> list[IndicatorValueDTO]:
-        """Get indicator values by territory id, optional indicator_ids, value_type, source and time period,
-        could be specified by last_only flag to get only current indicator values."""
+        """Get indicator values by territory id, optional indicator_ids, value_type, source and time period.
+
+        Could be specified by last_only flag to get only current indicator values.
+        """
 
     @abc.abstractmethod
     async def get_indicator_values_by_parent_id(
@@ -111,12 +113,14 @@ class TerritoriesService(Protocol):
         information_source: Optional[str],
         last_only: bool,
     ) -> list[TerritoryWithIndicatorsDTO]:
-        """Get indicator values for child territories by parent id, optional indicator_ids, value_type, source and date,
-        could be specified by last_only flag to get only current indicator values."""
+        """Get indicator values for child territories by parent id, optional indicator_ids, value_type, source and date.
+
+        Could be specified by last_only flag to get only current indicator values.
+        """
 
     @abc.abstractmethod
-    async def get_normatives_by_territory_id(self, territory_id: int) -> list[NormativeDTO]:
-        """Get normatives by territory id"""
+    async def get_normatives_by_territory_id(self, territory_id: int, year: int) -> list[NormativeDTO]:
+        """Get normatives by territory id and year"""
 
     @abc.abstractmethod
     async def add_normatives_to_territory(
@@ -142,9 +146,11 @@ class TerritoriesService(Protocol):
 
     @abc.abstractmethod
     async def get_normatives_values_by_parent_id(
-        self, territory_id: int, service_type_id: Optional[int], urban_function_id: Optional[int]
+        self,
+        parent_id: Optional[int],
+        year: int,
     ) -> list[TerritoryWithNormativesDTO]:
-        """Get list of normatives with values for territory by parent id and service type|urban function id."""
+        """Get list of normatives with values for territory by parent id and year."""
 
     @abc.abstractmethod
     async def get_physical_objects_by_territory_id(

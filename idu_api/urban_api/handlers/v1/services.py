@@ -1,17 +1,9 @@
 """Services handlers are defined here."""
 
 from fastapi import Path, Query, Request
-from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette import status
 
-from idu_api.urban_api.logic.services import (
-    add_service_to_db,
-    add_service_to_object_in_db,
-    delete_service_in_db,
-    get_service_with_territories_by_id_from_db,
-    patch_service_to_db,
-    put_service_to_db,
-)
+from idu_api.urban_api.logic.services import ServicesDataService
 from idu_api.urban_api.schemas import (
     ServicesData,
     ServicesDataPatch,
@@ -31,9 +23,9 @@ from .routers import services_router
 )
 async def add_service(request: Request, service: ServicesDataPost) -> ServicesData:
     """Add a service to a given physical object."""
-    conn: AsyncConnection = request.state.conn
+    services_data_service: ServicesDataService = request.state.services_data_service
 
-    service_dto = await add_service_to_db(conn, service)
+    service_dto = await services_data_service.add_service(service)
 
     return ServicesData.from_dto(service_dto)
 
@@ -49,9 +41,9 @@ async def put_service(
     service_id: int = Path(..., description="Service id", gt=0),
 ) -> ServicesData:
     """Update the given service - all attributes."""
-    conn: AsyncConnection = request.state.conn
+    services_data_service: ServicesDataService = request.state.services_data_service
 
-    service_dto = await put_service_to_db(conn, service, service_id)
+    service_dto = await services_data_service.put_service(service, service_id)
 
     return ServicesData.from_dto(service_dto)
 
@@ -67,9 +59,9 @@ async def patch_service(
     service_id: int = Path(..., description="Service id", gt=0),
 ) -> ServicesData:
     """Update the given service - only given attributes."""
-    conn: AsyncConnection = request.state.conn
+    services_data_service: ServicesDataService = request.state.services_data_service
 
-    service_dto = await patch_service_to_db(conn, service, service_id)
+    service_dto = await services_data_service.patch_service(service, service_id)
 
     return ServicesData.from_dto(service_dto)
 
@@ -84,9 +76,9 @@ async def delete_service(
     service_id: int = Path(..., description="Service id", gt=0),
 ) -> dict:
     """Delete service object by given id."""
-    conn: AsyncConnection = request.state.conn
+    services_data_service: ServicesDataService = request.state.services_data_service
 
-    return await delete_service_in_db(conn, service_id)
+    return await services_data_service.delete_service(service_id)
 
 
 @services_router.get(
@@ -98,10 +90,10 @@ async def get_service_by_id_with_territory(
     request: Request,
     service_id: int = Path(..., description="Service id", gt=0),
 ) -> ServiceWithTerritories:
-    """Get service by id with parent territory"""
-    conn: AsyncConnection = request.state.conn
+    """Get service by id with parent territory."""
+    services_data_service: ServicesDataService = request.state.services_data_service
 
-    service = await get_service_with_territories_by_id_from_db(conn, service_id)
+    service = await services_data_service.get_service_with_territories_by_id(service_id)
 
     return ServiceWithTerritories.from_dto(service)
 
@@ -117,9 +109,11 @@ async def add_service_to_objects(
     physical_object_id: int = Query(..., description="Physical object id"),
     object_geometry_id: int = Query(..., description="Object geometry id"),
 ) -> UrbanObject:
-    """Add an existing service to physical object"""
-    conn: AsyncConnection = request.state.conn
+    """Add an existing service to physical object."""
+    services_data_service: ServicesDataService = request.state.services_data_service
 
-    urban_object_dto = await add_service_to_object_in_db(conn, service_id, physical_object_id, object_geometry_id)
+    urban_object_dto = await services_data_service.add_service_to_object(
+        service_id, physical_object_id, object_geometry_id
+    )
 
     return UrbanObject.from_dto(urban_object_dto)

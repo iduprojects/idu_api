@@ -10,7 +10,7 @@ from .indicators import (
     IndicatorValue,
     IndicatorValuePost,
     MeasurementUnit,
-    MeasurementUnitPost
+    MeasurementUnitPost,
 )
 from .living_buildings import (
     LivingBuildingsData,
@@ -35,8 +35,6 @@ from .physical_objects import (
 )
 from .service_types import (
     ServiceTypes,
-    ServiceTypesNormativesData,
-    ServiceTypesNormativesDataPost,
     ServiceTypesPost,
     UrbanFunction,
     UrbanFunctionPost,
@@ -78,11 +76,10 @@ __all__ = [
     "ServicesDataPatch",
     "ServicesDataPost",
     "ServicesDataPut",
+    "ServicesDataWithGeometry",
     "ServiceWithTerritories",
     "ServiceTypes",
     "ServiceTypesPost",
-    "ServiceTypesNormativesData",
-    "ServiceTypesNormativesDataPost",
     "Indicator",
     "IndicatorsPost",
     "IndicatorValue",
@@ -101,6 +98,7 @@ __all__ = [
     "PhysicalObjectsDataPatch",
     "PhysicalObjectsDataPost",
     "PhysicalObjectWithGeometryPost",
+    "PhysicalObjectsWithTerritory",
     "PhysicalObjectsDataPut",
     "PhysicalObjectWithGeometry",
     "PhysicalObjectsTypes",

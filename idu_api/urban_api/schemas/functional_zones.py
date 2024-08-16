@@ -5,10 +5,10 @@ from idu_api.urban_api.schemas.geometries import Geometry
 
 
 class FunctionalZoneData(BaseModel):
-    functional_zone_id: int = Field(example=1)
-    territory_id: int = Field(example=1)
-    functional_zone_type_id: int = Field(example=1)
-    geometry: Geometry = Field(description="Zone geometry")
+    functional_zone_id: int = Field(..., examples=[1])
+    territory_id: int = Field(..., examples=[1])
+    functional_zone_type_id: int = Field(..., examples=[1])
+    geometry: Geometry
 
     @classmethod
     def from_dto(cls, dto: FunctionalZoneDataDTO) -> "FunctionalZoneData":

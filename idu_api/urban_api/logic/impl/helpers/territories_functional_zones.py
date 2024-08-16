@@ -1,6 +1,6 @@
 """Territories functional zones internal logic is defined here."""
 
-from typing import Callable, Optional
+from typing import Callable
 
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import cast, select
@@ -17,7 +17,7 @@ func: Callable
 async def get_functional_zones_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
-    functional_zone_type_id: Optional[int],
+    functional_zone_type_id: int | None,
 ) -> list[FunctionalZoneDataDTO]:
     """Get functional zones with geometry by territory id."""
 

@@ -21,7 +21,7 @@ from .routers import territories_router
     status_code=status.HTTP_200_OK,
 )
 async def get_indicators_by_territory_id(
-    request: Request, territory_id: int = Path(description="territory id", gt=0)
+    request: Request, territory_id: int = Path(..., description="territory id", gt=0)
 ) -> list[Indicator]:
     """Get indicators for a given territory."""
     territories_service: TerritoriesService = request.state.territories_service
@@ -38,7 +38,7 @@ async def get_indicators_by_territory_id(
 )
 async def get_indicator_values_by_territory_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory id", gt=0),
     indicator_ids: str | None = Query(None, description="list of identifiers separated by comma"),
     start_date: datetime | None = Query(None, description="lowest date included"),
     end_date: datetime | None = Query(None, description="highest date included"),
@@ -46,8 +46,10 @@ async def get_indicator_values_by_territory_id(
     information_source: str | None = Query(None, description="to filter by source"),
     last_only: bool = Query(False, description="to get last indicators"),
 ) -> list[IndicatorValue]:
-    """Get indicator values for a given territory, value type, source and time period,
-    could be specified by last_only to get only last indicator values"""
+    """Get indicator values for a given territory, value type, source and time period.
+
+    Could be specified by last_only to get only last indicator values.
+    """
     territories_service: TerritoriesService = request.state.territories_service
 
     value_type_field = value_type.value if value_type is not None else None
@@ -74,10 +76,11 @@ async def get_indicator_values_by_parent_id(
     information_source: str | None = Query(None, description="to filter by source"),
     last_only: bool = Query(False, description="to get last indicators"),
 ) -> GeoJSONResponse[Feature[Geometry, TerritoryWithIndicators]]:
-    """Get FeatureCollection with child territories and indicator values in properties
-    by parent id, indicator ids, value type, source and  time period.
-    parent id should be null or skipped for high-level territories.
-    could be specified by last_only flag to get only last indicator values."""
+    """Get FeatureCollection with child territories and indicator values in properties.
+
+    Parent id should be null or skipped for high-level territories.
+    Could be specified by last_only flag to get only last indicator values.
+    """
     territories_service: TerritoriesService = request.state.territories_service
 
     value_type_field = value_type.value if value_type is not None else None

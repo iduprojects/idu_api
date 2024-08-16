@@ -166,8 +166,8 @@ class TerritoriesServiceImpl(TerritoriesService):
             self._conn, parent_id, indicator_ids, start_date, end_date, value_type, information_source, last_only
         )
 
-    async def get_normatives_by_territory_id(self, territory_id: int) -> list[NormativeDTO]:
-        return await get_normatives_by_territory_id_from_db(self._conn, territory_id)
+    async def get_normatives_by_territory_id(self, territory_id: int, year: int) -> list[NormativeDTO]:
+        return await get_normatives_by_territory_id_from_db(self._conn, territory_id, year)
 
     async def add_normatives_to_territory(
         self, territory_id: int, normatives: list[NormativePost]
@@ -188,11 +188,9 @@ class TerritoriesServiceImpl(TerritoriesService):
         return await delete_normatives_by_territory_id_in_db(self._conn, territory_id, normatives)
 
     async def get_normatives_values_by_parent_id(
-        self, territory_id: int, service_type_id: Optional[int], urban_function_id: Optional[int]
+        self, parent_id: Optional[int], year: int
     ) -> list[TerritoryWithNormativesDTO]:
-        return await get_normatives_values_by_parent_id_from_db(
-            self._conn, territory_id, service_type_id, urban_function_id
-        )
+        return await get_normatives_values_by_parent_id_from_db(self._conn, parent_id, year)
 
     async def get_physical_objects_by_territory_id(
         self,

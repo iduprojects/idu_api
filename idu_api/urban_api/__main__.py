@@ -163,8 +163,9 @@ def main(  # pylint: disable=too-many-arguments
     )
     config = UrbanAPIConfig.try_from_env()
     config.update(settings)
-    with tempfile.NamedTemporaryFile() as temp_envfile:
-        config.to_envfile(temp_envfile.name)
+    temp_envfile_path = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
+    try:
+        config.to_envfile(temp_envfile_path)
         if debug:
             try:
                 uvicorn.run(
@@ -173,7 +174,7 @@ def main(  # pylint: disable=too-many-arguments
                     port=port,
                     reload=True,
                     log_level=logger_verbosity.lower(),
-                    env_file=temp_envfile.name,
+                    env_file=temp_envfile_path,
                 )
             except:  # pylint: disable=bare-except
                 print("Debug reload is disabled")
@@ -182,7 +183,7 @@ def main(  # pylint: disable=too-many-arguments
                     host=host,
                     port=port,
                     log_level=logger_verbosity.lower(),
-                    env_file=temp_envfile.name,
+                    env_file=temp_envfile_path,
                 )
         else:
             uvicorn.run(
@@ -190,8 +191,11 @@ def main(  # pylint: disable=too-many-arguments
                 host=host,
                 port=port,
                 log_level=logger_verbosity.lower(),
-                env_file=temp_envfile.name,
+                env_file=temp_envfile_path,
             )
+    finally:
+        if os.path.exists(temp_envfile_path):
+            os.remove(temp_envfile_path)
 
 
 if __name__ in ("__main__", "idu_api.urban_api.__main__"):

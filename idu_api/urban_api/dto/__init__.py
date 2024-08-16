@@ -13,7 +13,7 @@ from .physical_objects import (
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
 )
-from .service_types import ServiceTypesDTO, ServiceTypesNormativesDTO, UrbanFunctionDTO
+from .service_types import ServiceTypesDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
     TerritoryDTO,
@@ -33,7 +33,6 @@ __all__ = [
     "TokensTuple",
     "ServiceDTO",
     "ServiceTypesDTO",
-    "ServiceTypesNormativesDTO",
     "ServiceWithGeometryDTO",
     "ServiceWithTerritoriesDTO",
     "IndicatorDTO",

@@ -18,7 +18,7 @@ from .routers import territories_router
 )
 async def get_living_buildings_with_geometry_by_territory_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory id", gt=0),
 ) -> Page[LivingBuildingsWithGeometry]:
     """Get living buildings with geometry for territory."""
     territories_service: TerritoriesService = request.state.territories_service

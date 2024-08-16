@@ -11,6 +11,7 @@ from idu_api.urban_api.schemas import TerritoryTypesPost
 
 async def get_territory_types_from_db(conn: AsyncConnection) -> list[TerritoryTypeDTO]:
     """Get all territory type objects."""
+
     statement = select(territory_types_dict).order_by(territory_types_dict.c.territory_type_id)
 
     return [TerritoryTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
@@ -21,6 +22,7 @@ async def add_territory_type_to_db(
     territory_type: TerritoryTypesPost,
 ) -> TerritoryTypeDTO:
     """Create territory type object."""
+
     statement = select(territory_types_dict).where(territory_types_dict.c.name == territory_type.name)
     result = (await conn.execute(statement)).one_or_none()
     if result is not None:
