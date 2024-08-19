@@ -21,13 +21,12 @@ class UserProjectServiceImpl(UserProjectService):
     def __init__(self, conn: AsyncConnection):
         self._conn = conn
 
-    async def get_project_by_id_from_db(self, project_id: int) -> ProjectDTO:
+    async def get_project_by_id_from_db(self, project_id: int) -> ProjectDTO | None:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
-        try:
-            result = (await conn.execute(statement)).mappings().one()
-        except:
-            raise HTTPException(status_code=404, detail="Given id is not found")
+        result = (await conn.execute(statement)).mappings().one_or_none()
+        if result is None:
+            return None
 
         return ProjectDTO(**result)
 
@@ -45,23 +44,21 @@ class UserProjectServiceImpl(UserProjectService):
                 ),
                 properties=project.project_territory_info.properties,
             )
-            .returning(projects_territory_data)
+            .returning(projects_territory_data.c.project_territory_id)
         )
-        result_for_territory = (await conn.execute(statement_for_territory)).mappings().one()
+        result_for_territory = (await conn.execute(statement_for_territory)).scalar()
 
         statement_for_project = (
             insert(projects_data)
             .values(
                 user_id=project.user_id,
                 name=project.name,
-                project_territory_id=result_for_territory.project_territory_id,
+                project_territory_id=result_for_territory,
                 description=project.description,
                 public=project.public,
                 image_url=project.image_url,
-                created_at=datetime.now(),
-                updated_at=datetime.now(),
             )
-            .returning(projects_data.project_id)
+            .returning(projects_data.c.project_id)
         )
         result_for_project = (await conn.execute(statement_for_project)).scalar()
 
@@ -76,15 +73,14 @@ class UserProjectServiceImpl(UserProjectService):
 
         return [ProjectDTO(**result) for result in results]
 
-    async def get_project_territory_by_id_from_db(self, project_id: int) -> ProjectTerritoryDTO:
+    async def get_project_territory_by_id_from_db(self, project_id: int) -> ProjectTerritoryDTO | None:
         conn = self._conn
         statement_for_project = select(projects_data.c.project_territory_id).where(
             projects_data.c.project_id == project_id
         )
-        try:
-            result_for_project = (await conn.execute(statement_for_project)).mappings().one()
-        except:
-            raise HTTPException(status_code=404, detail="Given id is not found in projects_data")
+        result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
+        if result_for_project is None:
+            return None
 
         statement = select(
             projects_territory_data.c.project_territory_id,
@@ -93,20 +89,19 @@ class UserProjectServiceImpl(UserProjectService):
             cast(ST_AsGeoJSON(projects_territory_data.c.centre_point), JSONB).label("centre_point"),
             projects_territory_data.c.properties,
         ).where(projects_territory_data.c.project_territory_id == result_for_project.project_territory_id)
-        try:
-            result = (await conn.execute(statement)).mappings().one_or_none()
-        except:
-            raise HTTPException(status_code=404, detail="Given id is not found in projects_territory_data")
+        result = (await conn.execute(statement)).mappings().one_or_none()
+        if result is None:
+            return None
 
         return ProjectTerritoryDTO(**result)
 
-    async def delete_project_from_db(self, project_id: int) -> int:
+    async def delete_project_from_db(self, project_id: int) -> int | None:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         result = (await conn.execute(statement)).one_or_none()
 
         if result is None:
-            raise HTTPException(status_code=404, detail="Project not found")
+            return None
 
         statement_for_territory = delete(projects_territory_data).where(
             projects_territory_data.c.project_territory_id == result.project_territory_id
@@ -121,12 +116,12 @@ class UserProjectServiceImpl(UserProjectService):
 
         return project_id
 
-    async def put_project_to_db(self, project: ProjectPut, project_id: int) -> ProjectDTO:
+    async def put_project_to_db(self, project: ProjectPut, project_id: int) -> ProjectDTO | None:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
-            raise HTTPException(status_code=404, detail="Given project_id is not found")
+            return None
 
         statement_for_territory = (
             update(projects_territory_data)
@@ -164,12 +159,12 @@ class UserProjectServiceImpl(UserProjectService):
 
         return await self.get_project_by_id_from_db(result.project_id)
 
-    async def patch_project_to_db(self, project: ProjectPatch, project_id: int) -> ProjectDTO:
+    async def patch_project_to_db(self, project: ProjectPatch, project_id: int) -> ProjectDTO | None:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
-            raise HTTPException(status_code=404, detail="Given project_id is not found")
+            return None
 
         new_values_for_project = {}
         new_values_for_territory = {}
