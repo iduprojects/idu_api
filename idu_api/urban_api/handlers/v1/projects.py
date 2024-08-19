@@ -2,7 +2,7 @@
 Projects endpoints are defined here.
 """
 
-from fastapi import Request
+from fastapi import HTTPException, Request
 from starlette import status
 
 from idu_api.urban_api.logic.projects import UserProjectService
@@ -33,6 +33,8 @@ async def get_project_by_id(request: Request, project_id: int) -> Project:
     """Get a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
     project = await user_project_service.get_project_by_id_from_db(project_id)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Given id is not found")
 
     return Project.from_dto(project)
 
@@ -46,6 +48,8 @@ async def get_projects_territory_info(request: Request, project_id: int) -> Proj
     """Get territory info of a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
     project_territory_dto = await user_project_service.get_project_territory_by_id_from_db(project_id)
+    if project_territory_dto is None:
+        raise HTTPException(status_code=404, detail="Territory info not found for given id")
 
     return ProjectTerritory.from_dto(project_territory_dto)
 
@@ -72,6 +76,8 @@ async def put_project(request: Request, project: ProjectPut, project_id: int) ->
     """Update a project by setting all of its attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
     project_dto = await user_project_service.put_project_to_db(project, project_id)
+    if project_dto is None:
+        raise HTTPException(status_code=404, detail="Given project_id is not found")
 
     return Project.from_dto(project_dto)
 
@@ -85,6 +91,8 @@ async def patch_project(request: Request, project: ProjectPatch, project_id: int
     """Update a project by setting given attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
     project_dto = await user_project_service.patch_project_to_db(project, project_id)
+    if project_dto is None:
+        raise HTTPException(status_code=404, detail="Given project_id is not found")
 
     return Project.from_dto(project_dto)
 
@@ -96,5 +104,8 @@ async def patch_project(request: Request, project: ProjectPatch, project_id: int
 async def delete_project(request: Request, project_id: int) -> int:
     """Delete a project."""
     user_project_service: UserProjectService = request.state.user_project_service
+    result = await user_project_service.delete_project_from_db(project_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Project not found")
 
-    return await user_project_service.delete_project_from_db(project_id)
+    return result
