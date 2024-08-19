@@ -9,7 +9,7 @@ class UserProjectService(Protocol):
     """Service to manipulate projects objects."""
 
     @abc.abstractmethod
-    async def get_project_by_id_from_db(self, project_id: int) -> ProjectDTO:
+    async def get_project_by_id_from_db(self, project_id: int) -> ProjectDTO | None:
         """Get project object by id."""
 
     @abc.abstractmethod
@@ -21,17 +21,17 @@ class UserProjectService(Protocol):
         """Get all projects."""
 
     @abc.abstractmethod
-    async def get_project_territory_by_id_from_db(self, project_id: int) -> ProjectTerritoryDTO:
+    async def get_project_territory_by_id_from_db(self, project_id: int) -> ProjectTerritoryDTO | None:
         """Get project object by id."""
 
     @abc.abstractmethod
-    async def delete_project_from_db(self, project_id: int) -> int:
+    async def delete_project_from_db(self, project_id: int) -> int | None:
         """Delete project object."""
 
     @abc.abstractmethod
-    async def put_project_to_db(self, project: ProjectPut, project_id: int) -> ProjectDTO:
+    async def put_project_to_db(self, project: ProjectPut, project_id: int) -> ProjectDTO | None:
         """Put project object."""
 
     @abc.abstractmethod
-    async def patch_project_to_db(self, project: ProjectPatch, project_id: int) -> ProjectDTO:
+    async def patch_project_to_db(self, project: ProjectPatch, project_id: int) -> ProjectDTO | None:
         """Patch project object."""
