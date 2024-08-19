@@ -66,9 +66,7 @@ class GeometryValidationModel(BaseModel):
     @field_validator("geometry")
     @classmethod
     def validate_geometry(cls, geometry: "Geometry") -> "Geometry":
-        """
-        Validate that given geometry is valid by creating a Shapely object.
-        """
+        """Validate that given geometry is valid by creating a Shapely object."""
         if geometry:
             try:
                 geometry.as_shapely_geometry()
@@ -80,9 +78,7 @@ class GeometryValidationModel(BaseModel):
     @field_validator("centre_point")
     @classmethod
     def validate_centre_point(cls, centre_point: Geometry | None) -> Geometry | None:
-        """
-        Validate that given centre_point is a valid Point geometry.
-        """
+        """Validate that given centre_point is a valid Point geometry."""
         if centre_point:
             if centre_point.type != "Point":
                 raise ValueError("Only Point geometry is accepted for centre_point")
@@ -96,9 +92,7 @@ class GeometryValidationModel(BaseModel):
     @model_validator(mode="after")
     @classmethod
     def validate_centre_point_from_geometry(cls: Type[T], model: T) -> T:
-        """
-        Use the geometry's centroid for centre_point if it is missing.
-        """
+        """Use the geometry's centroid for centre_point if it is missing."""
         if model.centre_point is None and model.geometry:
             model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
         return model
