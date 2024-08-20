@@ -15,13 +15,13 @@ from .service_types import ServiceTypeBasic, UrbanFunctionBasic
 class Normative(BaseModel):
     """Normative response model for a given territory"""
 
-    service_type: ServiceTypeBasic | None
-    urban_function: UrbanFunctionBasic | None
+    service_type: ServiceTypeBasic | None = None
+    urban_function: UrbanFunctionBasic | None = None
     year: int = Field(..., examples=[2024])
     radius_availability_meters: int | None = Field(None, examples=[1])
-    time_availability_minutes: int | None = Field(None, examples=None)
+    time_availability_minutes: int | None = Field(None, examples=[None])
     services_per_1000_normative: int | None = Field(None, examples=[1])
-    services_capacity_per_1000_normative: int | None = Field(None, examples=None)
+    services_capacity_per_1000_normative: int | None = Field(None, examples=[None])
     normative_type: NormativeType = Field(NormativeType.SELF, examples=[NormativeType.SELF])
     is_regulated: bool = Field(..., examples=[True])
     source: str | None = Field(

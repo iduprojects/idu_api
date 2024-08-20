@@ -57,6 +57,42 @@ async def add_territory(
     return TerritoryData.from_dto(territory_dto)
 
 
+@territories_router.put(
+    "/territory/{territory_id}",
+    response_model=TerritoryData,
+    status_code=status.HTTP_201_CREATED,
+)
+async def put_territory(
+    request: Request,
+    territory: TerritoryDataPut,
+    territory_id: int = Path(..., description="territory id", gt=0),
+) -> TerritoryData:
+    """Update the given territory - all attributes."""
+    territories_service: TerritoriesService = request.state.territories_service
+
+    territory_dto = await territories_service.put_territory(territory_id, territory)
+
+    return TerritoryData.from_dto(territory_dto)
+
+
+@territories_router.patch(
+    "/territory/{territory_id}",
+    response_model=TerritoryData,
+    status_code=status.HTTP_201_CREATED,
+)
+async def patch_territory(
+    request: Request,
+    territory: TerritoryDataPatch,
+    territory_id: int = Path(..., description="territory id", gt=0),
+) -> TerritoryData:
+    """Update the given territory - only given attributes."""
+    territories_service: TerritoriesService = request.state.territories_service
+
+    territory_dto = await territories_service.patch_territory(territory_id, territory)
+
+    return TerritoryData.from_dto(territory_dto)
+
+
 @territories_router.get(
     "/territories",
     response_model=Page[TerritoryData],
@@ -217,39 +253,3 @@ async def intersecting_territories(
     )
 
     return [TerritoryData.from_dto(territory) for territory in territories]
-
-
-@territories_router.put(
-    "/territory/{territory_id}",
-    response_model=TerritoryData,
-    status_code=status.HTTP_201_CREATED,
-)
-async def put_territory(
-    request: Request,
-    territory: TerritoryDataPut,
-    territory_id: int = Path(..., description="territory id", gt=0),
-) -> TerritoryData:
-    """Update the given territory - all attributes."""
-    territories_service: TerritoriesService = request.state.territories_service
-
-    territory_dto = await territories_service.put_territory(territory_id, territory)
-
-    return TerritoryData.from_dto(territory_dto)
-
-
-@territories_router.patch(
-    "/territory/{territory_id}",
-    response_model=TerritoryData,
-    status_code=status.HTTP_201_CREATED,
-)
-async def patch_territory(
-    request: Request,
-    territory: TerritoryDataPatch,
-    territory_id: int = Path(..., description="territory id", gt=0),
-) -> TerritoryData:
-    """Update the given territory - only given attributes."""
-    territories_service: TerritoriesService = request.state.territories_service
-
-    territory_dto = await territories_service.patch_territory(territory_id, territory)
-
-    return TerritoryData.from_dto(territory_dto)

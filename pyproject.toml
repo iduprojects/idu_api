@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "idu-api"
-version = "1.4.5"
+version = "1.4.6"
 description = "This is a Digital Territories Platform API in two versions to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
@@ -28,6 +28,7 @@ pytest = "^8.3.2"
 httpx = "^0.27.0"
 pytest-asyncio = "^0.23.8"
 numpy = "2.0.1"
+sqlakeyset = "^2.0.1721705501"
 
 [tool.poetry.scripts]
 launch_urban_api = "idu_api.urban_api.__main__:main"

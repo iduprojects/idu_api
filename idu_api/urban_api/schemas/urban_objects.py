@@ -48,7 +48,6 @@ class UrbanObject(BaseModel):
                         capacity_modeled=dto.service_type_capacity_modeled,
                         code=dto.service_type_code,
                     ),
-                    territory_type=None,
                     name=dto.service_name,
                     capacity_real=dto.capacity_real,
                     properties=dto.service_properties,
@@ -60,8 +59,6 @@ class UrbanObject(BaseModel):
                 urban_object.service.territory_type = TerritoryType(
                     territory_type_id=dto.territory_type_id, name=dto.territory_type_name
                 )
-            else:
-                urban_object.service.territory_type = None
             return urban_object
         return cls(
             urban_object_id=dto.urban_object_id,

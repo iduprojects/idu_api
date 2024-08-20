@@ -20,7 +20,7 @@ class ServicesData(BaseModel):
 
     service_id: int = Field(..., examples=[1])
     service_type: ServiceTypes
-    territory_type: TerritoryType | None
+    territory_type: TerritoryType | None = None
     name: str | None = Field(None, description="Service name", examples=["--"])
     capacity_real: int | None = Field(None, examples=[1])
     properties: dict[str, Any] = Field(
@@ -47,7 +47,6 @@ class ServicesData(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=None,
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
@@ -66,7 +65,7 @@ class ServiceWithTerritories(BaseModel):
 
     service_id: int = Field(..., examples=[1])
     service_type: ServiceTypes
-    territory_type: TerritoryType | None
+    territory_type: TerritoryType | None = None
     name: str | None = Field(..., description="Service name", examples=["--"])
     capacity_real: int | None = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
@@ -94,7 +93,6 @@ class ServiceWithTerritories(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=None,
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
@@ -163,7 +161,7 @@ class ServicesDataPatch(BaseModel):
 class ServicesDataWithGeometry(BaseModel):
     service_id: int = Field(..., examples=[1])
     service_type: ServiceTypes
-    territory_type: TerritoryType | None
+    territory_type: TerritoryType | None = None
     name: str | None = Field(..., description="Service name", examples=["--"])
     capacity_real: int | None = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
@@ -192,7 +190,6 @@ class ServicesDataWithGeometry(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=None,
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
