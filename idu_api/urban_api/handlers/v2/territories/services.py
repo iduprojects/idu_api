@@ -1,4 +1,4 @@
-"""Services territories-related handlers are defined here."""
+"""Services territories-related handlers (v2) are defined here."""
 
 from fastapi import Path, Query, Request
 from starlette import status
@@ -6,7 +6,7 @@ from starlette import status
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import ServicesData, ServicesDataWithGeometry
 from idu_api.urban_api.schemas.enums import Ordering
-from idu_api.urban_api.schemas.pages import Page
+from idu_api.urban_api.schemas.pages import CursorPage
 from idu_api.urban_api.schemas.services import ServicesOrderByField
 from idu_api.urban_api.utils.pagination import paginate
 
@@ -15,7 +15,7 @@ from .routers import territories_router
 
 @territories_router.get(
     "/territory/{territory_id}/services",
-    response_model=Page[ServicesData],
+    response_model=CursorPage[ServicesData],
     status_code=status.HTTP_200_OK,
 )
 async def get_services_by_territory_id(
@@ -29,7 +29,7 @@ async def get_services_by_territory_id(
     ordering: Ordering = Query(
         Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
     ),
-) -> Page[ServicesData]:
+) -> CursorPage[ServicesData]:
     """Get services for territory by id.
 
     service type and name could be specified in parameters.
@@ -46,12 +46,13 @@ async def get_services_by_territory_id(
         services.items,
         services.total,
         transformer=lambda x: [ServicesData.from_dto(item) for item in x],
+        additional_data=services.cursor_data,
     )
 
 
 @territories_router.get(
     "/territory/{territory_id}/services_with_geometry",
-    response_model=Page[ServicesDataWithGeometry],
+    response_model=CursorPage[ServicesDataWithGeometry],
     status_code=status.HTTP_200_OK,
 )
 async def get_services_with_geometry_by_territory_id(
@@ -65,7 +66,7 @@ async def get_services_with_geometry_by_territory_id(
     ordering: Ordering = Query(
         Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
     ),
-) -> Page[ServicesDataWithGeometry]:
+) -> CursorPage[ServicesDataWithGeometry]:
     """Get services for territory by id.
 
     service type could be specified in parameters.
@@ -82,22 +83,5 @@ async def get_services_with_geometry_by_territory_id(
         services.items,
         services.total,
         transformer=lambda x: [ServicesDataWithGeometry.from_dto(item) for item in x],
+        additional_data=services.cursor_data,
     )
-
-
-@territories_router.get(
-    "/territory/{territory_id}/services_capacity",
-    response_model=int | None,
-    status_code=status.HTTP_200_OK,
-)
-async def get_total_services_capacity_by_territory_id(
-    request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
-    service_type_id: int | None = Query(None, description="Service type id", gt=0),
-) -> int | None:
-    """Get aggregated capacity of services for territory."""
-    territories_service: TerritoriesService = request.state.territories_service
-
-    capacity = await territories_service.get_services_capacity_by_territory_id(territory_id, service_type_id)
-
-    return capacity

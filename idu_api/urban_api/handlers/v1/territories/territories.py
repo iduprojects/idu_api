@@ -3,7 +3,6 @@
 from datetime import date
 
 from fastapi import HTTPException, Path, Query, Request
-from fastapi_pagination import paginate
 from geojson_pydantic.geometries import Geometry as FeatureGeometry
 from starlette import status
 
@@ -19,6 +18,7 @@ from idu_api.urban_api.schemas.enums import Ordering
 from idu_api.urban_api.schemas.geometries import Feature, GeoJSONResponse, Geometry
 from idu_api.urban_api.schemas.pages import Page
 from idu_api.urban_api.schemas.territories import TerritoriesOrderByField
+from idu_api.urban_api.utils.pagination import paginate
 
 from .routers import territories_router
 
@@ -109,16 +109,21 @@ async def get_territory_by_parent_id(
     ),
     territory_type_id: int | None = Query(None, description="Specifying territory type"),
 ) -> Page[TerritoryData]:
-    """.Get a territory or list of territories by parent.
+    """Get a territory or list of territories by parent.
 
     Territory type could be specified in parameters.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    territories = await territories_service.get_territories_by_parent_id(parent_id, get_all_levels, territory_type_id)
-    territories = [TerritoryData.from_dto(territory) for territory in territories]
+    territories = await territories_service.get_territories_by_parent_id(
+        parent_id, get_all_levels, territory_type_id, paginate=True
+    )
 
-    return paginate(territories)
+    return paginate(
+        territories.items,
+        territories.total,
+        transformer=lambda x: [TerritoryData.from_dto(item) for item in x],
+    )
 
 
 @territories_router.get(
@@ -173,12 +178,14 @@ async def get_territory_without_geometry_by_parent_id(
     order_by_value = order_by.value if order_by is not None else "null"
 
     territories = await territories_service.get_territories_without_geometry_by_parent_id(
-        parent_id, get_all_levels, order_by_value, created_at, name, ordering.value
+        parent_id, get_all_levels, order_by_value, created_at, name, ordering.value, paginate=True
     )
 
-    results = [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
-
-    return paginate(results)
+    return paginate(
+        territories.items,
+        territories.total,
+        transformer=lambda x: [TerritoryWithoutGeometry.from_dto(item) for item in x],
+    )
 
 
 @territories_router.get(

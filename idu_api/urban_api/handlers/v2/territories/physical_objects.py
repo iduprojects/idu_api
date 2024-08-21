@@ -1,4 +1,4 @@
-"""Physical objects territories-related handlers are defined here."""
+"""Physical objects territories-related handlers (v2) are defined here."""
 
 from fastapi import Path, Query, Request
 from starlette import status
@@ -6,7 +6,7 @@ from starlette import status
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import PhysicalObjectsData, PhysicalObjectWithGeometry
 from idu_api.urban_api.schemas.enums import Ordering
-from idu_api.urban_api.schemas.pages import Page
+from idu_api.urban_api.schemas.pages import CursorPage
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsOrderByField
 from idu_api.urban_api.utils.pagination import paginate
 
@@ -15,7 +15,7 @@ from .routers import territories_router
 
 @territories_router.get(
     "/territory/{territory_id}/physical_objects",
-    response_model=Page[PhysicalObjectsData],
+    response_model=CursorPage[PhysicalObjectsData],
     status_code=status.HTTP_200_OK,
 )
 async def get_physical_objects_by_territory_id(
@@ -29,7 +29,7 @@ async def get_physical_objects_by_territory_id(
     ordering: Ordering = Query(
         Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
     ),
-) -> Page[PhysicalObjectsData]:
+) -> CursorPage[PhysicalObjectsData]:
     """Get physical_objects for territory.
 
     physical_object_type could be specified in parameters.
@@ -46,12 +46,13 @@ async def get_physical_objects_by_territory_id(
         physical_objects.items,
         physical_objects.total,
         transformer=lambda x: [PhysicalObjectsData.from_dto(item) for item in x],
+        additional_data=physical_objects.cursor_data,
     )
 
 
 @territories_router.get(
     "/territory/{territory_id}/physical_objects_with_geometry",
-    response_model=Page[PhysicalObjectWithGeometry],
+    response_model=CursorPage[PhysicalObjectWithGeometry],
     status_code=status.HTTP_200_OK,
 )
 async def get_physical_objects_with_geometry_by_territory_id(
@@ -65,7 +66,7 @@ async def get_physical_objects_with_geometry_by_territory_id(
     ordering: Ordering = Query(
         Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
     ),
-) -> Page[PhysicalObjectWithGeometry]:
+) -> CursorPage[PhysicalObjectWithGeometry]:
     """Get physical_objects for territory.
 
     physical_object_type could be specified in parameters.
@@ -82,5 +83,5 @@ async def get_physical_objects_with_geometry_by_territory_id(
         physical_objects.items,
         physical_objects.total,
         transformer=lambda x: [PhysicalObjectWithGeometry.from_dto(item) for item in x],
+        additional_data=physical_objects.cursor_data,
     )
-

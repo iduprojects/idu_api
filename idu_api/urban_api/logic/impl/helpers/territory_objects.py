@@ -10,9 +10,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import territories_data, territory_types_dict
-from idu_api.urban_api.dto import TerritoryDTO, TerritoryWithoutGeometryDTO
+from idu_api.urban_api.dto import PageDTO, TerritoryDTO, TerritoryWithoutGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.schemas import TerritoryDataPatch, TerritoryDataPost, TerritoryDataPut
+from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
 
@@ -208,8 +209,12 @@ async def patch_territory_to_db(
 
 
 async def get_territories_by_parent_id_from_db(
-    conn: AsyncConnection, parent_id: int | None, get_all_levels: bool | None, territory_type_id: int | None
-) -> list[TerritoryDTO]:
+    conn: AsyncConnection,
+    parent_id: int | None,
+    get_all_levels: bool | None,
+    territory_type_id: int | None,
+    paginate: bool = False,
+) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
     """Get a territory or list of territories by parent, territory type could be specified in parameters."""
 
     if parent_id is not None:
@@ -280,8 +285,15 @@ async def get_territories_by_parent_id_from_db(
                 raise EntityNotFoundById(territory_type_id, "territory type")
             statement = statement.where(territories_data.c.territory_type_id == territory_type_id)
 
-    result = (await conn.execute(statement)).mappings().all()
+    requested_territories = statement.cte("requested_territories")
+    statement = select(requested_territories).order_by(requested_territories.c.territory_id)
 
+    if paginate:
+        return await paginate_dto(
+            conn, statement, transformer=lambda x: [TerritoryDTO(**item) for item in x]
+        )
+
+    result = (await conn.execute(statement)).mappings().all()
     return [TerritoryDTO(**territory) for territory in result]
 
 
@@ -293,7 +305,8 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     created_at: date | None,
     name: str | None,
     ordering: Optional[Literal["asc", "desc"]] = "asc",
-) -> list[TerritoryWithoutGeometryDTO]:
+    paginate: bool = False,
+) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
     """Get a territory or list of territories without geometry by parent,
     ordering and filters can be specified in parameters.
     """
@@ -360,8 +373,12 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         else:
             statement = statement.order_by(requested_territories.c.territory_id)
 
-    result = (await conn.execute(statement)).mappings().all()
+    if paginate:
+        return await paginate_dto(
+            conn, statement, transformer=lambda x: [TerritoryWithoutGeometryDTO(**item) for item in x]
+        )
 
+    result = (await conn.execute(statement)).mappings().all()
     return [TerritoryWithoutGeometryDTO(**territory) for territory in result]
 
 

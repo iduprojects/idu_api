@@ -13,6 +13,7 @@ from idu_api.urban_api.dto import (
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
     NormativeDTO,
+    PageDTO,
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
@@ -115,7 +116,7 @@ class TerritoriesServiceImpl(TerritoriesService):
         name: Optional[str],
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[ServiceDTO]:
+    ) -> PageDTO[ServiceDTO]:
         return await get_services_by_territory_id_from_db(
             self._conn, territory_id, service_type_id, name, order_by, ordering
         )
@@ -127,7 +128,7 @@ class TerritoriesServiceImpl(TerritoriesService):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[ServiceWithGeometryDTO]:
+    ) -> PageDTO[ServiceWithGeometryDTO]:
         return await get_services_with_geometry_by_territory_id_from_db(
             self._conn, territory_id, service_type_id, name, order_by, ordering
         )
@@ -199,7 +200,7 @@ class TerritoriesServiceImpl(TerritoriesService):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[PhysicalObjectDataDTO]:
+    ) -> PageDTO[PhysicalObjectDataDTO]:
         return await get_physical_objects_by_territory_id_from_db(
             self._conn, territory_id, physical_object_type, name, order_by, ordering
         )
@@ -211,7 +212,7 @@ class TerritoriesServiceImpl(TerritoriesService):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[PhysicalObjectWithGeometryDTO]:
+    ) -> PageDTO[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_with_geometry_by_territory_id_from_db(
             self._conn, territory_id, physical_object_type, name, order_by, ordering
         )
@@ -219,7 +220,7 @@ class TerritoriesServiceImpl(TerritoriesService):
     async def get_living_buildings_with_geometry_by_territory_id(
         self,
         territory_id: int,
-    ) -> list[LivingBuildingsWithGeometryDTO]:
+    ) -> PageDTO[LivingBuildingsWithGeometryDTO]:
         return await get_living_buildings_with_geometry_by_territory_id_from_db(self._conn, territory_id)
 
     async def get_functional_zones_by_territory_id(
@@ -228,9 +229,11 @@ class TerritoriesServiceImpl(TerritoriesService):
         return await get_functional_zones_by_territory_id_from_db(self._conn, territory_id, functional_zone_type_id)
 
     async def get_territories_by_parent_id(
-        self, parent_id: int | None, get_all_levels: bool | None, territory_type_id: int | None
-    ) -> list[TerritoryDTO]:
-        return await get_territories_by_parent_id_from_db(self._conn, parent_id, get_all_levels, territory_type_id)
+        self, parent_id: int | None, get_all_levels: bool | None, territory_type_id: int | None, paginate: bool = False
+    ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
+        return await get_territories_by_parent_id_from_db(
+            self._conn, parent_id, get_all_levels, territory_type_id, paginate
+        )
 
     async def get_territories_without_geometry_by_parent_id(
         self,
@@ -240,9 +243,10 @@ class TerritoriesServiceImpl(TerritoriesService):
         created_at: date | None,
         name: str | None,
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[TerritoryWithoutGeometryDTO]:
+        paginate: bool = False,
+    ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
         return await get_territories_without_geometry_by_parent_id_from_db(
-            self._conn, parent_id, get_all_levels, order_by, created_at, name, ordering
+            self._conn, parent_id, get_all_levels, order_by, created_at, name, ordering, paginate
         )
 
     async def get_common_territory_for_geometry(

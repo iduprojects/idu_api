@@ -7,6 +7,7 @@ from .indicators import IndicatorDTO, IndicatorValueDTO, MeasurementUnitDTO
 from .living_buildings import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
 from .normatives import NormativeDTO
 from .object_geometries import ObjectGeometryDTO
+from .pages import PageDTO
 from .physical_objects import (
     PhysicalObjectDataDTO,
     PhysicalObjectTypeDTO,
@@ -40,6 +41,7 @@ __all__ = [
     "MeasurementUnitDTO",
     "NormativeDTO",
     "ObjectGeometryDTO",
+    "PageDTO",
     "PhysicalObjectDataDTO",
     "PhysicalObjectTypeDTO",
     "PhysicalObjectWithGeometryDTO",

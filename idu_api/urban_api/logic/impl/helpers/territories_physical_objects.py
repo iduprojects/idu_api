@@ -14,8 +14,9 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import PhysicalObjectDataDTO, PhysicalObjectWithGeometryDTO
+from idu_api.urban_api.dto import PageDTO, PhysicalObjectDataDTO, PhysicalObjectWithGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.utils.pagination import paginate_dto
 
 
 async def get_physical_objects_by_territory_id_from_db(
@@ -25,7 +26,7 @@ async def get_physical_objects_by_territory_id_from_db(
     name: str | None,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
-) -> list[PhysicalObjectDataDTO]:
+) -> PageDTO[PhysicalObjectDataDTO]:
     """Get physical objects by territory id, optional physical object type."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
@@ -71,9 +72,9 @@ async def get_physical_objects_by_territory_id_from_db(
         else:
             statement = statement.order_by(physical_objects_data.c.physical_object_id)
 
-    result = (await conn.execute(statement)).mappings().all()
-
-    return [PhysicalObjectDataDTO(**physical_object) for physical_object in result]
+    return await paginate_dto(
+        conn, statement, transformer=lambda x: [PhysicalObjectDataDTO(**item) for item in x]
+    )
 
 
 async def get_physical_objects_with_geometry_by_territory_id_from_db(
@@ -83,7 +84,7 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     name: str | None,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
-) -> list[PhysicalObjectWithGeometryDTO]:
+) -> PageDTO[PhysicalObjectWithGeometryDTO]:
     """Get physical objects with geometry by territory id, optional physical object type."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
@@ -132,6 +133,6 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
         else:
             statement = statement.order_by(physical_objects_data.c.physical_object_id)
 
-    result = (await conn.execute(statement)).mappings().all()
-
-    return [PhysicalObjectWithGeometryDTO(**physical_object) for physical_object in result]
+    return await paginate_dto(
+        conn, statement, transformer=lambda x: [PhysicalObjectWithGeometryDTO(**item) for item in x]
+    )
