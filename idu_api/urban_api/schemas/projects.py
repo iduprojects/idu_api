@@ -12,7 +12,7 @@ class ProjectTerritory(BaseModel):
     """Schema of project's territory for GET request."""
 
     project_territory_id: int = Field(None, primary_key=True, examples=[1])
-    parent_id: int | None = Field(None, description="Project's parent territory id")
+    parent_territory_id: int | None = Field(None, description="Project's parent territory id")
     geometry: Geometry = Field(None, description="Project geometry")
     centre_point: Geometry = Field(None, description="Project centre point")
     properties: dict[str, Any] = Field(
@@ -27,7 +27,7 @@ class ProjectTerritory(BaseModel):
 
         return cls(
             project_territory_id=dto.project_territory_id,
-            parent_id=dto.parent_id,
+            parent_territory_id=dto.parent_territory_id,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
             properties=dto.properties,
@@ -37,7 +37,7 @@ class ProjectTerritory(BaseModel):
 class ProjectTerritoryPost(BaseModel):
     """Schema of project's territory for POST request."""
 
-    parent_id: int | None = Field(description="Project's parent territory id")
+    parent_territory_id: int | None = Field(description="Project's parent territory id")
     geometry: Geometry = Field(description="Project geometry")
     centre_point: Geometry | None = Field(description="Project centre point")
     properties: dict[str, Any] = Field(
@@ -69,7 +69,7 @@ class ProjectTerritoryPost(BaseModel):
 class ProjectTerritoryPut(BaseModel):
     """Schema of project's territory for PUT request."""
 
-    parent_id: int | None = Field(description="Project's parent territory id")
+    parent_territory_id: int | None = Field(description="Project's parent territory id")
     geometry: Geometry = Field(description="Project geometry")
     centre_point: Geometry | None = Field(description="Project centre point")
     properties: dict[str, Any] = Field(
@@ -101,7 +101,7 @@ class ProjectTerritoryPut(BaseModel):
 class ProjectTerritoryPatch(BaseModel):
     """Schema of project's territory for PATCH request."""
 
-    parent_id: int | None = Field(None, description="Project's parent territory id")
+    parent_territory_id: int | None = Field(None, description="Project's parent territory id")
     geometry: Geometry | None = Field(None, description="Project geometry")
     centre_point: Geometry | None = Field(None, description="Project centre point")
     properties: dict[str, Any] | None = Field(

@@ -21,7 +21,7 @@ class ProjectDTO:
 @dataclass
 class ProjectTerritoryDTO:
     project_territory_id: int
-    parent_id: int
+    parent_territory_id: int
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
     properties: Optional[dict[str, Any]]

@@ -11,7 +11,7 @@ projects_territory_data = Table(
     metadata,
     Column("project_territory_id", Integer, primary_key=True, server_default=project_territory_id_seq.next_value()),
     Column(
-        "parent_id",
+        "parent_territory_id",
         Integer,
         ForeignKey("user_projects.projects_territory_data.project_territory_id"),
         nullable=True,
@@ -33,7 +33,7 @@ projects_territory_data = Table(
 """
 Project territory data:
 - project_territory_id int 
-- parent_id foreign key int
+- parent_territory_id foreign key int
 - geometry geometry
 - centre_point geometry point
 - properties jsonb

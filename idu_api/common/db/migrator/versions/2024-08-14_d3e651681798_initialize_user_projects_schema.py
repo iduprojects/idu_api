@@ -33,7 +33,7 @@ def upgrade() -> None:
             server_default=sa.text("nextval('project_territory_id_seq')"),
             nullable=False,
         ),
-        sa.Column("parent_id", sa.Integer(), nullable=True),
+        sa.Column("parent_territory_id", sa.Integer(), nullable=True),
         sa.Column(
             "geometry",
             geoalchemy2.types.Geometry(
@@ -52,9 +52,9 @@ def upgrade() -> None:
             "properties", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False
         ),
         sa.ForeignKeyConstraint(
-            ["parent_id"],
+            ["parent_territory_id"],
             ["user_projects.projects_territory_data.project_territory_id"],
-            name=op.f("projects_territory_data_fk_parent_id__projects_territory_data"),
+            name=op.f("projects_territory_data_fk_parent_territory_id__projects_territory_data"),
         ),
         sa.PrimaryKeyConstraint("project_territory_id", name=op.f("projects_territory_data_pk")),
         schema="user_projects",

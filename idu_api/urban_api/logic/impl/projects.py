@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
 from sqlalchemy import cast, delete, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
@@ -35,7 +34,7 @@ class UserProjectServiceImpl(UserProjectService):
         statement_for_territory = (
             insert(projects_territory_data)
             .values(
-                parent_id=project.project_territory_info.parent_id,
+                parent_id=project.project_territory_info.parent_territory_id,
                 geometry=ST_GeomFromText(
                     str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")
                 ),
@@ -84,7 +83,7 @@ class UserProjectServiceImpl(UserProjectService):
 
         statement = select(
             projects_territory_data.c.project_territory_id,
-            projects_territory_data.c.parent_id,
+            projects_territory_data.c.parent_territory_id,
             cast(ST_AsGeoJSON(projects_territory_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(projects_territory_data.c.centre_point), JSONB).label("centre_point"),
             projects_territory_data.c.properties,
@@ -127,7 +126,7 @@ class UserProjectServiceImpl(UserProjectService):
             update(projects_territory_data)
             .where(projects_territory_data.c.project_territory_id == requested_project.project_territory_id)
             .values(
-                parent_id=project.project_territory_info.parent_id,
+                parent_id=project.project_territory_info.parent_territory_id,
                 geometry=ST_GeomFromText(
                     str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")
                 ),
