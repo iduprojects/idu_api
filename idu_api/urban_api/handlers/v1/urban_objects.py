@@ -10,6 +10,23 @@ from .routers import urban_objects_router
 
 
 @urban_objects_router.get(
+    "/urban_objects/{urban_object_id}",
+    response_model=UrbanObject,
+    status_code=status.HTTP_200_OK,
+)
+async def get_urban_object_by_id(
+    request: Request,
+    urban_object_id: int = Path(..., description="Urban object id"),
+) -> UrbanObject:
+    """Get an urban object by id."""
+    urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
+
+    urban_object = await urban_objects_service.get_urban_object_by_id(urban_object_id)
+
+    return UrbanObject.from_dto(urban_object)
+
+
+@urban_objects_router.get(
     "/urban_objects_by_physical_object",
     response_model=list[UrbanObject],
     status_code=status.HTTP_200_OK,

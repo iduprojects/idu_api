@@ -10,6 +10,10 @@ class UrbanObjectsService(Protocol):
     """Service to manipulate urban objects."""
 
     @abc.abstractmethod
+    async def get_urban_object_by_id(self, urban_object_id: int) -> UrbanObjectDTO:
+        """Get urban object by urban object id."""
+
+    @abc.abstractmethod
     async def get_urban_object_by_physical_object_id(self, physical_object_id: int) -> list[UrbanObjectDTO]:
         """Get list of urban objects by physical object id."""
 
@@ -23,4 +27,4 @@ class UrbanObjectsService(Protocol):
 
     @abc.abstractmethod
     async def delete_urban_object_by_id(self, urban_object_id: int) -> dict:
-        """Get urban object by urban object id."""
+        """Delete urban object by urban object id."""
