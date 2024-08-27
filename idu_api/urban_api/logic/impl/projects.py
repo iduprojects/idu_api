@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, delete, insert, select, text, update
+from sqlalchemy import cast, delete, insert, or_, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -20,12 +20,14 @@ class UserProjectServiceImpl(UserProjectService):
     def __init__(self, conn: AsyncConnection):
         self._conn = conn
 
-    async def get_project_by_id_from_db(self, project_id: int) -> ProjectDTO | None:
+    async def get_project_by_id_from_db(self, project_id: int, user_id: str) -> ProjectDTO | int:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         result = (await conn.execute(statement)).mappings().one_or_none()
         if result is None:
-            return None
+            return 404
+        elif result.user_id != user_id and result.public is False:
+            return 403
 
         return ProjectDTO(**result)
 
@@ -34,7 +36,7 @@ class UserProjectServiceImpl(UserProjectService):
         statement_for_territory = (
             insert(projects_territory_data)
             .values(
-                parent_id=project.project_territory_info.parent_territory_id,
+                parent_territory_id=project.project_territory_info.parent_territory_id,
                 geometry=ST_GeomFromText(
                     str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")
                 ),
@@ -63,23 +65,34 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return await self.get_project_by_id_from_db(result_for_project)
+        return await self.get_project_by_id_from_db(result_for_project, project.user_id)
 
-    async def get_projects_from_db(self) -> list[ProjectDTO]:
+    async def get_all_available_projects_from_db(self, user_id) -> list[ProjectDTO]:
         conn = self._conn
-        statement = select(projects_data).order_by(projects_data.c.project_id)
+        statement = (
+            select(projects_data)
+            .where(or_(projects_data.c.user_id == user_id, projects_data.c.public == True))
+            .order_by(projects_data.c.project_id)
+        )
         results = (await conn.execute(statement)).mappings().all()
 
         return [ProjectDTO(**result) for result in results]
 
-    async def get_project_territory_by_id_from_db(self, project_id: int) -> ProjectTerritoryDTO | None:
+    async def get_user_projects_from_db(self, user_id: str) -> list[ProjectDTO]:
         conn = self._conn
-        statement_for_project = select(projects_data.c.project_territory_id).where(
-            projects_data.c.project_id == project_id
-        )
+        statement = select(projects_data).where(projects_data.c.user_id == user_id).order_by(projects_data.c.project_id)
+        results = (await conn.execute(statement)).mappings().all()
+
+        return [ProjectDTO(**result) for result in results]
+
+    async def get_project_territory_by_id_from_db(self, project_id: int, user_id: str) -> ProjectTerritoryDTO | int:
+        conn = self._conn
+        statement_for_project = select(projects_data).where(projects_data.c.project_id == project_id)
         result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
         if result_for_project is None:
-            return None
+            return 404
+        elif result_for_project.user_id != user_id and result_for_project.public is False:
+            return 403
 
         statement = select(
             projects_territory_data.c.project_territory_id,
@@ -90,17 +103,19 @@ class UserProjectServiceImpl(UserProjectService):
         ).where(projects_territory_data.c.project_territory_id == result_for_project.project_territory_id)
         result = (await conn.execute(statement)).mappings().one_or_none()
         if result is None:
-            return None
+            return 404
 
         return ProjectTerritoryDTO(**result)
 
-    async def delete_project_from_db(self, project_id: int) -> int | None:
+    async def delete_project_from_db(self, project_id: int, user_id: str) -> dict | int:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         result = (await conn.execute(statement)).one_or_none()
 
         if result is None:
-            return None
+            return 404
+        elif result.user_id != user_id:
+            return 403
 
         statement_for_territory = delete(projects_territory_data).where(
             projects_territory_data.c.project_territory_id == result.project_territory_id
@@ -113,20 +128,22 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return project_id
+        return {"status": "ok"}
 
-    async def put_project_to_db(self, project: ProjectPut, project_id: int) -> ProjectDTO | None:
+    async def put_project_to_db(self, project: ProjectPut, project_id: int) -> ProjectDTO | int:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
-            return None
+            return 404
+        elif requested_project.user_id != project.user_id:
+            return 403
 
         statement_for_territory = (
             update(projects_territory_data)
             .where(projects_territory_data.c.project_territory_id == requested_project.project_territory_id)
             .values(
-                parent_id=project.project_territory_info.parent_territory_id,
+                parent_territory_id=project.project_territory_info.parent_territory_id,
                 geometry=ST_GeomFromText(
                     str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")
                 ),
@@ -156,14 +173,16 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return await self.get_project_by_id_from_db(result.project_id)
+        return await self.get_project_by_id_from_db(result.project_id, project.user_id)
 
-    async def patch_project_to_db(self, project: ProjectPatch, project_id: int) -> ProjectDTO | None:
+    async def patch_project_to_db(self, project: ProjectPatch, project_id: int) -> ProjectDTO | int:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
-            return None
+            return 404
+        elif requested_project.user_id != project.user_id:
+            return 403
 
         new_values_for_project = {}
         new_values_for_territory = {}
@@ -204,4 +223,4 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return await self.get_project_by_id_from_db(project_id)
+        return await self.get_project_by_id_from_db(project_id, project.user_id)

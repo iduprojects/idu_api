@@ -12,7 +12,7 @@ projects_data = Table(
     "projects_data",
     metadata,
     Column("project_id", Integer, primary_key=True, server_default=project_id_seq.next_value()),
-    Column("user_id", Integer, nullable=False, unique=False),
+    Column("user_id", String(200), nullable=False, unique=False),
     Column("name", String(200), nullable=False, unique=False),
     Column(
         "project_territory_id",

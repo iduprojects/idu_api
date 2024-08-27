@@ -11,12 +11,12 @@ from idu_api.urban_api.schemas.geometries import Geometry
 class ProjectTerritory(BaseModel):
     """Schema of project's territory for GET request."""
 
-    project_territory_id: int = Field(None, primary_key=True, examples=[1])
+    project_territory_id: int = Field(primary_key=True, examples=[1])
     parent_territory_id: int | None = Field(None, description="Project's parent territory id")
-    geometry: Geometry = Field(None, description="Project geometry")
-    centre_point: Geometry = Field(None, description="Project centre point")
+    geometry: Geometry = Field(description="Project geometry")
+    centre_point: Geometry = Field(description="Project centre point")
     properties: dict[str, Any] = Field(
-        None,
+        default_factory=dict,
         description="Project's territory additional properties",
         example={"additional_attribute_name": "additional_attribute_value"},
     )
@@ -37,9 +37,9 @@ class ProjectTerritory(BaseModel):
 class ProjectTerritoryPost(BaseModel):
     """Schema of project's territory for POST request."""
 
-    parent_territory_id: int | None = Field(description="Project's parent territory id")
+    parent_territory_id: int | None = Field(None, description="Project's parent territory id")
     geometry: Geometry = Field(description="Project geometry")
-    centre_point: Geometry | None = Field(description="Project centre point")
+    centre_point: Geometry = Field(description="Project centre point")
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Service additional properties",
@@ -53,25 +53,16 @@ class ProjectTerritoryPost(BaseModel):
 
     @field_validator("centre_point")
     @staticmethod
-    def validate_center(centre_point: Geometry | None) -> Geometry | None:
+    def validate_center(centre_point: Geometry) -> Geometry:
         return validate_center(centre_point)
-
-    @model_validator(mode="after")
-    @staticmethod
-    def validate_post(model: "ProjectTerritoryPost") -> "ProjectTerritoryPost":
-        """Use geometry centroid for centre_point if it is missing."""
-
-        if model.centre_point is None:
-            model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
-        return model
 
 
 class ProjectTerritoryPut(BaseModel):
     """Schema of project's territory for PUT request."""
 
-    parent_territory_id: int | None = Field(description="Project's parent territory id")
+    parent_territory_id: int | None = Field(None, description="Project's parent territory id")
     geometry: Geometry = Field(description="Project geometry")
-    centre_point: Geometry | None = Field(description="Project centre point")
+    centre_point: Geometry = Field(description="Project centre point")
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Service additional properties",
@@ -85,17 +76,8 @@ class ProjectTerritoryPut(BaseModel):
 
     @field_validator("centre_point")
     @staticmethod
-    def validate_center(centre_point: Geometry | None) -> Geometry | None:
+    def validate_center(centre_point: Geometry) -> Geometry:
         return validate_center(centre_point)
-
-    @model_validator(mode="after")
-    @staticmethod
-    def validate_post(model: "ProjectTerritoryPost") -> "ProjectTerritoryPost":
-        """Use geometry centroid for centre_point if it is missing."""
-
-        if model.centre_point is None:
-            model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
-        return model
 
 
 class ProjectTerritoryPatch(BaseModel):
@@ -128,21 +110,12 @@ class ProjectTerritoryPatch(BaseModel):
     def validate_center(centre_point: Geometry | None) -> Geometry | None:
         return validate_center(centre_point)
 
-    @model_validator(mode="after")
-    @staticmethod
-    def validate_post(model: "ProjectTerritoryPatch") -> "ProjectTerritoryPatch":
-        """Use geometry centroid for centre_point if it is missing."""
-
-        if model.centre_point is None:
-            model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
-        return model
-
 
 class Project(BaseModel):
     """Schema of project for GET request."""
 
     project_id: int = Field(primary_key=True, examples=[1])
-    user_id: int = Field(examples=[1])
+    user_id: str = Field(examples=["1"])
     name: str = Field(example="--")
     project_territory_id: int = Field(examples=[1])
     description: str = Field(description="Project description")
@@ -169,7 +142,7 @@ class Project(BaseModel):
 class ProjectPost(BaseModel):
     """Schema of project for POST request."""
 
-    user_id: int = Field(examples=[1])
+    user_id: str = Field(examples=["1"])
     name: str = Field(example="--")
     project_territory_info: ProjectTerritoryPost = Field(description="Project territory info")
     description: str = Field(description="Project description")
@@ -180,7 +153,7 @@ class ProjectPost(BaseModel):
 class ProjectPut(BaseModel):
     """Schema of project for PUT request."""
 
-    user_id: int = Field(examples=[1])
+    user_id: str = Field(examples=["1"])
     name: str = Field(example="--")
     project_territory_info: ProjectTerritoryPut = Field(description="Project territory info")
     description: str = Field(description="Project description")
@@ -191,7 +164,7 @@ class ProjectPut(BaseModel):
 class ProjectPatch(BaseModel):
     """Schema of project for PATCH request."""
 
-    user_id: int | None = Field(None, examples=[1])
+    user_id: str = Field(examples=["1"])
     name: str | None = Field(None, example="--")
     project_territory_info: ProjectTerritoryPatch | None = Field(None, description="Project territory info")
     description: str | None = Field(None, description="Project description")
@@ -218,11 +191,9 @@ def validate_geometry(geometry: Geometry) -> Geometry:
     return geometry
 
 
-def validate_center(centre_point: Geometry | None) -> Geometry | None:
+def validate_center(centre_point: Geometry) -> Geometry:
     """Validate that given geometry is Point and validity via creating Shapely object."""
 
-    if centre_point is None:
-        return None
     assert centre_point.type == "Point", "Only Point is accepted"
     try:
         centre_point.as_shapely_geometry()
