@@ -2,7 +2,7 @@
 Projects endpoints are defined here.
 """
 
-from fastapi import HTTPException, Request
+from fastapi import Header, HTTPException, Request
 from starlette import status
 
 from idu_api.urban_api.logic.projects import UserProjectService
@@ -16,10 +16,23 @@ from .routers import projects_router
     response_model=list[Project],
     status_code=status.HTTP_200_OK,
 )
-async def get_projects(request: Request) -> list[Project]:
+async def get_all_projects(request: Request, user_id: str = Header(...)) -> list[Project]:
     """Get all projects."""
     user_project_service: UserProjectService = request.state.user_project_service
-    projects = await user_project_service.get_projects_from_db()
+    projects = await user_project_service.get_all_available_projects_from_db(user_id)
+
+    return [Project.from_dto(project) for project in projects]
+
+
+@projects_router.get(
+    "/user_projects",
+    response_model=list[Project],
+    status_code=status.HTTP_200_OK,
+)
+async def get_user_projects(request: Request, user_id: str = Header(...)) -> list[Project]:
+    """Get all projects."""
+    user_project_service: UserProjectService = request.state.user_project_service
+    projects = await user_project_service.get_user_projects_from_db(user_id)
 
     return [Project.from_dto(project) for project in projects]
 
@@ -29,14 +42,16 @@ async def get_projects(request: Request) -> list[Project]:
     response_model=Project,
     status_code=status.HTTP_200_OK,
 )
-async def get_project_by_id(request: Request, project_id: int) -> Project:
+async def get_project_by_id(request: Request, project_id: int, user_id: str = Header(...)) -> Project:
     """Get a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project = await user_project_service.get_project_by_id_from_db(project_id)
-    if project is None:
+    project_dto = await user_project_service.get_project_by_id_from_db(project_id, user_id)
+    if project_dto == 403:
+        raise HTTPException(status_code=403, detail="Access denied")
+    elif project_dto == 404:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
-    return Project.from_dto(project)
+    return Project.from_dto(project_dto)
 
 
 @projects_router.get(
@@ -44,11 +59,15 @@ async def get_project_by_id(request: Request, project_id: int) -> Project:
     response_model=ProjectTerritory,
     status_code=status.HTTP_200_OK,
 )
-async def get_projects_territory_info(request: Request, project_id: int) -> ProjectTerritory:
+async def get_projects_territory_info(
+    request: Request, project_id: int, user_id: str = Header(...)
+) -> ProjectTerritory:
     """Get territory info of a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_territory_dto = await user_project_service.get_project_territory_by_id_from_db(project_id)
-    if project_territory_dto is None:
+    project_territory_dto = await user_project_service.get_project_territory_by_id_from_db(project_id, user_id)
+    if project_territory_dto == 403:
+        raise HTTPException(status_code=403, detail="Access denied")
+    elif project_territory_dto == 404:
         raise HTTPException(status_code=404, detail="Territory info not found for given id")
 
     return ProjectTerritory.from_dto(project_territory_dto)
@@ -76,7 +95,9 @@ async def put_project(request: Request, project: ProjectPut, project_id: int) ->
     """Update a project by setting all of its attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
     project_dto = await user_project_service.put_project_to_db(project, project_id)
-    if project_dto is None:
+    if project_dto == 403:
+        raise HTTPException(status_code=403, detail="Access denied")
+    elif project_dto == 404:
         raise HTTPException(status_code=404, detail="Given project_id is not found")
 
     return Project.from_dto(project_dto)
@@ -91,7 +112,9 @@ async def patch_project(request: Request, project: ProjectPatch, project_id: int
     """Update a project by setting given attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
     project_dto = await user_project_service.patch_project_to_db(project, project_id)
-    if project_dto is None:
+    if project_dto == 403:
+        raise HTTPException(status_code=403, detail="Access denied")
+    elif project_dto == 404:
         raise HTTPException(status_code=404, detail="Given project_id is not found")
 
     return Project.from_dto(project_dto)
@@ -101,11 +124,19 @@ async def patch_project(request: Request, project: ProjectPatch, project_id: int
     "/projects/{project_id}",
     status_code=status.HTTP_200_OK,
 )
-async def delete_project(request: Request, project_id: int) -> int:
+async def delete_project(request: Request, project_id: int, user_id: str = Header(...)) -> dict:
     """Delete a project."""
     user_project_service: UserProjectService = request.state.user_project_service
-    result = await user_project_service.delete_project_from_db(project_id)
-    if result is None:
+    result = await user_project_service.delete_project_from_db(project_id, user_id)
+    if result == 403:
+        raise HTTPException(status_code=403, detail="Access denied")
+    elif result == 404:
         raise HTTPException(status_code=404, detail="Project not found")
 
     return result
+
+
+async def get_user_id_from_header(user_id: str = Header(...)) -> str:
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id header is missing")
+    return user_id
