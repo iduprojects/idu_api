@@ -83,4 +83,3 @@ async def get_physical_objects_with_geometry_by_territory_id(
         physical_objects.total,
         transformer=lambda x: [PhysicalObjectWithGeometry.from_dto(item) for item in x],
     )
-

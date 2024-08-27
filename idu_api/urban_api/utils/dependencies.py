@@ -22,7 +22,7 @@ async def access_token_dependency(
         return result
 
     try:
-        return json.loads(b64decode(access_token.credentials.split('.')[1]))
+        return json.loads(b64decode(access_token.credentials.split(".")[1]))
     except Exception as e:
         raise HTTPException(  # pylint: disable=raise-missing-from
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -41,10 +41,7 @@ async def user_dependency(
     """
 
     try:
-        return UserDTO(
-            id=payload.get("sub"),
-            is_active=payload.get("active")
-        )
+        return UserDTO(id=payload.get("sub"), is_active=payload.get("active"))
     except Exception as e:
         raise HTTPException(  # pylint: disable=raise-missing-from
             status_code=status.HTTP_400_BAD_REQUEST,

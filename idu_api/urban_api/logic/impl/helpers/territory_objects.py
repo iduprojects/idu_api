@@ -289,9 +289,7 @@ async def get_territories_by_parent_id_from_db(
     statement = select(requested_territories).order_by(requested_territories.c.territory_id)
 
     if paginate:
-        return await paginate_dto(
-            conn, statement, transformer=lambda x: [TerritoryDTO(**item) for item in x]
-        )
+        return await paginate_dto(conn, statement, transformer=lambda x: [TerritoryDTO(**item) for item in x])
 
     result = (await conn.execute(statement)).mappings().all()
     return [TerritoryDTO(**territory) for territory in result]

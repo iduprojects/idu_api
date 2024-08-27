@@ -50,7 +50,7 @@ async def get_project_by_id(request: Request, project_id: int, user: UserDTO = D
     project_dto = await user_project_service.get_project_by_id_from_db(project_id, user.id)
     if project_dto == 403:
         raise HTTPException(status_code=403, detail="Access denied")
-    elif project_dto == 404:
+    if project_dto == 404:
         raise HTTPException(status_code=404, detail="Given id is not found")
 
     return Project.from_dto(project_dto)
@@ -69,7 +69,7 @@ async def get_projects_territory_info(
     project_territory_dto = await user_project_service.get_project_territory_by_id_from_db(project_id, user.id)
     if project_territory_dto == 403:
         raise HTTPException(status_code=403, detail="Access denied")
-    elif project_territory_dto == 404:
+    if project_territory_dto == 404:
         raise HTTPException(status_code=404, detail="Territory info not found for given id")
 
     return ProjectTerritory.from_dto(project_territory_dto)
@@ -101,7 +101,7 @@ async def put_project(
     project_dto = await user_project_service.put_project_to_db(project, project_id, user.id)
     if project_dto == 403:
         raise HTTPException(status_code=403, detail="Access denied")
-    elif project_dto == 404:
+    if project_dto == 404:
         raise HTTPException(status_code=404, detail="Given project_id is not found")
 
     return Project.from_dto(project_dto)
@@ -120,7 +120,7 @@ async def patch_project(
     project_dto = await user_project_service.patch_project_to_db(project, project_id, user.id)
     if project_dto == 403:
         raise HTTPException(status_code=403, detail="Access denied")
-    elif project_dto == 404:
+    if project_dto == 404:
         raise HTTPException(status_code=404, detail="Given project_id is not found")
 
     return Project.from_dto(project_dto)
@@ -136,7 +136,7 @@ async def delete_project(request: Request, project_id: int, user: UserDTO = Depe
     result = await user_project_service.delete_project_from_db(project_id, user.id)
     if result == 403:
         raise HTTPException(status_code=403, detail="Access denied")
-    elif result == 404:
+    if result == 404:
         raise HTTPException(status_code=404, detail="Project not found")
 
     return result

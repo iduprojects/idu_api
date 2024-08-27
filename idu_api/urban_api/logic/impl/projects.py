@@ -26,7 +26,7 @@ class UserProjectServiceImpl(UserProjectService):
         result = (await conn.execute(statement)).mappings().one_or_none()
         if result is None:
             return 404
-        elif result.user_id != user_id and result.public is False:
+        if result.user_id != user_id and result.public is False:
             return 403
 
         return ProjectDTO(**result)
@@ -71,7 +71,7 @@ class UserProjectServiceImpl(UserProjectService):
         conn = self._conn
         statement = (
             select(projects_data)
-            .where(or_(projects_data.c.user_id == user_id, projects_data.c.public == True))
+            .where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
             .order_by(projects_data.c.project_id)
         )
         results = (await conn.execute(statement)).mappings().all()
@@ -91,7 +91,7 @@ class UserProjectServiceImpl(UserProjectService):
         result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
         if result_for_project is None:
             return 404
-        elif result_for_project.user_id != user_id and result_for_project.public is False:
+        if result_for_project.user_id != user_id and result_for_project.public is False:
             return 403
 
         statement = select(
@@ -114,7 +114,7 @@ class UserProjectServiceImpl(UserProjectService):
 
         if result is None:
             return 404
-        elif result.user_id != user_id:
+        if result.user_id != user_id:
             return 403
 
         statement_for_territory = delete(projects_territory_data).where(
@@ -136,7 +136,7 @@ class UserProjectServiceImpl(UserProjectService):
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
             return 404
-        elif requested_project.user_id != user_id:
+        if requested_project.user_id != user_id:
             return 403
 
         statement_for_territory = (
@@ -181,7 +181,7 @@ class UserProjectServiceImpl(UserProjectService):
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
             return 404
-        elif requested_project.user_id != user_id:
+        if requested_project.user_id != user_id:
             return 403
 
         new_values_for_project = {}

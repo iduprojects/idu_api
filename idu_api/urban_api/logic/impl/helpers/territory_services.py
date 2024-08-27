@@ -19,7 +19,6 @@ from idu_api.urban_api.dto import PageDTO, ServiceDTO, ServiceWithGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.utils.pagination import paginate_dto
 
-
 func: Callable
 
 
@@ -76,9 +75,7 @@ async def get_services_by_territory_id_from_db(
         else:
             statement = statement.order_by(services_data.c.service_id)
 
-    return await paginate_dto(
-        conn, statement, transformer=lambda x: [ServiceDTO(**item) for item in x]
-    )
+    return await paginate_dto(conn, statement, transformer=lambda x: [ServiceDTO(**item) for item in x])
 
 
 async def get_services_with_geometry_by_territory_id_from_db(
@@ -136,9 +133,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
         else:
             statement = statement.order_by(services_data.c.service_id)
 
-    return await paginate_dto(
-        conn, statement, transformer=lambda x: [ServiceWithGeometryDTO(**item) for item in x]
-    )
+    return await paginate_dto(conn, statement, transformer=lambda x: [ServiceWithGeometryDTO(**item) for item in x])
 
 
 async def get_services_capacity_by_territory_id_from_db(

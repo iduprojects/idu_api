@@ -72,9 +72,7 @@ async def get_physical_objects_by_territory_id_from_db(
         else:
             statement = statement.order_by(physical_objects_data.c.physical_object_id)
 
-    return await paginate_dto(
-        conn, statement, transformer=lambda x: [PhysicalObjectDataDTO(**item) for item in x]
-    )
+    return await paginate_dto(conn, statement, transformer=lambda x: [PhysicalObjectDataDTO(**item) for item in x])
 
 
 async def get_physical_objects_with_geometry_by_territory_id_from_db(
