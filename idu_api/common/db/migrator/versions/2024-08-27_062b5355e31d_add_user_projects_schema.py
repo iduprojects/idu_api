@@ -1,21 +1,21 @@
 # pylint: disable=no-member,invalid-name,missing-function-docstring,too-many-statements
-"""initialize user_projects schema
+"""add user_projects schema
 
-Revision ID: d3e651681798
-Revises: 958163828b45
-Create Date: 2024-08-14 20:15:29.685515
+Revision ID: 062b5355e31d
+Revises: 7c1977523140
+Create Date: 2024-08-27 18:04:17.184195
 
 """
 from typing import Sequence, Union
 
+from alembic import op
 import geoalchemy2
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "d3e651681798"
-down_revision: Union[str, None] = "958163828b45"
+revision: str = "062b5355e31d"
+down_revision: Union[str, None] = "7c1977523140"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
