@@ -31,7 +31,7 @@ class UserProjectServiceImpl(UserProjectService):
 
         return ProjectDTO(**result)
 
-    async def post_project_to_db(self, project: ProjectPost) -> ProjectDTO:
+    async def post_project_to_db(self, project: ProjectPost, user_id: str) -> ProjectDTO:
         conn = self._conn
         statement_for_territory = (
             insert(projects_territory_data)
@@ -52,7 +52,7 @@ class UserProjectServiceImpl(UserProjectService):
         statement_for_project = (
             insert(projects_data)
             .values(
-                user_id=project.user_id,
+                user_id=user_id,
                 name=project.name,
                 project_territory_id=result_for_territory,
                 description=project.description,
@@ -65,7 +65,7 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return await self.get_project_by_id_from_db(result_for_project, project.user_id)
+        return await self.get_project_by_id_from_db(result_for_project, user_id)
 
     async def get_all_available_projects_from_db(self, user_id) -> list[ProjectDTO]:
         conn = self._conn
@@ -130,13 +130,13 @@ class UserProjectServiceImpl(UserProjectService):
 
         return {"status": "ok"}
 
-    async def put_project_to_db(self, project: ProjectPut, project_id: int) -> ProjectDTO | int:
+    async def put_project_to_db(self, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO | int:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
             return 404
-        elif requested_project.user_id != project.user_id:
+        elif requested_project.user_id != user_id:
             return 403
 
         statement_for_territory = (
@@ -160,7 +160,7 @@ class UserProjectServiceImpl(UserProjectService):
             update(projects_data)
             .where(projects_data.c.project_id == project_id)
             .values(
-                user_id=project.user_id,
+                user_id=user_id,
                 name=project.name,
                 description=project.description,
                 public=project.public,
@@ -173,15 +173,15 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return await self.get_project_by_id_from_db(result.project_id, project.user_id)
+        return await self.get_project_by_id_from_db(result.project_id, user_id)
 
-    async def patch_project_to_db(self, project: ProjectPatch, project_id: int) -> ProjectDTO | int:
+    async def patch_project_to_db(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO | int:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
             return 404
-        elif requested_project.user_id != project.user_id:
+        elif requested_project.user_id != user_id:
             return 403
 
         new_values_for_project = {}
@@ -223,4 +223,4 @@ class UserProjectServiceImpl(UserProjectService):
 
         await conn.commit()
 
-        return await self.get_project_by_id_from_db(project_id, project.user_id)
+        return await self.get_project_by_id_from_db(project_id, user_id)

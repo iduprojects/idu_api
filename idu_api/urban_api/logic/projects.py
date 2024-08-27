@@ -13,7 +13,7 @@ class UserProjectService(Protocol):
         """Get project object by id."""
 
     @abc.abstractmethod
-    async def post_project_to_db(self, project: ProjectPost) -> ProjectDTO:
+    async def post_project_to_db(self, project: ProjectPost, user_id: str) -> ProjectDTO:
         """Create project object."""
 
     @abc.abstractmethod
@@ -33,9 +33,9 @@ class UserProjectService(Protocol):
         """Delete project object."""
 
     @abc.abstractmethod
-    async def put_project_to_db(self, project: ProjectPut, project_id: int) -> ProjectDTO | int:
+    async def put_project_to_db(self, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO | int:
         """Put project object."""
 
     @abc.abstractmethod
-    async def patch_project_to_db(self, project: ProjectPatch, project_id: int) -> ProjectDTO | int:
+    async def patch_project_to_db(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO | int:
         """Patch project object."""
