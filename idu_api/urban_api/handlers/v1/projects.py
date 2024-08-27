@@ -78,10 +78,10 @@ async def get_projects_territory_info(
     response_model=Project,
     status_code=status.HTTP_201_CREATED,
 )
-async def post_project(request: Request, project: ProjectPost) -> Project:
+async def post_project(request: Request, project: ProjectPost, user_id: str = Header(...)) -> Project:
     """Add a new project."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.post_project_to_db(project)
+    project_dto = await user_project_service.post_project_to_db(project, user_id)
 
     return Project.from_dto(project_dto)
 
@@ -91,10 +91,10 @@ async def post_project(request: Request, project: ProjectPost) -> Project:
     response_model=Project,
     status_code=status.HTTP_200_OK,
 )
-async def put_project(request: Request, project: ProjectPut, project_id: int) -> Project:
+async def put_project(request: Request, project: ProjectPut, project_id: int, user_id: str = Header(...)) -> Project:
     """Update a project by setting all of its attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.put_project_to_db(project, project_id)
+    project_dto = await user_project_service.put_project_to_db(project, project_id, user_id)
     if project_dto == 403:
         raise HTTPException(status_code=403, detail="Access denied")
     elif project_dto == 404:
@@ -108,10 +108,10 @@ async def put_project(request: Request, project: ProjectPut, project_id: int) ->
     response_model=Project,
     status_code=status.HTTP_200_OK,
 )
-async def patch_project(request: Request, project: ProjectPatch, project_id: int) -> Project:
+async def patch_project(request: Request, project: ProjectPatch, project_id: int, user_id: str = Header(...)) -> Project:
     """Update a project by setting given attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.patch_project_to_db(project, project_id)
+    project_dto = await user_project_service.patch_project_to_db(project, project_id, user_id)
     if project_dto == 403:
         raise HTTPException(status_code=403, detail="Access denied")
     elif project_dto == 404:
@@ -134,9 +134,3 @@ async def delete_project(request: Request, project_id: int, user_id: str = Heade
         raise HTTPException(status_code=404, detail="Project not found")
 
     return result
-
-
-async def get_user_id_from_header(user_id: str = Header(...)) -> str:
-    if not user_id:
-        raise HTTPException(status_code=400, detail="user_id header is missing")
-    return user_id
