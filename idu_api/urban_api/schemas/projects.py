@@ -9,16 +9,16 @@ from idu_api.urban_api.schemas.geometries import Geometry
 
 
 class ProjectTerritory(BaseModel):
-    """Schema of project's territory for GET request."""
+    """Schema of project territory for GET request."""
 
-    project_territory_id: int = Field(primary_key=True, examples=[1])
-    parent_territory_id: int | None = Field(None, description="Project's parent territory id")
+    project_territory_id: int = Field(primary_key=True, example=1, description="Project territory id")
+    parent_territory_id: int | None = Field(None, example=1, description="Project parent territory id")
     geometry: Geometry = Field(description="Project geometry")
     centre_point: Geometry = Field(description="Project centre point")
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Project's territory additional properties",
-        example={"additional_attribute_name": "additional_attribute_value"},
+        description="Project territory additional properties",
+        example={"attribute_name": "attribute_value"},
     )
 
     @classmethod
@@ -35,15 +35,15 @@ class ProjectTerritory(BaseModel):
 
 
 class ProjectTerritoryPost(BaseModel):
-    """Schema of project's territory for POST request."""
+    """Schema of project territory for POST request."""
 
-    parent_territory_id: int | None = Field(None, description="Project's parent territory id")
+    parent_territory_id: int | None = Field(None, example=1, description="Project parent territory id")
     geometry: Geometry = Field(description="Project geometry")
     centre_point: Geometry = Field(description="Project centre point")
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Service additional properties",
-        example={"additional_attribute_name": "additional_attribute_value"},
+        description="Project territory additional properties",
+        example={"attribute_name": "attribute_value"},
     )
 
     @field_validator("geometry")
@@ -58,15 +58,15 @@ class ProjectTerritoryPost(BaseModel):
 
 
 class ProjectTerritoryPut(BaseModel):
-    """Schema of project's territory for PUT request."""
+    """Schema of project territory for PUT request."""
 
-    parent_territory_id: int | None = Field(None, description="Project's parent territory id")
+    parent_territory_id: int | None = Field(None, example=1, description="Project parent territory id")
     geometry: Geometry = Field(description="Project geometry")
     centre_point: Geometry = Field(description="Project centre point")
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Service additional properties",
-        example={"additional_attribute_name": "additional_attribute_value"},
+        description="Project territory additional properties",
+        example={"attribute_name": "attribute_value"},
     )
 
     @field_validator("geometry")
@@ -81,15 +81,15 @@ class ProjectTerritoryPut(BaseModel):
 
 
 class ProjectTerritoryPatch(BaseModel):
-    """Schema of project's territory for PATCH request."""
+    """Schema of project territory for PATCH request."""
 
-    parent_territory_id: int | None = Field(None, description="Project's parent territory id")
+    parent_territory_id: int | None = Field(None, example=1, description="Project parent territory id")
     geometry: Geometry | None = Field(None, description="Project geometry")
     centre_point: Geometry | None = Field(None, description="Project centre point")
     properties: dict[str, Any] | None = Field(
         default_factory=dict,
-        description="Service additional properties",
-        example={"additional_attribute_name": "additional_attribute_value"},
+        description="Project territory additional properties",
+        example={"attribute_name": "attribute_value"},
     )
 
     @model_validator(mode="before")
@@ -114,13 +114,13 @@ class ProjectTerritoryPatch(BaseModel):
 class Project(BaseModel):
     """Schema of project for GET request."""
 
-    project_id: int = Field(primary_key=True, examples=[1])
-    user_id: str = Field(examples=["1"])
-    name: str = Field(example="--")
-    project_territory_id: int = Field(examples=[1])
-    description: str = Field(description="Project description")
-    public: bool = Field(description="Project publicity")
-    image_url: str = Field(description="Project image url")
+    project_id: int = Field(primary_key=True, example=1, description="Project id")
+    user_id: str = Field(example="sample_id", description="Project creator id")
+    name: str = Field(example="sample_name", description="Project name")
+    project_territory_id: int = Field(example=1, description="Project territory id")
+    description: str = Field(example="sample_description", description="Project description")
+    public: bool = Field(example=True, description="Project publicity")
+    image_url: str = Field(example="sample_path_to_image", description="Project image url")
     created_at: datetime = Field(description="Project created at")
     updated_at: datetime = Field(description="Project updated at")
 
@@ -142,34 +142,31 @@ class Project(BaseModel):
 class ProjectPost(BaseModel):
     """Schema of project for POST request."""
 
-    user_id: str = Field(examples=["1"])
-    name: str = Field(example="--")
+    name: str = Field(example="sample_name", description="Project name")
     project_territory_info: ProjectTerritoryPost = Field(description="Project territory info")
-    description: str = Field(description="Project description")
-    public: bool = Field(description="Project publicity")
-    image_url: str = Field(description="Project image url")
+    description: str = Field(example="sample_description", description="Project description")
+    public: bool = Field(example=True, description="Project publicity")
+    image_url: str = Field(example="sample_path_to_image", description="Project image url")
 
 
 class ProjectPut(BaseModel):
     """Schema of project for PUT request."""
 
-    user_id: str = Field(examples=["1"])
-    name: str = Field(example="--")
-    project_territory_info: ProjectTerritoryPut = Field(description="Project territory info")
-    description: str = Field(description="Project description")
-    public: bool = Field(description="Project publicity")
-    image_url: str = Field(description="Project image url")
+    name: str = Field(example="sample_name", description="Project name")
+    project_territory_info: ProjectTerritoryPost = Field(description="Project territory info")
+    description: str = Field(example="sample_description", description="Project description")
+    public: bool = Field(example=True, description="Project publicity")
+    image_url: str = Field(example="sample_path_to_image", description="Project image url")
 
 
 class ProjectPatch(BaseModel):
     """Schema of project for PATCH request."""
 
-    user_id: str = Field(examples=["1"])
-    name: str | None = Field(None, example="--")
+    name: str | None = Field(None, example="sample_name", description="Project name")
     project_territory_info: ProjectTerritoryPatch | None = Field(None, description="Project territory info")
-    description: str | None = Field(None, description="Project description")
-    public: bool | None = Field(None, description="Project publicity")
-    image_url: str | None = Field(None, description="Project image url")
+    description: str | None = Field(None, example="sample_description", description="Project description")
+    public: bool | None = Field(None, example=True, description="Project publicity")
+    image_url: str | None = Field(None, example="sample_path_to_image", description="Project image url")
 
     @model_validator(mode="before")
     @classmethod
