@@ -8,7 +8,7 @@ import shapely.geometry as geom
 @dataclass
 class ProjectDTO:
     project_id: int
-    user_id: int
+    user_id: str
     name: str
     project_territory_id: int
     description: str | None
@@ -21,10 +21,10 @@ class ProjectDTO:
 @dataclass
 class ProjectTerritoryDTO:
     project_territory_id: int
-    parent_territory_id: int
+    parent_territory_id: int | None
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
-    properties: Optional[dict[str, Any]]
+    properties: dict[str, Any] | None
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):

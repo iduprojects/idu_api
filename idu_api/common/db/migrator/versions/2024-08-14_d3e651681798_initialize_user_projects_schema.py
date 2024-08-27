@@ -9,8 +9,8 @@ Create Date: 2024-08-14 20:15:29.685515
 from typing import Sequence, Union
 
 import geoalchemy2
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -67,7 +67,7 @@ def upgrade() -> None:
             server_default=sa.text("nextval('project_id_seq')"),
             nullable=False,
         ),
-        sa.Column("user_id", sa.Integer(), nullable=False),
+        sa.Column("user_id", sa.String(length=200), nullable=False),
         sa.Column("name", sa.String(length=200), nullable=False),
         sa.Column("project_territory_id", sa.Integer(), nullable=False),
         sa.Column("description", sa.String(length=600), nullable=True),
