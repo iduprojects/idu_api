@@ -10,15 +10,17 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import territories_data, territory_types_dict
-from idu_api.urban_api.dto import TerritoryDTO, TerritoryWithoutGeometryDTO
+from idu_api.urban_api.dto import PageDTO, TerritoryDTO, TerritoryWithoutGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.schemas import TerritoryDataPatch, TerritoryDataPost, TerritoryDataPut
+from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
 
 
 async def get_territories_by_ids(conn: AsyncConnection, territory_ids: list[int]) -> list[TerritoryDTO]:
     """Get territory objects by ids list."""
+
     territories_data_parents = territories_data.alias("territories_data_parents")
     statement = (
         select(
@@ -56,6 +58,7 @@ async def get_territories_by_ids(conn: AsyncConnection, territory_ids: list[int]
 
 async def get_territory_by_id(conn: AsyncConnection, territory_id: int) -> TerritoryDTO:
     """Get territory object by id."""
+
     results = await get_territories_by_ids(conn, [territory_id])
     if len(results) == 0:
         raise EntityNotFoundById(territory_id, "territory")
@@ -68,6 +71,7 @@ async def add_territory_to_db(
     territory: TerritoryDataPost,
 ) -> TerritoryDTO:
     """Create territory object."""
+
     if territory.parent_id is not None:
         statement = select(territories_data).where(territories_data.c.territory_id == territory.parent_id)
         parent_territory = (await conn.execute(statement)).one_or_none()
@@ -110,6 +114,7 @@ async def put_territory_to_db(
     territory: TerritoryDataPut,
 ) -> TerritoryDTO:
     """Update territory object (put, update all the fields)."""
+
     if territory.parent_id is not None:
         statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
         check_parent_id = (await conn.execute(statement)).one_or_none()
@@ -157,7 +162,8 @@ async def patch_territory_to_db(
     territory_id: int,
     territory: TerritoryDataPatch,
 ) -> TerritoryDTO:
-    """Patch territory object (patch, update only non-None fields)."""
+    """Patch territory object (patch, update only set fields)."""
+
     if territory.parent_id is not None:
         statement = select(territories_data).filter(territories_data.c.territory_id == territory.parent_id)
         check_parent_id = (await conn.execute(statement)).one_or_none()
@@ -177,18 +183,15 @@ async def patch_territory_to_db(
     )
 
     values_to_update = {}
-    for k, v in territory.model_dump(exclude={"geometry", "centre_point"}).items():
-        if v is not None:
-            if k == "territory_type_id":
-                new_statement = select(territory_types_dict).where(
-                    territory_types_dict.c.territory_type_id == territory.territory_type_id
-                )
-                territory_type = (await conn.execute(new_statement)).one_or_none()
-                if territory_type is None:
-                    raise EntityNotFoundById(territory.territory_type_id, "territory type")
-                values_to_update.update({k: v})
-            else:
-                values_to_update.update({k: v})
+    for k, v in territory.model_dump(exclude={"geometry", "centre_point"}, exclude_unset=True).items():
+        if k == "territory_type_id":
+            new_statement = select(territory_types_dict).where(
+                territory_types_dict.c.territory_type_id == territory.territory_type_id
+            )
+            territory_type = (await conn.execute(new_statement)).one_or_none()
+            if territory_type is None:
+                raise EntityNotFoundById(territory.territory_type_id, "territory type")
+        values_to_update.update({k: v})
 
     if territory.geometry is not None:
         values_to_update.update(
@@ -206,9 +209,14 @@ async def patch_territory_to_db(
 
 
 async def get_territories_by_parent_id_from_db(
-    conn: AsyncConnection, parent_id: int | None, get_all_levels: bool | None, territory_type_id: int | None
-) -> list[TerritoryDTO]:
+    conn: AsyncConnection,
+    parent_id: int | None,
+    get_all_levels: bool | None,
+    territory_type_id: int | None,
+    paginate: bool = False,
+) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
     """Get a territory or list of territories by parent, territory type could be specified in parameters."""
+
     if parent_id is not None:
         statement = select(territories_data.c.territory_id).where(territories_data.c.territory_id == parent_id)
         parent_territory = (await conn.execute(statement)).one_or_none()
@@ -277,8 +285,15 @@ async def get_territories_by_parent_id_from_db(
                 raise EntityNotFoundById(territory_type_id, "territory type")
             statement = statement.where(territories_data.c.territory_type_id == territory_type_id)
 
-    result = (await conn.execute(statement)).mappings().all()
+    requested_territories = statement.cte("requested_territories")
+    statement = select(requested_territories).order_by(requested_territories.c.territory_id)
 
+    if paginate:
+        return await paginate_dto(
+            conn, statement, transformer=lambda x: [TerritoryDTO(**item) for item in x]
+        )
+
+    result = (await conn.execute(statement)).mappings().all()
     return [TerritoryDTO(**territory) for territory in result]
 
 
@@ -290,10 +305,12 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     created_at: date | None,
     name: str | None,
     ordering: Optional[Literal["asc", "desc"]] = "asc",
-) -> list[TerritoryWithoutGeometryDTO]:
+    paginate: bool = False,
+) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
     """Get a territory or list of territories without geometry by parent,
     ordering and filters can be specified in parameters.
     """
+
     if parent_id is not None:
         statement = select(territories_data).where(territories_data.c.territory_id == parent_id)
         parent_territory = (await conn.execute(statement)).one_or_none()
@@ -356,8 +373,12 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         else:
             statement = statement.order_by(requested_territories.c.territory_id)
 
-    result = (await conn.execute(statement)).mappings().all()
+    if paginate:
+        return await paginate_dto(
+            conn, statement, transformer=lambda x: [TerritoryWithoutGeometryDTO(**item) for item in x]
+        )
 
+    result = (await conn.execute(statement)).mappings().all()
     return [TerritoryWithoutGeometryDTO(**territory) for territory in result]
 
 
@@ -365,6 +386,7 @@ async def get_common_territory_for_geometry(
     conn: AsyncConnection, geometry: geom.Polygon | geom.MultiPolygon | geom.Point
 ) -> TerritoryDTO | None:
     """Get the deepest territory which covers given geometry. None if there is no such territory."""
+
     statement = (
         select(territories_data.c.territory_id)
         .where(func.ST_Covers(territories_data.c.geometry, ST_GeomFromText(str(geometry), text("4326"))))
@@ -384,6 +406,7 @@ async def get_intersecting_territories_for_geometry(
     conn: AsyncConnection, parent_territory: int, geometry: geom.Polygon | geom.MultiPolygon | geom.Point
 ) -> list[TerritoryDTO]:
     """Get all territories of the (level of given parent + 1) which intersect with given geometry."""
+
     level_subqery = (
         select(territories_data.c.level + 1)
         .where(territories_data.c.territory_id == parent_territory)

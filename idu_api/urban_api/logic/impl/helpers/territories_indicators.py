@@ -1,7 +1,7 @@
 """Territories indicators internal logic is defined here."""
 
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Callable
 
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import cast, func, select
@@ -52,15 +52,17 @@ async def get_indicators_by_territory_id_from_db(
 async def get_indicator_values_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
-    indicator_ids: Optional[str],
-    start_date: Optional[datetime],
-    end_date: Optional[datetime],
-    value_type: Optional[str],
-    information_source: Optional[str],
+    indicator_ids: str | None,
+    start_date: datetime | None,
+    end_date: datetime | None,
+    value_type: str | None,
+    information_source: str | None,
     last_only: bool,
 ) -> list[IndicatorValueDTO]:
-    """Get indicator values by territory id, optional indicator_ids, value_type, source and time period,
-    could be specified by last_only to get only last indicator values."""
+    """Get indicator values by territory id, optional indicator_ids, value_type, source and time period.
+
+    Could be specified by last_only to get only last indicator values.
+    """
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
@@ -157,16 +159,18 @@ async def get_indicator_values_by_territory_id_from_db(
 
 async def get_indicator_values_by_parent_id_from_db(
     conn: AsyncConnection,
-    parent_id: Optional[int],
-    indicator_ids: Optional[str],
-    start_date: Optional[datetime],
-    end_date: Optional[datetime],
-    value_type: Optional[str],
-    information_source: Optional[str],
+    parent_id: int | None,
+    indicator_ids: str | None,
+    start_date: datetime | None,
+    end_date: datetime | None,
+    value_type: str | None,
+    information_source: str | None,
     last_only: bool,
 ) -> list[TerritoryWithIndicatorsDTO]:
-    """Get indicator values for child territories by parent id, optional indicator_ids, value_type, source and date,
-    could be specified by last_only to get only last indicator values."""
+    """Get indicator values for child territories by parent id, optional indicator_ids, value_type, source and date.
+
+    Could be specified by last_only to get only last indicator values.
+    """
 
     if parent_id is not None:
         statement = select(territories_data).where(territories_data.c.territory_id == parent_id)

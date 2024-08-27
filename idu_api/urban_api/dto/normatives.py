@@ -1,6 +1,4 @@
-"""
-Normatives DTO are defined here.
-"""
+"""Normatives DTO are defined here."""
 
 from dataclasses import dataclass
 from datetime import datetime

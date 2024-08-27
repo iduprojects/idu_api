@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Callable, Optional
+from typing import Callable
 
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import and_, case, cast, delete, func, insert, literal, select, update
@@ -19,8 +19,11 @@ from idu_api.urban_api.schemas import NormativeDelete, NormativePatch, Normative
 func: Callable
 
 
-async def get_normatives_by_territory_id_from_db(conn: AsyncConnection, territory_id: int) -> list[NormativeDTO]:
-    """Get a list of normatives for given territory."""
+async def get_normatives_by_territory_id_from_db(
+    conn: AsyncConnection, territory_id: int, year: int
+) -> list[NormativeDTO]:
+    """Get a list of normatives for given territory and year."""
+
     result = []
 
     statement = select(
@@ -70,19 +73,25 @@ async def get_normatives_by_territory_id_from_db(conn: AsyncConnection, territor
             service_types_normatives_data.c.created_at,
             service_types_normatives_data.c.updated_at,
         )
-        .join(cte_statement, service_types_normatives_data.c.territory_id == cte_statement.c.territory_id)
-        .join(
-            subquery_service_types,
-            (service_types_normatives_data.c.service_type_id == subquery_service_types.c.service_type_id)
-            & (cte_statement.c.level == subquery_service_types.c.max_level),
+        .select_from(
+            service_types_normatives_data.join(
+                cte_statement, service_types_normatives_data.c.territory_id == cte_statement.c.territory_id
+            )
+            .join(
+                subquery_service_types,
+                (service_types_normatives_data.c.service_type_id == subquery_service_types.c.service_type_id)
+                & (cte_statement.c.level == subquery_service_types.c.max_level),
+            )
+            .outerjoin(
+                service_types_dict,
+                service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id,
+            )
+            .outerjoin(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_normatives_data.c.urban_function_id,
+            )
         )
-        .outerjoin(
-            service_types_dict, service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id
-        )
-        .outerjoin(
-            urban_functions_dict,
-            urban_functions_dict.c.urban_function_id == service_types_normatives_data.c.urban_function_id,
-        )
+        .where(service_types_normatives_data.c.year == year)
     )
     result.extend(list((await conn.execute(statement)).mappings().all()))
 
@@ -111,19 +120,25 @@ async def get_normatives_by_territory_id_from_db(conn: AsyncConnection, territor
             service_types_normatives_data.c.created_at,
             service_types_normatives_data.c.updated_at,
         )
-        .join(cte_statement, service_types_normatives_data.c.territory_id == cte_statement.c.territory_id)
-        .join(
-            subquery_urban_functions,
-            (service_types_normatives_data.c.urban_function_id == subquery_urban_functions.c.urban_function_id)
-            & (cte_statement.c.level == subquery_urban_functions.c.max_level),
+        .select_from(
+            service_types_normatives_data.join(
+                cte_statement, service_types_normatives_data.c.territory_id == cte_statement.c.territory_id
+            )
+            .join(
+                subquery_urban_functions,
+                (service_types_normatives_data.c.urban_function_id == subquery_urban_functions.c.urban_function_id)
+                & (cte_statement.c.level == subquery_urban_functions.c.max_level),
+            )
+            .outerjoin(
+                service_types_dict,
+                service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id,
+            )
+            .outerjoin(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_normatives_data.c.urban_function_id,
+            )
         )
-        .outerjoin(
-            service_types_dict, service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id
-        )
-        .outerjoin(
-            urban_functions_dict,
-            urban_functions_dict.c.urban_function_id == service_types_normatives_data.c.urban_function_id,
-        )
+        .where(service_types_normatives_data.c.year == year)
     )
     result.extend(list((await conn.execute(statement)).mappings().all()))
 
@@ -152,14 +167,16 @@ async def get_normatives_by_territory_id_from_db(conn: AsyncConnection, territor
             service_types_normatives_data.c.created_at,
             service_types_normatives_data.c.updated_at,
         )
-        .outerjoin(
-            service_types_dict, service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id
+        .select_from(
+            service_types_normatives_data.outerjoin(
+                service_types_dict,
+                service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id,
+            ).outerjoin(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_normatives_data.c.urban_function_id,
+            )
         )
-        .outerjoin(
-            urban_functions_dict,
-            urban_functions_dict.c.urban_function_id == service_types_normatives_data.c.urban_function_id,
-        )
-        .where(service_types_normatives_data.c.territory_id.is_(None))
+        .where(service_types_normatives_data.c.territory_id.is_(None), service_types_normatives_data.c.year == year)
     )
     high_level_normative = list(
         filter(
@@ -173,6 +190,8 @@ async def get_normatives_by_territory_id_from_db(conn: AsyncConnection, territor
 
 
 async def get_normatives_by_ids_from_db(conn: AsyncConnection, normative_ids: list[int]) -> list[NormativeDTO]:
+    """Get a list of normative objects by list of identifiers."""
+
     statement = (
         select(
             service_types_normatives_data.c.service_type_id,
@@ -208,9 +227,7 @@ async def get_normatives_by_ids_from_db(conn: AsyncConnection, normative_ids: li
 async def add_normatives_to_territory_to_db(
     conn: AsyncConnection, territory_id: int, normatives: list[NormativePost]
 ) -> list[NormativeDTO]:
-    """
-    Create normative object
-    """
+    """Create normative object."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
@@ -280,6 +297,7 @@ async def add_normatives_to_territory_to_db(
 async def put_normatives_by_territory_id_in_db(
     conn: AsyncConnection, territory_id: int, normatives: list[NormativePost]
 ) -> list[NormativeDTO]:
+    """Update a normative objects by territory id - all its attributes."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
@@ -364,6 +382,8 @@ async def put_normatives_by_territory_id_in_db(
 async def patch_normatives_by_territory_id_in_db(
     conn: AsyncConnection, territory_id: int, normatives: list[NormativePatch]
 ) -> list[NormativeDTO]:
+    """Update a normative objects by territory id - only given attributes."""
+
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
@@ -427,9 +447,8 @@ async def patch_normatives_by_territory_id_in_db(
         )
 
         values_to_update = {}
-        for k, v in normative.model_dump().items():
-            if v is not None:
-                values_to_update.update({k: v})
+        for k, v in normative.model_dump(exclude_unset=True).items():
+            values_to_update.update({k: v})
         statement = statement.values(**values_to_update)
 
         normative_ids.append((await conn.execute(statement)).scalar_one())
@@ -442,6 +461,8 @@ async def patch_normatives_by_territory_id_in_db(
 async def delete_normatives_by_territory_id_in_db(
     conn: AsyncConnection, territory_id: int, normatives: list[NormativeDelete]
 ) -> dict:
+    """Delete normative objects by territory id."""
+
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
@@ -513,27 +534,15 @@ async def delete_normatives_by_territory_id_in_db(
 
 
 async def get_normatives_values_by_parent_id_from_db(
-    conn: AsyncConnection, parent_id: Optional[int], service_type_id: Optional[int], urban_function_id: Optional[int]
+    conn: AsyncConnection, parent_id: int | None, year: int
 ) -> list[TerritoryWithNormativesDTO]:
-    """Get list of normatives with values for territory by parent id and service type|urban function id."""
+    """Get list of normatives with values for territory by parent id and year"""
 
     if parent_id is not None:
         statement = select(territories_data).where(territories_data.c.territory_id == parent_id)
         territory = (await conn.execute(statement)).one_or_none()
         if territory is None:
             raise EntityNotFoundById(parent_id, "territory")
-
-    if service_type_id is not None:
-        statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
-        service_type = (await conn.execute(statement)).one_or_none()
-        if service_type is None:
-            raise EntityNotFoundById(service_type_id, "service_type")
-
-    if urban_function_id is not None:
-        statement = select(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == urban_function_id)
-        urban_function = (await conn.execute(statement)).one_or_none()
-        if urban_function is None:
-            raise EntityNotFoundById(urban_function_id, "urban function")
 
     statement = select(
         territories_data.c.territory_id,
@@ -547,7 +556,7 @@ async def get_normatives_values_by_parent_id_from_db(
 
     results = []
     for child_territory in child_territories:
-        normatives = await get_normatives_by_territory_id_from_db(conn, child_territory.territory_id)
+        normatives = await get_normatives_by_territory_id_from_db(conn, child_territory.territory_id, year)
         results.append(TerritoryWithNormativesDTO(**child_territory, normatives=normatives))
 
     return results

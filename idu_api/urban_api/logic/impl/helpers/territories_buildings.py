@@ -13,14 +13,15 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import LivingBuildingsWithGeometryDTO
+from idu_api.urban_api.dto import PageDTO, LivingBuildingsWithGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.utils.pagination import paginate_dto
 
 
 async def get_living_buildings_with_geometry_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
-) -> list[LivingBuildingsWithGeometryDTO]:
+) -> PageDTO[LivingBuildingsWithGeometryDTO]:
     """Get living buildings with geometry by territory id."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
@@ -65,8 +66,9 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
         )
         .where(object_geometries_data.c.territory_id == territory_id)
         .distinct()
+        .order_by(living_buildings_data.c.living_building_id)
     )
 
-    result = (await conn.execute(statement)).mappings().all()
-
-    return [LivingBuildingsWithGeometryDTO(**living_building) for living_building in result]
+    return await paginate_dto(
+        conn, statement, transformer=lambda x: [LivingBuildingsWithGeometryDTO(**item) for item in x]
+    )

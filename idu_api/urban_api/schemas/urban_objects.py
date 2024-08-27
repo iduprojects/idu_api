@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field
 
 from idu_api.urban_api.dto import UrbanObjectDTO
@@ -14,10 +12,10 @@ from idu_api.urban_api.schemas.territories import TerritoryType
 class UrbanObject(BaseModel):
     """Schema for urban object with all its attribute."""
 
-    urban_object_id: int = Field(..., description="Urban object id", example=1)
+    urban_object_id: int = Field(..., description="Urban object id", examples=[1])
     physical_object: PhysicalObjectsData
     object_geometry: ObjectGeometries
-    service: Optional[ServicesData]
+    service: ServicesData | None
 
     @classmethod
     def from_dto(cls, dto: UrbanObjectDTO) -> "UrbanObject":
@@ -61,8 +59,6 @@ class UrbanObject(BaseModel):
                 urban_object.service.territory_type = TerritoryType(
                     territory_type_id=dto.territory_type_id, name=dto.territory_type_name
                 )
-            else:
-                urban_object.service.territory_type = None
             return urban_object
         return cls(
             urban_object_id=dto.urban_object_id,

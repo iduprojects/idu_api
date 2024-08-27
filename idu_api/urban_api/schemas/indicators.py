@@ -1,6 +1,6 @@
 from datetime import date
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -12,8 +12,8 @@ class MeasurementUnit(BaseModel):
     Measurement unit with all its attributes
     """
 
-    measurement_unit_id: int = Field(description="Measurement unit id", example=1)
-    name: str = Field(description="Measurement unit name", example="Количество людей")
+    measurement_unit_id: int = Field(..., description="Measurement unit id", examples=[1])
+    name: str = Field(..., description="Measurement unit name", examples=["Количество человек"])
 
     @classmethod
     def from_dto(cls, dto: MeasurementUnitDTO) -> "MeasurementUnit":
@@ -28,7 +28,7 @@ class MeasurementUnitPost(BaseModel):
     Schema of measurement unit for POST request
     """
 
-    name: str = Field(description="Measurement unit name", example="Количество человек")
+    name: str = Field(..., description="Measurement unit name", examples=["Количество человек"])
 
 
 class ShortIndicatorInfo(BaseModel):
@@ -36,13 +36,13 @@ class ShortIndicatorInfo(BaseModel):
     Indicator with only name and measurement unit.
     """
 
-    indicator_id: int = Field(example=1)
+    indicator_id: int = Field(..., examples=[1])
     name_full: str = Field(
-        description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории"
+        ...,
+        description="Indicator unit full name",
+        examples=["Общее количество людей, постоянно проживающих на территории"],
     )
-    measurement_unit: Optional[MeasurementUnit] = Field(
-        description="Indicator measurement unit", example={"measurement_unit_id": 1, "name": "ед"}
-    )
+    measurement_unit: MeasurementUnit | None
 
 
 class Indicator(BaseModel):
@@ -50,17 +50,17 @@ class Indicator(BaseModel):
     Indicator with all its attributes
     """
 
-    indicator_id: int = Field(example=1)
+    indicator_id: int = Field(..., examples=[1])
     name_full: str = Field(
-        description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории"
+        ...,
+        description="Indicator unit full name",
+        examples=["Общее количество людей, постоянно проживающих на территории"],
     )
-    name_short: str = Field(description="Indicator unit short name", example="Численность населения")
-    measurement_unit: Optional[MeasurementUnit] = Field(
-        description="Indicator measurement unit", example={"measurement_unit_id": 1, "name": "ед"}
-    )
-    level: int = Field(description="Number of indicator functions above in a tree + 1", example=1)
-    list_label: str = Field(description="Indicator marker in lists", example="1.1.1")
-    parent_id: Optional[int] = Field(description="Indicator parent id", example=1)
+    name_short: str = Field(..., description="Indicator unit short name", examples=["Численность населения"])
+    measurement_unit: MeasurementUnit | None
+    level: int = Field(..., description="Number of indicator functions above in a tree + 1", examples=[1])
+    list_label: str = Field(..., description="Indicator marker in lists", examples=["1.1.1"])
+    parent_id: int | None = Field(..., description="Indicator parent id", examples=[1])
 
     @classmethod
     def from_dto(cls, dto: IndicatorDTO) -> "Indicator":
@@ -96,13 +96,15 @@ class IndicatorsPost(BaseModel):
     """
 
     name_full: str = Field(
-        description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории"
+        ...,
+        description="Indicator unit full name",
+        examples=["Общее количество людей, постоянно проживающих на территории"],
     )
-    name_short: str = Field(description="Indicator unit short name", example="Численность населения")
-    measurement_unit_id: int = Field(description="Indicator measurement unit id", example=1)
-    level: int = Field(description="Number of indicator functions above in a tree + 1", example=1)
-    list_label: str = Field(description="Indicator marker in lists", example="1.1.1")
-    parent_id: Optional[int] = Field(description="Indicator parent id", example=1)
+    name_short: str = Field(..., description="Indicator unit short name", examples=["Численность населения"])
+    measurement_unit_id: int = Field(..., description="Indicator measurement unit id", examples=[1])
+    level: int = Field(..., description="Number of indicator functions above in a tree + 1", examples=[1])
+    list_label: str = Field(..., description="Indicator marker in lists", examples=["1.1.1"])
+    parent_id: int | None = Field(..., description="Indicator parent id", examples=[1])
 
 
 class ShortIndicatorValueInfo(BaseModel):
@@ -111,20 +113,28 @@ class ShortIndicatorValueInfo(BaseModel):
     """
 
     name_full: str = Field(
-        description="Indicator unit full name", example="Общее количество людей, постоянно проживающих на территории"
+        ...,
+        description="Indicator unit full name",
+        examples=["Общее количество людей, постоянно проживающих на территории"],
     )
-    measurement_unit_name: Optional[str] = Field(description="Measurement unit name", example="Количество людей")
+    measurement_unit_name: str | None = Field(..., description="Measurement unit name", examples=["Количество людей"])
     date_value: date = Field(
+        ...,
         description="first day of the year for 'year' period, first of june for 'half_year',"
         " first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
-        example="2024-01-01",
+        examples=["2024-01-01"],
     )
-    value: float = Field(description="Indicator value for territory at time", example=23.5)
-    value_type: Literal["real", "forecast", "target"] = Field(description="Indicator value type", example="real")
+    value: float = Field(..., description="Indicator value for territory at time", examples=[23.5])
+    value_type: Literal["real", "forecast", "target"] = Field(
+        ..., description="Indicator value type", examples=["real"]
+    )
     information_source: str = Field(
+        ...,
         description="Information source",
-        example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
-        "structure_version/229/",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
     )
 
     @field_validator("value_type", mode="before")
@@ -141,21 +151,27 @@ class IndicatorValue(BaseModel):
     """
 
     indicator: ShortIndicatorInfo
-    territory_id: int = Field(description="Territory id", example=1)
+    territory_id: int = Field(..., description="Territory id", examples=[1])
     date_type: Literal["year", "half_year", "quarter", "month", "day"] = Field(
-        description="Time interval", example="year"
+        ..., description="Time interval", examples=["year"]
     )
     date_value: date = Field(
+        ...,
         description="first day of the year for 'year' period, first of june for 'half_year',"
         " first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
-        example="2024-01-01",
+        examples=["2024-01-01"],
     )
-    value: float = Field(description="Indicator value for territory at time", example=23.5)
-    value_type: Literal["real", "forecast", "target"] = Field(description="Indicator value type", example="real")
+    value: float = Field(..., description="Indicator value for territory at time", examples=[23.5])
+    value_type: Literal["real", "forecast", "target"] = Field(
+        ..., description="Indicator value type", examples=["real"]
+    )
     information_source: str = Field(
+        ...,
         description="Information source",
-        example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
-        "structure_version/229/",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
     )
 
     @field_validator("date_type", mode="before")
@@ -214,22 +230,28 @@ class IndicatorValuePost(BaseModel):
     Indicator value schema for POST request
     """
 
-    indicator_id: int = Field(description="Indicator id", example=1)
-    territory_id: int = Field(description="Territory id", example=1)
+    indicator_id: int = Field(..., description="Indicator id", examples=[1])
+    territory_id: int = Field(..., description="Territory id", examples=[1])
     date_type: Literal["year", "half_year", "quarter", "month", "day"] = Field(
-        description="Time interval", example="year"
+        ..., description="Time interval", examples=["year"]
     )
     date_value: date = Field(
+        ...,
         description="first day of the year for 'year' period, first of june for 'half_year',"
         " first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
-        example="2024-01-01",
+        examples=["2024-01-01"],
     )
-    value: float = Field(description="Indicator value for territory at time", example=23.5)
-    value_type: Literal["real", "forecast", "target"] = Field(description="Indicator value type", example="real")
+    value: float = Field(..., description="Indicator value for territory at time", examples=[23.5])
+    value_type: Literal["real", "forecast", "target"] = Field(
+        ..., description="Indicator value type", examples=["real"]
+    )
     information_source: str = Field(
+        ...,
         description="Information source",
-        example="https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
-        "structure_version/229/",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
     )
 
     @field_validator("date_type", mode="before")

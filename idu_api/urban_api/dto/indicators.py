@@ -1,10 +1,8 @@
-"""
-Indicators DTO are defined here.
-"""
+"""Indicators DTO are defined here."""
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 
 
 @dataclass
@@ -12,8 +10,8 @@ class IndicatorDTO:
     indicator_id: int
     name_full: str
     name_short: str
-    measurement_unit_id: Optional[int]
-    measurement_unit_name: Optional[str]
+    measurement_unit_id: int | None
+    measurement_unit_name: str | None
     level: int
     list_label: str
     parent_id: int
@@ -23,8 +21,8 @@ class IndicatorDTO:
 class IndicatorValueDTO:
     indicator_id: int
     name_full: str
-    measurement_unit_id: Optional[int]
-    measurement_unit_name: Optional[str]
+    measurement_unit_id: int | None
+    measurement_unit_name: str | None
     territory_id: int
     date_type: Literal["year", "half_year", "quarter", "month", "day"]
     date_value: datetime

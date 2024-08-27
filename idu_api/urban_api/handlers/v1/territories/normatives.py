@@ -1,5 +1,7 @@
 """Normatives territories-related handlers are defined here."""
 
+from datetime import date
+
 from fastapi import Path, Query, Request
 from geojson_pydantic import Feature
 from geojson_pydantic.geometries import Geometry
@@ -19,12 +21,14 @@ from .routers import territories_router
     status_code=status.HTTP_200_OK,
 )
 async def get_territory_normatives(
-    request: Request, territory_id: int = Path(description="territory id", gt=0)
+    request: Request,
+    territory_id: int = Path(..., description="territory id", gt=0),
+    year: int = Query(date.today().year, description="to filter by year, current year is used by default"),
 ) -> list[Normative]:
     """Get territory normatives."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    normatives = await territories_service.get_normatives_by_territory_id(territory_id)
+    normatives = await territories_service.get_normatives_by_territory_id(territory_id, year)
 
     return [Normative.from_dto(normative) for normative in normatives]
 
@@ -37,11 +41,11 @@ async def get_territory_normatives(
 async def post_territory_normatives(
     request: Request,
     normatives: list[NormativePost],
-    territory_id: int = Path(description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory id", gt=0),
 ) -> list[Normative]:
-    """
-    Post batch of territory normatives. If at least one normative already exists,
-    400 error is returned and none are added.
+    """Post batch of territory normatives.
+
+    If at least one normative already exists, 400 error is returned and none are added.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
@@ -58,11 +62,11 @@ async def post_territory_normatives(
 async def put_territory_normatives(
     request: Request,
     normatives: list[NormativePost],
-    territory_id: int = Path(description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory id", gt=0),
 ) -> list[Normative]:
-    """
-    Post batch of territory normatives. If at least one of normatives does not exist, 404 error is returned and no
-    normatives are updated.
+    """Post batch of territory normatives.
+
+    If at least one of normatives does not exist, 404 error is returned and no normatives are updated.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
@@ -79,11 +83,11 @@ async def put_territory_normatives(
 async def patch_territory_normatives(
     request: Request,
     normatives: list[NormativePatch],
-    territory_id: int = Path(description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory id", gt=0),
 ) -> list[Normative]:
-    """
-    Patch batch of territory normatives. If at least one of normatives does not exist, 404 error is returned and no
-    normatives are updated.
+    """Patch batch of territory normatives.
+
+    If at least one of normatives does not exist, 404 error is returned and no normatives are updated.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
@@ -100,11 +104,11 @@ async def patch_territory_normatives(
 async def delete_territory_normatives(
     request: Request,
     normatives: list[NormativeDelete],
-    territory_id: int = Path(description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory id", gt=0),
 ) -> dict:
-    """
-    Delete batch of territory normatives. If at least one of normatives does not exist, 404 error is returned and no
-    normatives are deleted.
+    """Delete batch of territory normatives.
+
+    If at least one of normatives does not exist, 404 error is returned and no normatives are deleted.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
@@ -120,15 +124,14 @@ async def delete_territory_normatives(
 async def get_normatives_values_by_parent_id(
     request: Request,
     parent_id: int | None = Query(None, description="parent territory id", gt=0),
-    service_type_id: int | None = Query(None, description="service type id"),
-    urban_function_id: int | None = Query(None, description="urban function id"),
+    year: int = Query(date.today().year, description="to filter by year, current year is used by default"),
 ) -> GeoJSONResponse[Feature[Geometry, TerritoryWithNormatives]]:
-    """Get FeatureCollection with child territories and list of normatives with values in properties
-    by parent id and service type|urban function id. parent id should be null or skipped for high-level territories."""
+    """Get FeatureCollection with child territories and list of normatives with values in properties.
+
+    parent id should be null or skipped for high-level territories.
+    """
     territories_service: TerritoriesService = request.state.territories_service
 
-    territories = await territories_service.get_normatives_values_by_parent_id(
-        parent_id, service_type_id, urban_function_id
-    )
+    territories = await territories_service.get_normatives_values_by_parent_id(parent_id, year)
 
     return await GeoJSONResponse.from_list([territory.to_geojson_dict() for territory in territories])

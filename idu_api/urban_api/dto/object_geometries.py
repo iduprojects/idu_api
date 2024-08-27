@@ -1,9 +1,6 @@
-"""
-Object geometries DTO are defined here.
-"""
+"""Object geometries DTO are defined here."""
 
 from dataclasses import dataclass
-from typing import Optional
 
 import shapely.geometry as geom
 
@@ -12,7 +9,7 @@ import shapely.geometry as geom
 class ObjectGeometryDTO:
     object_geometry_id: int
     territory_id: int
-    address: Optional[str]
+    address: str | None
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
 

@@ -1,12 +1,13 @@
-"""
-Geojson response models is defined here.
-"""
+"""Geojson response models are defined here."""
 
-from typing import Any, Dict, Iterable, Literal, Optional
+import json
+from typing import Any, Iterable, Literal, Optional, Type, TypeVar
 
+import shapely
 import shapely.geometry as geom
 from geojson_pydantic import Feature, FeatureCollection
-from pydantic import BaseModel, Field
+from loguru import logger
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Geometry(BaseModel):
@@ -36,15 +37,7 @@ class Geometry(BaseModel):
         Return Shapely geometry object from the parsed geometry.
         """
         if self._shapely_geom is None:
-            match self.type:
-                case "Point":
-                    self._shapely_geom = geom.Point(self.coordinates)
-                case "Polygon":
-                    self._shapely_geom = geom.Polygon(self.coordinates[0])  # pylint: disable=unsubscriptable-object
-                case "MultiPolygon":
-                    self._shapely_geom = geom.MultiPolygon(self.coordinates)
-                case "LineString":
-                    self._shapely_geom = geom.LineString(self.coordinates)
+            self._shapely_geom = shapely.from_geojson(json.dumps({"type": self.type, "coordinates": self.coordinates}))
         return self._shapely_geom
 
     @classmethod
@@ -56,17 +49,53 @@ class Geometry(BaseModel):
         """
         if geometry is None:
             return None
-        match type(geometry):
-            case geom.Point:
-                return cls(type="Point", coordinates=geometry.coords[0])
-            case geom.Polygon:
-                return cls(type="Polygon", coordinates=[list(geometry.exterior.coords)])
-            case geom.MultiPolygon:
-                return cls(
-                    type="MultiPolygon", coordinates=[[list(polygon.exterior.coords)] for polygon in geometry.geoms]
-                )
-            case geom.LineString:
-                return cls(type="LineString", coordinates=geometry.coords)
+        return cls(**geom.mapping(geometry))
+
+
+T = TypeVar("T", bound="GeometryValidationModel")
+
+
+class GeometryValidationModel(BaseModel):
+    """
+    Base model with geometry validation methods.
+    """
+
+    geometry: Geometry | None = None
+    centre_point: Geometry | None = None
+
+    @field_validator("geometry")
+    @classmethod
+    def validate_geometry(cls, geometry: "Geometry") -> "Geometry":
+        """Validate that given geometry is valid by creating a Shapely object."""
+        if geometry:
+            try:
+                geometry.as_shapely_geometry()
+            except (AttributeError, ValueError, TypeError) as exc:
+                logger.debug("Exception on passing geometry: {!r}", exc)
+                raise ValueError("Invalid geometry passed") from exc
+        return geometry
+
+    @field_validator("centre_point")
+    @classmethod
+    def validate_centre_point(cls, centre_point: Geometry | None) -> Geometry | None:
+        """Validate that given centre_point is a valid Point geometry."""
+        if centre_point:
+            if centre_point.type != "Point":
+                raise ValueError("Only Point geometry is accepted for centre_point")
+            try:
+                centre_point.as_shapely_geometry()
+            except (AttributeError, ValueError, TypeError) as exc:
+                logger.debug("Exception on passing geometry: {!r}", exc)
+                raise ValueError("Invalid centre_point passed") from exc
+        return centre_point
+
+    @model_validator(mode="after")
+    @classmethod
+    def validate_centre_point_from_geometry(cls: Type[T], model: T) -> T:
+        """Use the geometry's centroid for centre_point if it is missing."""
+        if model.centre_point is None and model.geometry:
+            model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
+        return model
 
 
 class GeoJSONResponse(FeatureCollection):
@@ -75,7 +104,7 @@ class GeoJSONResponse(FeatureCollection):
     @classmethod
     async def from_list(
         cls,
-        features: Iterable[Dict[str, Any]],
+        features: Iterable[dict[str, Any]],
         centers_only: bool = False,
     ) -> "GeoJSONResponse":
         """

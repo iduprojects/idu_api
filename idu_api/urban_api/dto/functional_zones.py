@@ -1,6 +1,4 @@
-"""
-Functional zones DTO are defined here.
-"""
+"""Functional zones DTO are defined here."""
 
 from dataclasses import dataclass
 

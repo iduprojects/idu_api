@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -8,22 +8,18 @@ from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, Phys
 
 
 class LivingBuildingsWithGeometry(BaseModel):
-    living_building_id: int = Field(example=1)
-    physical_object: PhysicalObjectsData = Field(
-        example={
-            "physical_object_type": {"physical_object_type_id": 1, "name": "Здание"},
-            "name": "--",
-            "properties": {"additional_attribute_name": "additional_attribute_value"},
-        }
+    living_building_id: int = Field(..., examples=[1])
+    physical_object: PhysicalObjectsData
+    residents_number: int | None = Field(..., examples=[200])
+    living_area: float | None = Field(..., examples=[300.0])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    residents_number: Optional[int] = Field(example=200)
-    living_area: Optional[float] = Field(example=300.0)
-    properties: Dict[str, Any] = Field(
-        {}, description="Additional properties", example={"additional_attribute_name": "additional_attribute_value"}
-    )
-    geometry: Geometry = Field(description="Object geometry")
-    centre_point: Geometry = Field(description="Centre coordinates")
-    address: Optional[str] = Field(None, description="geometry address")
+    geometry: Geometry
+    centre_point: Geometry
+    address: Optional[str] = Field(None, description="geometry address", examples=["--"])
 
     @classmethod
     def from_dto(cls, dto: LivingBuildingsWithGeometryDTO) -> "LivingBuildingsWithGeometry":
@@ -52,20 +48,14 @@ class LivingBuildingsWithGeometry(BaseModel):
 
 
 class LivingBuildingsData(BaseModel):
-    living_building_id: int = Field(example=1)
-    physical_object: PhysicalObjectsData = Field(
-        example={
-            "physical_object_type": {"physical_object_type_id": 1, "name": "Здание"},
-            "name": "--",
-            "properties": {"additional_attribute_name": "additional_attribute_value"},
-        }
-    )
-    residents_number: Optional[int] = Field(example=200)
-    living_area: Optional[float] = Field(example=300.0)
-    properties: Dict[str, Any] = Field(
+    living_building_id: int = Field(..., examples=[1])
+    physical_object: PhysicalObjectsData
+    residents_number: int | None = Field(..., examples=[200])
+    living_area: float | None = Field(..., examples=[300.0])
+    properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional properties",
-        example={"additional_attribute_name": "additional_attribute_value"},
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
     @classmethod
@@ -91,31 +81,33 @@ class LivingBuildingsData(BaseModel):
 
 
 class LivingBuildingsDataPost(BaseModel):
-    physical_object_id: int = Field(..., example=1)
-    residents_number: Optional[int] = Field(None, example=200)
-    living_area: Optional[float] = Field(None, example=300.0)
-    properties: Dict[str, Any] = Field(
+    physical_object_id: int = Field(..., examples=[1])
+    residents_number: int | None = Field(None, examples=[200])
+    living_area: float | None = Field(None, examples=[300.0])
+    properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Additional properties",
-        example={"additional_attribute_name": "additional_attribute_value"},
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
 
 class LivingBuildingsDataPut(BaseModel):
-    physical_object_id: int = Field(..., example=1)
-    residents_number: Optional[int] = Field(..., example=200)
-    living_area: Optional[float] = Field(..., example=300.0)
-    properties: Dict[str, Any] = Field(
-        ..., description="Additional properties", example={"additional_attribute_name": "additional_attribute_value"}
+    physical_object_id: int = Field(..., examples=[1])
+    residents_number: int | None = Field(..., examples=[200])
+    living_area: float | None = Field(..., examples=[300.0])
+    properties: dict[str, Any] = Field(
+        ..., description="Additional properties", examples=[{"additional_attribute_name": "additional_attribute_value"}]
     )
 
 
 class LivingBuildingsDataPatch(BaseModel):
-    physical_object_id: Optional[int] = Field(None, example=1)
-    residents_number: Optional[int] = Field(None, example=200)
-    living_area: Optional[float] = Field(None, example=300.0)
-    properties: Optional[Dict[str, Any]] = Field(
-        None, description="Additional properties", example={"additional_attribute_name": "additional_attribute_value"}
+    physical_object_id: int | None = Field(None, examples=[1])
+    residents_number: int | None = Field(None, examples=[200])
+    living_area: float | None = Field(None, examples=[300.0])
+    properties: Optional[dict[str, Any]] = Field(
+        None,
+        description="Additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
     @model_validator(mode="before")
@@ -126,15 +118,4 @@ class LivingBuildingsDataPatch(BaseModel):
         """
         if not values:
             raise ValueError("request body cannot be empty")
-        return values
-
-    @model_validator(mode="before")
-    @classmethod
-    def disallow_nulls(cls, values):
-        """
-        Ensure the request body hasn't nulls.
-        """
-        for k, v in values.items():
-            if v is None:
-                raise ValueError(f"{k} cannot be null")
         return values
