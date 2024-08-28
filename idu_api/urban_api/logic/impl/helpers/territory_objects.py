@@ -92,7 +92,6 @@ async def add_territory_to_db(
             parent_id=territory.parent_id,
             name=territory.name,
             geometry=ST_GeomFromText(str(territory.geometry.as_shapely_geometry()), text("4326")),
-            level=territory.level,
             properties=territory.properties,
             centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326")),
             admin_center=territory.admin_center,
