@@ -100,7 +100,6 @@ class TerritoryDataPost(GeometryValidationModel):
     parent_id: int | None = Field(..., examples=[1])
     name: str = Field(..., description="Territory name", examples=["--"])
     geometry: Geometry = Field(..., description="Territory geometry")
-    level: int = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Service additional properties",
@@ -118,7 +117,6 @@ class TerritoryDataPut(GeometryValidationModel):
     parent_id: int | None = Field(..., examples=[1])
     name: str = Field(..., description="Territory name", examples=["--"])
     geometry: Geometry
-    level: int = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
         ...,
         description="Service additional properties",
@@ -136,7 +134,6 @@ class TerritoryDataPatch(GeometryValidationModel):
     parent_id: int | None = Field(None, examples=[1])
     name: str | None = Field(None, description="Territory name", examples=["--"])
     geometry: Geometry | None = Field(None, description="Territory geometry")
-    level: int | None = Field(None, examples=[1])
     properties: Optional[dict[str, Any]] = Field(
         None,
         description="Service additional properties",
