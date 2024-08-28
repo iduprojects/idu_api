@@ -19,7 +19,7 @@ from .routers import projects_router
     status_code=status.HTTP_200_OK,
 )
 async def get_all_projects(request: Request, user: UserDTO = Depends(user_dependency)) -> list[Project]:
-    """Get all projects."""
+    """Get all public projects and projects that are owned by the user."""
     user_project_service: UserProjectService = request.state.user_project_service
     projects = await user_project_service.get_all_available_projects_from_db(user.id)
 
@@ -32,7 +32,7 @@ async def get_all_projects(request: Request, user: UserDTO = Depends(user_depend
     status_code=status.HTTP_200_OK,
 )
 async def get_user_projects(request: Request, user: UserDTO = Depends(user_dependency)) -> list[Project]:
-    """Get all projects."""
+    """Get all user's projects."""
     user_project_service: UserProjectService = request.state.user_project_service
     projects = await user_project_service.get_user_projects_from_db(user.id)
 
