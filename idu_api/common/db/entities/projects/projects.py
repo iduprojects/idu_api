@@ -29,7 +29,7 @@ projects_data = Table(
 )
 
 """
-Projects:
+Project data:
 - project_id int 
 - user_id int
 - name str
