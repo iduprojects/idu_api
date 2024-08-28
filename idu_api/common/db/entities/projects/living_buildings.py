@@ -9,7 +9,12 @@ projects_living_buildings_data = Table(
     "living_buildings_data",
     metadata,
     Column("living_building_id", Integer, primary_key=True, server_default=living_buildings_id_seq.next_value()),
-    Column("physical_object_id", Integer, ForeignKey("physical_objects_data.physical_object_id"), nullable=False),
+    Column(
+        "physical_object_id",
+        Integer,
+        ForeignKey("physical_objects_data.physical_object_id", ondelete="CASCADE"),
+        nullable=False
+    ),
     Column("residental_number", Integer, nullable=False, unique=False),
     Column("living_area", Integer, nullable=False, unique=False),
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),

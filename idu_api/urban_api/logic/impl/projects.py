@@ -71,7 +71,7 @@ class UserProjectServiceImpl(UserProjectService):
         conn = self._conn
         statement = (
             select(projects_data)
-            .where(or_(projects_data.c.user_id == user_id, projects_data.c.public == True))
+            .where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
             .order_by(projects_data.c.project_id)
         )
         results = (await conn.execute(statement)).mappings().all()
@@ -117,11 +117,11 @@ class UserProjectServiceImpl(UserProjectService):
         elif result.user_id != user_id:
             return 403
 
+        statement_for_project = delete(projects_data).where(projects_data.c.project_id == project_id)
+
         statement_for_territory = delete(projects_territory_data).where(
             projects_territory_data.c.project_territory_id == result.project_territory_id
         )
-
-        statement_for_project = delete(projects_data).where(projects_data.c.project_id == project_id)
 
         await conn.execute(statement_for_project)
         await conn.execute(statement_for_territory)

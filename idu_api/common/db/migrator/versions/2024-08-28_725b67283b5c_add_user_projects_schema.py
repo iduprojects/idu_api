@@ -181,6 +181,7 @@ def upgrade() -> None:
             ["project_id"],
             ["user_projects.projects_data.project_id"],
             name=op.f("scenarios_data_fk_project_id__projects_data"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("scenario_id", name=op.f("scenarios_data_pk")),
         schema="user_projects",
@@ -246,6 +247,7 @@ def upgrade() -> None:
             ["scenario_id"],
             ["user_projects.scenarios_data.scenario_id"],
             name=op.f("functional_zones_data_fk_scenario_id__scenarios_data"),
+            ondelete="CASCADE",
         ),
         schema="user_projects",
     )
@@ -287,21 +289,25 @@ def upgrade() -> None:
             ["object_geometry_id"],
             ["user_projects.object_geometries_data.object_geometry_id"],
             name=op.f("urban_objects_data_fk_object_geometry_id__object_geometries_data"),
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["physical_object_id"],
             ["user_projects.physical_objects_data.physical_object_id"],
             name=op.f("urban_objects_data_fk_physical_object_id__physical_objects_data"),
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["scenario_id"],
             ["user_projects.scenarios_data.scenario_id"],
             name=op.f("urban_objects_data_fk_scenario_id__scenarios_data"),
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["service_id"],
             ["user_projects.services_data.service_id"],
             name=op.f("urban_objects_data_fk_service_id__services_data"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("urban_object_id", name=op.f("urban_objects_data_pk")),
         schema="user_projects",
@@ -328,5 +334,6 @@ def downgrade() -> None:
     op.execute(sa.schema.DropSequence(sa.Sequence("scenarios_data_id_seq", schema="user_projects")))
     op.execute(sa.schema.DropSequence(sa.Sequence("services_id_seq", schema="user_projects")))
     op.execute(sa.schema.DropSequence(sa.Sequence("urban_objects_id_seq", schema="user_projects")))
+    op.execute(sa.text("DROP TYPE user_projects.date_field_type"))
     op.execute("drop schema if exists user_projects")
 

@@ -9,7 +9,12 @@ scenarios_data = Table(
     "scenarios_data",
     metadata,
     Column("scenario_id", Integer, primary_key=True, server_default=scenarios_data_id_seq.next_value()),
-    Column("project_id", Integer, ForeignKey("user_projects.projects_data.project_id"), nullable=False),
+    Column(
+        "project_id",
+        Integer,
+        ForeignKey("user_projects.projects_data.project_id", ondelete="CASCADE"),
+        nullable=False
+    ),
     Column("name", String(200), nullable=False, unique=False),
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
     schema="user_projects",

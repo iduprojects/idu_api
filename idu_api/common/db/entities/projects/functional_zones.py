@@ -9,7 +9,7 @@ projects_functional_zones_data = Table(
     Column(
         "scenario_id",
         Integer,
-        ForeignKey("user_projects.scenarios_data.scenario_id"),
+        ForeignKey("user_projects.scenarios_data.scenario_id", ondelete="CASCADE"),
         nullable=False,
     ),
     Column(
