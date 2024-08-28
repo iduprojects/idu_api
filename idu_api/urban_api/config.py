@@ -31,7 +31,6 @@ class UrbanAPIConfig:  # pylint: disable=too-many-instance-attributes
     cache_ttl: int = 1800
     application_name = f"urban_api ({api_version})"
 
-
     @classmethod
     def try_from_env(cls) -> "UrbanAPIConfig":
         """Call default class constructor, and then try to find attributes

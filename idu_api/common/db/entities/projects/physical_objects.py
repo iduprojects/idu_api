@@ -5,7 +5,7 @@ from idu_api.common.db import metadata
 
 physical_objects_id_seq = Sequence("physical_objects_id_seq", schema="user_projects")
 
-physical_objects_data = Table(
+projects_physical_objects_data = Table(
     "physical_objects_data",
     metadata,
     Column("physical_object_id", Integer, primary_key=True, server_default=physical_objects_id_seq.next_value()),

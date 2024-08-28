@@ -5,7 +5,7 @@ from idu_api.common.db import metadata
 
 living_buildings_id_seq = Sequence("living_buildings_id_seq", schema="user_projects")
 
-living_buildings_data = Table(
+projects_living_buildings_data = Table(
     "living_buildings_data",
     metadata,
     Column("living_building_id", Integer, primary_key=True, server_default=living_buildings_id_seq.next_value()),

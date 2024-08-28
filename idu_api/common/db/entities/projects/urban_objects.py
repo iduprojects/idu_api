@@ -4,7 +4,7 @@ from idu_api.common.db import metadata
 
 urban_objects_id_seq = Sequence("urban_objects_id_seq", schema="user_projects")
 
-urban_objects_data = Table(
+projects_urban_objects_data = Table(
     "urban_objects_data",
     metadata,
     Column("urban_object_id", Integer, primary_key=True, server_default=urban_objects_id_seq.next_value()),

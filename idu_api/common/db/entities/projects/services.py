@@ -5,7 +5,7 @@ from idu_api.common.db import metadata
 
 services_id_seq = Sequence("services_id_seq", schema="user_projects")
 
-services_data = Table(
+projects_services_data = Table(
     "services_data",
     metadata,
     Column("service_id", Integer, primary_key=True, server_default=services_id_seq.next_value()),
