@@ -5,7 +5,7 @@ from idu_api.common.db.entities.enums import DateFieldType
 
 DateFieldTypeEnum = Enum(DateFieldType, name="date_field_type")
 
-indicators_data = Table(
+projects_indicators_data = Table(
     "indicators_data",
     metadata,
     Column(

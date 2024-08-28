@@ -3,7 +3,7 @@ from sqlalchemy import Column, ForeignKey, Integer, String, Table
 
 from idu_api.common.db import metadata
 
-functional_zones_data = Table(
+projects_functional_zones_data = Table(
     "functional_zones_data",
     metadata,
     Column(

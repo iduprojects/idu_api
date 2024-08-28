@@ -5,7 +5,7 @@ from idu_api.common.db import metadata
 
 object_geometries_id_seq = Sequence("object_geometries_id_seq", schema="user_projects")
 
-object_geometries_data = Table(
+projects_object_geometries_data = Table(
     "object_geometries_data",
     metadata,
     Column("object_geometry_id", Integer, primary_key=True, server_default=object_geometries_id_seq.next_value()),

@@ -29,12 +29,12 @@ async def access_token_dependency(
     try:
         payload = json.loads(b64decode(access_token.credentials.split(".")[1]))
         UserDTO(id=payload.get("sub"), is_active=payload.get("active"))
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
     cache[access_token.credentials] = payload
 
@@ -52,12 +52,12 @@ async def access_token_dependency(
                 detail="Invalid token signature",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Error verifying token signature",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
     try:
         if "exp" in payload and datetime.utcfromtimestamp(payload["exp"]) < datetime.utcnow():
@@ -66,12 +66,12 @@ async def access_token_dependency(
                 detail="Token has expired, please refresh",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-    except Exception:
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid expiration format",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
 
     return payload
 
