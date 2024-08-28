@@ -22,7 +22,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.execute("create schema if not exists user_projects")
-    op.execute("create extension if not exists postgis")
     op.execute(sa.schema.CreateSequence(sa.Sequence("project_territory_id_seq", schema="user_projects")))
     op.execute(sa.schema.CreateSequence(sa.Sequence("physical_objects_id_seq", schema="user_projects")))
     op.execute(sa.schema.CreateSequence(sa.Sequence("project_id_seq", schema="user_projects")))
@@ -330,5 +329,3 @@ def downgrade() -> None:
     op.execute(sa.schema.DropSequence(sa.Sequence("services_id_seq", schema="user_projects")))
     op.execute(sa.schema.DropSequence(sa.Sequence("urban_objects_id_seq", schema="user_projects")))
     op.execute("drop schema if exists user_projects")
-    # TODO: лучше не удалять postgis?
-    # op.execute("drop extension if exists postgis")
