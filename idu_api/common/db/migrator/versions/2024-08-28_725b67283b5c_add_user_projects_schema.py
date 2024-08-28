@@ -1,21 +1,21 @@
 # pylint: disable=no-member,invalid-name,missing-function-docstring,too-many-statements
 """add user_projects schema
 
-Revision ID: 062b5355e31d
-Revises: 7c1977523140
-Create Date: 2024-08-27 18:04:17.184195
+Revision ID: 725b67283b5c
+Revises: dfb61815581e
+Create Date: 2024-08-28 15:46:54.112596
 
 """
 from typing import Sequence, Union
 
+from alembic import op
 import geoalchemy2
 import sqlalchemy as sa
-from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "062b5355e31d"
-down_revision: Union[str, None] = "7c1977523140"
+revision: str = "725b67283b5c"
+down_revision: Union[str, None] = "dfb61815581e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -209,7 +209,7 @@ def upgrade() -> None:
         sa.Column("scenario_id", sa.Integer(), nullable=False),
         sa.Column("indicator_id", sa.Integer(), nullable=False),
         sa.Column(
-            "date_type", sa.Enum("year", "half_year", "quarter", "month", "day", name="date_field_type"), nullable=False
+            "date_type", sa.Enum(name="date_field_type", inherit_schema=True), nullable=False
         ),
         sa.Column("date_value", sa.Date(), nullable=False),
         sa.Column("value", sa.Float(precision=53), nullable=False),
@@ -329,3 +329,4 @@ def downgrade() -> None:
     op.execute(sa.schema.DropSequence(sa.Sequence("services_id_seq", schema="user_projects")))
     op.execute(sa.schema.DropSequence(sa.Sequence("urban_objects_id_seq", schema="user_projects")))
     op.execute("drop schema if exists user_projects")
+
