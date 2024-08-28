@@ -1,6 +1,5 @@
 from geoalchemy2.types import Geometry
-
-from sqlalchemy import Column, ForeignKey, Integer, Table, String
+from sqlalchemy import Column, ForeignKey, Integer, String, Table
 
 from idu_api.common.db import metadata
 
