@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, Table, Float, Enum, Date
+from sqlalchemy import Column, Date, Enum, Float, ForeignKey, Integer, Table
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.enums import DateFieldType
