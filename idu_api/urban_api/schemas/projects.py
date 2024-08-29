@@ -1,24 +1,23 @@
 from datetime import datetime
 from typing import Any
 
-from loguru import logger
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
-from idu_api.urban_api.schemas.geometries import Geometry
+from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
 
 
 class ProjectTerritory(BaseModel):
     """Schema of project territory for GET request."""
 
-    project_territory_id: int = Field(primary_key=True, example=1, description="Project territory id")
-    parent_territory_id: int | None = Field(None, example=1, description="Project parent territory id")
-    geometry: Geometry = Field(description="Project geometry")
-    centre_point: Geometry = Field(description="Project centre point")
+    project_territory_id: int = Field(description="Project territory id", examples=[1])
+    parent_territory_id: int | None = Field(None, description="Project parent territory id", examples=[1])
+    geometry: Geometry
+    centre_point: Geometry
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Project territory additional properties",
-        example={"attribute_name": "attribute_value"},
+        examples=[{"attribute_name": "attribute_value"}],
     )
 
     @classmethod
@@ -34,60 +33,39 @@ class ProjectTerritory(BaseModel):
         )
 
 
-class ProjectTerritoryPost(BaseModel):
+class ProjectTerritoryPost(GeometryValidationModel):
     """Schema of project territory for POST request."""
 
-    parent_territory_id: int | None = Field(None, example=1, description="Project parent territory id")
-    geometry: Geometry = Field(description="Project geometry")
-    centre_point: Geometry = Field(description="Project centre point")
+    geometry: Geometry
+    centre_point: Geometry | None = None
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Project territory additional properties",
-        example={"attribute_name": "attribute_value"},
+        examples=[{"attribute_name": "attribute_value"}],
     )
 
-    @field_validator("geometry")
-    @staticmethod
-    def validate_geometry(geometry: Geometry) -> Geometry:
-        return validate_geometry(geometry)
 
-    @field_validator("centre_point")
-    @staticmethod
-    def validate_center(centre_point: Geometry) -> Geometry:
-        return validate_center(centre_point)
-
-
-class ProjectTerritoryPut(BaseModel):
+class ProjectTerritoryPut(GeometryValidationModel):
     """Schema of project territory for PUT request."""
 
-    parent_territory_id: int | None = Field(None, example=1, description="Project parent territory id")
-    geometry: Geometry = Field(description="Project geometry")
-    centre_point: Geometry = Field(description="Project centre point")
+    parent_territory_id: int | None = Field(..., description="Project parent territory id", examples=[1])
+    geometry: Geometry
+    centre_point: Geometry
     properties: dict[str, Any] = Field(
-        default_factory=dict,
+        ...,
         description="Project territory additional properties",
         example={"attribute_name": "attribute_value"},
     )
 
-    @field_validator("geometry")
-    @staticmethod
-    def validate_geometry(geometry: Geometry) -> Geometry:
-        return validate_geometry(geometry)
 
-    @field_validator("centre_point")
-    @staticmethod
-    def validate_center(centre_point: Geometry) -> Geometry:
-        return validate_center(centre_point)
-
-
-class ProjectTerritoryPatch(BaseModel):
+class ProjectTerritoryPatch(GeometryValidationModel):
     """Schema of project territory for PATCH request."""
 
-    parent_territory_id: int | None = Field(None, example=1, description="Project parent territory id")
+    parent_territory_id: int | None = Field(None, description="Project parent territory id", examples=[1])
     geometry: Geometry | None = Field(None, description="Project geometry")
     centre_point: Geometry | None = Field(None, description="Project centre point")
     properties: dict[str, Any] | None = Field(
-        default_factory=dict,
+        None,
         description="Project territory additional properties",
         example={"attribute_name": "attribute_value"},
     )
@@ -100,29 +78,19 @@ class ProjectTerritoryPatch(BaseModel):
             raise ValueError("request body cannot be empty")
         return values
 
-    @field_validator("geometry")
-    @staticmethod
-    def validate_geometry(geometry: Geometry) -> Geometry:
-        return validate_geometry(geometry)
-
-    @field_validator("centre_point")
-    @staticmethod
-    def validate_center(centre_point: Geometry | None) -> Geometry | None:
-        return validate_center(centre_point)
-
 
 class Project(BaseModel):
     """Schema of project for GET request."""
 
-    project_id: int = Field(primary_key=True, example=1, description="Project id")
-    user_id: str = Field(example="sample_id", description="Project creator id")
-    name: str = Field(example="sample_name", description="Project name")
-    project_territory_id: int = Field(example=1, description="Project territory id")
-    description: str = Field(example="sample_description", description="Project description")
-    public: bool = Field(example=True, description="Project publicity")
-    image_url: str = Field(example="sample_path_to_image", description="Project image url")
-    created_at: datetime = Field(description="Project created at")
-    updated_at: datetime = Field(description="Project updated at")
+    project_id: int = Field(description="Project id", examples=[1])
+    user_id: str = Field(description="Project creator id", examples=["admin@test.ru"])
+    name: str = Field(description="Project name", examples=["--"])
+    project_territory_id: int = Field(description="Project territory id", examples=[1])
+    description: str = Field(description="Project description", examples=["--"])
+    public: bool = Field(description="Project publicity", examples=[True])
+    image_url: str = Field(description="Project image url", examples=["url"])
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Project created at")
+    updated_at: datetime = Field(default_factory=datetime.utcnow, description="Project updated at")
 
     @classmethod
     def from_dto(cls, dto: ProjectDTO) -> "Project":
@@ -142,31 +110,31 @@ class Project(BaseModel):
 class ProjectPost(BaseModel):
     """Schema of project for POST request."""
 
-    name: str = Field(example="sample_name", description="Project name")
-    project_territory_info: ProjectTerritoryPost = Field(description="Project territory info")
-    description: str = Field(example="sample_description", description="Project description")
-    public: bool = Field(example=True, description="Project publicity")
-    image_url: str = Field(example="sample_path_to_image", description="Project image url")
+    name: str = Field(description="Project name", examples=["--"])
+    project_territory_info: ProjectTerritoryPost
+    description: str = Field(description="Project description", examples=["--"])
+    public: bool = Field(description="Project publicity", examples=[True])
+    image_url: str = Field(description="Project image url", examples=["url"])
 
 
 class ProjectPut(BaseModel):
     """Schema of project for PUT request."""
 
-    name: str = Field(example="sample_name", description="Project name")
-    project_territory_info: ProjectTerritoryPost = Field(description="Project territory info")
-    description: str = Field(example="sample_description", description="Project description")
-    public: bool = Field(example=True, description="Project publicity")
-    image_url: str = Field(example="sample_path_to_image", description="Project image url")
+    name: str = Field(..., description="Project name", examples=["--"])
+    project_territory_info: ProjectTerritoryPost
+    description: str = Field(..., description="Project description", examples=["--"])
+    public: bool = Field(..., description="Project publicity", examples=[True])
+    image_url: str = Field(..., description="Project image url", examples=["url"])
 
 
 class ProjectPatch(BaseModel):
     """Schema of project for PATCH request."""
 
-    name: str | None = Field(None, example="sample_name", description="Project name")
-    project_territory_info: ProjectTerritoryPatch | None = Field(None, description="Project territory info")
-    description: str | None = Field(None, example="sample_description", description="Project description")
-    public: bool | None = Field(None, example=True, description="Project publicity")
-    image_url: str | None = Field(None, example="sample_path_to_image", description="Project image url")
+    name: str | None = Field(None, description="Project name", examples=["--"])
+    project_territory_info: ProjectTerritoryPatch | None = None
+    description: str | None = Field(None, description="Project description", examples=["--"])
+    public: bool | None = Field(None, description="Project publicity", examples=[True])
+    image_url: str | None = Field(None, description="Project image url", examples=["url"])
 
     @model_validator(mode="before")
     @classmethod
@@ -175,26 +143,3 @@ class ProjectPatch(BaseModel):
         if not values:
             raise ValueError("request body cannot be empty")
         return values
-
-
-def validate_geometry(geometry: Geometry) -> Geometry:
-    """Validate that given geometry is validity via creating Shapely object."""
-
-    try:
-        geometry.as_shapely_geometry()
-    except (AttributeError, ValueError, TypeError) as exc:
-        logger.debug("Exception on passing geometry: {!r}", exc)
-        raise ValueError("Invalid geometry passed") from exc
-    return geometry
-
-
-def validate_center(centre_point: Geometry) -> Geometry:
-    """Validate that given geometry is Point and validity via creating Shapely object."""
-
-    assert centre_point.type == "Point", "Only Point is accepted"
-    try:
-        centre_point.as_shapely_geometry()
-    except (AttributeError, ValueError, TypeError) as exc:
-        logger.debug("Exception on passing geometry: {!r}", exc)
-        raise ValueError("Invalid geometry passed") from exc
-    return centre_point

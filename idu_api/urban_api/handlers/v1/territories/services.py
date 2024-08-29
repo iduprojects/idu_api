@@ -39,7 +39,7 @@ async def get_services_by_territory_id(
     order_by_value = order_by.value if order_by is not None else None
 
     services = await territories_service.get_services_by_territory_id(
-        territory_id, service_type_id, name, order_by_value, ordering.value
+        territory_id, service_type_id, name, order_by_value, ordering.value, paginate=True
     )
 
     return paginate(
@@ -75,7 +75,7 @@ async def get_services_with_geometry_by_territory_id(
     order_by_value = order_by.value if order_by is not None else None
 
     services = await territories_service.get_services_with_geometry_by_territory_id(
-        territory_id, service_type_id, name, order_by_value, ordering.value
+        territory_id, service_type_id, name, order_by_value, ordering.value, paginate=True
     )
 
     return paginate(

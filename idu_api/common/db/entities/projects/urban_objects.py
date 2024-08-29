@@ -21,7 +21,7 @@ projects_urban_objects_data = Table(
         nullable=False,
     ),
     Column(
-        "service_id", Integer, ForeignKey("user_projects.services_data.service_id", ondelete="CASCADE"), nullable=False
+        "service_id", Integer, ForeignKey("user_projects.services_data.service_id", ondelete="CASCADE"), nullable=True
     ),
     Column(
         "scenario_id",

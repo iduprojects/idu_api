@@ -282,7 +282,7 @@ def upgrade() -> None:
         ),
         sa.Column("object_geometry_id", sa.Integer(), nullable=False),
         sa.Column("physical_object_id", sa.Integer(), nullable=False),
-        sa.Column("service_id", sa.Integer(), nullable=False),
+        sa.Column("service_id", sa.Integer(), nullable=True),
         sa.Column("scenario_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(
             ["object_geometry_id"],

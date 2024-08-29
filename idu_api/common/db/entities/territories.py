@@ -10,8 +10,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
 
-func: Callable
-
 territories_data_id_seq = Sequence("territories_data_id_seq")
 
 territories_data = Table(

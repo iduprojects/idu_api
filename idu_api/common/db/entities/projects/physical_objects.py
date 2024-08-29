@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table, Text, text
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
@@ -17,7 +17,8 @@ projects_physical_objects_data = Table(
     ),
     Column("name", String(200), nullable=False, unique=False),
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
-    Column("address", String(300), nullable=True),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     schema="user_projects",
 )
 

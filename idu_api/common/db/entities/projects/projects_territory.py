@@ -13,7 +13,7 @@ projects_territory_data = Table(
     Column(
         "parent_territory_id",
         Integer,
-        ForeignKey("user_projects.projects_territory_data.project_territory_id"),
+        ForeignKey("public.territories_data.territory_id"),
         nullable=True,
     ),
     Column(

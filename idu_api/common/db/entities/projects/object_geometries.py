@@ -1,5 +1,5 @@
 from geoalchemy2.types import Geometry
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, Table
+from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table
 
 from idu_api.common.db import metadata
 
@@ -25,6 +25,7 @@ projects_object_geometries_data = Table(
         Geometry("POINT", spatial_index=False, from_text="ST_GeomFromEWKT", name="geometry"),
         nullable=False,
     ),
+    Column("address", String(300), nullable=True),
     schema="user_projects",
 )
 
