@@ -119,28 +119,6 @@ def upgrade() -> None:
         schema="user_projects",
     )
     op.create_table(
-        "living_buildings_data",
-        sa.Column(
-            "living_building_id",
-            sa.Integer(),
-            server_default=sa.text("nextval('user_projects.living_buildings_id_seq')"),
-            nullable=False,
-        ),
-        sa.Column("physical_object_id", sa.Integer(), nullable=False),
-        sa.Column("residental_number", sa.Integer(), nullable=False),
-        sa.Column("living_area", sa.Integer(), nullable=False),
-        sa.Column(
-            "properties", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False
-        ),
-        sa.ForeignKeyConstraint(
-            ["physical_object_id"],
-            ["physical_objects_data.physical_object_id"],
-            name=op.f("living_buildings_data_fk_physical_object_id__physical_objects_data"),
-        ),
-        sa.PrimaryKeyConstraint("living_building_id", name=op.f("living_buildings_data_pk")),
-        schema="user_projects",
-    )
-    op.create_table(
         "projects_data",
         sa.Column(
             "project_id",
@@ -274,6 +252,29 @@ def upgrade() -> None:
         schema="user_projects",
     )
     op.create_table(
+        "living_buildings_data",
+        sa.Column(
+            "living_building_id",
+            sa.Integer(),
+            server_default=sa.text("nextval('user_projects.living_buildings_id_seq')"),
+            nullable=False,
+        ),
+        sa.Column("physical_object_id", sa.Integer(), nullable=False),
+        sa.Column("residental_number", sa.Integer(), nullable=False),
+        sa.Column("living_area", sa.Integer(), nullable=False),
+        sa.Column(
+            "properties", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False
+        ),
+        sa.ForeignKeyConstraint(
+            ["physical_object_id"],
+            ["user_projects.physical_objects_data.physical_object_id"],
+            name=op.f("living_buildings_data_fk_physical_object_id__physical_objects_data"),
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("living_building_id", name=op.f("living_buildings_data_pk")),
+        schema="user_projects",
+    )
+    op.create_table(
         "urban_objects_data",
         sa.Column(
             "urban_object_id",
@@ -316,13 +317,13 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("urban_objects_data", schema="user_projects")
+    op.drop_table("living_buildings_data", schema="user_projects")
     op.drop_table("physical_objects_data", schema="user_projects")
     op.drop_table("functional_zones_data", schema="user_projects")
     op.drop_table("indicators_data", schema="user_projects")
     op.drop_table("profiles_data", schema="user_projects")
     op.drop_table("scenarios_data", schema="user_projects")
     op.drop_table("projects_data", schema="user_projects")
-    op.drop_table("living_buildings_data", schema="user_projects")
     op.drop_table("services_data", schema="user_projects")
     op.drop_table("object_geometries_data", schema="user_projects")
     op.drop_table("projects_territory_data", schema="user_projects")
