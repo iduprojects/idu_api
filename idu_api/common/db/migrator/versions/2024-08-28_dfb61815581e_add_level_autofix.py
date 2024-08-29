@@ -106,7 +106,7 @@ def downgrade() -> None:
         ("public.territories_data", "update_inner_data_on_delete_trigger"),
         ("public.territories_data", "update_inner_data_on_update_trigger"),
     ):
-        op.execute(f"DROP TRIGGER {trigger_name} ON {table_name}")
+        op.execute(f"DROP TRIGGER IF EXISTS {trigger_name} ON {table_name}")
 
     # delete functions
 
@@ -114,4 +114,4 @@ def downgrade() -> None:
         "public.trigger_update_inner_data_on_delete",
         "public.trigger_update_inner_data_on_update",
     ):
-        op.execute(f"DROP FUNCTION {function_name}")
+        op.execute(f"DROP FUNCTION IF EXISTS {function_name}")
