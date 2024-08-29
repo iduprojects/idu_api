@@ -13,7 +13,7 @@ projects_living_buildings_data = Table(
         "physical_object_id",
         Integer,
         ForeignKey("user_projects.physical_objects_data.physical_object_id", ondelete="CASCADE"),
-        nullable=False
+        nullable=False,
     ),
     Column("residental_number", Integer, nullable=False, unique=False),
     Column("living_area", Integer, nullable=False, unique=False),

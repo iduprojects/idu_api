@@ -21,16 +21,13 @@ projects_urban_objects_data = Table(
         nullable=False,
     ),
     Column(
-        "service_id",
-        Integer,
-        ForeignKey("user_projects.services_data.service_id", ondelete="CASCADE"),
-        nullable=False
+        "service_id", Integer, ForeignKey("user_projects.services_data.service_id", ondelete="CASCADE"), nullable=False
     ),
     Column(
         "scenario_id",
         Integer,
         ForeignKey("user_projects.scenarios_data.scenario_id", ondelete="CASCADE"),
-        nullable=False
+        nullable=False,
     ),
     schema="user_projects",
 )

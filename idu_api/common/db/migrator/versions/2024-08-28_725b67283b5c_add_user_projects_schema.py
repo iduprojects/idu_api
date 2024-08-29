@@ -8,9 +8,9 @@ Create Date: 2024-08-28 15:46:54.112596
 """
 from typing import Sequence, Union
 
-from alembic import op
 import geoalchemy2
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -187,9 +187,7 @@ def upgrade() -> None:
         "indicators_data",
         sa.Column("scenario_id", sa.Integer(), nullable=False),
         sa.Column("indicator_id", sa.Integer(), nullable=False),
-        sa.Column(
-            "date_type", sa.Enum(name="date_field_type", inherit_schema=True), nullable=False
-        ),
+        sa.Column("date_type", sa.Enum(name="date_field_type", inherit_schema=True), nullable=False),
         sa.Column("date_value", sa.Date(), nullable=False),
         sa.Column("value", sa.Float(precision=53), nullable=False),
         sa.ForeignKeyConstraint(
@@ -337,4 +335,3 @@ def downgrade() -> None:
     op.execute(sa.schema.DropSequence(sa.Sequence("urban_objects_id_seq", schema="user_projects")))
     op.execute(sa.text("DROP TYPE user_projects.date_field_type"))
     op.execute("drop schema if exists user_projects")
-
