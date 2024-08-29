@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, Request
 from starlette import status
 
 from idu_api.urban_api.dto.users import UserDTO
+from idu_api.urban_api.exceptions.logic.common import AccessDeniedError, EntityNotFoundById
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import Project, ProjectPatch, ProjectPost, ProjectPut, ProjectTerritory
 from idu_api.urban_api.utils.dependencies import user_dependency
@@ -47,11 +48,10 @@ async def get_user_projects(request: Request, user: UserDTO = Depends(user_depen
 async def get_project_by_id(request: Request, project_id: int, user: UserDTO = Depends(user_dependency)) -> Project:
     """Get a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.get_project_by_id_from_db(project_id, user.id)
-    if project_dto == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    elif project_dto == 404:
-        raise HTTPException(status_code=404, detail="Given id is not found")
+    try:
+        project_dto = await user_project_service.get_project_by_id_from_db(project_id, user.id)
+    except (AccessDeniedError, EntityNotFoundById) as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
     return Project.from_dto(project_dto)
 
@@ -66,11 +66,10 @@ async def get_projects_territory_info(
 ) -> ProjectTerritory:
     """Get territory info of a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_territory_dto = await user_project_service.get_project_territory_by_id_from_db(project_id, user.id)
-    if project_territory_dto == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    elif project_territory_dto == 404:
-        raise HTTPException(status_code=404, detail="Territory info not found for given id")
+    try:
+        project_territory_dto = await user_project_service.get_project_territory_by_id_from_db(project_id, user.id)
+    except (AccessDeniedError, EntityNotFoundById) as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
     return ProjectTerritory.from_dto(project_territory_dto)
 
@@ -98,11 +97,10 @@ async def put_project(
 ) -> Project:
     """Update a project by setting all of its attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.put_project_to_db(project, project_id, user.id)
-    if project_dto == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    elif project_dto == 404:
-        raise HTTPException(status_code=404, detail="Given project_id is not found")
+    try:
+        project_dto = await user_project_service.put_project_to_db(project, project_id, user.id)
+    except (AccessDeniedError, EntityNotFoundById) as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
     return Project.from_dto(project_dto)
 
@@ -117,11 +115,10 @@ async def patch_project(
 ) -> Project:
     """Update a project by setting given attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.patch_project_to_db(project, project_id, user.id)
-    if project_dto == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    elif project_dto == 404:
-        raise HTTPException(status_code=404, detail="Given project_id is not found")
+    try:
+        project_dto = await user_project_service.patch_project_to_db(project, project_id, user.id)
+    except (AccessDeniedError, EntityNotFoundById) as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
     return Project.from_dto(project_dto)
 
@@ -133,10 +130,9 @@ async def patch_project(
 async def delete_project(request: Request, project_id: int, user: UserDTO = Depends(user_dependency)) -> dict:
     """Delete a project."""
     user_project_service: UserProjectService = request.state.user_project_service
-    result = await user_project_service.delete_project_from_db(project_id, user.id)
-    if result == 403:
-        raise HTTPException(status_code=403, detail="Access denied")
-    elif result == 404:
-        raise HTTPException(status_code=404, detail="Project not found")
+    try:
+        result = await user_project_service.delete_project_from_db(project_id, user.id)
+    except (AccessDeniedError, EntityNotFoundById) as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
     return result

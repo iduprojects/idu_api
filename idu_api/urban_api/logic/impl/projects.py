@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import projects_data, projects_territory_data
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
+from idu_api.urban_api.exceptions.logic.common import AccessDeniedError, EntityNotFoundById
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut
 
@@ -20,14 +21,14 @@ class UserProjectServiceImpl(UserProjectService):
     def __init__(self, conn: AsyncConnection):
         self._conn = conn
 
-    async def get_project_by_id_from_db(self, project_id: int, user_id: str) -> ProjectDTO | int:
+    async def get_project_by_id_from_db(self, project_id: int, user_id: str) -> ProjectDTO:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         result = (await conn.execute(statement)).mappings().one_or_none()
         if result is None:
-            return 404
+            raise EntityNotFoundById(project_id, "projects_data")
         elif result.user_id != user_id and result.public is False:
-            return 403
+            raise AccessDeniedError(project_id, "projects_data")
 
         return ProjectDTO(**result)
 
@@ -85,14 +86,14 @@ class UserProjectServiceImpl(UserProjectService):
 
         return [ProjectDTO(**result) for result in results]
 
-    async def get_project_territory_by_id_from_db(self, project_id: int, user_id: str) -> ProjectTerritoryDTO | int:
+    async def get_project_territory_by_id_from_db(self, project_id: int, user_id: str) -> ProjectTerritoryDTO:
         conn = self._conn
         statement_for_project = select(projects_data).where(projects_data.c.project_id == project_id)
         result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
         if result_for_project is None:
-            return 404
+            raise EntityNotFoundById(project_id, "projects_data")
         elif result_for_project.user_id != user_id and result_for_project.public is False:
-            return 403
+            raise AccessDeniedError(project_id, "projects_data")
 
         statement = select(
             projects_territory_data.c.project_territory_id,
@@ -103,19 +104,19 @@ class UserProjectServiceImpl(UserProjectService):
         ).where(projects_territory_data.c.project_territory_id == result_for_project.project_territory_id)
         result = (await conn.execute(statement)).mappings().one_or_none()
         if result is None:
-            return 404
+            raise EntityNotFoundById(result_for_project.project_territory_id, "projects_territory_data")
 
         return ProjectTerritoryDTO(**result)
 
-    async def delete_project_from_db(self, project_id: int, user_id: str) -> dict | int:
+    async def delete_project_from_db(self, project_id: int, user_id: str) -> dict:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         result = (await conn.execute(statement)).one_or_none()
 
         if result is None:
-            return 404
+            raise EntityNotFoundById(project_id, "projects_data")
         elif result.user_id != user_id:
-            return 403
+            raise AccessDeniedError(project_id, "projects_data")
 
         statement_for_project = delete(projects_data).where(projects_data.c.project_id == project_id)
 
@@ -130,14 +131,14 @@ class UserProjectServiceImpl(UserProjectService):
 
         return {"status": "ok"}
 
-    async def put_project_to_db(self, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO | int:
+    async def put_project_to_db(self, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
-            return 404
+            raise EntityNotFoundById(project_id, "projects_data")
         elif requested_project.user_id != user_id:
-            return 403
+            raise AccessDeniedError(project_id, "projects_data")
 
         statement_for_territory = (
             update(projects_territory_data)
@@ -175,14 +176,14 @@ class UserProjectServiceImpl(UserProjectService):
 
         return await self.get_project_by_id_from_db(result.project_id, user_id)
 
-    async def patch_project_to_db(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO | int:
+    async def patch_project_to_db(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO:
         conn = self._conn
         statement = select(projects_data).where(projects_data.c.project_id == project_id)
         requested_project = (await conn.execute(statement)).one_or_none()
         if requested_project is None:
-            return 404
+            raise EntityNotFoundById(project_id, "projects_data")
         elif requested_project.user_id != user_id:
-            return 403
+            raise AccessDeniedError(project_id, "projects_data")
 
         new_values_for_project = {}
         new_values_for_territory = {}
