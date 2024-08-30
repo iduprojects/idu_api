@@ -22,7 +22,7 @@ from .routers import projects_router
 async def get_all_projects(request: Request, user: UserDTO = Depends(user_dependency)) -> list[Project]:
     """Get all public projects and projects that are owned by the user."""
     user_project_service: UserProjectService = request.state.user_project_service
-    projects = await user_project_service.get_all_available_projects_from_db(user.id)
+    projects = await user_project_service.get_all_available_projects(user.id)
 
     return [Project.from_dto(project) for project in projects]
 
@@ -35,7 +35,7 @@ async def get_all_projects(request: Request, user: UserDTO = Depends(user_depend
 async def get_user_projects(request: Request, user: UserDTO = Depends(user_dependency)) -> list[Project]:
     """Get all user's projects."""
     user_project_service: UserProjectService = request.state.user_project_service
-    projects = await user_project_service.get_user_projects_from_db(user.id)
+    projects = await user_project_service.get_user_projects(user.id)
 
     return [Project.from_dto(project) for project in projects]
 
@@ -49,7 +49,7 @@ async def get_project_by_id(request: Request, project_id: int, user: UserDTO = D
     """Get a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
     try:
-        project_dto = await user_project_service.get_project_by_id_from_db(project_id, user.id)
+        project_dto = await user_project_service.get_project_by_id(project_id, user.id)
     except (AccessDeniedError, EntityNotFoundById) as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
@@ -67,7 +67,7 @@ async def get_projects_territory_info(
     """Get territory info of a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
     try:
-        project_territory_dto = await user_project_service.get_project_territory_by_id_from_db(project_id, user.id)
+        project_territory_dto = await user_project_service.get_project_territory_by_id(project_id, user.id)
     except (AccessDeniedError, EntityNotFoundById) as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
@@ -82,7 +82,7 @@ async def get_projects_territory_info(
 async def post_project(request: Request, project: ProjectPost, user: UserDTO = Depends(user_dependency)) -> Project:
     """Add a new project."""
     user_project_service: UserProjectService = request.state.user_project_service
-    project_dto = await user_project_service.post_project_to_db(project, user.id)
+    project_dto = await user_project_service.add_project(project, user.id)
 
     return Project.from_dto(project_dto)
 
@@ -98,7 +98,7 @@ async def put_project(
     """Update a project by setting all of its attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
     try:
-        project_dto = await user_project_service.put_project_to_db(project, project_id, user.id)
+        project_dto = await user_project_service.put_project(project, project_id, user.id)
     except (AccessDeniedError, EntityNotFoundById) as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
@@ -116,7 +116,7 @@ async def patch_project(
     """Update a project by setting given attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
     try:
-        project_dto = await user_project_service.patch_project_to_db(project, project_id, user.id)
+        project_dto = await user_project_service.patch_project(project, project_id, user.id)
     except (AccessDeniedError, EntityNotFoundById) as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
@@ -131,7 +131,7 @@ async def delete_project(request: Request, project_id: int, user: UserDTO = Depe
     """Delete a project."""
     user_project_service: UserProjectService = request.state.user_project_service
     try:
-        result = await user_project_service.delete_project_from_db(project_id, user.id)
+        result = await user_project_service.delete_project(project_id, user.id)
     except (AccessDeniedError, EntityNotFoundById) as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc))
 
