@@ -46,14 +46,14 @@ def project_post():
         "project_territory_info": {
             "geometry": {
                 "type": "Polygon",
-                "coordinates": [[[30.22, 59.86], [30.22, 59.85], [30.25, 59.85], [30.25, 59.86], [30.22, 59.86]]],
+                "coordinates": [[[30.22, 59.86], [30.22, 59.85], [30.25, 59.85], [30.25, 59.86], [30.22, 59.86]]]
             },
             "centre_point": {"type": "Point", "coordinates": [30.22, 59.86]},
-            "properties": {"attribute_name": "attribute_value"},
+            "properties": {"attribute_name": "attribute_value"}
         },
         "description": "Test Project Description",
         "public": "true",
-        "image_url": "url",
+        "image_url": "url"
     }
 
 
@@ -78,7 +78,7 @@ def project_put():
 @pytest.fixture()
 def project_patch():
     return {
-        "name": "New Patched Project Name",
+        "name": "New Patched Project Name"
     }
 
 
@@ -87,7 +87,7 @@ async def test_get_all_projects(auth_token):
     headers = {"Authorization": f"Bearer {await auth_token}"}
 
     async with httpx.AsyncClient(base_url=f"{APP_PATH}/api/v1") as client:
-        response = await client.get("projects", headers=headers)
+        response = await client.get("/projects", headers=headers)
 
     assert response.status_code == 200
     assert isinstance(response.json(), list)
@@ -98,7 +98,7 @@ async def test_get_user_projects(auth_token):
     headers = {"Authorization": f"Bearer {await auth_token}"}
 
     async with httpx.AsyncClient(base_url=f"{APP_PATH}/api/v1") as client:
-        response = await client.get("user_projects", headers=headers)
+        response = await client.get("/user_projects", headers=headers)
 
     assert response.status_code == 200
     assert isinstance(response.json(), list)
@@ -109,7 +109,7 @@ async def test_post_project(auth_token, project_post):
     headers = {"Authorization": f"Bearer {await auth_token}"}
 
     async with httpx.AsyncClient(base_url=f"{APP_PATH}/api/v1") as client:
-        response = await client.post("projects", json=project_post, headers=headers)
+        response = await client.post("/projects", json=project_post, headers=headers)
 
     assert response.status_code == 201
     assert response.json()["name"] == project_post["name"]
@@ -126,7 +126,7 @@ async def test_get_project_by_id(auth_token, project_post):
     headers = {"Authorization": f"Bearer {await auth_token}"}
 
     async with httpx.AsyncClient(base_url=f"{APP_PATH}/api/v1") as client:
-        response = await client.get(f"projects/{TEST_PROJECT_ID}", headers=headers)
+        response = await client.get(f"/projects/{TEST_PROJECT_ID}", headers=headers)
 
     assert response.status_code == 200
     assert response.json()["project_id"] == TEST_PROJECT_ID
@@ -141,7 +141,7 @@ async def test_get_projects_territory_info(auth_token, project_post):
     headers = {"Authorization": f"Bearer {await auth_token}"}
 
     async with httpx.AsyncClient(base_url=f"{APP_PATH}/api/v1") as client:
-        response = await client.get(f"projects/{TEST_PROJECT_ID}/territory_info", headers=headers)
+        response = await client.get(f"/projects/{TEST_PROJECT_ID}/territory_info", headers=headers)
 
     assert response.status_code == 200
     assert response.json()["geometry"]["type"] == project_post["project_territory_info"]["geometry"]["type"]
@@ -161,7 +161,7 @@ async def test_put_project(auth_token, project_put):
     headers = {"Authorization": f"Bearer {await auth_token}"}
 
     async with httpx.AsyncClient(base_url=f"{APP_PATH}/api/v1") as client:
-        response = await client.put(f"projects/{TEST_PROJECT_ID}", json=project_put, headers=headers)
+        response = await client.put(f"/projects/{TEST_PROJECT_ID}", json=project_put, headers=headers)
 
     assert response.status_code == 200
     assert response.json()["name"] == project_put["name"]
@@ -189,12 +189,12 @@ async def test_delete_project(auth_token):
     headers = {"Authorization": f"Bearer {await auth_token}"}
 
     async with httpx.AsyncClient(base_url=f"{APP_PATH}/api/v1") as client:
-        response = await client.delete(f"projects/{TEST_PROJECT_ID}", headers=headers)
+        response = await client.delete(f"/projects/{TEST_PROJECT_ID}", headers=headers)
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
     async with httpx.AsyncClient(base_url=f"{APP_PATH}/api/v1") as client:
-        response = await client.get(f"projects/{TEST_PROJECT_ID}", headers=headers)
+        response = await client.get(f"/projects/{TEST_PROJECT_ID}", headers=headers)
 
     assert response.status_code == 404
