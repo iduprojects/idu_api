@@ -52,7 +52,7 @@ def project_post():
             "properties": {"attribute_name": "attribute_value"}
         },
         "description": "Test Project Description",
-        "public": "true",
+        "public": True,
         "image_url": "url"
     }
 
@@ -70,7 +70,7 @@ def project_put():
             "properties": {"new_attribute_name": "new_attribute_value"}
         },
         "description": "New Project Description",
-        "public": "false",
+        "public": False,
         "image_url": "new_url"
     }
 
@@ -114,7 +114,7 @@ async def test_post_project(auth_token, project_post):
     assert response.status_code == 201
     assert response.json()["name"] == project_post["name"]
     assert response.json()["description"] == project_post["description"]
-    assert response.json()["public"] == project_post["public"]
+    assert response.json()["public"] is project_post["public"]
     assert response.json()["image_url"] == project_post["image_url"]
 
     global TEST_PROJECT_ID
@@ -132,7 +132,7 @@ async def test_get_project_by_id(auth_token, project_post):
     assert response.json()["project_id"] == TEST_PROJECT_ID
     assert response.json()["name"] == project_post["name"]
     assert response.json()["description"] == project_post["description"]
-    assert response.json()["public"] == project_post["public"]
+    assert response.json()["public"] is project_post["public"]
     assert response.json()["image_url"] == project_post["image_url"]
 
 
@@ -166,7 +166,7 @@ async def test_put_project(auth_token, project_put):
     assert response.status_code == 200
     assert response.json()["name"] == project_put["name"]
     assert response.json()["description"] == project_put["description"]
-    assert response.json()["public"] == project_put["public"]
+    assert response.json()["public"] is project_put["public"]
     assert response.json()["image_url"] == project_put["image_url"]
 
 
@@ -180,7 +180,7 @@ async def test_patch_project(auth_token, project_patch, project_put):
     assert response.status_code == 200
     assert response.json()["name"] == project_patch["name"]
     assert response.json()["description"] == project_put["description"]
-    assert response.json()["public"] == project_put["public"]
+    assert response.json()["public"] is project_put["public"]
     assert response.json()["image_url"] == project_put["image_url"]
 
 
