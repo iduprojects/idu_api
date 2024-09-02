@@ -10,7 +10,7 @@ from tests.urban_api.projects import AUTH_DATA, AUTH_PATH
 @pytest.fixture(scope="session", autouse=True)
 def start_app():
     process = subprocess.Popen(["poetry", "run", "launch_urban_api"])
-    time.sleep(1)
+    time.sleep(3)
     yield
     process.terminate()
     process.wait()

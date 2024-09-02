@@ -147,8 +147,8 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                     insert(projects_object_geometries_data)
                     .values(
                         territory_id=urban_object.territory_id,
-                        geometry=urban_object.geometry,
-                        centre_point=urban_object.centre_point,
+                        geometry=ST_GeomFromText(str(urban_object.geometry), text("4326")),
+                        centre_point=ST_GeomFromText(str(urban_object.centre_point), text("4326")),
                         address=urban_object.address,
                     )
                     .returning(projects_object_geometries_data.c.object_geometry_id)
@@ -166,7 +166,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                             created_at=urban_object.service_created_at,
                             updated_at=urban_object.service_updated_at,
                         )
-                        .returning(projects_object_geometries_data.c.object_geometry_id)
+                        .returning(projects_services_data.c.service_id)
                     )
                     service_id = (await conn.execute(statement_for_service)).scalar_one()
                 statement_for_urban_object = (
