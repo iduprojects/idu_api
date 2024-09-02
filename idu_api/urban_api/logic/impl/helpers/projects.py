@@ -20,10 +20,10 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
 from idu_api.urban_api.exceptions.logic.common import AccessDeniedError, EntityNotFoundById
-from idu_api.urban_api.logic.impl.helpers.territory_objects import get_common_territory_for_geometry
 from idu_api.urban_api.logic.impl.helpers.territories_physical_objects import (
     get_physical_objects_with_geometry_by_territory_id_from_db,
 )
+from idu_api.urban_api.logic.impl.helpers.territory_objects import get_common_territory_for_geometry
 from idu_api.urban_api.logic.impl.helpers.territory_services import get_services_by_territory_id_from_db
 from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut
 
@@ -45,12 +45,14 @@ async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user
 async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id: str) -> ProjectDTO:
     """Create project object and base scenario."""
 
-    parent_territory = await get_common_territory_for_geometry(conn, project.project_territory_info.geometry)
+    parent_territory = await get_common_territory_for_geometry(
+        conn, project.project_territory_info.geometry.as_shapely_geometry()
+    )
 
     statement_for_territory = (
         insert(projects_territory_data)
         .values(
-            parent_territory_id=parent_territory.territory_id,
+            parent_territory_id=parent_territory.territory_id if parent_territory else None,
             geometry=ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")),
             centre_point=ST_GeomFromText(
                 str(project.project_territory_info.centre_point.as_shapely_geometry()), text("4326")
@@ -77,11 +79,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
 
     statement_for_scenario = (
         insert(scenarios_data)
-        .values(
-            project_id=project_id,
-            name=f"base scenario for project with id={project_id}",
-            properties={}
-        )
+        .values(project_id=project_id, name=f"base scenario for project with id={project_id}", properties={})
         .returning(scenarios_data.c.scenario_id)
     )
     scenario_id = (await conn.execute(statement_for_scenario)).scalar_one()
