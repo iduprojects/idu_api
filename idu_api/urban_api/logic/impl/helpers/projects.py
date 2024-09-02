@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
+from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText, ST_Within, ST_Intersects
 from sqlalchemy import cast, delete, insert, or_, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -16,13 +16,12 @@ from idu_api.common.db.entities import (
     projects_territory_data,
     projects_urban_objects_data,
     scenarios_data,
-    urban_objects_data,
+    territories_data,
 )
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
 from idu_api.urban_api.exceptions.logic.common import AccessDeniedError, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_object_by_object_geometry_id_from_db
 from idu_api.urban_api.logic.impl.helpers.territory_objects import get_common_territory_for_geometry
-from idu_api.urban_api.logic.impl.helpers.territory_services import get_services_by_territory_id_from_db
 from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut
 
 
@@ -82,64 +81,107 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
     )
     scenario_id = (await conn.execute(statement_for_scenario)).scalar_one()
 
-    await conn.commit()
-
-    statement_for_geometries = select(object_geometries_data.c.object_geometry_id)
     if parent_territory.territory_id is not None:
-        statement_for_geometries = (
-            statement_for_geometries.where(object_geometries_data.c.territory_id == parent_territory.territory_id)
+        # 1. Find all territories that are completely included in the transferred geometry.
+        territories_fully_within = (
+            select(territories_data.c.territory_id)
+            .where(
+                ST_Within(
+                    territories_data.c.geometry,
+                    ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326"))
+                )
+            )
         )
-    object_geometries_ids = (await conn.execute(statement_for_geometries)).scalars()
-    for object_geometry_id in object_geometries_ids:
-        urban_objects = await get_urban_object_by_object_geometry_id_from_db(conn, object_geometry_id)
-        for urban_object in urban_objects:
-            statement_for_physical_object = (
-                insert(projects_physical_objects_data)
-                .values(
-                    physical_object_type_id=urban_object.physical_object_type_id,
-                    name=urban_object.physical_object_name,
-                    properties=urban_object.physical_object_properties,
-                    created_at=urban_object.physical_object_created_at,
-                    updated_at=urban_object.physical_object_updated_at,
+
+        # 2. Find all territories that are partially included in the transferred geometry
+        territories_intersecting = (
+            select(territories_data.c.territory_id)
+            .where(
+                ST_Intersects(
+                    territories_data.c.geometry,
+                    ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326"))
                 )
-                .returning(projects_physical_objects_data.c.physical_object_id)
             )
-            physical_object_id = (await conn.execute(statement_for_physical_object)).scalar_one()
-            statement_for_object_geometry = (
-                insert(projects_object_geometries_data)
-                .values(
-                    territory_id=urban_object.territory_id,
-                    geometry=urban_object.geometry,
-                    centre_point=urban_object.centre_point,
-                    address=urban_object.address,
+            .where(territories_data.c.territory_id.notin_(territories_fully_within))
+        )
+
+        fully_within_ids = (await conn.execute(territories_fully_within)).scalars().all()
+        intersecting_ids = (await conn.execute(territories_intersecting)).scalars().all()
+
+        # 3. Get all objects for territories from the first group (fully included)
+        objects_fully_within = select(object_geometries_data.c.object_geometry_id).where(
+            object_geometries_data.c.territory_id.in_(fully_within_ids)
+        )
+
+        # 4. Get all objects for territories from the second group (partially included),
+        # but where the geometry is completely included in the passed
+        objects_intersecting_and_within = (
+            select(object_geometries_data.c.object_geometry_id)
+            .where(object_geometries_data.c.territory_id.in_(intersecting_ids))
+            .where(
+                ST_Within(
+                    object_geometries_data.c.geometry,
+                    ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326"))
                 )
-                .returning(projects_object_geometries_data.c.object_geometry_id)
             )
-            new_object_geometry_id = (await conn.execute(statement_for_object_geometry)).scalar_one()
-            statement_for_service = (
-                insert(projects_services_data)
-                .values(
-                    service_type_id=urban_object.service_type_id,
-                    name=urban_object.service_name,
-                    properties=urban_object.service_properties,
-                    capacity_real=urban_object.capacity_real,
-                    created_at=urban_object.service_created_at,
-                    updated_at=urban_object.service_updated_at,
+        )
+        fully_within_objects_ids = (await conn.execute(objects_fully_within)).scalars().all()
+        intersecting_and_within_objects_ids = (await conn.execute(objects_intersecting_and_within)).scalars().all()
+
+        object_geometries_ids = set(fully_within_objects_ids) | set(intersecting_and_within_objects_ids)
+
+        for object_geometry_id in object_geometries_ids:
+            urban_objects = await get_urban_object_by_object_geometry_id_from_db(conn, object_geometry_id)
+            for urban_object in urban_objects:
+                statement_for_physical_object = (
+                    insert(projects_physical_objects_data)
+                    .values(
+                        physical_object_type_id=urban_object.physical_object_type_id,
+                        name=urban_object.physical_object_name,
+                        properties=urban_object.physical_object_properties,
+                        created_at=urban_object.physical_object_created_at,
+                        updated_at=urban_object.physical_object_updated_at,
+                    )
+                    .returning(projects_physical_objects_data.c.physical_object_id)
                 )
-                .returning(projects_object_geometries_data.c.object_geometry_id)
-            )
-            service_id = (await conn.execute(statement_for_service)).scalar_one()
-            statement_for_urban_object = (
-                insert(projects_urban_objects_data)
-                .values(
-                    physical_object_id=physical_object_id,
-                    object_geometry_id=new_object_geometry_id,
-                    service_id=service_id,
-                    scenario_id=scenario_id,
+                physical_object_id = (await conn.execute(statement_for_physical_object)).scalar_one()
+                statement_for_object_geometry = (
+                    insert(projects_object_geometries_data)
+                    .values(
+                        territory_id=urban_object.territory_id,
+                        geometry=urban_object.geometry,
+                        centre_point=urban_object.centre_point,
+                        address=urban_object.address,
+                    )
+                    .returning(projects_object_geometries_data.c.object_geometry_id)
                 )
-                .returning(projects_urban_objects_data.c.urban_object_id)
-            )
-            urban_object_id = (await conn.execute(statement_for_urban_object)).scalar_one()
+                new_object_geometry_id = (await conn.execute(statement_for_object_geometry)).scalar_one()
+                service_id = None
+                if urban_object.service_id is not None:
+                    statement_for_service = (
+                        insert(projects_services_data)
+                        .values(
+                            service_type_id=urban_object.service_type_id,
+                            name=urban_object.service_name,
+                            properties=urban_object.service_properties,
+                            capacity_real=urban_object.capacity_real,
+                            created_at=urban_object.service_created_at,
+                            updated_at=urban_object.service_updated_at,
+                        )
+                        .returning(projects_object_geometries_data.c.object_geometry_id)
+                    )
+                    service_id = (await conn.execute(statement_for_service)).scalar_one()
+                statement_for_urban_object = (
+                    insert(projects_urban_objects_data)
+                    .values(
+                        physical_object_id=physical_object_id,
+                        object_geometry_id=new_object_geometry_id,
+                        service_id=service_id,
+                        scenario_id=scenario_id,
+                    )
+                    .returning(projects_urban_objects_data.c.urban_object_id)
+                )
+                urban_object_id = (await conn.execute(statement_for_urban_object)).scalar_one()
 
     await conn.commit()
 

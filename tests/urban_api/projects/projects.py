@@ -2,7 +2,7 @@ import httpx
 import pytest
 
 from tests.urban_api.projects import APP_PATH
-from tests.urban_api.projects.helpers.projects import auth_token, project_patch, project_post, project_put, start_app
+from tests.urban_api.projects.helpers.projects import auth_token, project_patch, project_post, project_put
 
 TEST_PROJECT_ID: int
 
