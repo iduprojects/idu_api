@@ -84,6 +84,8 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
     )
     scenario_id = (await conn.execute(statement_for_scenario)).scalar_one()
 
+    await conn.commit()
+
     return await get_project_by_id_from_db(conn, project_id, user_id)
 
 
