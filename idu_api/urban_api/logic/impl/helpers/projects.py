@@ -20,9 +20,7 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
 from idu_api.urban_api.exceptions.logic.common import AccessDeniedError, EntityNotFoundById
-from idu_api.urban_api.logic.impl.helpers.territories_physical_objects import (
-    get_physical_objects_with_geometry_by_territory_id_from_db,
-)
+from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_object_by_object_geometry_id_from_db
 from idu_api.urban_api.logic.impl.helpers.territory_objects import get_common_territory_for_geometry
 from idu_api.urban_api.logic.impl.helpers.territory_services import get_services_by_territory_id_from_db
 from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut
@@ -52,7 +50,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
     statement_for_territory = (
         insert(projects_territory_data)
         .values(
-            parent_territory_id=parent_territory.territory_id if parent_territory else None,
+            parent_territory_id=parent_territory.territory_id if parent_territory is not None else None,
             geometry=ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")),
             centre_point=ST_GeomFromText(
                 str(project.project_territory_info.centre_point.as_shapely_geometry()), text("4326")
@@ -79,10 +77,69 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
 
     statement_for_scenario = (
         insert(scenarios_data)
-        .values(project_id=project_id, name=f"base scenario for project with id={project_id}", properties={})
+        .values(project_id=project_id, name=f"base scenario for project with id={project_id}")
         .returning(scenarios_data.c.scenario_id)
     )
     scenario_id = (await conn.execute(statement_for_scenario)).scalar_one()
+
+    await conn.commit()
+
+    statement_for_geometries = select(object_geometries_data.c.object_geometry_id)
+    if parent_territory.territory_id is not None:
+        statement_for_geometries = (
+            statement_for_geometries.where(object_geometries_data.c.territory_id == parent_territory.territory_id)
+        )
+    object_geometries_ids = (await conn.execute(statement_for_geometries)).scalars()
+    for object_geometry_id in object_geometries_ids:
+        urban_objects = await get_urban_object_by_object_geometry_id_from_db(conn, object_geometry_id)
+        for urban_object in urban_objects:
+            statement_for_physical_object = (
+                insert(projects_physical_objects_data)
+                .values(
+                    physical_object_type_id=urban_object.physical_object_type_id,
+                    name=urban_object.physical_object_name,
+                    properties=urban_object.physical_object_properties,
+                    created_at=urban_object.physical_object_created_at,
+                    updated_at=urban_object.physical_object_updated_at,
+                )
+                .returning(projects_physical_objects_data.c.physical_object_id)
+            )
+            physical_object_id = (await conn.execute(statement_for_physical_object)).scalar_one()
+            statement_for_object_geometry = (
+                insert(projects_object_geometries_data)
+                .values(
+                    territory_id=urban_object.territory_id,
+                    geometry=urban_object.geometry,
+                    centre_point=urban_object.centre_point,
+                    address=urban_object.address,
+                )
+                .returning(projects_object_geometries_data.c.object_geometry_id)
+            )
+            new_object_geometry_id = (await conn.execute(statement_for_object_geometry)).scalar_one()
+            statement_for_service = (
+                insert(projects_services_data)
+                .values(
+                    service_type_id=urban_object.service_type_id,
+                    name=urban_object.service_name,
+                    properties=urban_object.service_properties,
+                    capacity_real=urban_object.capacity_real,
+                    created_at=urban_object.service_created_at,
+                    updated_at=urban_object.service_updated_at,
+                )
+                .returning(projects_object_geometries_data.c.object_geometry_id)
+            )
+            service_id = (await conn.execute(statement_for_service)).scalar_one()
+            statement_for_urban_object = (
+                insert(projects_urban_objects_data)
+                .values(
+                    physical_object_id=physical_object_id,
+                    object_geometry_id=new_object_geometry_id,
+                    service_id=service_id,
+                    scenario_id=scenario_id,
+                )
+                .returning(projects_urban_objects_data.c.urban_object_id)
+            )
+            urban_object_id = (await conn.execute(statement_for_urban_object)).scalar_one()
 
     await conn.commit()
 

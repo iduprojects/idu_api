@@ -8,8 +8,8 @@ Create Date: 2024-08-29 15:57:04.557084
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -28,42 +28,22 @@ def upgrade() -> None:
     )
     op.add_column(
         "physical_objects_data",
-        sa.Column(
-            "created_at",
-            sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False
-        ),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
         schema="user_projects",
     )
     op.add_column(
         "physical_objects_data",
-        sa.Column(
-            "updated_at",
-            sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False
-        ),
+        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
         schema="user_projects",
     )
     op.add_column(
         "services_data",
-        sa.Column(
-            "created_at",
-            sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False
-        ),
+        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
         schema="user_projects",
     )
     op.add_column(
         "services_data",
-        sa.Column(
-            "updated_at",
-            sa.TIMESTAMP(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False
-        ),
+        sa.Column("updated_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
         schema="user_projects",
     )
     op.drop_column("physical_objects_data", "address", schema="user_projects")
@@ -73,7 +53,7 @@ def upgrade() -> None:
         "projects_territory_data_fk_parent_territory_id__project_5a39",
         "projects_territory_data",
         type_="foreignkey",
-        schema="user_projects"
+        schema="user_projects",
     )
 
     op.create_foreign_key(
@@ -104,7 +84,7 @@ def downgrade() -> None:
         "projects_territory_data_fk_parent_territory_id__project_5a39",
         "projects_territory_data",
         type_="foreignkey",
-        schema="user_projects"
+        schema="user_projects",
     )
 
     op.create_foreign_key(

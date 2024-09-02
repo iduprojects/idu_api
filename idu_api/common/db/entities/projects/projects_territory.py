@@ -3,6 +3,7 @@ from sqlalchemy import Column, ForeignKey, Integer, Sequence, Table, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
+from idu_api.common.db.entities.territories import territories_data
 
 project_territory_id_seq = Sequence("project_territory_id_seq", schema="user_projects")
 
@@ -13,7 +14,7 @@ projects_territory_data = Table(
     Column(
         "parent_territory_id",
         Integer,
-        ForeignKey("public.territories_data.territory_id"),
+        ForeignKey(territories_data.c.territory_id),
         nullable=True,
     ),
     Column(
