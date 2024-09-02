@@ -172,11 +172,16 @@ async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_
     elif requested_project.user_id != user_id:
         raise AccessDeniedError(project_id, "projects_data")
 
+    statement_for_parent_territory = select(projects_territory_data.c.parent_territory_id).where(
+        projects_territory_data.c.project_territory_id == requested_project.project_territory_id
+    )
+    requested_parent_territory_id = (await conn.execute(statement_for_parent_territory)).scalar_one_or_none()
+
     statement_for_territory = (
         update(projects_territory_data)
         .where(projects_territory_data.c.project_territory_id == requested_project.project_territory_id)
         .values(
-            parent_territory_id=project.project_territory_info.parent_territory_id,
+            parent_territory_id=requested_parent_territory_id,
             geometry=ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")),
             centre_point=ST_GeomFromText(
                 str(project.project_territory_info.centre_point.as_shapely_geometry()), text("4326")
