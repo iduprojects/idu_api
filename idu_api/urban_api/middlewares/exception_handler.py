@@ -8,12 +8,7 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from idu_api.urban_api.exceptions.logic.common import (
-    EntitiesNotFoundByIds,
-    EntityAlreadyExists,
-    EntityNotFoundById,
-    EntityNotFoundByParams,
-)
+from idu_api.urban_api.exceptions import IduApiError
 
 
 class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
@@ -45,9 +40,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
             )
 
             error_status = 500
-            if isinstance(exc, (EntitiesNotFoundByIds, EntityNotFoundById, EntityNotFoundByParams)):
-                error_status = exc.status_code
-            elif isinstance(exc, EntityAlreadyExists):
+            if isinstance(exc, IduApiError):
                 error_status = exc.status_code
 
             logger.debug("{} Traceback:\n{}", error_message, exc, "".join(traceback.format_tb(exc.__traceback__)))

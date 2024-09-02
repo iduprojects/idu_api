@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText, ST_Within, ST_Intersects
+from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText, ST_Intersects, ST_Within
 from sqlalchemy import cast, delete, insert, or_, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -19,9 +19,10 @@ from idu_api.common.db.entities import (
     territories_data,
 )
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
-from idu_api.urban_api.exceptions.logic.common import AccessDeniedError, EntityNotFoundById
-from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_object_by_object_geometry_id_from_db
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.logic.impl.helpers.territory_objects import get_common_territory_for_geometry
+from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_object_by_object_geometry_id_from_db
 from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut
 
 
@@ -33,7 +34,7 @@ async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user
 
     if result is None:
         raise EntityNotFoundById(project_id, "projects_data")
-    elif result.user_id != user_id and result.public is False:
+    if result.user_id != user_id and result.public is False:
         raise AccessDeniedError(project_id, "projects_data")
 
     return ProjectDTO(**result)
@@ -83,13 +84,10 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
 
     if parent_territory.territory_id is not None:
         # 1. Find all territories that are completely included in the transferred geometry.
-        territories_fully_within = (
-            select(territories_data.c.territory_id)
-            .where(
-                ST_Within(
-                    territories_data.c.geometry,
-                    ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326"))
-                )
+        territories_fully_within = select(territories_data.c.territory_id).where(
+            ST_Within(
+                territories_data.c.geometry,
+                ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")),
             )
         )
 
@@ -99,7 +97,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
             .where(
                 ST_Intersects(
                     territories_data.c.geometry,
-                    ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326"))
+                    ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")),
                 )
             )
             .where(territories_data.c.territory_id.notin_(territories_fully_within))
@@ -121,7 +119,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
             .where(
                 ST_Within(
                     object_geometries_data.c.geometry,
-                    ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326"))
+                    ST_GeomFromText(str(project.project_territory_info.geometry.as_shapely_geometry()), text("4326")),
                 )
             )
         )
@@ -181,7 +179,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                     )
                     .returning(projects_urban_objects_data.c.urban_object_id)
                 )
-                urban_object_id = (await conn.execute(statement_for_urban_object)).scalar_one()
+                await conn.execute(statement_for_urban_object)
 
     await conn.commit()
 
@@ -219,7 +217,7 @@ async def get_project_territory_by_id_from_db(
     result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
     if result_for_project is None:
         raise EntityNotFoundById(project_id, "projects_data")
-    elif result_for_project.user_id != user_id and result_for_project.public is False:
+    if result_for_project.user_id != user_id and result_for_project.public is False:
         raise AccessDeniedError(project_id, "projects_data")
 
     statement = select(
@@ -244,7 +242,7 @@ async def delete_project_from_db(conn: AsyncConnection, project_id: int, user_id
     result = (await conn.execute(statement)).one_or_none()
     if result is None:
         raise EntityNotFoundById(project_id, "projects_data")
-    elif result.user_id != user_id:
+    if result.user_id != user_id:
         raise AccessDeniedError(project_id, "projects_data")
 
     statement_for_project = delete(projects_data).where(projects_data.c.project_id == project_id)
@@ -268,7 +266,7 @@ async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_
     requested_project = (await conn.execute(statement)).one_or_none()
     if requested_project is None:
         raise EntityNotFoundById(project_id, "projects_data")
-    elif requested_project.user_id != user_id:
+    if requested_project.user_id != user_id:
         raise AccessDeniedError(project_id, "projects_data")
 
     statement_for_parent_territory = select(projects_territory_data.c.parent_territory_id).where(
@@ -320,7 +318,7 @@ async def patch_project_to_db(
     requested_project = (await conn.execute(statement)).one_or_none()
     if requested_project is None:
         raise EntityNotFoundById(project_id, "projects_data")
-    elif requested_project.user_id != user_id:
+    if requested_project.user_id != user_id:
         raise AccessDeniedError(project_id, "projects_data")
 
     new_values_for_project = {}

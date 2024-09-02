@@ -8,8 +8,8 @@ Create Date: 2024-09-02 13:25:29.242562
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -43,12 +43,10 @@ def downgrade() -> None:
         "proj_services_data_fk_territory_type_id__territory_types_dict",
         "services_data",
         "foreignkey",
-        schema="user_projects"
+        schema="user_projects",
     )
 
     # columns
     op.drop_column("services_data", "territory_type_id", schema="user_projects")
     op.alter_column("services_data", "capacity_real", nullable=False, schema="user_projects")
     op.add_column("services_data", sa.Column("list_label", sa.String(length=20), nullable=True), schema="user_projects")
-
-
