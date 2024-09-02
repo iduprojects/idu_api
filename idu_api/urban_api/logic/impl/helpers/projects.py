@@ -82,7 +82,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
     )
     scenario_id = (await conn.execute(statement_for_scenario)).scalar_one()
 
-    if parent_territory.territory_id is not None:
+    if parent_territory is not None:
         # 1. Find all territories that are completely included in the transferred geometry.
         territories_fully_within = select(territories_data.c.territory_id).where(
             ST_Within(
