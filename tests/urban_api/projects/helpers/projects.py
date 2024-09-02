@@ -9,8 +9,10 @@ from tests.urban_api.projects import AUTH_DATA, AUTH_PATH
 
 @pytest.fixture(scope="session", autouse=True)
 def start_app():
+    """Fixture to start the application on default root via poetry command."""
+
     process = subprocess.Popen(["poetry", "run", "launch_urban_api"])
-    time.sleep(3)
+    time.sleep(5)
     yield
     process.terminate()
     process.wait()
@@ -18,6 +20,8 @@ def start_app():
 
 @pytest.fixture()
 async def auth_token():
+    """Fixture to get an auth token. VPN is needed."""
+
     async with httpx.AsyncClient(base_url=AUTH_PATH) as client:
         auth_response = await client.post(
             "token",
