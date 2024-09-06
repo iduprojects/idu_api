@@ -40,7 +40,9 @@ async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user
     return ProjectDTO(**result)
 
 
-async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id: str) -> ProjectDTO:
+async def add_project_to_db(  # pylint: disable=too-many-locals
+    conn: AsyncConnection, project: ProjectPost, user_id: str
+) -> ProjectDTO:
     """Create project object and base scenario."""
 
     parent_territory = await get_common_territory_for_geometry(

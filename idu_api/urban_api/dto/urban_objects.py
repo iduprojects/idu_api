@@ -6,7 +6,7 @@ import shapely.geometry as geom
 
 
 @dataclass
-class UrbanObjectDTO:
+class UrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     urban_object_id: int
     physical_object_id: int
     physical_object_type_id: int

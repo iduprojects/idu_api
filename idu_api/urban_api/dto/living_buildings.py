@@ -34,7 +34,7 @@ class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attri
 
 
 @dataclass(frozen=True)
-class LivingBuildingsDTO:
+class LivingBuildingsDTO:  # pylint: disable=too-many-instance-attributes
     living_building_id: int
     physical_object_id: int
     physical_object_type_id: int

@@ -2,6 +2,8 @@
 Service types normatives data table is defined here
 """
 
+from typing import Callable
+
 from sqlalchemy import (
     TIMESTAMP,
     Boolean,
@@ -17,6 +19,8 @@ from sqlalchemy import (
 )
 
 from idu_api.common.db import metadata
+
+func: Callable
 
 service_types_normatives_data_id_seq = Sequence("service_types_normatives_data_id_seq")
 

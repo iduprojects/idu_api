@@ -1,7 +1,11 @@
+from typing import Callable
+
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
+
+func: Callable
 
 physical_objects_id_seq = Sequence("physical_objects_id_seq", schema="user_projects")
 

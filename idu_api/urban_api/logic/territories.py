@@ -34,7 +34,7 @@ from idu_api.urban_api.schemas import (
 )
 
 
-class TerritoriesService(Protocol):
+class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
     """Service to manipulate territories objects."""
 
     @abc.abstractmethod

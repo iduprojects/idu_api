@@ -79,7 +79,7 @@ func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString
 
 
-class TerritoriesServiceImpl(TerritoriesService):
+class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-public-methods
     """Service to manipulate territories entities.
 
     Based on async SQLAlchemy connection.

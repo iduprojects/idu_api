@@ -75,7 +75,7 @@ class CursorParams(BaseModel, AbstractParams):
         )
 
 
-class CursorPage(AbstractPage[T], Generic[T]):
+class CursorPage(AbstractPage[T], Generic[T]):  # pylint: disable=too-few-public-methods
     count: int
     prev: Optional[str] = None
     next: Optional[str] = None

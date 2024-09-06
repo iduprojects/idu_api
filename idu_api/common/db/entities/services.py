@@ -2,11 +2,15 @@
 Services data table is defined here
 """
 
+from typing import Callable
+
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.urban_types_dicts import service_types_dict, territory_types_dict
+
+func: Callable
 
 services_data_id_seq = Sequence("services_data_id_seq")
 

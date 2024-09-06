@@ -6,12 +6,11 @@ Revises: dfb61815581e
 Create Date: 2024-08-29 12:17:32.562240
 
 """
-from typing import Sequence, Union
 from textwrap import dedent
+from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "74736f898ad6"

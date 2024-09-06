@@ -1,6 +1,10 @@
+from typing import Callable
+
 from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, func
 
 from idu_api.common.db import metadata
+
+func: Callable
 
 project_id_seq = Sequence("project_id_seq", schema="user_projects")
 
