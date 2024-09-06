@@ -1,5 +1,5 @@
 # pylint: disable=no-member,invalid-name,missing-function-docstring,too-many-statements
-"""add level autofix for public.territories_data
+"""add level autoset for public.territories_data
 
 Revision ID: dfb61815581e
 Revises: 7c1977523140
