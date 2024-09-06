@@ -2,7 +2,7 @@
 """add user_projects schema
 
 Revision ID: 725b67283b5c
-Revises: dfb61815581e
+Revises: 74736f898ad6
 Create Date: 2024-08-28 15:46:54.112596
 
 """
@@ -15,7 +15,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "725b67283b5c"
-down_revision: Union[str, None] = "dfb61815581e"
+down_revision: Union[str, None] = "74736f898ad6"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
