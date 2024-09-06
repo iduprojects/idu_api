@@ -13,7 +13,7 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import PageDTO, LivingBuildingsWithGeometryDTO
+from idu_api.urban_api.dto import LivingBuildingsWithGeometryDTO, PageDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.utils.pagination import paginate_dto
 

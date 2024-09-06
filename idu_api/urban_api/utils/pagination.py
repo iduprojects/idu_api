@@ -1,18 +1,19 @@
-from typing import Any, Optional, Sequence, TypeVar
+from typing import Any, Callable, Optional, Sequence, TypeVar
 
 from fastapi_pagination.api import apply_items_transformer, create_page
 from fastapi_pagination.bases import AbstractParams
-from fastapi_pagination.ext.utils import unwrap_scalars
 from fastapi_pagination.types import AdditionalData, ItemsTransformer
 from fastapi_pagination.utils import verify_params
 from pydantic import BaseModel
 from sqlakeyset import paging
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql import Select
 from sqlalchemy.util import greenlet_spawn
 
 from idu_api.urban_api.dto import PageDTO
+
+func: Callable
 
 DTO = TypeVar("DTO")
 T = TypeVar("T", bound=BaseModel)
@@ -27,8 +28,6 @@ def paginate(
 ) -> Any:
     """This function transforms list of DTO to pydantic models
     and creates page with list of results, total count and links."""
-
-    params, raw_params = verify_params(params, "limit-offset", "cursor")
 
     t_items = apply_items_transformer(items, transformer)
 

@@ -2,7 +2,7 @@ from math import ceil
 from typing import Any, ClassVar, Generic, Optional, Sequence, TypeVar
 
 from fastapi import Query
-from fastapi_pagination.bases import AbstractPage, AbstractParams, RawParams, CursorRawParams
+from fastapi_pagination.bases import AbstractPage, AbstractParams, CursorRawParams, RawParams
 from fastapi_pagination.cursor import decode_cursor, encode_cursor
 from fastapi_pagination.default import Params as DefaultParams
 from fastapi_pagination.links.bases import create_links
@@ -75,7 +75,7 @@ class CursorParams(BaseModel, AbstractParams):
         )
 
 
-class CursorPage(AbstractPage[T], Generic[T]):
+class CursorPage(AbstractPage[T], Generic[T]):  # pylint: disable=too-few-public-methods
     count: int
     prev: Optional[str] = None
     next: Optional[str] = None
@@ -110,4 +110,5 @@ class CursorPage(AbstractPage[T], Generic[T]):
             prev=links.prev,
             next=links.next,
             results=items,
+            **kwargs,
         )

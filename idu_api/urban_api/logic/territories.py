@@ -34,7 +34,7 @@ from idu_api.urban_api.schemas import (
 )
 
 
-class TerritoriesService(Protocol):
+class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
     """Service to manipulate territories objects."""
 
     @abc.abstractmethod
@@ -73,7 +73,8 @@ class TerritoriesService(Protocol):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> PageDTO[ServiceDTO]:
+        paginate: bool = False,
+    ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
         """Get service objects by territory id."""
 
     @abc.abstractmethod
@@ -84,7 +85,8 @@ class TerritoriesService(Protocol):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> PageDTO[ServiceWithGeometryDTO]:
+        paginate: bool = False,
+    ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
         """Get service objects with geometry by territory id."""
 
     @abc.abstractmethod
@@ -169,7 +171,8 @@ class TerritoriesService(Protocol):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> PageDTO[PhysicalObjectDataDTO]:
+        paginate: bool = False,
+    ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
         """Get physical objects by territory id, optional physical object type."""
 
     @abc.abstractmethod
@@ -180,14 +183,15 @@ class TerritoriesService(Protocol):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> PageDTO[PhysicalObjectWithGeometryDTO]:
+        paginate: bool = False,
+    ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
         """Get physical objects with geometry by territory id, optional physical object type."""
 
     @abc.abstractmethod
     async def get_living_buildings_with_geometry_by_territory_id(
         self,
         territory_id: int,
-    ) -> PageDTO[LivingBuildingsWithGeometryDTO]:
+    ) -> list[LivingBuildingsWithGeometryDTO] | PageDTO[LivingBuildingsWithGeometryDTO]:
         """Get living buildings with geometry by territory id."""
 
     @abc.abstractmethod

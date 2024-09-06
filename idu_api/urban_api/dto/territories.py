@@ -21,7 +21,7 @@ class TerritoryTypeDTO:
 
 
 @dataclass
-class TerritoryDTO:
+class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
     """
     Territory DTO used to transfer territory data
     """
@@ -57,7 +57,7 @@ class TerritoryDTO:
 
 
 @dataclass(frozen=True)
-class TerritoryWithoutGeometryDTO:
+class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attributes
     """
     Territory DTO used to transfer territory data without geometry
     """

@@ -39,7 +39,7 @@ async def get_physical_objects_by_territory_id(
     order_by_value = order_by.value if order_by is not None else None
 
     physical_objects = await territories_service.get_physical_objects_by_territory_id(
-        territory_id, physical_object_type_id, name, order_by_value, ordering.value
+        territory_id, physical_object_type_id, name, order_by_value, ordering.value, paginate=True
     )
 
     return paginate(
@@ -75,7 +75,7 @@ async def get_physical_objects_with_geometry_by_territory_id(
     order_by_value = order_by.value if order_by is not None else None
 
     physical_objects = await territories_service.get_physical_objects_with_geometry_by_territory_id(
-        territory_id, physical_object_type_id, name, order_by_value, ordering.value
+        territory_id, physical_object_type_id, name, order_by_value, ordering.value, paginate=True
     )
 
     return paginate(
@@ -83,4 +83,3 @@ async def get_physical_objects_with_geometry_by_territory_id(
         physical_objects.total,
         transformer=lambda x: [PhysicalObjectWithGeometry.from_dto(item) for item in x],
     )
-

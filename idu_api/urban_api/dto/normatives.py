@@ -6,7 +6,7 @@ from typing import Literal, Optional
 
 
 @dataclass(frozen=True)
-class NormativeDTO:
+class NormativeDTO:  # pylint: disable=too-many-instance-attributes
     service_type_id: Optional[int]
     service_type_name: Optional[str]
     urban_function_id: Optional[int]

@@ -1,7 +1,6 @@
 """Buildings territories-related handlers (v2) are defined here."""
 
 from fastapi import Path, Request
-from fastapi_pagination import paginate
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService

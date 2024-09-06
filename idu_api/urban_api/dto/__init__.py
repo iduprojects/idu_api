@@ -14,6 +14,7 @@ from .physical_objects import (
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
 )
+from .projects import ProjectDTO, ProjectTerritoryDTO
 from .service_types import ServiceTypesDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
@@ -55,4 +56,6 @@ __all__ = [
     "TerritoryWithoutGeometryDTO",
     "UrbanFunctionDTO",
     "UrbanObjectDTO",
+    "ProjectDTO",
+    "ProjectTerritoryDTO",
 ]

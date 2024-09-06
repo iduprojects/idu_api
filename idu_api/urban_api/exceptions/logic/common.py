@@ -1,5 +1,5 @@
 """
-Exceptions connected with geometry are defined here.
+Exceptions connected with entities in urban_db are defined here.
 """
 
 from fastapi import status

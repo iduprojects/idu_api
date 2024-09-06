@@ -12,9 +12,7 @@ class UserDTO:
     """
 
     id: str
-    username: str
-    email: str
-    roles: list[str]
+    is_active: bool
 
     def __str__(self) -> str:
-        return f"(id={self.id}, username: {self.username})"
+        return f"(id={self.id}, is_active: {self.is_active})"

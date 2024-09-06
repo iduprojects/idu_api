@@ -33,6 +33,16 @@ from .physical_objects import (
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
 )
+from .projects import (
+    Project,
+    ProjectPatch,
+    ProjectPost,
+    ProjectPut,
+    ProjectTerritory,
+    ProjectTerritoryPatch,
+    ProjectTerritoryPost,
+    ProjectTerritoryPut,
+)
 from .service_types import (
     ServiceTypes,
     ServiceTypesPost,
@@ -112,4 +122,12 @@ __all__ = [
     "UrbanFunction",
     "UrbanFunctionPost",
     "Page",
+    "Project",
+    "ProjectPost",
+    "ProjectPut",
+    "ProjectPatch",
+    "ProjectTerritory",
+    "ProjectTerritoryPost",
+    "ProjectTerritoryPut",
+    "ProjectTerritoryPatch",
 ]

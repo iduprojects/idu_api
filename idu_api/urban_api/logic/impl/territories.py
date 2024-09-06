@@ -79,7 +79,7 @@ func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString
 
 
-class TerritoriesServiceImpl(TerritoriesService):
+class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-public-methods
     """Service to manipulate territories entities.
 
     Based on async SQLAlchemy connection.
@@ -116,9 +116,10 @@ class TerritoriesServiceImpl(TerritoriesService):
         name: Optional[str],
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> PageDTO[ServiceDTO]:
+        paginate: bool = False,
+    ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
         return await get_services_by_territory_id_from_db(
-            self._conn, territory_id, service_type_id, name, order_by, ordering
+            self._conn, territory_id, service_type_id, name, order_by, ordering, paginate
         )
 
     async def get_services_with_geometry_by_territory_id(
@@ -128,9 +129,10 @@ class TerritoriesServiceImpl(TerritoriesService):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> PageDTO[ServiceWithGeometryDTO]:
+        paginate: bool = False,
+    ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
         return await get_services_with_geometry_by_territory_id_from_db(
-            self._conn, territory_id, service_type_id, name, order_by, ordering
+            self._conn, territory_id, service_type_id, name, order_by, ordering, paginate
         )
 
     async def get_services_capacity_by_territory_id(self, territory_id: int, service_type_id: int | None) -> int:
@@ -200,9 +202,10 @@ class TerritoriesServiceImpl(TerritoriesService):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> PageDTO[PhysicalObjectDataDTO]:
+        paginate: bool = False,
+    ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
         return await get_physical_objects_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name, order_by, ordering
+            self._conn, territory_id, physical_object_type, name, order_by, ordering, paginate
         )
 
     async def get_physical_objects_with_geometry_by_territory_id(
@@ -212,9 +215,10 @@ class TerritoriesServiceImpl(TerritoriesService):
         name: str | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> PageDTO[PhysicalObjectWithGeometryDTO]:
+        paginate: bool = False,
+    ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_with_geometry_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name, order_by, ordering
+            self._conn, territory_id, physical_object_type, name, order_by, ordering, paginate
         )
 
     async def get_living_buildings_with_geometry_by_territory_id(
