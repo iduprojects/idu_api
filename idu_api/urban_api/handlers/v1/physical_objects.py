@@ -21,7 +21,7 @@ from idu_api.urban_api.schemas import (
     ServicesData,
     ServicesDataWithGeometry,
 )
-from idu_api.urban_api.schemas.geometries import Geometry
+from idu_api.urban_api.schemas.geometries import AllPossibleGeometry
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectWithGeometry
 from idu_api.urban_api.schemas.urban_objects import UrbanObject
 
@@ -273,7 +273,7 @@ async def get_physical_object_geometries(
 )
 async def get_physical_objects_around_geometry(
     request: Request,
-    geometry: Geometry,
+    geometry: AllPossibleGeometry,
     physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
 ) -> list[PhysicalObjectWithGeometry]:
     """Get physical_objects for territory.

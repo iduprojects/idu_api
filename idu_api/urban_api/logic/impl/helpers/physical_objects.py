@@ -32,7 +32,12 @@ from idu_api.urban_api.dto import (
     ServiceWithGeometryDTO,
     UrbanObjectDTO,
 )
-from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import (
+    EntitiesNotFoundByIds,
+    EntityAlreadyExists,
+    EntityNotFoundById,
+    TooManyObjectsError,
+)
 from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_object_by_id_from_db
 from idu_api.urban_api.schemas import (
     LivingBuildingsDataPatch,
@@ -48,11 +53,16 @@ from idu_api.urban_api.schemas import (
 func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString
 
+OBJECTS_NUMBER_LIMIT = 20_000
+
 
 async def get_physical_objects_by_ids_from_db(
     conn: AsyncConnection, ids: list[int]
 ) -> list[PhysicalObjectWithGeometryDTO]:
     """Get physical objects by list of ids."""
+
+    if len(ids) > OBJECTS_NUMBER_LIMIT:
+        raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
     statement = (
         select(
@@ -102,11 +112,18 @@ async def get_physical_objects_around_from_db(
     fine_territories_cte = (
         select(territories_data.c.territory_id.label("territory_id"))
         .where(
-            func.ST_Intersects(territories_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery())
-            | func.ST_Covers(territories_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery())
-            | func.ST_CoveredBy(territories_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery())
+            func.ST_CoveredBy(territories_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery())
         )
         .cte("fine_territories_cte")
+    )
+
+    possible_territories_cte = (
+        select(territories_data.c.territory_id.label("territory_id"))
+        .where(
+            func.ST_Intersects(territories_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery())
+            | func.ST_Covers(territories_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery())
+        )
+        .cte("possible_territories_cte")
     )
 
     statement = (
@@ -121,15 +138,20 @@ async def get_physical_objects_around_from_db(
             )
         )
         .where(
-            object_geometries_data.c.territory_id.in_(select(fine_territories_cte.c.territory_id).scalar_subquery()),
-            func.ST_Intersects(
-                object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
+            object_geometries_data.c.territory_id.in_(select(fine_territories_cte.c.territory_id).scalar_subquery())
+            | object_geometries_data.c.territory_id.in_(
+                select(possible_territories_cte.c.territory_id).scalar_subquery()
             )
-            | func.ST_Covers(
-                object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
-            )
-            | func.ST_CoveredBy(
-                object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
+            & (
+                func.ST_Intersects(
+                    object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
+                )
+                | func.ST_Covers(
+                    object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
+                )
+                | func.ST_CoveredBy(
+                    object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
+                )
             ),
         )
         .distinct()
