@@ -9,10 +9,51 @@ from geojson_pydantic import Feature, FeatureCollection
 from loguru import logger
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+_BaseGeomTypes = geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString
+
+class AllPossibleGeometry(BaseModel):
+    """Geometry representation for GeoJSON model (all valid geometry types )."""
+
+    type: Literal[
+        "Point", "Polygon", "MultiPolygon", "LineString", "MultiPoint", "MultiLineString", "GeometryCollection"
+    ] = Field(examples=["Polygon"])
+    coordinates: list[Any] = Field(
+        description="list[int] for Point,\n" "list[list[list[int]]] for Polygon",
+        examples=[
+            [
+                [
+                    [30.22, 59.86],
+                    [30.22, 59.85],
+                    [30.25, 59.85],
+                    [30.25, 59.86],
+                    [30.22, 59.86],
+                ]
+            ]
+        ],
+    )
+    _shapely_geom: _BaseGeomTypes | geom.MultiPoint | geom.MultiLineString | geom.GeometryCollection | None = None
+
+    def as_shapely_geometry(
+        self,
+    ) -> _BaseGeomTypes | geom.MultiPoint | geom.MultiLineString | geom.GeometryCollection:
+        """Return Shapely geometry object from the parsed geometry."""
+        if self._shapely_geom is None:
+            self._shapely_geom = shapely.from_geojson(json.dumps({"type": self.type, "coordinates": self.coordinates}))
+        return self._shapely_geom
+
+    @classmethod
+    def from_shapely_geometry(
+        cls, geometry: _BaseGeomTypes | geom.MultiPoint | geom.MultiLineString | geom.GeometryCollection | None
+    ) -> Optional["Geometry"]:
+        """Construct Geometry model from shapely geometry."""
+        if geometry is None:
+            return None
+        return cls(**geom.mapping(geometry))
+
 
 class Geometry(BaseModel):
     """
-    Geometry representation for GeoJSON model.
+    Geometry representation for GeoJSON model appliable for points, polygons, multipolygons and linestrings.
     """
 
     type: Literal["Point", "Polygon", "MultiPolygon", "LineString"] = Field(default="Polygon")
@@ -28,11 +69,11 @@ class Geometry(BaseModel):
             ]
         ],
     )
-    _shapely_geom: geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString | None = None
+    _shapely_geom: _BaseGeomTypes | None = None
 
     def as_shapely_geometry(
         self,
-    ) -> geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString:
+    ) -> _BaseGeomTypes:
         """
         Return Shapely geometry object from the parsed geometry.
         """
@@ -42,7 +83,7 @@ class Geometry(BaseModel):
 
     @classmethod
     def from_shapely_geometry(
-        cls, geometry: geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString | None
+        cls, geometry: _BaseGeomTypes | None
     ) -> Optional["Geometry"]:
         """
         Construct Geometry model from shapely geometry.

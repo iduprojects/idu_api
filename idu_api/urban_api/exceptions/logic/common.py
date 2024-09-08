@@ -96,3 +96,24 @@ class EntityAlreadyExists(IduApiError):
         Return '404 Not found' status code.
         """
         return status.HTTP_404_NOT_FOUND
+
+
+class TooManyObjectsError(IduApiError):
+    """Exception to raise when number of objects to be returned is too big."""
+
+    def __init__(self, number_of_objects: int, limit: int | None = None):
+        """Construct from actual number of objects and set limit."""
+        self.objects = number_of_objects
+        self.limit = limit
+        super().__init__()
+
+    def __str__(self) -> str:
+        return (
+            f"Too many objects to be returned. Value is {self.objects}" + f" , but configured  limit is {self.limit}"
+            if self.limit is not None
+            else ""
+        )
+
+    def get_status_code(self) -> int:
+        """Return '400 Bad Request' status code."""
+        return status.HTTP_400_BAD_REQUEST
