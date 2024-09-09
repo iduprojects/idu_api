@@ -5,7 +5,9 @@ import pytest
 
 
 @pytest.fixture
-def user_project(urban_api_host, expired_auth_token, project_post_req) -> dict[str, Any]: # pylint: disable=redefined-outer-name
+def user_project(
+    urban_api_host, expired_auth_token, project_post_req
+) -> dict[str, Any]:  # pylint: disable=redefined-outer-name
     headers = {"Authorization": f"Bearer {expired_auth_token}"}
 
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
@@ -13,6 +15,7 @@ def user_project(urban_api_host, expired_auth_token, project_post_req) -> dict[s
 
     assert response.status_code == 201
     return response.json()
+
 
 @pytest.fixture
 def expired_auth_token() -> str:
@@ -30,7 +33,8 @@ def expired_auth_token() -> str:
 
 @pytest.fixture
 def project_post_req() -> dict[str, Any]:
-    """POST request template for user projects data"""
+    """POST request template for user projects data."""
+
     return {
         "name": "Test Project Name",
         "project_territory_info": {
@@ -49,7 +53,8 @@ def project_post_req() -> dict[str, Any]:
 
 @pytest.fixture
 def project_put_req() -> dict[str, Any]:
-    """PUT request template for user projects data"""
+    """PUT request template for user projects data."""
+
     return {
         "name": "New Project Name",
         "project_territory_info": {
@@ -68,7 +73,8 @@ def project_put_req() -> dict[str, Any]:
 
 @pytest.fixture
 def project_patch_req() -> dict[str, str]:
-    """PATCH request template for user projects data"""
+    """PATCH request template for user projects data."""
+
     return {
         "name": "New Patched Project Name",
     }

@@ -11,6 +11,7 @@ import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
+from dotenv import load_dotenv
 
 from tests.urban_api.projects.helpers.projects import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
@@ -27,6 +28,9 @@ class DBConfig:
 @pytest.fixture(scope="session")
 def database() -> DBConfig:
     """Fixture to get database credentials from environment variables."""
+
+    load_dotenv(dotenv_path="urban_api/.env")
+
     if any(value not in os.environ for value in ("DB_ADDR", "DB_PORT", "DB_USER", "DB_PASS", "DB_NAME")):
         pytest.skip("Database for integration tests is not configured")
 
@@ -63,6 +67,9 @@ def urban_api_host(database) -> Iterator[str]:  # pylint: disable=redefined-oute
             # fmt: on
         ]
     ) as process:
+
+        time.sleep(5)
+
         client = httpx.Client()
         attempt = 0
 
