@@ -38,4 +38,4 @@ apply-migrations:
 	cd idu_api/common/db; ENVFILE=../../../urban_api/.env poetry run alembic upgrade head
 
 test-urban-api:
-	poetry run pytest tests/urban_api/
+	poetry run pytest --verbose tests/urban_api/
