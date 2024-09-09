@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 _BaseGeomTypes = geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString
 
+
 class AllPossibleGeometry(BaseModel):
     """Geometry representation for GeoJSON model (all valid geometry types )."""
 
@@ -82,9 +83,7 @@ class Geometry(BaseModel):
         return self._shapely_geom
 
     @classmethod
-    def from_shapely_geometry(
-        cls, geometry: _BaseGeomTypes | None
-    ) -> Optional["Geometry"]:
+    def from_shapely_geometry(cls, geometry: _BaseGeomTypes | None) -> Optional["Geometry"]:
         """
         Construct Geometry model from shapely geometry.
         """

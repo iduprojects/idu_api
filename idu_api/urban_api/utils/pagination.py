@@ -29,6 +29,8 @@ def paginate(
     """This function transforms list of DTO to pydantic models
     and creates page with list of results, total count and links."""
 
+    params, _ = verify_params(params, "limit-offset", "cursor")
+
     t_items = apply_items_transformer(items, transformer)
 
     return create_page(
