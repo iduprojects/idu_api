@@ -6,6 +6,7 @@ Revises: 725b67283b5c
 Create Date: 2024-08-29 15:57:04.557084
 
 """
+from textwrap import dedent
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -84,6 +85,16 @@ def downgrade() -> None:
         "projects_territory_data",
         type_="foreignkey",
         schema="user_projects",
+    )
+
+    op.execute(
+        sa.text(
+            dedent(
+                """
+                DELETE FROM user_projects.projects_territory_data
+                """
+            )
+        )
     )
 
     op.create_foreign_key(

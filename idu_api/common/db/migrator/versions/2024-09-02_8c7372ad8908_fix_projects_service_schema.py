@@ -6,6 +6,7 @@ Revises: 1c3bc1815782
 Create Date: 2024-09-02 13:25:29.242562
 
 """
+from textwrap import dedent
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -43,6 +44,17 @@ def downgrade() -> None:
         "services_data",
         "foreignkey",
         schema="user_projects",
+    )
+
+    op.execute(
+        sa.text(
+            dedent(
+                """
+                DELETE FROM user_projects.services_data
+                WHERE capacity_real IS NULL;
+                """
+            )
+        )
     )
 
     # columns

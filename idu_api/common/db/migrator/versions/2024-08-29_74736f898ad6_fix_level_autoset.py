@@ -66,7 +66,18 @@ def upgrade() -> None:
         sa.text(
             dedent(
                 """
-                CREATE OR REPLACE TRIGGER update_inner_data_on_update_trigger
+                DROP TRIGGER IF EXISTS update_inner_data_on_update_trigger
+                ON public.territories_data;
+                """
+            )
+        )
+    )
+
+    op.execute(
+        sa.text(
+            dedent(
+                """
+                CREATE TRIGGER update_inner_data_on_update_trigger
                 BEFORE UPDATE ON public.territories_data
                 FOR EACH ROW
                 EXECUTE PROCEDURE public.trigger_update_inner_data_on_update();
@@ -81,7 +92,17 @@ def downgrade() -> None:
         sa.text(
             dedent(
                 """
-                CREATE OR REPLACE TRIGGER update_inner_data_on_update_trigger
+                DROP TRIGGER IF EXISTS update_inner_data_on_update_trigger
+                ON public.territories_data;
+                """
+            )
+        )
+    )
+    op.execute(
+        sa.text(
+            dedent(
+                """
+                CREATE TRIGGER update_inner_data_on_update_trigger
                 BEFORE INSERT OR UPDATE ON public.territories_data
                 FOR EACH ROW
                 EXECUTE PROCEDURE public.trigger_update_inner_data_on_update();
@@ -89,5 +110,6 @@ def downgrade() -> None:
             )
         )
     )
+
     op.execute("DROP TRIGGER update_inner_data_on_insert_trigger ON public.territories_data")
     op.execute("DROP FUNCTION public.trigger_update_inner_data_on_insert")
