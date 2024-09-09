@@ -46,6 +46,7 @@ def downgrade() -> None:
         schema="user_projects",
     )
 
+    # data
     op.execute(
         sa.text(
             dedent(

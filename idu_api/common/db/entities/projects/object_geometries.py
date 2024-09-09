@@ -2,6 +2,7 @@ from geoalchemy2.types import Geometry
 from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table
 
 from idu_api.common.db import metadata
+from idu_api.common.db.entities.territories import territories_data
 
 object_geometries_id_seq = Sequence("object_geometries_id_seq", schema="user_projects")
 
@@ -12,7 +13,7 @@ projects_object_geometries_data = Table(
     Column(
         "territory_id",
         Integer,
-        ForeignKey("territories_data.territory_id"),
+        ForeignKey(territories_data.c.territory_id),
         nullable=False,
     ),
     Column(
@@ -25,7 +26,7 @@ projects_object_geometries_data = Table(
         Geometry("POINT", spatial_index=False, from_text="ST_GeomFromEWKT", name="geometry"),
         nullable=False,
     ),
-    Column("address", String(300), nullable=True),
+    Column("address", String(300)),
     schema="user_projects",
 )
 

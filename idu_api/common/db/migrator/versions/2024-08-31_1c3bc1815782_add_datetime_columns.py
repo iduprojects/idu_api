@@ -80,13 +80,7 @@ def downgrade() -> None:
     op.drop_column("services_data", "created_at", schema="user_projects")
     op.drop_column("services_data", "updated_at", schema="user_projects")
 
-    op.drop_constraint(
-        "projects_territory_data_fk_parent_territory_id__project_5a39",
-        "projects_territory_data",
-        type_="foreignkey",
-        schema="user_projects",
-    )
-
+    # data
     op.execute(
         sa.text(
             dedent(
@@ -95,6 +89,14 @@ def downgrade() -> None:
                 """
             )
         )
+    )
+
+    # constraints
+    op.drop_constraint(
+        "projects_territory_data_fk_parent_territory_id__project_5a39",
+        "projects_territory_data",
+        type_="foreignkey",
+        schema="user_projects",
     )
 
     op.create_foreign_key(
