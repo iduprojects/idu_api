@@ -8,11 +8,15 @@ from idu_api.city_api.dto.physical_objects import PhysicalObjectsDTO
 from idu_api.city_api.dto.services import CityServiceDTO
 from idu_api.city_api.dto.services_count import ServiceCountDTO
 from idu_api.city_api.schemas.adminstrative_units import AdministrativeUnitsData
+from idu_api.city_api.schemas.blocks import BlocksData, BlocksWithoutGeometryData
 from idu_api.city_api.schemas.municipalities import MunicipalitiesData
 from idu_api.city_api.schemas.service_types import ServiceTypesData
+from idu_api.city_api.schemas.territory import CATerritoriesData, CATerritoriesWithoutGeometryData
+from idu_api.city_api.schemas.territory_hierarchy import TerritoryHierarchyData
 from idu_api.city_api.services.objects.physical_objects import PhysicalObjectsService
 from idu_api.city_api.services.objects.services import ServicesService
 from idu_api.city_api.services.territories.administrative_units import AdministrativeUnitsService
+from idu_api.city_api.services.territories.blocks import BlocksService
 from idu_api.city_api.services.territories.cities import CitiesService
 from idu_api.city_api.services.territories.municipalities import MunicipalitiesService
 from idu_api.urban_api.dto import TerritoryDTO
@@ -55,28 +59,61 @@ async def get_city_geometry(
     return Geometry.from_shapely_geometry(result.geometry)
 
 
-@app.get("/city/{city}/administrative_units", tags=tag)
-async def get_administrative_units_by_city_id(
+@app.get("/city/{city}/level", tags=tag)
+async def get_territories_by_city_id_level_and_type(
         request: Request,
-        city: Annotated[int, Path(gt=0, description="city id")],
-) -> list[AdministrativeUnitsData]:
-    administrative_units_service: AdministrativeUnitsService = request.state.administrative_units_service
+        city: Annotated[int, Path(gt=0)],
+        level: Annotated[int, Query(ge=0, description="level of required territories")],
+        type: Annotated[int, Query(ge=0, description="type of required territories")],
+        no_geometry: Annotated[bool, Query(description="get only centers")] = False
+) -> list[CATerritoriesData | CATerritoriesWithoutGeometryData]:
+    cities_service: CitiesService = request.state.cities_service
+    if not no_geometry:
+        return [
+            await CATerritoriesData.from_dto(territory)
+            for territory in await cities_service.get_territories_by_city_id_level_and_type(
+                city, level, type, no_geometry=no_geometry
+            )
+        ]
+    else:
+        return [
+            await CATerritoriesWithoutGeometryData.from_dto(territory)
+            for territory in await cities_service.get_territories_by_city_id_level_and_type(
+                city, level, type, no_geometry=no_geometry
+            )
+        ]
 
-    result: list[AdministrativeUnitsDTO] = \
-        await administrative_units_service.get_administrative_units_by_city_id(city)
-    return [await AdministrativeUnitsData.from_dto(adm_unit) for adm_unit in result]
 
-
-@app.get("/city/{city}/municipalities", tags=tag)
-async def get_municipalities_by_city_id(
+@app.get("/city/{city}/type-hierarchy", tags=tag)
+async def get_territory_hierarchy_by_city_id(
         request: Request,
-        city: Annotated[int, Path(gt=0, description="city id")],
-) -> list[MunicipalitiesData]:
-    municipalities_service: MunicipalitiesService = request.state.municipalities_service
+        city: Annotated[int, Path(gt=0)],
+) -> list[TerritoryHierarchyData]:
+    cities_service: CitiesService = request.state.cities_service
+    return [
+        await TerritoryHierarchyData.from_dto(territory)
+        for territory in (await cities_service.get_hierarchy_by_city_id(city))
+    ]
 
-    result: list[MunicipalitiesDTO] = \
-        await municipalities_service.get_municipalities_by_city_id(city)
-    return [await MunicipalitiesData.from_dto(municipality) for municipality in result]
+
+@app.get("/city/{city}/blocks", tags=tag)
+async def get_city_blocks_by_id(
+        request: Request,
+        city: Annotated[int, Path(gt=0)],
+        no_geometry: Annotated[bool, Query(description="only centers")] = False
+) -> list[CATerritoriesData | CATerritoriesWithoutGeometryData]:
+    blocks_service: BlocksService = request.state.blocks_service
+
+    if not no_geometry:
+        return [
+            await CATerritoriesData.from_dto(block)
+            for block in await blocks_service.get_blocks_by_city_id(city, no_geometry=no_geometry)
+        ]
+    else:
+        return [
+            await CATerritoriesWithoutGeometryData.from_dto(block)
+            for block in await blocks_service.get_blocks_by_city_id(city, no_geometry=no_geometry)
+        ]
 
 
 @app.get("/city/{city}/physical_objects", tags=tag)

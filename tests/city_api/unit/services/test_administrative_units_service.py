@@ -17,3 +17,13 @@ async def test_get_administrative_units_by_city_id():
     result: list[AdministrativeUnitsData] = [AdministrativeUnitsData(**elem) for elem in pre_result]
     assert len(pre_result) == len(result)
     assert pre_result[0]["id"] == result[0].id
+
+
+@pytest.mark.asyncio
+async def test_get_types():
+    async with AsyncClient(app=app, base_url="http://localhost:8000/api") as client:
+        response = await client.get("/city/4443/administrative_units_types")
+    assert response.status_code == 200
+    result = response.json()
+    print("_______")
+    print(result)
