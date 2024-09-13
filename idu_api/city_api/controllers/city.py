@@ -2,23 +2,16 @@ from typing import Annotated, Dict
 
 from idu_api.city_api import app
 from idu_api.city_api.common.feature import Feature
-from idu_api.city_api.dto.administrative_units import AdministrativeUnitsDTO
-from idu_api.city_api.dto.munipalities import MunicipalitiesDTO
 from idu_api.city_api.dto.physical_objects import PhysicalObjectsDTO
 from idu_api.city_api.dto.services import CityServiceDTO
 from idu_api.city_api.dto.services_count import ServiceCountDTO
-from idu_api.city_api.schemas.adminstrative_units import AdministrativeUnitsData
-from idu_api.city_api.schemas.blocks import BlocksData, BlocksWithoutGeometryData
-from idu_api.city_api.schemas.municipalities import MunicipalitiesData
 from idu_api.city_api.schemas.service_types import ServiceTypesData
 from idu_api.city_api.schemas.territory import CATerritoriesData, CATerritoriesWithoutGeometryData
 from idu_api.city_api.schemas.territory_hierarchy import TerritoryHierarchyData
 from idu_api.city_api.services.objects.physical_objects import PhysicalObjectsService
 from idu_api.city_api.services.objects.services import ServicesService
-from idu_api.city_api.services.territories.administrative_units import AdministrativeUnitsService
 from idu_api.city_api.services.territories.blocks import BlocksService
 from idu_api.city_api.services.territories.cities import CitiesService
-from idu_api.city_api.services.territories.municipalities import MunicipalitiesService
 from idu_api.urban_api.dto import TerritoryDTO
 from idu_api.urban_api.schemas.geometries import Geometry
 from fastapi import Request, Path, Query
@@ -107,12 +100,12 @@ async def get_city_blocks_by_id(
     if not no_geometry:
         return [
             await CATerritoriesData.from_dto(block)
-            for block in await blocks_service.get_blocks_by_city_id(city, no_geometry=no_geometry)
+            for block in await blocks_service.get_blocks_by_territory_id(city, no_geometry=no_geometry)
         ]
     else:
         return [
             await CATerritoriesWithoutGeometryData.from_dto(block)
-            for block in await blocks_service.get_blocks_by_city_id(city, no_geometry=no_geometry)
+            for block in await blocks_service.get_blocks_by_territory_id(city, no_geometry=no_geometry)
         ]
 
 

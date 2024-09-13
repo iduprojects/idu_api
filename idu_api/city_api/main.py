@@ -17,8 +17,6 @@ app = FastAPI(
 app.add_middleware(
     PassServicesDependencies,
     connection_manager=connection_manager,
-    administrative_units_service=AdministrativeUnitsService,
-    municipalities_service=MunicipalitiesService,
     cities_service=CitiesService,
     services_service=ServicesService,
     physical_objects_service=PhysicalObjectsService,

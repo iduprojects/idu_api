@@ -10,7 +10,7 @@ class BlocksService:
     def __init__(self, conn: AsyncConnection):
         self.conn = conn
 
-    async def get_blocks_by_city_id(
+    async def get_blocks_by_territory_id(
             self, city_id: int, no_geometry: bool = False
     ) -> list[CATerritoryDTO | CATerritoryWithoutGeometryDTO]:
         hierarchy = await get_territory_hierarchy_by_parent_id(self.conn, city_id)

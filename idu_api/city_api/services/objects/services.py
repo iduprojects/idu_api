@@ -21,8 +21,9 @@ class ServicesService:
         return result
 
     async def get_services_types_by_territory_id(self, city_id: int, territory_id: int) -> list[ServiceCountDTO]:
-        city: TerritoryDTO = await get_territory_by_id(self.conn, city_id)
+        _ = await get_territory_by_id(self.conn, city_id)
 
         children: list[int] = await get_territory_ids_by_parent_id(self.conn, territory_id)
+        children.append(territory_id)
         result: list[ServiceCountDTO] = await get_services_types_by_territory_ids(self.conn, children)
         return result

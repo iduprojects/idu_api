@@ -1,5 +1,5 @@
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import select, and_, cast
+from sqlalchemy import select, and_, cast, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.functions import count
@@ -21,7 +21,7 @@ async def get_services_types_by_territory_ids(
         service_types_dict.c.name,
         service_types_dict.c.code,
         service_types_dict.c.urban_function_id,
-        count(services_data.c.service_id).label("count"),
+        count(text("*")).label("count"),
     ).select_from(
         urban_objects_data.join(
             physical_objects_data, urban_objects_data.c.physical_object_id == physical_objects_data.c.physical_object_id
@@ -47,8 +47,7 @@ async def get_services_types_by_territory_ids(
         ))
 
     statement = statement.group_by(
-        service_types_dict.c.service_type_id,
-        services_data.c.service_id
+        service_types_dict.c.service_type_id
     )
     result = (await conn.execute(statement)).mappings().all()
 
