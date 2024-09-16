@@ -2,10 +2,14 @@
 Object geometries data table is defined here
 """
 
+from typing import Callable
+
 from geoalchemy2.types import Geometry
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, func
 
 from idu_api.common.db import metadata
+
+func: Callable
 
 object_geometries_data_id_seq = Sequence("object_geometries_data_id_seq")
 
@@ -25,6 +29,8 @@ object_geometries_data = Table(
         nullable=False,
     ),
     Column("address", String(300)),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
 )
 
 """

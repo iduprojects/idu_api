@@ -37,4 +37,6 @@ Project data:
 - description str
 - public bool
 - image_url str
+- created_at timestamp
+- updated_at timestamp
 """
