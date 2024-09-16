@@ -17,6 +17,7 @@ from idu_api.common.db.entities.projects.projects import projects_data
 from idu_api.common.db.entities.projects.projects_territory import projects_territory_data
 from idu_api.common.db.entities.projects.scenarios import scenarios_data
 from idu_api.common.db.entities.projects.services import projects_services_data
+from idu_api.common.db.entities.projects.target_profiles import target_profiles_dict
 from idu_api.common.db.entities.projects.urban_objects import projects_urban_objects_data
 from idu_api.common.db.entities.service_types_normatives import service_types_normatives_data
 from idu_api.common.db.entities.services import services_data

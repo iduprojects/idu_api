@@ -1,8 +1,16 @@
 import abc
 from typing import Protocol
 
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
-from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut
+from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ScenarioDTO, TargetProfileDTO
+from idu_api.urban_api.schemas import (
+    ProjectPatch,
+    ProjectPost,
+    ProjectPut,
+    ScenariosPatch,
+    ScenariosPost,
+    ScenariosPut,
+    TargetProfilesPost,
+)
 
 
 class UserProjectService(Protocol):
@@ -39,3 +47,35 @@ class UserProjectService(Protocol):
     @abc.abstractmethod
     async def patch_project(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO:
         """Patch project object."""
+
+    @abc.abstractmethod
+    async def get_scenarios_by_project_id(self, project_id: int, user_id) -> list[ScenarioDTO]:
+        """Get list of scenario objects by project id."""
+
+    @abc.abstractmethod
+    async def get_scenario_by_id(self, scenario_id: int, user_id) -> ScenarioDTO:
+        """Get scenario object by id."""
+
+    @abc.abstractmethod
+    async def add_scenario(self, scenario: ScenariosPost, user_id: str) -> ScenarioDTO:
+        """Create scenario object."""
+
+    @abc.abstractmethod
+    async def put_scenario(self, scenario: ScenariosPut, scenario_id: int, user_id) -> ScenarioDTO:
+        """Put project object."""
+
+    @abc.abstractmethod
+    async def patch_scenario(self, scenario: ScenariosPatch, scenario_id: int, user_id: str) -> ScenarioDTO:
+        """Patch project object."""
+
+    @abc.abstractmethod
+    async def delete_scenario(self, scenario_id: int, user_id: str) -> dict:
+        """Delete scenario object."""
+
+    @abc.abstractmethod
+    async def get_target_profiles(self) -> list[TargetProfileDTO]:
+        """Get all target profile objects."""
+
+    @abc.abstractmethod
+    async def add_target_profile(self, target_profile: TargetProfilesPost) -> TargetProfileDTO:
+        """Create a new target profile object."""

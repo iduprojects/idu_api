@@ -33,16 +33,14 @@ async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user
     result = (await conn.execute(statement)).mappings().one_or_none()
 
     if result is None:
-        raise EntityNotFoundById(project_id, "projects_data")
+        raise EntityNotFoundById(project_id, "project")
     if result.user_id != user_id and result.public is False:
-        raise AccessDeniedError(project_id, "projects_data")
+        raise AccessDeniedError(project_id, "project")
 
     return ProjectDTO(**result)
 
 
-async def add_project_to_db(  # pylint: disable=too-many-locals
-    conn: AsyncConnection, project: ProjectPost, user_id: str
-) -> ProjectDTO:
+async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id: str) -> ProjectDTO:
     """Create project object and base scenario."""
 
     parent_territory = await get_common_territory_for_geometry(
@@ -79,7 +77,7 @@ async def add_project_to_db(  # pylint: disable=too-many-locals
 
     statement_for_scenario = (
         insert(scenarios_data)
-        .values(project_id=project_id, name=f"base scenario for project with id={project_id}")
+        .values(project_id=project_id, target_profile_id=None, name=f"base scenario for project with id={project_id}")
         .returning(scenarios_data.c.scenario_id)
     )
     scenario_id = (await conn.execute(statement_for_scenario)).scalar_one()
@@ -218,9 +216,9 @@ async def get_project_territory_by_id_from_db(
     statement_for_project = select(projects_data).where(projects_data.c.project_id == project_id)
     result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
     if result_for_project is None:
-        raise EntityNotFoundById(project_id, "projects_data")
+        raise EntityNotFoundById(project_id, "project")
     if result_for_project.user_id != user_id and result_for_project.public is False:
-        raise AccessDeniedError(project_id, "projects_data")
+        raise AccessDeniedError(project_id, "project")
 
     statement = select(
         projects_territory_data.c.project_territory_id,
@@ -243,9 +241,9 @@ async def delete_project_from_db(conn: AsyncConnection, project_id: int, user_id
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     result = (await conn.execute(statement)).one_or_none()
     if result is None:
-        raise EntityNotFoundById(project_id, "projects_data")
+        raise EntityNotFoundById(project_id, "project")
     if result.user_id != user_id:
-        raise AccessDeniedError(project_id, "projects_data")
+        raise AccessDeniedError(project_id, "project")
 
     statement_for_project = delete(projects_data).where(projects_data.c.project_id == project_id)
 
@@ -267,9 +265,9 @@ async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     requested_project = (await conn.execute(statement)).one_or_none()
     if requested_project is None:
-        raise EntityNotFoundById(project_id, "projects_data")
+        raise EntityNotFoundById(project_id, "project")
     if requested_project.user_id != user_id:
-        raise AccessDeniedError(project_id, "projects_data")
+        raise AccessDeniedError(project_id, "project")
 
     statement_for_parent_territory = select(projects_territory_data.c.parent_territory_id).where(
         projects_territory_data.c.project_territory_id == requested_project.project_territory_id
@@ -319,9 +317,9 @@ async def patch_project_to_db(
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     requested_project = (await conn.execute(statement)).one_or_none()
     if requested_project is None:
-        raise EntityNotFoundById(project_id, "projects_data")
+        raise EntityNotFoundById(project_id, "project")
     if requested_project.user_id != user_id:
-        raise AccessDeniedError(project_id, "projects_data")
+        raise AccessDeniedError(project_id, "project")
 
     new_values_for_project = {}
     new_values_for_territory = {}
