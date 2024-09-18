@@ -1,13 +1,25 @@
 """Projects scenarios internal logic is defined here."""
 
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import and_, delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from idu_api.common.db.entities import projects_data, scenarios_data, target_profiles_dict
-from idu_api.urban_api.dto import ScenarioDTO
-from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.common.db.entities import (
+    object_geometries_data,
+    physical_object_types_dict,
+    physical_objects_data,
+    projects_data,
+    scenarios_data,
+    services_data,
+    target_profiles_dict,
+    urban_objects_data,
+)
+from idu_api.urban_api.dto import ScenarioDTO, ScenarioUrbanObjectDTO
+from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
-from idu_api.urban_api.schemas import ScenariosPatch, ScenariosPost, ScenariosPut
+from idu_api.urban_api.logic.impl.helpers.projects_scenarios_urban_objects import (
+    get_scenario_urban_object_by_id_from_db,
+)
+from idu_api.urban_api.schemas import PhysicalObjectsDataPost, ScenariosPatch, ScenariosPost, ScenariosPut
 
 
 async def get_scenarios_by_project_id_from_db(
@@ -235,3 +247,123 @@ async def delete_scenario_from_db(conn: AsyncConnection, scenario_id: int, user_
     await conn.commit()
 
     return {"status": "ok"}
+
+
+async def add_physical_object_to_scenario_in_db(
+    conn: AsyncConnection,
+    scenario_id: int,
+    object_geometry_id: int,
+    physical_object: PhysicalObjectsDataPost,
+    user_id: str,
+) -> ScenarioUrbanObjectDTO:
+    """Create object geometry connected with scenario."""
+
+    statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
+    result = (await conn.execute(statement)).mappings().one_or_none()
+    if result is None:
+        raise EntityNotFoundById(scenario_id, "scenario")
+
+    statement = select(projects_data).where(projects_data.c.project_id == result.project_id)
+    project = (await conn.execute(statement)).mappings().one_or_none()
+    if project.user_id != user_id:
+        raise AccessDeniedError(result.project_id, "project")
+
+    statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
+    object_geometry = (await conn.execute(statement)).one_or_none()
+    if object_geometry is None:
+        raise EntityNotFoundById(object_geometry_id, "object geometry")
+
+    statement = select(physical_object_types_dict).where(
+        physical_object_types_dict.c.physical_object_type_id == physical_object.physical_object_type_id
+    )
+    physical_object_type = (await conn.execute(statement)).one_or_none()
+    if physical_object_type is None:
+        raise EntityNotFoundById(physical_object.physical_object_type_id, "physical object type")
+
+    statement = (
+        insert(physical_objects_data)
+        .values(
+            physical_object_type_id=physical_object.physical_object_type_id,
+            name=physical_object.name,
+            properties=physical_object.properties,
+        )
+        .returning(physical_objects_data.c.physical_object_id)
+    )
+    physical_object_id = (await conn.execute(statement)).scalar_one()
+
+    statement = (
+        insert(urban_objects_data)
+        .values(physical_object_id=physical_object_id, object_geometry_id=object_geometry_id, scenario_id=scenario_id)
+        .returning(urban_objects_data.c.urban_object_id)
+    )
+
+    scenario_urban_object_id = (await conn.execute(statement)).scalar_one_or_none()
+    await conn.commit()
+
+    return await get_scenario_urban_object_by_id_from_db(conn, scenario_urban_object_id)
+
+
+async def add_service_to_scenario_in_db(
+    conn: AsyncConnection,
+    scenario_id: int,
+    service_id: int,
+    physical_object_id: int,
+    object_geometry_id: int,
+    user_id: str,
+) -> ScenarioUrbanObjectDTO:
+    """Add existing service to scenario."""
+
+    statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
+    result = (await conn.execute(statement)).mappings().one_or_none()
+    if result is None:
+        raise EntityNotFoundById(scenario_id, "scenario")
+
+    statement = select(projects_data).where(projects_data.c.project_id == result.project_id)
+    project = (await conn.execute(statement)).mappings().one_or_none()
+    if project.user_id != user_id:
+        raise AccessDeniedError(result.project_id, "project")
+
+    statement = select(urban_objects_data).where(
+        and_(
+            urban_objects_data.c.physical_object_id == physical_object_id,
+            urban_objects_data.c.object_geometry_id == object_geometry_id,
+        )
+    )
+    urban_objects = (await conn.execute(statement)).mappings().all()
+    if not list(urban_objects):
+        raise EntityNotFoundByParams("urban object", physical_object_id, object_geometry_id)
+
+    statement = select(services_data).where(services_data.c.service_id == service_id)
+    service = (await conn.execute(statement)).one_or_none()
+    if service is None:
+        raise EntityNotFoundById(service_id, "service")
+
+    flag = False
+    for urban_object in urban_objects:
+        if urban_object.service_id is None:
+            statement = (
+                update(urban_objects_data)
+                .where(urban_objects_data.c.urban_object_id == urban_object.urban_object_id)
+                .values(service_id=service_id, scenario_id=scenario_id)
+                .returning(urban_objects_data.c.urban_object_id)
+            )
+            flag = True
+        if urban_object.service_id == service_id:
+            raise EntityAlreadyExists("urban object", physical_object_id, object_geometry_id, service_id)
+
+    if not flag:
+        statement = (
+            insert(urban_objects_data)
+            .values(
+                service_id=service_id,
+                physical_object_id=physical_object_id,
+                object_geometry_id=object_geometry_id,
+                scenario_id=scenario_id,
+            )
+            .returning(urban_objects_data.c.urban_object_id)
+        )
+
+    urban_object_id = (await conn.execute(statement)).scalar_one()
+    await conn.commit()
+
+    return await get_scenario_urban_object_by_id_from_db(conn, urban_object_id)

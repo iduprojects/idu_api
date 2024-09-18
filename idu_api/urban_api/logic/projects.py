@@ -1,8 +1,9 @@
 import abc
 from typing import Protocol
 
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ScenarioDTO, TargetProfileDTO
+from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ScenarioDTO, ScenarioUrbanObjectDTO, TargetProfileDTO
 from idu_api.urban_api.schemas import (
+    PhysicalObjectsDataPost,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
@@ -79,3 +80,15 @@ class UserProjectService(Protocol):
     @abc.abstractmethod
     async def add_target_profile(self, target_profile: TargetProfilesPost) -> TargetProfileDTO:
         """Create a new target profile object."""
+
+    @abc.abstractmethod
+    async def add_physical_object_to_scenario(
+        self, scenario_id: int, object_geometry_id: int, physical_object: PhysicalObjectsDataPost, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        """Add physical object to scenario."""
+
+    @abc.abstractmethod
+    async def add_service_to_scenario(
+        self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        """Add service to scenario."""

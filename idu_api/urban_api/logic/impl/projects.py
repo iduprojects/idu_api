@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ScenarioDTO, TargetProfileDTO
+from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ScenarioDTO, ScenarioUrbanObjectDTO, TargetProfileDTO
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     delete_project_from_db,
@@ -16,7 +16,9 @@ from idu_api.urban_api.logic.impl.helpers.projects_profiles import (
     get_target_profiles_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
+    add_physical_object_to_scenario_in_db,
     add_scenario_to_db,
+    add_service_to_scenario_in_db,
     delete_scenario_from_db,
     get_scenario_by_id_from_db,
     get_scenarios_by_project_id_from_db,
@@ -25,6 +27,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
 )
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
+    PhysicalObjectsDataPost,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
@@ -91,3 +94,17 @@ class UserProjectServiceImpl(UserProjectService):
 
     async def add_target_profile(self, target_profile: TargetProfilesPost) -> TargetProfileDTO:
         return await add_target_profile_to_db(self._conn, target_profile)
+
+    async def add_physical_object_to_scenario(
+        self, scenario_id: int, object_geometry_id: int, physical_object: PhysicalObjectsDataPost, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        return await add_physical_object_to_scenario_in_db(
+            self._conn, scenario_id, object_geometry_id, physical_object, user_id
+        )
+
+    async def add_service_to_scenario(
+        self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        return await add_service_to_scenario_in_db(
+            self._conn, scenario_id, service_id, physical_object_id, object_geometry_id, user_id
+        )

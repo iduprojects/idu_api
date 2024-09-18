@@ -45,6 +45,7 @@ from .projects import (
     ProjectTerritoryPut,
 )
 from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPut
+from .scenarios_urban_objects import ScenariosUrbanObject
 from .service_types import (
     ServiceTypes,
     ServiceTypesPost,
@@ -88,6 +89,7 @@ __all__ = [
     "ScenariosPatch",
     "ScenariosPost",
     "ScenariosPut",
+    "ScenariosUrbanObject",
     "ServicesData",
     "ServicesDataPatch",
     "ServicesDataPost",
