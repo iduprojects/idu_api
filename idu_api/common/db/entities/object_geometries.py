@@ -40,4 +40,6 @@ Object geometries:
 - geometry geometry 
 - centre_point geometry point
 - address string(300)
+- created_at timestamp
+- updated_at timestamp
 """
