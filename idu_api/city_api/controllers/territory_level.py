@@ -21,8 +21,8 @@ tag = ["territory-level-controller"]
 @app.get("/city/{city}/level/{territory}/level", tags=tag)
 async def get_territories_by_city_id_level_and_type(
         request: Request,
-        city: Annotated[int, Path(gt=0)],
-        territory: Annotated[int, Path(gt=0)],
+        city: Annotated[int| str, Path(description="city id or name")],
+        territory: Annotated[int | str, Path(description="territory id or name")],
         level: Annotated[int, Query(ge=0, description="level of required territories")],
         type: Annotated[int, Query(ge=0, description="type of required territories")],
         no_geometry: Annotated[bool, Query(description="get only centers")] = False
@@ -47,8 +47,8 @@ async def get_territories_by_city_id_level_and_type(
 @app.get("/city/{city}/level/{territory}/type-hierarchy", tags=tag)
 async def get_type_hierarchy_by_territory_id(
         request: Request,
-        city: Annotated[int, Path(gt=0)],
-        territory: Annotated[int, Path(gt=0)]
+        city: Annotated[int | str, Path(description="city id or name")],
+        territory: Annotated[int | str, Path(description="city id or name")]
 ) -> list[TerritoryHierarchyData]:
     cities_service: CitiesService = request.state.cities_service
     return [
@@ -60,9 +60,9 @@ async def get_type_hierarchy_by_territory_id(
 @app.get("/city/{city}/level/{territory}/blocks", tags=tag)
 async def get_level_blocks_by_id(
         request: Request,
-        city: Annotated[int, Path(gt=0)],
-        territory: Annotated[int, Path(gt=0)],
-        no_geometry: Annotated[bool, Query(description="only centers")] = False
+        city: Annotated[int | str, Path(description="city id or name")],
+        territory: Annotated[int | str, Path(description="territory id or name")],
+        no_geometry: Annotated[bool, Query(description="no geometry and centers")] = False
 ) -> list[CATerritoriesData | CATerritoriesWithoutGeometryData]:
     blocks_service: BlocksService = request.state.blocks_service
 
@@ -81,8 +81,8 @@ async def get_level_blocks_by_id(
 @app.get("/city/{city}/level/{territory}/physical_objects", tags=tag)
 async def get_physical_objects_by_level_with_city_id(
         request: Request,
-        city: Annotated[int, Path(description="city id or name")],
-        territory: Annotated[int, Path(description="territory id or name")],
+        city: Annotated[int | str, Path(description="city id or name")],
+        territory: Annotated[int | str, Path(description="territory id or name")],
 ):
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
     result: list[PhysicalObjectsDTO] = await physical_objects_service.get_physical_objects_by_territory_id(
@@ -101,8 +101,8 @@ async def get_physical_objects_by_level_with_city_id(
 @app.get("/city/{city}/level/{territory}/services", tags=tag)
 async def get_services_by_level_with_city_id(
         request: Request,
-        city: Annotated[int, Path(description="city id or name")],
-        territory: Annotated[int, Path(description="territory id or name")],
+        city: Annotated[int | str, Path(description="city id or name")],
+        territory: Annotated[int | str, Path(description="territory id or name")],
 ):
     services_service: ServicesService = request.state.services_service
     result: list[CityServiceDTO] = await services_service.get_services_by_territory_id(city, territory)

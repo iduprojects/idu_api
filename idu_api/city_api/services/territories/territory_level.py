@@ -1,13 +1,10 @@
-from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.city_api.common.mapper import territory_dto_without_geometry
-from idu_api.city_api.dto.administrative_units import AdministrativeUnitsDTO
-from idu_api.city_api.dto.munipalities import MunicipalitiesDTO, MunicipalitiesWithoutGeometryDTO
+from idu_api.city_api.dto.munipalities import MunicipalitiesDTO
 from idu_api.city_api.dto.territory import CATerritoryDTO, CATerritoryWithoutGeometryDTO
 from idu_api.urban_api.dto import TerritoryDTO, TerritoryWithoutGeometryDTO
-from idu_api.urban_api.logic.impl.helpers.territory_objects import get_territories_by_parent_id_from_db, \
-    get_territory_by_id
+from idu_api.urban_api.logic.impl.helpers.territory_objects import get_territory_by_id
 from idu_api.city_api.services.territories.territories import get_territories_by_parent_id_and_level
 
 
