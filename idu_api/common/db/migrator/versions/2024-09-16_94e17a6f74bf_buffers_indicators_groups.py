@@ -67,6 +67,7 @@ def upgrade() -> None:
             ["urban_object_id"],
             ["urban_objects_data.urban_object_id"],
             name=op.f("buffers_data_fk_urban_object_id__urban_objects_data"),
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["buffer_geometry_id"],
@@ -99,11 +100,13 @@ def upgrade() -> None:
             ["indicator_id"],
             ["indicators_dict.indicator_id"],
             name=op.f("indicators_groups_data_fk_indicator_id__indicators_dict"),
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["indicators_group_id"],
             ["indicators_groups_dict.indicators_group_id"],
             name=op.f("indicators_groups_data_fk_indicators_group_id__indicators_groups_dict"),
+            ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("indicator_id", "indicators_group_id", name=op.f("indicators_groups_data_pk")),
     )
