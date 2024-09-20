@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import ObjectGeometryDTO
@@ -10,6 +12,10 @@ class ObjectGeometries(BaseModel):
     address: str | None = Field(None, description="Physical object address", examples=["--"])
     geometry: Geometry
     centre_point: Geometry
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the geometry was created")
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="The time when the geometry was last updated"
+    )
 
     @classmethod
     def from_dto(cls, dto: ObjectGeometryDTO) -> "ObjectGeometries":
@@ -22,6 +28,8 @@ class ObjectGeometries(BaseModel):
             address=dto.address,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
         )
 
 

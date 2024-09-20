@@ -2,22 +2,30 @@
 
 from datetime import datetime
 
-from sqlalchemy import insert, select
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
     indicators_dict,
+    indicators_groups_data,
+    indicators_groups_dict,
     measurement_units_dict,
     territories_data,
     territory_indicators_data,
 )
 from idu_api.urban_api.dto import (
     IndicatorDTO,
+    IndicatorsGroupDTO,
     IndicatorValueDTO,
     MeasurementUnitDTO,
 )
-from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
-from idu_api.urban_api.schemas import IndicatorsPost, IndicatorValuePost, MeasurementUnitPost
+from idu_api.urban_api.exceptions.logic.common import (
+    EntitiesNotFoundByIds,
+    EntityAlreadyExists,
+    EntityNotFoundById,
+    EntityNotFoundByParams,
+)
+from idu_api.urban_api.schemas import IndicatorsGroupPost, IndicatorsPost, IndicatorValuePost, MeasurementUnitPost
 
 
 async def get_measurement_units_from_db(conn: AsyncConnection) -> list[MeasurementUnitDTO]:
@@ -47,6 +55,147 @@ async def add_measurement_unit_to_db(
     return MeasurementUnitDTO(**result)
 
 
+async def get_indicators_groups_from_db(conn: AsyncConnection) -> list[IndicatorsGroupDTO]:
+    """Get all indicators group objects."""
+
+    statement = select(indicators_groups_dict).order_by(indicators_groups_dict.c.indicators_group_id)
+    indicators_groups = (await conn.execute(statement)).mappings().all()
+
+    result = []
+    for group in indicators_groups:
+        statement = (
+            select(indicators_dict, measurement_units_dict.c.name.label("measurement_unit_name"))
+            .select_from(
+                indicators_groups_data.join(
+                    indicators_dict,
+                    indicators_dict.c.indicator_id == indicators_groups_data.c.indicator_id,
+                ).outerjoin(
+                    measurement_units_dict,
+                    indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+                )
+            )
+            .where(indicators_groups_data.c.indicators_group_id == group.indicators_group_id)
+        )
+        indicators = (await conn.execute(statement)).mappings().all()
+        result.append(
+            IndicatorsGroupDTO(
+                indicators_group_id=group.indicators_group_id,
+                name=group.name,
+                indicators=indicators,
+            )
+        )
+
+    return result
+
+
+async def add_indicators_group_to_db(
+    conn: AsyncConnection,
+    indicators_group: IndicatorsGroupPost,
+) -> IndicatorsGroupDTO:
+    """Create indicators group object."""
+
+    statement = select(indicators_groups_dict).where(indicators_groups_dict.c.name == indicators_group.name)
+    group = (await conn.execute(statement)).mappings().one_or_none()
+    if group is not None:
+        raise EntityAlreadyExists("indicators group", indicators_group.name)
+
+    statement = (
+        select(
+            indicators_dict,
+            measurement_units_dict.c.name.label("measurement_unit_name"),
+        ).select_from(
+            indicators_dict.outerjoin(
+                measurement_units_dict,
+                indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+        )
+    ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
+    indicators = (await conn.execute(statement)).mappings().all()
+    if len(indicators) < len(indicators_group.indicators_ids):
+        raise EntitiesNotFoundByIds("indicator")
+
+    statement = (
+        insert(indicators_groups_dict)
+        .values(name=indicators_group.name)
+        .returning(indicators_groups_dict.c.indicators_group_id)
+    )
+    indicators_group_id = (await conn.execute(statement)).scalar_one()
+
+    for indicator_id in indicators_group.indicators_ids:
+        statement = insert(indicators_groups_data).values(
+            indicators_group_id=indicators_group_id, indicator_id=indicator_id
+        )
+        await conn.execute(statement)
+
+    await conn.commit()
+
+    return IndicatorsGroupDTO(
+        indicators_group_id=indicators_group_id,
+        name=indicators_group.name,
+        indicators=indicators,
+    )
+
+
+async def update_indicators_group_from_db(
+    conn: AsyncConnection, indicators_group: IndicatorsGroupPost, indicators_group_id: int
+) -> IndicatorsGroupDTO:
+    """Update indicators group object."""
+
+    statement = select(indicators_groups_dict).where(
+        indicators_groups_dict.c.indicators_group_id == indicators_group_id
+    )
+    group = (await conn.execute(statement)).mappings().one_or_none()
+    if group is None:
+        raise EntityNotFoundById(indicators_group_id, "indicators group")
+
+    if group.name != indicators_group.name:
+        statement = select(indicators_groups_dict).where(indicators_groups_dict.c.name == indicators_group.name)
+        group = (await conn.execute(statement)).mappings().one_or_none()
+        if group is not None:
+            raise EntityAlreadyExists("indicators group", indicators_group.name)
+
+    statement = (
+        select(
+            indicators_dict,
+            measurement_units_dict.c.name.label("measurement_unit_name"),
+        ).select_from(
+            indicators_dict.outerjoin(
+                measurement_units_dict,
+                indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+        )
+    ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
+    indicators = (await conn.execute(statement)).mappings().all()
+    if len(indicators) < len(indicators_group.indicators_ids):
+        raise EntitiesNotFoundByIds("indicator")
+
+    statement = (
+        update(indicators_groups_dict)
+        .values(name=indicators_group.name)
+        .where(indicators_groups_dict.c.indicators_group_id == indicators_group_id)
+    )
+    await conn.execute(statement)
+
+    statement = delete(indicators_groups_data).where(
+        indicators_groups_data.c.indicators_group_id == indicators_group_id
+    )
+    await conn.execute(statement)
+
+    for indicator_id in indicators_group.indicators_ids:
+        statement = insert(indicators_groups_data).values(
+            indicators_group_id=indicators_group_id, indicator_id=indicator_id
+        )
+        await conn.execute(statement)
+
+    await conn.commit()
+
+    return IndicatorsGroupDTO(
+        indicators_group_id=indicators_group_id,
+        name=indicators_group.name,
+        indicators=indicators,
+    )
+
+
 async def get_indicators_by_parent_id_from_db(
     conn: AsyncConnection,
     parent_id: int | None,
@@ -63,19 +212,12 @@ async def get_indicators_by_parent_id_from_db(
             raise EntityNotFoundById(parent_id, "indicator")
 
     statement = select(
-        indicators_dict.c.indicator_id,
-        indicators_dict.c.name_full,
-        indicators_dict.c.name_short,
-        indicators_dict.c.measurement_unit_id,
-        indicators_dict.c.level,
-        indicators_dict.c.list_label,
-        indicators_dict.c.parent_id,
+        indicators_dict,
         measurement_units_dict.c.name.label("measurement_unit_name"),
     ).select_from(
-        indicators_dict.join(
+        indicators_dict.outerjoin(
             measurement_units_dict,
             indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
-            isouter=True,
         )
     )
 

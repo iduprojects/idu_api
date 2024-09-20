@@ -144,7 +144,7 @@ async def put_service_to_db(conn: AsyncConnection, service: ServicesDataPut, ser
             name=service.name,
             capacity_real=service.capacity_real,
             properties=service.properties,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
         )
         .returning(services_data)
     )

@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
     indicators_dict,
+    indicators_groups_data,
+    indicators_groups_dict,
     measurement_units_dict,
     territories_data,
     territory_indicators_data,
@@ -53,6 +55,7 @@ async def get_indicator_values_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
     indicator_ids: str | None,
+    indicators_group_id: int | None,
     start_date: datetime | None,
     end_date: datetime | None,
     value_type: str | None,
@@ -109,6 +112,10 @@ async def get_indicator_values_by_territory_id_from_db(
                     measurement_units_dict,
                     measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
                 )
+                .outerjoin(
+                    indicators_groups_data,
+                    indicators_groups_data.c.indicator_id == indicators_dict.c.indicator_id,
+                )
             )
             .where(territory_indicators_data.c.territory_id == territory_id)
         )
@@ -124,15 +131,30 @@ async def get_indicator_values_by_territory_id_from_db(
                 territory_indicators_data.join(
                     indicators_dict,
                     indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
-                ).outerjoin(
+                )
+                .outerjoin(
                     measurement_units_dict,
                     measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
+                )
+                .outerjoin(
+                    indicators_groups_data,
+                    indicators_groups_data.c.indicator_id == indicators_dict.c.indicator_id,
                 )
             )
             .where(
                 territory_indicators_data.c.territory_id == territory_id,
             )
         )
+
+    if indicators_group_id is not None:
+        query = select(indicators_groups_dict).where(
+            indicators_groups_dict.c.indicators_group_id == indicators_group_id
+        )
+        indicators_group = (await conn.execute(query)).scalar_one_or_none()
+        if indicators_group is None:
+            raise EntityNotFoundById(indicators_group_id, "indicators group")
+
+        statement = statement.where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
 
     if indicator_ids is not None:
         ids = [int(indicator.strip()) for indicator in indicator_ids.split(",")]
@@ -161,6 +183,7 @@ async def get_indicator_values_by_parent_id_from_db(
     conn: AsyncConnection,
     parent_id: int | None,
     indicator_ids: str | None,
+    indicators_group_id: int | None,
     start_date: datetime | None,
     end_date: datetime | None,
     value_type: str | None,
@@ -194,6 +217,7 @@ async def get_indicator_values_by_parent_id_from_db(
             conn,
             child_territory.territory_id,
             indicator_ids,
+            indicators_group_id,
             start_date,
             end_date,
             value_type,

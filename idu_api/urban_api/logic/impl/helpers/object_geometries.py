@@ -1,5 +1,6 @@
 """Physical objects handlers logic of getting entities from the database is defined here."""
 
+from datetime import datetime, timezone
 from typing import Callable
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
@@ -77,6 +78,8 @@ async def get_object_geometry_by_ids_from_db(
         cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
         cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         object_geometries_data.c.address,
+        object_geometries_data.c.created_at,
+        object_geometries_data.c.updated_at,
     ).where(object_geometries_data.c.object_geometry_id.in_(object_geometry_ids))
 
     result = (await conn.execute(statement)).mappings().all()
@@ -112,6 +115,7 @@ async def put_object_geometry_to_db(
             geometry=ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326")),
             centre_point=ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326")),
             address=object_geometry.address,
+            updated_at=datetime.now(timezone.utc),
         )
         .returning(object_geometries_data)
     )
@@ -137,6 +141,7 @@ async def patch_object_geometry_to_db(
     statement = (
         update(object_geometries_data)
         .where(object_geometries_data.c.object_geometry_id == object_geometry_id)
+        .values(updated_at=datetime.now(timezone.utc))
         .returning(object_geometries_data)
     )
 
