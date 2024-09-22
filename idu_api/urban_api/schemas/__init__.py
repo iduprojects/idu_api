@@ -6,6 +6,8 @@ from .functional_zones import FunctionalZoneData
 from .health_check import PingResponse
 from .indicators import (
     Indicator,
+    IndicatorsGroup,
+    IndicatorsGroupPost,
     IndicatorsPost,
     IndicatorValue,
     IndicatorValuePost,
@@ -91,6 +93,8 @@ __all__ = [
     "ServiceTypes",
     "ServiceTypesPost",
     "Indicator",
+    "IndicatorsGroup",
+    "IndicatorsGroupPost",
     "IndicatorsPost",
     "IndicatorValue",
     "IndicatorValuePost",

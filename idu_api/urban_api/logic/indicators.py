@@ -6,10 +6,11 @@ from typing import Protocol
 
 from idu_api.urban_api.dto import (
     IndicatorDTO,
+    IndicatorsGroupDTO,
     IndicatorValueDTO,
     MeasurementUnitDTO,
 )
-from idu_api.urban_api.schemas import IndicatorsPost, IndicatorValuePost, MeasurementUnitPost
+from idu_api.urban_api.schemas import IndicatorsGroupPost, IndicatorsPost, IndicatorValuePost, MeasurementUnitPost
 
 
 class IndicatorsService(Protocol):
@@ -22,6 +23,20 @@ class IndicatorsService(Protocol):
     @abc.abstractmethod
     async def add_measurement_unit(self, measurement_unit: MeasurementUnitPost) -> MeasurementUnitDTO:
         """Create measurement unit object."""
+
+    @abc.abstractmethod
+    async def get_indicators_groups(self) -> list[IndicatorsGroupDTO]:
+        """Get all indicators group objects."""
+
+    @abc.abstractmethod
+    async def add_indicators_group(self, indicators_group: IndicatorsGroupPost) -> IndicatorsGroupDTO:
+        """Create indicators group object."""
+
+    @abc.abstractmethod
+    async def update_indicators_group(
+        self, indicators_group: IndicatorsGroupPost, indicators_group_id: int
+    ) -> IndicatorsGroupDTO:
+        """Update indicators group object."""
 
     @abc.abstractmethod
     async def get_indicators_by_parent_id(

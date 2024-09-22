@@ -28,8 +28,10 @@ projects_services_data = Table(
 Services data:
 - service_id int 
 - service_type_id foreign key int
+- territory_type_id foreign key int
 - name str
-- properties jsonb
-- list_label str
 - capacity_real int
+- properties jsonb
+- created_at timestamp
+- updated_at timestamp
 """

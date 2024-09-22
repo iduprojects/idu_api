@@ -30,4 +30,6 @@ Physical objects:
 - physical_object_type_id foreign key int
 - name string(300)
 - properties jsonb
+- created_at timestamp
+- updated_at timestamp
 """

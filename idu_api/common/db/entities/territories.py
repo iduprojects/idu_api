@@ -51,4 +51,6 @@ Territories:
 - centre_point geometry point
 - admin_center int
 - okato_code string(20)
+- created_at timestamp
+- updated_at timestamp
 """

@@ -1,10 +1,10 @@
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from idu_api.urban_api.dto import IndicatorDTO, IndicatorValueDTO, MeasurementUnitDTO
+from idu_api.urban_api.dto import IndicatorDTO, IndicatorsGroupDTO, IndicatorValueDTO, MeasurementUnitDTO
 
 
 class MeasurementUnit(BaseModel):
@@ -45,6 +45,41 @@ class ShortIndicatorInfo(BaseModel):
     measurement_unit: MeasurementUnit | None
 
 
+class IndicatorsGroup(BaseModel):
+    indicators_group_id: int = Field(..., description="indicators group identifier", examples=[1])
+    name: str = Field(..., description="full name of indicators group", examples=["--"])
+    indicators: list[ShortIndicatorInfo] = Field(default_factory=list, description="list of indicators for the group")
+
+    @classmethod
+    def from_dto(cls, dto: IndicatorsGroupDTO) -> "IndicatorsGroup":
+        return cls(
+            indicators_group_id=dto.indicators_group_id,
+            name=dto.name,
+            indicators=[
+                ShortIndicatorInfo(
+                    indicator_id=indicator.indicator_id,
+                    name_full=indicator.name_full,
+                    measurement_unit=(
+                        MeasurementUnit(
+                            measurement_unit_id=indicator.measurement_unit_id,
+                            name=indicator.measurement_unit_name,
+                        )
+                        if indicator.measurement_unit_id is not None
+                        else None
+                    ),
+                )
+                for indicator in dto.indicators
+            ],
+        )
+
+
+class IndicatorsGroupPost(BaseModel):
+    name: str = Field(..., description="full name of indicators group", examples=["--"])
+    indicators_ids: list[int] = Field(
+        ..., description="list of indicators identifiers for the group", examples=[[1, 2]]
+    )
+
+
 class Indicator(BaseModel):
     """
     Indicator with all its attributes
@@ -61,32 +96,30 @@ class Indicator(BaseModel):
     level: int = Field(..., description="Number of indicator functions above in a tree + 1", examples=[1])
     list_label: str = Field(..., description="Indicator marker in lists", examples=["1.1.1"])
     parent_id: int | None = Field(..., description="Indicator parent id", examples=[1])
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the indicator was created")
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="The time when the indicator was last updated"
+    )
 
     @classmethod
     def from_dto(cls, dto: IndicatorDTO) -> "Indicator":
         """
         Construct from DTO.
         """
-        if dto.measurement_unit_id is not None:
-            return cls(
-                indicator_id=dto.indicator_id,
-                name_full=dto.name_full,
-                name_short=dto.name_short,
-                measurement_unit=MeasurementUnit(
-                    measurement_unit_id=dto.measurement_unit_id, name=dto.measurement_unit_name
-                ),
-                level=dto.level,
-                list_label=dto.list_label,
-                parent_id=dto.parent_id,
-            )
         return cls(
             indicator_id=dto.indicator_id,
             name_full=dto.name_full,
             name_short=dto.name_short,
-            measurement_unit=None,
+            measurement_unit=(
+                MeasurementUnit(measurement_unit_id=dto.measurement_unit_id, name=dto.measurement_unit_name)
+                if dto.measurement_unit_id is not None
+                else None
+            ),
             level=dto.level,
             list_label=dto.list_label,
             parent_id=dto.parent_id,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
         )
 
 
@@ -193,28 +226,18 @@ class IndicatorValue(BaseModel):
         """
         Construct from DTO.
         """
-        if dto.measurement_unit_id is not None:
-            return cls(
-                indicator=ShortIndicatorInfo(
-                    indicator_id=dto.indicator_id,
-                    name_full=dto.name_full,
-                    measurement_unit=MeasurementUnit(
-                        measurement_unit_id=dto.measurement_unit_id,
-                        name=dto.measurement_unit_name,
-                    ),
-                ),
-                territory_id=dto.territory_id,
-                date_type=dto.date_type,
-                date_value=dto.date_value,
-                value=dto.value,
-                value_type=dto.value_type,
-                information_source=dto.information_source,
-            )
         return cls(
             indicator=ShortIndicatorInfo(
                 indicator_id=dto.indicator_id,
                 name_full=dto.name_full,
-                measurement_unit=None,
+                measurement_unit=(
+                    MeasurementUnit(
+                        measurement_unit_id=dto.measurement_unit_id,
+                        name=dto.measurement_unit_name,
+                    )
+                    if dto.measurement_unit_id is not None
+                    else None
+                ),
             ),
             territory_id=dto.territory_id,
             date_type=dto.date_type,

@@ -35,4 +35,6 @@ Services:
 - name string(200)
 - capacity_real int
 - properties jsonb
+- created_at timestamp
+- updated_at timestamp
 """

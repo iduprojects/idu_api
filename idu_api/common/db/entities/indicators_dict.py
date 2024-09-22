@@ -6,9 +6,13 @@ Current list is:
 - indicators_dict
 """
 
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table
+from typing import Callable
+
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, func
 
 from idu_api.common.db import metadata
+
+func: Callable
 
 measurement_units_dict_id_seq = Sequence("measurement_units_dict_id_seq")
 
@@ -37,6 +41,8 @@ indicators_dict = Table(
     Column("level", Integer),
     Column("list_label", String(20), nullable=False),
     Column("parent_id", ForeignKey("indicators_dict.indicator_id")),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
 )
 
 """
@@ -48,4 +54,6 @@ Indicators dict:
 - level int
 - list_label string(20)
 - parent_id foreign key int
+- created_at timestamp
+- updated_at timestamp
 """

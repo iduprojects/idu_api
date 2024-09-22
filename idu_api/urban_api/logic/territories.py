@@ -102,13 +102,15 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         self,
         territory_id: int,
         indicator_ids: str | None,
+        indicators_group_id: int | None,
         start_date: datetime | None,
         end_date: datetime | None,
         value_type: Optional[Literal["real", "target", "forecast"]],
         information_source: str | None,
         last_only: bool,
     ) -> list[IndicatorValueDTO]:
-        """Get indicator values by territory id, optional indicator_ids, value_type, source and time period.
+        """Get indicator values by territory id, optional indicator_ids, indicators_group_id,
+        value_type, source and time period.
 
         Could be specified by last_only flag to get only current indicator values.
         """
@@ -118,13 +120,15 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         self,
         parent_id: int | None,
         indicator_ids: str | None,
+        indicators_group_id: int | None,
         start_date: datetime | None,
         end_date: datetime | None,
         value_type: Optional[Literal["real", "target", "forecast"]],
         information_source: str | None,
         last_only: bool,
     ) -> list[TerritoryWithIndicatorsDTO]:
-        """Get indicator values for child territories by parent id, optional indicator_ids, value_type, source and date.
+        """Get indicator values for child territories by parent id, optional indicator_ids, indicators_group_id,
+        value_type, source and time period.
 
         Could be specified by last_only flag to get only current indicator values.
         """

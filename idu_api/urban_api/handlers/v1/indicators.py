@@ -8,6 +8,8 @@ from starlette import status
 from idu_api.urban_api.logic.indicators import IndicatorsService
 from idu_api.urban_api.schemas import (
     Indicator,
+    IndicatorsGroup,
+    IndicatorsGroupPost,
     IndicatorsPost,
     IndicatorValue,
     IndicatorValuePost,
@@ -45,6 +47,52 @@ async def add_measurement_unit(request: Request, measurement_unit: MeasurementUn
     unit = await indicators_service.add_measurement_unit(measurement_unit)
 
     return MeasurementUnit.from_dto(unit)
+
+
+@indicators_router.get(
+    "/indicators_groups",
+    response_model=list[IndicatorsGroup],
+    status_code=status.HTTP_200_OK,
+)
+async def get_indicators_groups(request: Request) -> list[IndicatorsGroup]:
+    """Get all indicators groups."""
+    indicators_service: IndicatorsService = request.state.indicators_service
+
+    groups = await indicators_service.get_indicators_groups()
+
+    return [IndicatorsGroup.from_dto(group) for group in groups]
+
+
+@indicators_router.post(
+    "/indicators_groups",
+    response_model=IndicatorsGroup,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_indicators_group(request: Request, indicators_group: IndicatorsGroupPost) -> IndicatorsGroup:
+    """Add indicators group by name and list of indicators identifiers."""
+    indicators_service: IndicatorsService = request.state.indicators_service
+
+    group = await indicators_service.add_indicators_group(indicators_group)
+
+    return IndicatorsGroup.from_dto(group)
+
+
+@indicators_router.put(
+    "/indicators_groups/{indicators_group_id}",
+    response_model=IndicatorsGroup,
+    status_code=status.HTTP_201_CREATED,
+)
+async def update_indicators_group(
+    request: Request,
+    indicators_group: IndicatorsGroupPost,
+    indicators_group_id: int = Path(..., description="indicators group identifier"),
+) -> IndicatorsGroup:
+    """Update indicators group fully by name and list of indicators identifiers."""
+    indicators_service: IndicatorsService = request.state.indicators_service
+
+    group = await indicators_service.update_indicators_group(indicators_group, indicators_group_id)
+
+    return IndicatorsGroup.from_dto(group)
 
 
 @indicators_router.get(
