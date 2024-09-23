@@ -684,6 +684,8 @@ async def get_physical_object_geometries_from_db(
             object_geometries_data.c.address,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            object_geometries_data.c.created_at,
+            object_geometries_data.c.updated_at,
         )
         .select_from(
             urban_objects_data.join(
