@@ -4,14 +4,14 @@ from sqlalchemy import and_, delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
-    object_geometries_data,
+    projects_object_geometries_data,
     physical_object_types_dict,
-    physical_objects_data,
+    projects_physical_objects_data,
     projects_data,
     scenarios_data,
-    services_data,
+    projects_services_data,
     target_profiles_dict,
-    urban_objects_data,
+    projects_urban_objects_data,
 )
 from idu_api.urban_api.dto import ScenarioDTO, ScenarioUrbanObjectDTO
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
@@ -268,7 +268,7 @@ async def add_physical_object_to_scenario_in_db(
     if project.user_id != user_id:
         raise AccessDeniedError(result.project_id, "project")
 
-    statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
+    statement = select(projects_object_geometries_data).where(projects_object_geometries_data.c.object_geometry_id == object_geometry_id)
     object_geometry = (await conn.execute(statement)).one_or_none()
     if object_geometry is None:
         raise EntityNotFoundById(object_geometry_id, "object geometry")
@@ -281,20 +281,20 @@ async def add_physical_object_to_scenario_in_db(
         raise EntityNotFoundById(physical_object.physical_object_type_id, "physical object type")
 
     statement = (
-        insert(physical_objects_data)
+        insert(projects_physical_objects_data)
         .values(
             physical_object_type_id=physical_object.physical_object_type_id,
             name=physical_object.name,
             properties=physical_object.properties,
         )
-        .returning(physical_objects_data.c.physical_object_id)
+        .returning(projects_physical_objects_data.c.physical_object_id)
     )
     physical_object_id = (await conn.execute(statement)).scalar_one()
 
     statement = (
-        insert(urban_objects_data)
+        insert(projects_urban_objects_data)
         .values(physical_object_id=physical_object_id, object_geometry_id=object_geometry_id, scenario_id=scenario_id)
-        .returning(urban_objects_data.c.urban_object_id)
+        .returning(projects_urban_objects_data.c.urban_object_id)
     )
 
     scenario_urban_object_id = (await conn.execute(statement)).scalar_one_or_none()
@@ -323,17 +323,17 @@ async def add_service_to_scenario_in_db(
     if project.user_id != user_id:
         raise AccessDeniedError(result.project_id, "project")
 
-    statement = select(urban_objects_data).where(
+    statement = select(projects_urban_objects_data).where(
         and_(
-            urban_objects_data.c.physical_object_id == physical_object_id,
-            urban_objects_data.c.object_geometry_id == object_geometry_id,
+            projects_urban_objects_data.c.physical_object_id == physical_object_id,
+            projects_urban_objects_data.c.object_geometry_id == object_geometry_id,
         )
     )
     urban_objects = (await conn.execute(statement)).mappings().all()
     if not list(urban_objects):
         raise EntityNotFoundByParams("urban object", physical_object_id, object_geometry_id)
 
-    statement = select(services_data).where(services_data.c.service_id == service_id)
+    statement = select(projects_services_data).where(projects_services_data.c.service_id == service_id)
     service = (await conn.execute(statement)).one_or_none()
     if service is None:
         raise EntityNotFoundById(service_id, "service")
@@ -342,10 +342,10 @@ async def add_service_to_scenario_in_db(
     for urban_object in urban_objects:
         if urban_object.service_id is None:
             statement = (
-                update(urban_objects_data)
-                .where(urban_objects_data.c.urban_object_id == urban_object.urban_object_id)
+                update(projects_urban_objects_data)
+                .where(projects_urban_objects_data.c.urban_object_id == urban_object.urban_object_id)
                 .values(service_id=service_id, scenario_id=scenario_id)
-                .returning(urban_objects_data.c.urban_object_id)
+                .returning(projects_urban_objects_data.c.urban_object_id)
             )
             flag = True
         if urban_object.service_id == service_id:
@@ -353,14 +353,14 @@ async def add_service_to_scenario_in_db(
 
     if not flag:
         statement = (
-            insert(urban_objects_data)
+            insert(projects_urban_objects_data)
             .values(
                 service_id=service_id,
                 physical_object_id=physical_object_id,
                 object_geometry_id=object_geometry_id,
                 scenario_id=scenario_id,
             )
-            .returning(urban_objects_data.c.urban_object_id)
+            .returning(projects_urban_objects_data.c.urban_object_id)
         )
 
     urban_object_id = (await conn.execute(statement)).scalar_one()
