@@ -4,12 +4,14 @@ from typing import Protocol
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ScenarioDTO, ScenarioUrbanObjectDTO, TargetProfileDTO
 from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPost,
+    PhysicalObjectWithGeometryPost,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
+    ServicesDataPost,
     TargetProfilesPost,
 )
 
@@ -83,12 +85,24 @@ class UserProjectService(Protocol):
 
     @abc.abstractmethod
     async def add_physical_object_to_scenario(
-        self, scenario_id: int, object_geometry_id: int, physical_object: PhysicalObjectsDataPost, user_id: str
+        self, scenario_id: int, physical_object: PhysicalObjectWithGeometryPost, user_id: str
     ) -> ScenarioUrbanObjectDTO:
         """Add physical object to scenario."""
 
     @abc.abstractmethod
+    async def add_existing_physical_object_to_scenario(
+        self, scenario_id: int, object_geometry_id: int, physical_object: PhysicalObjectsDataPost, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        """Add existing physical object to scenario."""
+
+    @abc.abstractmethod
     async def add_service_to_scenario(
+        self, scenario_id: int, service: ServicesDataPost, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        """Add service object to scenario."""
+
+    @abc.abstractmethod
+    async def add_existing_service_to_scenario(
         self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
     ) -> ScenarioUrbanObjectDTO:
-        """Add service to scenario."""
+        """Add existing service object to scenario."""

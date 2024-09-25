@@ -4,13 +4,13 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
-    projects_object_geometries_data,
     physical_object_types_dict,
+    projects_object_geometries_data,
     projects_physical_objects_data,
-    service_types_dict,
     projects_services_data,
-    territory_types_dict,
     projects_urban_objects_data,
+    service_types_dict,
+    territory_types_dict,
 )
 from idu_api.urban_api.dto import ScenarioUrbanObjectDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
@@ -55,16 +55,23 @@ async def get_scenario_urban_object_by_id_from_db(
             )
             .join(
                 projects_object_geometries_data,
-                projects_object_geometries_data.c.object_geometry_id == projects_urban_objects_data.c.object_geometry_id,
+                projects_object_geometries_data.c.object_geometry_id
+                == projects_urban_objects_data.c.object_geometry_id,
             )
             .join(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == projects_physical_objects_data.c.physical_object_type_id,
+                physical_object_types_dict.c.physical_object_type_id
+                == projects_physical_objects_data.c.physical_object_type_id,
             )
-            .outerjoin(projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id)
-            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == projects_services_data.c.service_type_id)
             .outerjoin(
-                territory_types_dict, territory_types_dict.c.territory_type_id == projects_services_data.c.territory_type_id
+                projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id
+            )
+            .outerjoin(
+                service_types_dict, service_types_dict.c.service_type_id == projects_services_data.c.service_type_id
+            )
+            .outerjoin(
+                territory_types_dict,
+                territory_types_dict.c.territory_type_id == projects_services_data.c.territory_type_id,
             )
         )
         .where(projects_urban_objects_data.c.urban_object_id == scenario_urban_object_id)

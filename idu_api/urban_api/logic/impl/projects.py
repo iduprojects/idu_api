@@ -16,6 +16,8 @@ from idu_api.urban_api.logic.impl.helpers.projects_profiles import (
     get_target_profiles_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
+    add_existing_physical_object_to_scenario_in_db,
+    add_existing_service_to_scenario_in_db,
     add_physical_object_to_scenario_in_db,
     add_scenario_to_db,
     add_service_to_scenario_in_db,
@@ -28,12 +30,14 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPost,
+    PhysicalObjectWithGeometryPost,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
+    ServicesDataPost,
     TargetProfilesPost,
 )
 
@@ -96,15 +100,25 @@ class UserProjectServiceImpl(UserProjectService):
         return await add_target_profile_to_db(self._conn, target_profile)
 
     async def add_physical_object_to_scenario(
+        self, scenario_id: int, physical_object: PhysicalObjectWithGeometryPost, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        return await add_physical_object_to_scenario_in_db(self._conn, scenario_id, physical_object, user_id)
+
+    async def add_existing_physical_object_to_scenario(
         self, scenario_id: int, object_geometry_id: int, physical_object: PhysicalObjectsDataPost, user_id: str
     ) -> ScenarioUrbanObjectDTO:
-        return await add_physical_object_to_scenario_in_db(
+        return await add_existing_physical_object_to_scenario_in_db(
             self._conn, scenario_id, object_geometry_id, physical_object, user_id
         )
 
     async def add_service_to_scenario(
+        self, scenario_id: int, service: ServicesDataPost, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        return await add_service_to_scenario_in_db(self._conn, scenario_id, service, user_id)
+
+    async def add_existing_service_to_scenario(
         self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
     ) -> ScenarioUrbanObjectDTO:
-        return await add_service_to_scenario_in_db(
+        return await add_existing_service_to_scenario_in_db(
             self._conn, scenario_id, service_id, physical_object_id, object_geometry_id, user_id
         )

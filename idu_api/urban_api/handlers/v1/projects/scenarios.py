@@ -10,10 +10,12 @@ from idu_api.urban_api.handlers.v1.projects.routers import projects_router
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPost,
+    PhysicalObjectWithGeometryPost,
     ScenariosData,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
+    ServicesDataPost,
 )
 from idu_api.urban_api.schemas.scenarios_urban_objects import ScenariosUrbanObject
 from idu_api.urban_api.utils.dependencies import user_dependency
@@ -138,6 +140,28 @@ async def delete_scenario(
 
 
 @projects_router.post(
+    "/scenarios/{scenario_id}/physical_objects",
+    response_model=ScenariosUrbanObject,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_scenario_physical_object(
+    request: Request,
+    physical_object: PhysicalObjectWithGeometryPost,
+    scenario_id: int = Path(..., description="scenario identifier"),
+    user: UserDTO = Depends(user_dependency),
+) -> ScenariosUrbanObject:
+    """Add physical object to scenario.
+
+    You must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    urban_object = await user_project_service.add_physical_object_to_scenario(scenario_id, physical_object, user.id)
+
+    return ScenariosUrbanObject.from_dto(urban_object)
+
+
+@projects_router.post(
     "/scenarios/{scenario_id}/{object_geometry_id}",
     response_model=ScenariosUrbanObject,
     status_code=status.HTTP_200_OK,
@@ -149,17 +173,37 @@ async def add_physical_object_to_scenario(
     physical_object: PhysicalObjectsDataPost = Body(..., description="Physical object"),
     user: UserDTO = Depends(user_dependency),
 ) -> ScenariosUrbanObject:
-    """Add physical object to scenario.
+    """Add existing physical object to scenario.
 
     You must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenario_urban_object = await user_project_service.add_physical_object_to_scenario(
+    urban_object = await user_project_service.add_existing_physical_object_to_scenario(
         scenario_id, object_geometry_id, physical_object, user.id
     )
 
-    return ScenariosUrbanObject.from_dto(scenario_urban_object)
+    return ScenariosUrbanObject.from_dto(urban_object)
+
+
+@projects_router.post(
+    "/scenarios/{scenario_id}/services", response_model=ScenariosUrbanObject, status_code=status.HTTP_201_CREATED
+)
+async def create_scenario_physical_object(
+    request: Request,
+    service: ServicesDataPost,
+    scenario_id: int = Path(..., description="scenario identifier"),
+    user: UserDTO = Depends(user_dependency),
+) -> ScenariosUrbanObject:
+    """Add service object to scenario.
+
+    You must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    urban_object = await user_project_service.add_service_to_scenario(scenario_id, service, user.id)
+
+    return ScenariosUrbanObject.from_dto(urban_object)
 
 
 @projects_router.post(
@@ -175,14 +219,14 @@ async def add_service_to_scenario(
     object_geometry_id: int = Query(..., description="Object geometry id"),
     user: UserDTO = Depends(user_dependency),
 ) -> ScenariosUrbanObject:
-    """Add service object to scenario.
+    """Add existing service object to scenario.
 
     You must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenario_urban_object_dto = await user_project_service.add_service_to_scenario(
+    urban_object = await user_project_service.add_existing_service_to_scenario(
         scenario_id, service_id, physical_object_id, object_geometry_id, user.id
     )
 
-    return ScenariosUrbanObject.from_dto(scenario_urban_object_dto)
+    return ScenariosUrbanObject.from_dto(urban_object)
