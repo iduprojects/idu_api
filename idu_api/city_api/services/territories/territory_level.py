@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.city_api.common.mapper import territory_dto_without_geometry
-from idu_api.city_api.dto.munipalities import MunicipalitiesDTO
 from idu_api.city_api.dto.territory import CATerritoryDTO, CATerritoryWithoutGeometryDTO
 from idu_api.urban_api.dto import TerritoryDTO, TerritoryWithoutGeometryDTO
 from idu_api.urban_api.logic.impl.helpers.territory_objects import get_territory_by_id
@@ -43,23 +42,3 @@ class TerritoryLevelsService:
         )  # returns list[TerritoryDTO]
 
         return result
-
-    @staticmethod
-    async def map_dto(
-            result: list[TerritoryDTO]
-    ) -> list[MunicipalitiesDTO]:
-        mapped_result: list[MunicipalitiesDTO] = []
-
-        for i in range(len(result)):
-            municipality = MunicipalitiesDTO()
-            await municipality.map_from_territory_dto(
-                result[i].__dict__,
-                {
-                    "territory_id": "id",
-                    "territory_type_name": "type",
-                    "centre_point": "center"
-                }
-            )
-            mapped_result.append(municipality)
-
-        return mapped_result
