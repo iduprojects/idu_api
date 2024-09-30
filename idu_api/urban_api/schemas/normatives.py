@@ -1,5 +1,6 @@
 """Normatives schemas are defined here."""
 
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -14,14 +15,25 @@ from .service_types import ServiceTypeBasic, UrbanFunctionBasic
 class Normative(BaseModel):
     """Normative response model for a given territory"""
 
-    service_type: ServiceTypeBasic | None = Field(None, example=ServiceTypeBasic(id=1, name="Школа"))
-    urban_function: UrbanFunctionBasic | None = Field(None, example=UrbanFunctionBasic(id=1, name="--"))
-    radius_availability_meters: int | None = Field(None, example=1)
-    time_availability_minutes: int | None = Field(None, example=1)
-    services_per_1000_normative: int | None = Field(None, example=1)
-    services_capacity_per_1000_normative: int | None = Field(None, example=1)
-    normative_type: NormativeType = Field(NormativeType.SELF, example=NormativeType.SELF)
-    is_regulated: bool = Field(..., example=True)
+    service_type: ServiceTypeBasic | None = None
+    urban_function: UrbanFunctionBasic | None = None
+    year: int = Field(..., examples=[2024])
+    radius_availability_meters: int | None = Field(None, examples=[1])
+    time_availability_minutes: int | None = Field(None, examples=[None])
+    services_per_1000_normative: int | None = Field(None, examples=[1])
+    services_capacity_per_1000_normative: int | None = Field(None, examples=[None])
+    normative_type: NormativeType = Field(NormativeType.SELF, examples=[NormativeType.SELF])
+    is_regulated: bool = Field(..., examples=[True])
+    source: str | None = Field(
+        ...,
+        description="Information source",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
+    )
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     @field_validator("normative_type", mode="before")
     @staticmethod
@@ -64,23 +76,30 @@ class Normative(BaseModel):
         if dto.urban_function_id is not None:
             return cls(
                 urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
+                year=dto.year,
                 is_regulated=dto.is_regulated,
                 radius_availability_meters=dto.radius_availability_meters,
                 time_availability_minutes=dto.time_availability_minutes,
                 services_per_1000_normative=dto.services_per_1000_normative,
                 services_capacity_per_1000_normative=dto.services_capacity_per_1000_normative,
                 normative_type=dto.normative_type,
+                source=dto.source,
+                created_at=dto.created_at,
+                updated_at=dto.updated_at,
             )
-        else:
-            return cls(
-                service_type=ServiceTypeBasic(id=dto.service_type_id, name=dto.service_type_name),
-                is_regulated=dto.is_regulated,
-                radius_availability_meters=dto.radius_availability_meters,
-                time_availability_minutes=dto.time_availability_minutes,
-                services_per_1000_normative=dto.services_per_1000_normative,
-                services_capacity_per_1000_normative=dto.services_capacity_per_1000_normative,
-                normative_type=dto.normative_type,
-            )
+        return cls(
+            service_type=ServiceTypeBasic(id=dto.service_type_id, name=dto.service_type_name),
+            year=dto.year,
+            is_regulated=dto.is_regulated,
+            radius_availability_meters=dto.radius_availability_meters,
+            time_availability_minutes=dto.time_availability_minutes,
+            services_per_1000_normative=dto.services_per_1000_normative,
+            services_capacity_per_1000_normative=dto.services_capacity_per_1000_normative,
+            normative_type=dto.normative_type,
+            source=dto.source,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+        )
 
 
 class NormativePost(BaseModel):
@@ -93,11 +112,20 @@ class NormativePost(BaseModel):
 
     service_type_id: int | None = None
     urban_function_id: int | None = None
-    radius_availability_meters: int | None = None
-    time_availability_minutes: int | None = None
-    services_per_1000_normative: int | None = None
-    services_capacity_per_1000_normative: int | None = None
-    is_regulated: bool
+    year: int = Field(..., examples=[2024])
+    radius_availability_meters: int | None = Field(None, examples=[1])
+    time_availability_minutes: int | None = Field(None, examples=[None])
+    services_per_1000_normative: int | None = Field(None, examples=[1])
+    services_capacity_per_1000_normative: int | None = Field(None, examples=[None])
+    is_regulated: bool = Field(..., examples=[True])
+    source: str | None = Field(
+        ...,
+        description="Information source",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
+    )
 
     @model_validator(mode="after")
     def validate_service_type_or_urban_function(self):
@@ -135,49 +163,61 @@ class NormativePatch(BaseModel):
 
     service_type_id: int | None = None
     urban_function_id: int | None = None
-    radius_availability_meters: int | None = None
-    time_availability_minutes: int | None = None
-    services_per_1000_normative: int | None = None
-    services_capacity_per_1000_normative: int | None = None
-    is_regulated: bool | None = None
+    year: int = Field(..., examples=[2024])
+    radius_availability_meters: int | None = Field(None, examples=[1])
+    time_availability_minutes: int | None = Field(None, examples=[None])
+    services_per_1000_normative: int | None = Field(None, examples=[1])
+    services_capacity_per_1000_normative: int | None = Field(None, examples=[None])
+    is_regulated: bool | None = Field(None, examples=[True])
+    source: str | None = Field(
+        None,
+        description="Information source",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
+    )
 
     @model_validator(mode="after")
     def validate_service_type_or_urban_function(self):
         if self.service_type_id is not None and self.urban_function_id is not None:
             raise ValueError("service_type and urban_function cannot both be set")
         if self.service_type_id is None and self.urban_function_id is None:
-            raise ValueError("service_type and urban_function cannot both be unset")
+            raise ValueError("service_type and urban_function cannot both be unset|null")
         return self
 
     @model_validator(mode="after")
     def validate_radius_or_time_availability(self):
-        if self.radius_availability_meters is not None and self.time_availability_minutes is not None:
-            raise ValueError("radius_availability_meters and time_availability_minutes cannot both be set")
+        radius_is_set = "radius_availability_meters" in self.model_fields_set
+        time_is_set = "time_availability_minutes" in self.model_fields_set
+        if radius_is_set and time_is_set:
+            if self.radius_availability_meters is not None and self.time_availability_minutes is not None:
+                raise ValueError("radius_availability_meters and time_availability_minutes cannot both be set")
+            if self.radius_availability_meters is None and self.time_availability_minutes is None:
+                raise ValueError("radius_availability_meters and time_availability_minutes cannot both be null")
         return self
 
     @model_validator(mode="after")
     def validate_services_or_capacity_normative(self):
-        if self.services_per_1000_normative is not None and self.services_capacity_per_1000_normative is not None:
-            raise ValueError("services_per_1000_normative and services_capacity_per_1000_normative cannot both be set")
+        services_is_set = "services_per_1000_normative" in self.model_fields_set
+        capacity_is_set = "services_capacity_per_1000_normative" in self.model_fields_set
+        if services_is_set and capacity_is_set:
+            if self.services_per_1000_normative is not None and self.services_capacity_per_1000_normative is not None:
+                raise ValueError(
+                    "services_per_1000_normative and services_capacity_per_1000_normative cannot both be set"
+                )
+            if self.services_per_1000_normative is None and self.services_capacity_per_1000_normative is None:
+                raise ValueError(
+                    "services_per_1000_normative and services_capacity_per_1000_normative cannot both be null"
+                )
         return self
 
-    @model_validator(mode="before")
     @classmethod
+    @model_validator(mode="before")
     def check_empty_request(cls, values):
         """Ensure the request body is not empty."""
-
         if not values:
             raise ValueError("request body cannot be empty")
-        return values
-
-    @model_validator(mode="before")
-    @classmethod
-    def disallow_nulls(cls, values):
-        """Ensure the request body hasn't nulls."""
-
-        for k, v in values.items():
-            if v is None:
-                raise ValueError(f"{k} cannot be null")
         return values
 
 
@@ -186,3 +226,34 @@ class NormativeDelete(BaseModel):
 
     service_type_id: int | None = None
     urban_function_id: int | None = None
+    year: int = Field(..., examples=[2024])
+
+
+class ShortNormativeInfo(BaseModel):
+    """Normative geojson response model for a given territory"""
+
+    type: str = Field(..., examples=["Школа"])
+    year: int = Field(..., examples=[2024])
+    radius_availability_meters: int | None = Field(None, examples=[1])
+    time_availability_minutes: int | None = Field(None, examples=None)
+    services_per_1000_normative: int | None = Field(None, examples=[1])
+    services_capacity_per_1000_normative: int | None = Field(None, examples=None)
+    is_regulated: bool = Field(..., examples=[True])
+
+    @model_validator(mode="after")
+    def validate_radius_or_time_availability(self):
+        if self.radius_availability_meters is None and self.time_availability_minutes is None:
+            raise ValueError("radius_availability_meters and time_availability_minutes cannot both be unset")
+        if self.radius_availability_meters is not None and self.time_availability_minutes is not None:
+            raise ValueError("radius_availability_meters and time_availability_minutes cannot both be set")
+        return self
+
+    @model_validator(mode="after")
+    def validate_services_or_capacity_normative(self):
+        if self.services_per_1000_normative is None and self.services_capacity_per_1000_normative is None:
+            raise ValueError(
+                "services_per_1000_normative and services_capacity_per_1000_normative cannot both be unset"
+            )
+        if self.services_per_1000_normative is not None and self.services_capacity_per_1000_normative is not None:
+            raise ValueError("services_per_1000_normative and services_capacity_per_1000_normative cannot both be set")
+        return self

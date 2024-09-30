@@ -2,10 +2,14 @@
 Physical objects data table is defined here
 """
 
+from typing import Callable
+
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
+
+func: Callable
 
 physical_objects_data_id_seq = Sequence("physical_objects_data_id_seq")
 
@@ -26,4 +30,6 @@ Physical objects:
 - physical_object_type_id foreign key int
 - name string(300)
 - properties jsonb
+- created_at timestamp
+- updated_at timestamp
 """

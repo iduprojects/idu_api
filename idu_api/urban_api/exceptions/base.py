@@ -5,9 +5,9 @@ Head API exception class is defined here.
 from fastapi import HTTPException, status
 
 
-class NotesApiError(HTTPException):
+class IduApiError(HTTPException):
     """
-    Base Notes API exception to inherit from.
+    Base Idu API exception to inherit from.
     User can redefine `status_code` method and `__str__` as its value will be used in HTTPException.
     """
 

@@ -9,8 +9,14 @@ from fastapi_pagination import add_pagination
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.config import UrbanAPIConfig
+from idu_api.urban_api.logic.impl.indicators import IndicatorsServiceImpl
+from idu_api.urban_api.logic.impl.object_geometries import ObjectGeometriesServiceImpl
 from idu_api.urban_api.logic.impl.physical_objects import PhysicalObjectsServiceImpl
+from idu_api.urban_api.logic.impl.projects import UserProjectServiceImpl
+from idu_api.urban_api.logic.impl.service_types import ServiceTypesServiceImpl
+from idu_api.urban_api.logic.impl.services import ServicesDataServiceImpl
 from idu_api.urban_api.logic.impl.territories import TerritoriesServiceImpl
+from idu_api.urban_api.logic.impl.urban_objects import UrbanObjectsServiceImpl
 from idu_api.urban_api.middlewares.dependency_injection import PassServicesDependencies
 from idu_api.urban_api.middlewares.exception_handler import ExceptionHandlerMiddleware
 
@@ -73,8 +79,14 @@ def get_app(prefix: str = "/api") -> FastAPI:
     application.add_middleware(
         PassServicesDependencies,
         connection_manager=connection_manager,  # reinitialized on startup
-        territories_service=TerritoriesServiceImpl,
+        indicators_service=IndicatorsServiceImpl,
+        object_geometries_service=ObjectGeometriesServiceImpl,
         physical_objects_service=PhysicalObjectsServiceImpl,
+        service_types_service=ServiceTypesServiceImpl,
+        services_data_service=ServicesDataServiceImpl,
+        territories_service=TerritoriesServiceImpl,
+        urban_objects_service=UrbanObjectsServiceImpl,
+        user_project_service=UserProjectServiceImpl,
     )
 
     return application
@@ -84,8 +96,9 @@ def get_app(prefix: str = "/api") -> FastAPI:
 async def lifespan(application: FastAPI):
     """Lifespan function.
 
-    Initializes database connection in pass_services_dependencies middleware
+    Initializes database connection in pass_services_dependencies middleware.
     """
+
     for middleware in application.user_middleware:
         if middleware.cls == PassServicesDependencies:
             app_config = UrbanAPIConfig.try_from_env()

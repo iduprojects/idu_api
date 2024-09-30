@@ -5,10 +5,10 @@ Top exceptions for a plants backend service are defined here.
 
 from fastapi import status
 
-from idu_api.urban_api.exceptions import NotesApiError
+from idu_api.urban_api.exceptions import IduApiError
 
 
-class JWTDecodeError(NotesApiError):
+class JWTDecodeError(IduApiError):
     """
     Thrown a failed attempt to decode JWT token value, either because a bad format or missing essential keys.
     """

@@ -9,6 +9,12 @@ class DateType(str, Enum):
     DAY = "day"
 
 
+class ValueType(str, Enum):
+    REAL = "real"
+    TARGET = "target"
+    FORECAST = "forecast"
+
+
 class Ordering(str, Enum):
     ASC = "asc"
     DESC = "desc"

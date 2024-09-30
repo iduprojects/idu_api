@@ -25,17 +25,11 @@ class UrbanAPIConfig:  # pylint: disable=too-many-instance-attributes
     debug: bool = False
     db_connect_retry: int = 20
     db_pool_size: int = 15
-    keycloak_server_url: str = "http://localhost:8080/"
-    realm: str = "test"
-    client_id: str = "urban_api"
-    client_secret: str = ""
-    _authorization_url: str = f"realms/{realm}/protocol/openid-connect/auth"
-    _token_url: str = f"/realms/{realm}/protocol/openid-connect/token"
+    authentication_url: str = "http://10.32.1.100:8086/introspect"
+    validate: int = 0
+    cache_size: int = 100
+    cache_ttl: int = 1800
     application_name = f"urban_api ({api_version})"
-
-    def __post_init__(self):
-        self._authorization_url = self._authorization_url.format(realm=self.realm)
-        self._token_url = self._token_url.format(realm=self.realm)
 
     @classmethod
     def try_from_env(cls) -> "UrbanAPIConfig":

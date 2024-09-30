@@ -17,9 +17,9 @@ territory_indicators_data = Table(
     Column("territory_id", ForeignKey("territories_data.territory_id"), primary_key=True, nullable=False),
     Column("date_type", DateFieldTypeEnum, primary_key=True, nullable=False),
     Column("date_value", Date, primary_key=True, nullable=False),
+    Column("value_type", IndicatorValueTypeEnum, primary_key=True, nullable=False),
+    Column("information_source", String(300), primary_key=True, nullable=False),
     Column("value", Float(53), nullable=False),
-    Column("value_type", IndicatorValueTypeEnum, nullable=False),
-    Column("information_source", String(300)),
 )
 
 """
@@ -28,7 +28,7 @@ Territory indicators:
 - territory_id foreign key int
 - date_type enum
 - date_value date
-- value float(53)
 - value_type enum
 - information_source string(300)
+- value float(53)
 """

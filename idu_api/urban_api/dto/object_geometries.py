@@ -1,20 +1,20 @@
-"""
-Object geometries DTO are defined here.
-"""
+"""Object geometries DTO are defined here."""
 
 from dataclasses import dataclass
-from typing import Optional
+from datetime import datetime
 
 import shapely.geometry as geom
 
 
-@dataclass()
+@dataclass
 class ObjectGeometryDTO:
     object_geometry_id: int
     territory_id: int
-    address: Optional[str]
+    address: str | None
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
+    created_at: datetime
+    updated_at: datetime
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):

@@ -1,7 +1,7 @@
 """Territories handlers logic is defined here."""
 
 from datetime import date, datetime
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal
 
 import shapely.geometry as geom
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
@@ -13,12 +13,15 @@ from idu_api.urban_api.dto import (
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
     NormativeDTO,
+    PageDTO,
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
+    TerritoryWithIndicatorsDTO,
+    TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_buildings import (
@@ -28,6 +31,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_functional_zones import (
     get_functional_zones_by_territory_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_indicators import (
+    get_indicator_values_by_parent_id_from_db,
     get_indicator_values_by_territory_id_from_db,
     get_indicators_by_territory_id_from_db,
 )
@@ -35,6 +39,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_normatives import (
     add_normatives_to_territory_to_db,
     delete_normatives_by_territory_id_in_db,
     get_normatives_by_territory_id_from_db,
+    get_normatives_values_by_parent_id_from_db,
     patch_normatives_by_territory_id_in_db,
     put_normatives_by_territory_id_in_db,
 )
@@ -74,7 +79,7 @@ func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString
 
 
-class TerritoriesServiceImpl(TerritoriesService):
+class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-public-methods
     """Service to manipulate territories entities.
 
     Based on async SQLAlchemy connection.
@@ -107,13 +112,14 @@ class TerritoriesServiceImpl(TerritoriesService):
     async def get_services_by_territory_id(
         self,
         territory_id: int,
-        service_type_id: Optional[int],
-        name: Optional[str],
-        order_by: Optional[Literal["created_at", "updated_at"]],
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[ServiceDTO]:
+        service_type_id: int | None,
+        name: str | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None = "asc",
+        paginate: bool = False,
+    ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
         return await get_services_by_territory_id_from_db(
-            self._conn, territory_id, service_type_id, name, order_by, ordering
+            self._conn, territory_id, service_type_id, name, order_by, ordering, paginate
         )
 
     async def get_services_with_geometry_by_territory_id(
@@ -121,11 +127,12 @@ class TerritoriesServiceImpl(TerritoriesService):
         territory_id: int,
         service_type_id: int | None,
         name: str | None,
-        order_by: Optional[Literal["created_at", "updated_at"]],
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[ServiceWithGeometryDTO]:
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None = "asc",
+        paginate: bool = False,
+    ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
         return await get_services_with_geometry_by_territory_id_from_db(
-            self._conn, territory_id, service_type_id, name, order_by, ordering
+            self._conn, territory_id, service_type_id, name, order_by, ordering, paginate
         )
 
     async def get_services_capacity_by_territory_id(self, territory_id: int, service_type_id: int | None) -> int:
@@ -135,12 +142,53 @@ class TerritoriesServiceImpl(TerritoriesService):
         return await get_indicators_by_territory_id_from_db(self._conn, territory_id)
 
     async def get_indicator_values_by_territory_id(
-        self, territory_id: int, date_type: str | None, date_value: datetime | None
+        self,
+        territory_id: int,
+        indicator_ids: str | None,
+        indicators_group_id: int | None,
+        start_date: datetime | None,
+        end_date: datetime | None,
+        value_type: Literal["real", "target", "forecast"] | None,
+        information_source: str | None,
+        last_only: bool,
     ) -> list[IndicatorValueDTO]:
-        return await get_indicator_values_by_territory_id_from_db(self._conn, territory_id, date_type, date_value)
+        return await get_indicator_values_by_territory_id_from_db(
+            self._conn,
+            territory_id,
+            indicator_ids,
+            indicators_group_id,
+            start_date,
+            end_date,
+            value_type,
+            information_source,
+            last_only,
+        )
 
-    async def get_normatives_by_territory_id(self, territory_id: int) -> list[NormativeDTO]:
-        return await get_normatives_by_territory_id_from_db(self._conn, territory_id)
+    async def get_indicator_values_by_parent_id(
+        self,
+        parent_id: int | None,
+        indicator_ids: str | None,
+        indicators_group_id: int | None,
+        start_date: datetime | None,
+        end_date: datetime | None,
+        value_type: Literal["real", "target", "forecast"] | None,
+        information_source: str | None,
+        last_only: bool,
+    ) -> list[TerritoryWithIndicatorsDTO]:
+        return await get_indicator_values_by_parent_id_from_db(
+            self._conn,
+            parent_id,
+            indicator_ids,
+            indicators_group_id,
+            start_date,
+            end_date,
+            value_type,
+            information_source,
+            last_only,
+        )
+
+    async def get_normatives_by_territory_id(self, territory_id: int, year: int) -> list[NormativeDTO]:
+        return await get_normatives_by_territory_id_from_db(self._conn, territory_id, year)
 
     async def add_normatives_to_territory(
         self, territory_id: int, normatives: list[NormativePost]
@@ -160,16 +208,22 @@ class TerritoriesServiceImpl(TerritoriesService):
     async def delete_normatives_by_territory_id(self, territory_id: int, normatives: list[NormativeDelete]) -> dict:
         return await delete_normatives_by_territory_id_in_db(self._conn, territory_id, normatives)
 
+    async def get_normatives_values_by_parent_id(
+        self, parent_id: int | None, year: int
+    ) -> list[TerritoryWithNormativesDTO]:
+        return await get_normatives_values_by_parent_id_from_db(self._conn, parent_id, year)
+
     async def get_physical_objects_by_territory_id(
         self,
         territory_id: int,
         physical_object_type: int | None,
         name: str | None,
-        order_by: Optional[Literal["created_at", "updated_at"]],
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[PhysicalObjectDataDTO]:
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None = "asc",
+        paginate: bool = False,
+    ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
         return await get_physical_objects_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name, order_by, ordering
+            self._conn, territory_id, physical_object_type, name, order_by, ordering, paginate
         )
 
     async def get_physical_objects_with_geometry_by_territory_id(
@@ -177,17 +231,18 @@ class TerritoriesServiceImpl(TerritoriesService):
         territory_id: int,
         physical_object_type: int | None,
         name: str | None,
-        order_by: Optional[Literal["created_at", "updated_at"]],
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[PhysicalObjectWithGeometryDTO]:
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None = "asc",
+        paginate: bool = False,
+    ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_with_geometry_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name, order_by, ordering
+            self._conn, territory_id, physical_object_type, name, order_by, ordering, paginate
         )
 
     async def get_living_buildings_with_geometry_by_territory_id(
         self,
         territory_id: int,
-    ) -> list[LivingBuildingsWithGeometryDTO]:
+    ) -> PageDTO[LivingBuildingsWithGeometryDTO]:
         return await get_living_buildings_with_geometry_by_territory_id_from_db(self._conn, territory_id)
 
     async def get_functional_zones_by_territory_id(
@@ -196,21 +251,24 @@ class TerritoriesServiceImpl(TerritoriesService):
         return await get_functional_zones_by_territory_id_from_db(self._conn, territory_id, functional_zone_type_id)
 
     async def get_territories_by_parent_id(
-        self, parent_id: int | None, get_all_levels: bool | None, territory_type_id: int | None
-    ) -> list[TerritoryDTO]:
-        return await get_territories_by_parent_id_from_db(self._conn, parent_id, get_all_levels, territory_type_id)
+        self, parent_id: int | None, get_all_levels: bool | None, territory_type_id: int | None, paginate: bool = False
+    ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
+        return await get_territories_by_parent_id_from_db(
+            self._conn, parent_id, get_all_levels, territory_type_id, paginate
+        )
 
     async def get_territories_without_geometry_by_parent_id(
         self,
         parent_id: int | None,
         get_all_levels: bool,
-        order_by: Optional[Literal["created_at", "updated_at"]],
+        order_by: Literal["created_at", "updated_at"] | None,
         created_at: date | None,
         name: str | None,
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
-    ) -> list[TerritoryWithoutGeometryDTO]:
+        ordering: Literal["asc", "desc"] | None = "asc",
+        paginate: bool = False,
+    ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
         return await get_territories_without_geometry_by_parent_id_from_db(
-            self._conn, parent_id, get_all_levels, order_by, created_at, name, ordering
+            self._conn, parent_id, get_all_levels, order_by, created_at, name, ordering, paginate
         )
 
     async def get_common_territory_for_geometry(

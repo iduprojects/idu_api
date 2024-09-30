@@ -5,6 +5,7 @@ It is needed to import files which use these routers to initialize handlers.
 
 from fastapi import APIRouter
 
+from .projects import routers_list as projects_routers
 from .territories import routers_list as territories_routers
 
 indicators_router = APIRouter(tags=["indicators"], prefix="/v1")
@@ -19,6 +20,8 @@ object_geometries_router = APIRouter(tags=["object_geometries"], prefix="/v1")
 
 services_router = APIRouter(tags=["services"], prefix="/v1")
 
+urban_objects_router = APIRouter(tags=["urban_objects"], prefix="/v1")
+
 routers_list = [
     indicators_router,
     services_router,
@@ -26,7 +29,9 @@ routers_list = [
     physical_objects_router,
     object_geometries_router,
     service_types_router,
+    urban_objects_router,
     *territories_routers,
+    *projects_routers,
 ]
 
 __all__ = [

@@ -1,85 +1,83 @@
-"""FastApi keycloak are defined here."""
+"""FastAPI authentication client is defined here."""
 
-import asyncio
+import json
+from base64 import b64decode
+from datetime import datetime
 from typing import Annotated
 
+import httpx
 from cachetools import TTLCache
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from keycloak import KeycloakOpenID
 
+from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto.users import UserDTO
 
-# TODO: remove or refactor as dependency class
-_keycloak_openid: KeycloakOpenID
-
-cache = TTLCache(maxsize=100, ttl=60)
-
-
-def configure_keycloak(keycloak_server_url: str, client_id: str, realm: str, client_secret: str):
-    global _keycloak_openid  # pylint: disable=global-statement
-    _keycloak_openid = KeycloakOpenID(
-        server_url=keycloak_server_url,
-        client_id=client_id,
-        realm_name=realm,
-        client_secret_key=client_secret,
-        verify=True,
-    )
-
-
-async def get_idp_public_key():
-    return "-----BEGIN PUBLIC KEY-----\n" f"{_keycloak_openid.public_key()}" "\n-----END PUBLIC KEY-----"
+config = UrbanAPIConfig.try_from_env()
+cache = TTLCache(maxsize=config.cache_size, ttl=config.cache_ttl)
 
 
 async def access_token_dependency(
     access_token: Annotated[HTTPAuthorizationCredentials, Depends(HTTPBearer())],
-) -> dict:
+) -> UserDTO:
+    """Decode the JWT token, extract user information, and validate the token if necessary."""
 
-    result = cache.get(access_token.credentials)
-    if result is not None:
-        print(f"Found it in cache for token {access_token.credentials}")
-        return result
+    cached_result = cache.get(access_token.credentials)
+    if cached_result is not None:
+        return cached_result
 
     try:
-        result = _keycloak_openid.decode_token(
-            access_token.credentials,
-            key=await get_idp_public_key(),
-            options={"verify_signature": True, "verify_aud": False, "exp": True},
-        )
-        await asyncio.sleep(5)
-
-        # Store the result in the cache
-        cache[access_token.credentials] = result
-
-        return result
-
-    except Exception as e:
-        raise HTTPException(  # pylint: disable=raise-missing-from
+        payload = json.loads(b64decode(access_token.credentials.split(".")[1]))
+        UserDTO(id=payload.get("sub"), is_active=payload.get("active"))
+    except Exception as exc:
+        raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),  # "Invalid authentication credentials",
+            detail="Invalid authentication token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from exc
+
+    cache[access_token.credentials] = payload
+
+    if not config.validate:
+        return payload
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                config.authentication_url, headers={"Authorization": f"Bearer {access_token.credentials}"}
+            )
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token signature",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Error verifying token signature",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    try:
+        if "exp" in payload and datetime.utcfromtimestamp(payload["exp"]) < datetime.utcnow():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has expired, please refresh",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid expiration format",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+
+    return payload
 
 
 async def user_dependency(
-    payload: dict = Depends(access_token_dependency),
+    user: dict = Depends(access_token_dependency),
 ) -> UserDTO:
-    """
-    Return user fetched from the database by email from a validated access token.
-
-    Ensures that User is approved to log in and valid.
-    """
-
-    try:
-        return UserDTO(
-            id=payload.get("sub"),
-            username=payload.get("username"),
-            email=payload.get("email"),
-            roles=list(payload.get("realm_access", {}).get("roles", [])),
-        )
-    except Exception as e:
-        raise HTTPException(  # pylint: disable=raise-missing-from
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),  # "Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    """Return UserDTO created by access_token_dependency."""
+    return UserDTO(id=user.get("sub"), is_active=user.get("active"))

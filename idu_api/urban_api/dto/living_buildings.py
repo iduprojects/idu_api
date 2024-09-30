@@ -1,27 +1,28 @@
-"""
-Living buildings DTO are defined here.
-"""
+"""Living buildings DTO are defined here."""
 
 from dataclasses import dataclass
-from typing import Dict, Optional
+from datetime import datetime
+from typing import Any
 
 import shapely.geometry as geom
 
 
-@dataclass()
+@dataclass
 class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     living_building_id: int
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    physical_object_name: Optional[str]
-    physical_object_address: Optional[str]
-    physical_object_properties: Dict[str, str]
-    residents_number: Optional[int]
-    living_area: Optional[float]
-    properties: Dict[str, str]
+    physical_object_name: str | None
+    physical_object_properties: dict[str, str]
+    physical_object_created_at: datetime
+    physical_object_updated_at: datetime
+    residents_number: int | None
+    living_area: float | None
+    properties: dict[str, Any]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
+    physical_object_address: str | None
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
@@ -33,14 +34,15 @@ class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attri
 
 
 @dataclass(frozen=True)
-class LivingBuildingsDTO:
+class LivingBuildingsDTO:  # pylint: disable=too-many-instance-attributes
     living_building_id: int
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    physical_object_name: Optional[str]
-    physical_object_address: Optional[str]
-    physical_object_properties: Dict[str, str]
-    residents_number: Optional[int]
-    living_area: Optional[float]
-    properties: Dict[str, str]
+    physical_object_name: str | None
+    physical_object_properties: dict[str, Any]
+    physical_object_created_at: datetime
+    physical_object_updated_at: datetime
+    residents_number: int | None
+    living_area: float | None
+    properties: dict[str, Any]

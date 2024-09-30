@@ -2,4 +2,4 @@
 API exceptions are located here.
 """
 
-from .base import NotesApiError
+from .base import IduApiError

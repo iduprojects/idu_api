@@ -4,7 +4,16 @@ Response and request schemas are defined here.
 
 from .functional_zones import FunctionalZoneData
 from .health_check import PingResponse
-from .indicators import Indicator, IndicatorsPost, IndicatorValue, MeasurementUnit, MeasurementUnitPost
+from .indicators import (
+    Indicator,
+    IndicatorsGroup,
+    IndicatorsGroupPost,
+    IndicatorsPost,
+    IndicatorValue,
+    IndicatorValuePost,
+    MeasurementUnit,
+    MeasurementUnitPost,
+)
 from .living_buildings import (
     LivingBuildingsData,
     LivingBuildingsDataPatch,
@@ -26,10 +35,21 @@ from .physical_objects import (
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
 )
+from .profiles import TargetProfilesData, TargetProfilesPost
+from .projects import (
+    Project,
+    ProjectPatch,
+    ProjectPost,
+    ProjectPut,
+    ProjectTerritory,
+    ProjectTerritoryPatch,
+    ProjectTerritoryPost,
+    ProjectTerritoryPut,
+)
+from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPut
+from .scenarios_urban_objects import ScenariosUrbanObject
 from .service_types import (
     ServiceTypes,
-    ServiceTypesNormativesData,
-    ServiceTypesNormativesDataPost,
     ServiceTypesPost,
     UrbanFunction,
     UrbanFunctionPost,
@@ -49,6 +69,9 @@ from .territories import (
     TerritoryDataPut,
     TerritoryType,
     TerritoryTypesPost,
+    TerritoryWithIndicator,
+    TerritoryWithIndicators,
+    TerritoryWithNormatives,
     TerritoryWithoutGeometry,
 )
 
@@ -60,19 +83,29 @@ __all__ = [
     "TerritoryDataPost",
     "TerritoryDataPatch",
     "TerritoryDataPut",
+    "TerritoryWithIndicator",
+    "TerritoryWithIndicators",
+    "TerritoryWithNormatives",
     "TerritoryWithoutGeometry",
+    "ScenariosData",
+    "ScenariosPatch",
+    "ScenariosPost",
+    "ScenariosPut",
+    "ScenariosUrbanObject",
     "ServicesData",
     "ServicesDataPatch",
     "ServicesDataPost",
     "ServicesDataPut",
+    "ServicesDataWithGeometry",
     "ServiceWithTerritories",
     "ServiceTypes",
     "ServiceTypesPost",
-    "ServiceTypesNormativesData",
-    "ServiceTypesNormativesDataPost",
     "Indicator",
+    "IndicatorsGroup",
+    "IndicatorsGroupPost",
     "IndicatorsPost",
     "IndicatorValue",
+    "IndicatorValuePost",
     "MeasurementUnit",
     "MeasurementUnitPost",
     "Normative",
@@ -87,6 +120,7 @@ __all__ = [
     "PhysicalObjectsDataPatch",
     "PhysicalObjectsDataPost",
     "PhysicalObjectWithGeometryPost",
+    "PhysicalObjectsWithTerritory",
     "PhysicalObjectsDataPut",
     "PhysicalObjectWithGeometry",
     "PhysicalObjectsTypes",
@@ -100,4 +134,14 @@ __all__ = [
     "UrbanFunction",
     "UrbanFunctionPost",
     "Page",
+    "Project",
+    "ProjectPost",
+    "ProjectPut",
+    "ProjectPatch",
+    "ProjectTerritory",
+    "ProjectTerritoryPost",
+    "ProjectTerritoryPut",
+    "ProjectTerritoryPatch",
+    "TargetProfilesData",
+    "TargetProfilesPost",
 ]

@@ -1,9 +1,6 @@
 """Physical objects territories-related handlers are defined here."""
 
-from typing import Optional
-
 from fastapi import Path, Query, Request
-from fastapi_pagination import paginate
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
@@ -11,6 +8,7 @@ from idu_api.urban_api.schemas import PhysicalObjectsData, PhysicalObjectWithGeo
 from idu_api.urban_api.schemas.enums import Ordering
 from idu_api.urban_api.schemas.pages import Page
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsOrderByField
+from idu_api.urban_api.utils.pagination import paginate
 
 from .routers import territories_router
 
@@ -22,9 +20,9 @@ from .routers import territories_router
 )
 async def get_physical_objects_by_territory_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
-    physical_object_type_id: Optional[int] = Query(None, description="Physical object type id", gt=0),
-    name: Optional[str] = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
+    territory_id: int = Path(..., description="territory id", gt=0),
+    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
+    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
@@ -38,12 +36,17 @@ async def get_physical_objects_by_territory_id(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    physical_objects = await territories_service.get_physical_objects_by_territory_id(
-        territory_id, physical_object_type_id, name, order_by, ordering
-    )
-    physical_objects = [PhysicalObjectsData.from_dto(physical_object) for physical_object in physical_objects]
+    order_by_value = order_by.value if order_by is not None else None
 
-    return paginate(physical_objects)
+    physical_objects = await territories_service.get_physical_objects_by_territory_id(
+        territory_id, physical_object_type_id, name, order_by_value, ordering.value, paginate=True
+    )
+
+    return paginate(
+        physical_objects.items,
+        physical_objects.total,
+        transformer=lambda x: [PhysicalObjectsData.from_dto(item) for item in x],
+    )
 
 
 @territories_router.get(
@@ -53,9 +56,9 @@ async def get_physical_objects_by_territory_id(
 )
 async def get_physical_objects_with_geometry_by_territory_id(
     request: Request,
-    territory_id: int = Path(description="territory id", gt=0),
-    physical_object_type_id: Optional[int] = Query(None, description="Physical object type id", gt=0),
-    name: Optional[str] = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
+    territory_id: int = Path(..., description="territory id", gt=0),
+    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
+    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
@@ -69,9 +72,14 @@ async def get_physical_objects_with_geometry_by_territory_id(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    physical_objects_with_geometry_dto = await territories_service.get_physical_objects_with_geometry_by_territory_id(
-        territory_id, physical_object_type_id, name, order_by, ordering
-    )
-    physical_objects = [PhysicalObjectWithGeometry.from_dto(obj) for obj in physical_objects_with_geometry_dto]
+    order_by_value = order_by.value if order_by is not None else None
 
-    return paginate(physical_objects)
+    physical_objects = await territories_service.get_physical_objects_with_geometry_by_territory_id(
+        territory_id, physical_object_type_id, name, order_by_value, ordering.value, paginate=True
+    )
+
+    return paginate(
+        physical_objects.items,
+        physical_objects.total,
+        transformer=lambda x: [PhysicalObjectWithGeometry.from_dto(item) for item in x],
+    )
