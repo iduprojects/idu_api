@@ -1,0 +1,8 @@
+services:
+  city_api:
+    container_name: city_api
+    build:
+      context: ..
+      dockerfile: ./city_api/Dockerfile
+    ports:
+      - 8000:8000
