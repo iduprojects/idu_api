@@ -1,8 +1,19 @@
 import abc
 from typing import Protocol
 
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
-from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut
+from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ScenarioDTO, ScenarioUrbanObjectDTO, TargetProfileDTO
+from idu_api.urban_api.schemas import (
+    PhysicalObjectsDataPost,
+    PhysicalObjectWithGeometryPost,
+    ProjectPatch,
+    ProjectPost,
+    ProjectPut,
+    ScenariosPatch,
+    ScenariosPost,
+    ScenariosPut,
+    ServicesDataPost,
+    TargetProfilesPost,
+)
 
 
 class UserProjectService(Protocol):
@@ -39,3 +50,59 @@ class UserProjectService(Protocol):
     @abc.abstractmethod
     async def patch_project(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO:
         """Patch project object."""
+
+    @abc.abstractmethod
+    async def get_scenarios_by_project_id(self, project_id: int, user_id) -> list[ScenarioDTO]:
+        """Get list of scenario objects by project id."""
+
+    @abc.abstractmethod
+    async def get_scenario_by_id(self, scenario_id: int, user_id) -> ScenarioDTO:
+        """Get scenario object by id."""
+
+    @abc.abstractmethod
+    async def add_scenario(self, scenario: ScenariosPost, user_id: str) -> ScenarioDTO:
+        """Create scenario object."""
+
+    @abc.abstractmethod
+    async def put_scenario(self, scenario: ScenariosPut, scenario_id: int, user_id) -> ScenarioDTO:
+        """Put project object."""
+
+    @abc.abstractmethod
+    async def patch_scenario(self, scenario: ScenariosPatch, scenario_id: int, user_id: str) -> ScenarioDTO:
+        """Patch project object."""
+
+    @abc.abstractmethod
+    async def delete_scenario(self, scenario_id: int, user_id: str) -> dict:
+        """Delete scenario object."""
+
+    @abc.abstractmethod
+    async def get_target_profiles(self) -> list[TargetProfileDTO]:
+        """Get all target profile objects."""
+
+    @abc.abstractmethod
+    async def add_target_profile(self, target_profile: TargetProfilesPost) -> TargetProfileDTO:
+        """Create a new target profile object."""
+
+    @abc.abstractmethod
+    async def add_physical_object_to_scenario(
+        self, scenario_id: int, physical_object: PhysicalObjectWithGeometryPost, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        """Add physical object to scenario."""
+
+    @abc.abstractmethod
+    async def add_existing_physical_object_to_scenario(
+        self, scenario_id: int, object_geometry_id: int, physical_object: PhysicalObjectsDataPost, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        """Add existing physical object to scenario."""
+
+    @abc.abstractmethod
+    async def add_service_to_scenario(
+        self, scenario_id: int, service: ServicesDataPost, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        """Add service object to scenario."""
+
+    @abc.abstractmethod
+    async def add_existing_service_to_scenario(
+        self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
+    ) -> ScenarioUrbanObjectDTO:
+        """Add existing service object to scenario."""

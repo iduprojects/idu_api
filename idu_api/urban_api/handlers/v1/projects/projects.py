@@ -2,15 +2,14 @@
 Projects endpoints are defined here.
 """
 
-from fastapi import Depends, Request
+from fastapi import Depends, Path, Request
 from starlette import status
 
 from idu_api.urban_api.dto.users import UserDTO
+from idu_api.urban_api.handlers.v1.projects.routers import projects_router
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import Project, ProjectPatch, ProjectPost, ProjectPut, ProjectTerritory
 from idu_api.urban_api.utils.dependencies import user_dependency
-
-from .routers import projects_router
 
 
 @projects_router.get(
@@ -46,7 +45,11 @@ async def get_user_projects(request: Request, user: UserDTO = Depends(user_depen
     response_model=Project,
     status_code=status.HTTP_200_OK,
 )
-async def get_project_by_id(request: Request, project_id: int, user: UserDTO = Depends(user_dependency)) -> Project:
+async def get_project_by_id(
+    request: Request,
+    project_id: int = Path(..., description="project identifier"),
+    user: UserDTO = Depends(user_dependency),
+) -> Project:
     """Get a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
 
@@ -61,7 +64,9 @@ async def get_project_by_id(request: Request, project_id: int, user: UserDTO = D
     status_code=status.HTTP_200_OK,
 )
 async def get_projects_territory_info(
-    request: Request, project_id: int, user: UserDTO = Depends(user_dependency)
+    request: Request,
+    project_id: int = Path(..., description="project identifier"),
+    user: UserDTO = Depends(user_dependency),
 ) -> ProjectTerritory:
     """Get territory info of a project by id."""
     user_project_service: UserProjectService = request.state.user_project_service
@@ -91,7 +96,10 @@ async def post_project(request: Request, project: ProjectPost, user: UserDTO = D
     status_code=status.HTTP_200_OK,
 )
 async def put_project(
-    request: Request, project: ProjectPut, project_id: int, user: UserDTO = Depends(user_dependency)
+    request: Request,
+    project: ProjectPut,
+    project_id: int = Path(..., description="project identifier"),
+    user: UserDTO = Depends(user_dependency),
 ) -> Project:
     """Update a project by setting all of its attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
@@ -107,7 +115,10 @@ async def put_project(
     status_code=status.HTTP_200_OK,
 )
 async def patch_project(
-    request: Request, project: ProjectPatch, project_id: int, user: UserDTO = Depends(user_dependency)
+    request: Request,
+    project: ProjectPatch,
+    project_id: int = Path(..., description="project identifier"),
+    user: UserDTO = Depends(user_dependency),
 ) -> Project:
     """Update a project by setting given attributes."""
     user_project_service: UserProjectService = request.state.user_project_service
@@ -121,7 +132,11 @@ async def patch_project(
     "/projects/{project_id}",
     status_code=status.HTTP_200_OK,
 )
-async def delete_project(request: Request, project_id: int, user: UserDTO = Depends(user_dependency)) -> dict:
+async def delete_project(
+    request: Request,
+    project_id: int = Path(..., description="project identifier"),
+    user: UserDTO = Depends(user_dependency),
+) -> dict:
     """Delete a project."""
     user_project_service: UserProjectService = request.state.user_project_service
 

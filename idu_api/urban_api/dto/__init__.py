@@ -14,7 +14,10 @@ from .physical_objects import (
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
 )
+from .profiles import TargetProfileDTO
 from .projects import ProjectDTO, ProjectTerritoryDTO
+from .scenarios import ScenarioDTO
+from .scenarios_urban_objects import ScenarioUrbanObjectDTO
 from .service_types import ServiceTypesDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
@@ -33,6 +36,8 @@ __all__ = [
     "TerritoryDTO",
     "UserDTO",
     "TokensTuple",
+    "ScenarioDTO",
+    "ScenarioUrbanObjectDTO",
     "ServiceDTO",
     "ServiceTypesDTO",
     "ServiceWithGeometryDTO",
@@ -59,4 +64,5 @@ __all__ = [
     "UrbanObjectDTO",
     "ProjectDTO",
     "ProjectTerritoryDTO",
+    "TargetProfileDTO",
 ]

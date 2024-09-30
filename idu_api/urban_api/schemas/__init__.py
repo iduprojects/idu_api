@@ -35,6 +35,7 @@ from .physical_objects import (
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
 )
+from .profiles import TargetProfilesData, TargetProfilesPost
 from .projects import (
     Project,
     ProjectPatch,
@@ -45,6 +46,8 @@ from .projects import (
     ProjectTerritoryPost,
     ProjectTerritoryPut,
 )
+from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPut
+from .scenarios_urban_objects import ScenariosUrbanObject
 from .service_types import (
     ServiceTypes,
     ServiceTypesPost,
@@ -84,6 +87,11 @@ __all__ = [
     "TerritoryWithIndicators",
     "TerritoryWithNormatives",
     "TerritoryWithoutGeometry",
+    "ScenariosData",
+    "ScenariosPatch",
+    "ScenariosPost",
+    "ScenariosPut",
+    "ScenariosUrbanObject",
     "ServicesData",
     "ServicesDataPatch",
     "ServicesDataPost",
@@ -134,4 +142,6 @@ __all__ = [
     "ProjectTerritoryPost",
     "ProjectTerritoryPut",
     "ProjectTerritoryPatch",
+    "TargetProfilesData",
+    "TargetProfilesPost",
 ]
