@@ -23,6 +23,8 @@ pandas = "^2.2.2"
 exceptiongroup = "^1.2.1"
 fastapi-pagination = "^0.12.25"
 python-dotenv = "^1.0.1"
+geojson = "^3.1.0"
+gunicorn = "^22.0.0"
 
 [tool.poetry.scripts]
 launch_urban_api = "idu_api.urban_api.__main__:main"
@@ -32,6 +34,9 @@ launch_urban_api = "idu_api.urban_api.__main__:main"
 black = "^24.4.2"
 pylint = "^3.1.0"
 isort = "^5.13.2"
+pytest = "^8.2.2"
+pytest-asyncio = "^0.23.7"
+httpx = "^0.27.0"
 
 [build-system]
 requires = ["poetry-core"]
