@@ -9,7 +9,8 @@ from idu_api.city_api.common import connection_manager
 
 app = FastAPI(
     title="CityAPI",
-    root_path="/api"
+    root_path="/api",
+    version="1.0.0"
 )
 
 app.add_middleware(
