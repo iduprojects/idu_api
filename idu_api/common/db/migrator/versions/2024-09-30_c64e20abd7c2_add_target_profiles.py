@@ -1,19 +1,20 @@
 # pylint: disable=no-member,invalid-name,missing-function-docstring,too-many-statements
 """add target profiles
 
-Revision ID: e60fdc73f868
-Revises: 38ff7a2d4779
-Create Date: 2024-09-16 15:50:07.836333
+Revision ID: c64e20abd7c2
+Revises: 94e17a6f74bf
+Create Date: 2024-09-30 17:25:02.967507
 
 """
 from typing import Sequence, Union
 
-import sqlalchemy as sa
 from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = "e60fdc73f868"
-down_revision: Union[str, None] = "38ff7a2d4779"
+revision: str = "c64e20abd7c2"
+down_revision: Union[str, None] = "94e17a6f74bf"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
