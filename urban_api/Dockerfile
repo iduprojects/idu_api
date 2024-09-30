@@ -17,4 +17,13 @@ COPY idu_api /app/idu_api
 
 RUN pip3 install .
 
-CMD ["launch_urban_api"]
+echo "launch_urban_api &" > /entrtypoint.sh
+echo "URBAN_API_PID=$!" >> /entrtypoint.sh
+echo "launch_city_api &" >> /entrtypoint.sh
+echo "CITY_API_PID=$!" >> /entrtypoint.sh
+echo "while true; do" >> /entrtypoint.sh
+echo "ps | grep $URBAN_API_PID > /dev/null && ps | grep $CITY_API_PID > /dev/null" > /entrtypoint.sh
+echo "sleep 5" >> /entrtypoint.sh
+echo "done" >> /entrtypoint.sh
+
+CMD ["/entrtypoint.sh"]
