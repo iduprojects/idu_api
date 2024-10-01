@@ -206,6 +206,10 @@ class IndicatorValue(BaseModel):
             "structure_version/229/"
         ],
     )
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the indicator was created")
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="The time when the indicator was last updated"
+    )
 
     @field_validator("date_type", mode="before")
     @staticmethod

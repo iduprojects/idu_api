@@ -128,6 +128,8 @@ class TerritoryWithIndicatorsDTO:
             del indicator["measurement_unit_id"]
             del indicator["date_type"]
             del indicator["territory_id"]
+            del indicator["created_at"]
+            del indicator["updated_at"]
         return territory
 
 

@@ -26,7 +26,7 @@ class CATerritoriesData(BaseModel):
             population=dto.population,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             center=Geometry.from_shapely_geometry(dto.centre_point),
-            type=dto.territory_type_name
+            type=dto.territory_type_name,
         )
 
 
@@ -42,9 +42,4 @@ class CATerritoriesWithoutGeometryData(BaseModel):
     async def from_dto(cls, dto: CATerritoryWithoutGeometryDTO):
         """Constructor from DTO"""
 
-        return cls(
-            id=dto.territory_id,
-            name=dto.name,
-            population=dto.population,
-            type=dto.territory_type_name
-        )
+        return cls(id=dto.territory_id, name=dto.name, population=dto.population, type=dto.territory_type_name)

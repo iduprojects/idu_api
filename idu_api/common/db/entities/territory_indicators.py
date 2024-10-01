@@ -2,10 +2,14 @@
 Territory indicators data table is defined here
 """
 
-from sqlalchemy import Column, Date, Enum, Float, ForeignKey, String, Table
+from typing import Callable
+
+from sqlalchemy import Column, Date, Enum, Float, ForeignKey, String, Table, TIMESTAMP, func
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.enums import DateFieldType, IndicatorValueType
+
+func: Callable
 
 DateFieldTypeEnum = Enum(DateFieldType, name="date_field_type")
 IndicatorValueTypeEnum = Enum(IndicatorValueType, name="indicator_value_type")
@@ -20,6 +24,8 @@ territory_indicators_data = Table(
     Column("value_type", IndicatorValueTypeEnum, primary_key=True, nullable=False),
     Column("information_source", String(300), primary_key=True, nullable=False),
     Column("value", Float(53), nullable=False),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
 )
 
 """
@@ -31,4 +37,6 @@ Territory indicators:
 - value_type enum
 - information_source string(300)
 - value float(53)
+- created_at timestamp
+- updated_at timestamp
 """

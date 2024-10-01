@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
-from shapely.geometry import Polygon, MultiPolygon, Point
+
+from shapely.geometry import MultiPolygon, Point, Polygon
 
 from idu_api.city_api.dto.base import Base
 
@@ -14,11 +15,7 @@ class BlocksDTO(Base):
 
     @classmethod
     async def from_service(
-            cls,
-            id: int,
-            population: int | None,
-            geometry: Optional[Polygon | MultiPolygon | Point],
-            center: Point = None
+        cls, id: int, population: int | None, geometry: Optional[Polygon | MultiPolygon | Point], center: Point = None
     ):
         return cls(id=id, population=population, geometry=geometry, center=center)
 
@@ -30,10 +27,5 @@ class BlocksWithoutGeometryDTO(Base):
     center: Point = None
 
     @classmethod
-    async def from_service(
-            cls,
-            id: int,
-            population: int | None,
-            center: Point = None
-    ):
+    async def from_service(cls, id: int, population: int | None, center: Point = None):
         return cls(id=id, population=population, center=center)

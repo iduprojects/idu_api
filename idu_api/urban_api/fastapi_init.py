@@ -9,6 +9,7 @@ from fastapi_pagination import add_pagination
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.config import UrbanAPIConfig
+from idu_api.urban_api.logic.impl.functional_zones import FunctionalZonesServiceImpl
 from idu_api.urban_api.logic.impl.indicators import IndicatorsServiceImpl
 from idu_api.urban_api.logic.impl.object_geometries import ObjectGeometriesServiceImpl
 from idu_api.urban_api.logic.impl.physical_objects import PhysicalObjectsServiceImpl
@@ -79,6 +80,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
     application.add_middleware(
         PassServicesDependencies,
         connection_manager=connection_manager,  # reinitialized on startup
+        functional_zones_service=FunctionalZonesServiceImpl,
         indicators_service=IndicatorsServiceImpl,
         object_geometries_service=ObjectGeometriesServiceImpl,
         physical_objects_service=PhysicalObjectsServiceImpl,

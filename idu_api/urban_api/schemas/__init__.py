@@ -2,7 +2,7 @@
 Response and request schemas are defined here.
 """
 
-from .functional_zones import FunctionalZoneData
+from .functional_zones import FunctionalZoneData, FunctionalZoneType, FunctionalZoneTypePost
 from .health_check import PingResponse
 from .indicators import (
     Indicator,
@@ -35,7 +35,6 @@ from .physical_objects import (
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
 )
-from .profiles import TargetProfilesData, TargetProfilesPost
 from .projects import (
     Project,
     ProjectPatch,
@@ -131,6 +130,8 @@ __all__ = [
     "LivingBuildingsDataPut",
     "LivingBuildingsWithGeometry",
     "FunctionalZoneData",
+    "FunctionalZoneType",
+    "FunctionalZoneTypePost",
     "UrbanFunction",
     "UrbanFunctionPost",
     "Page",
@@ -142,6 +143,4 @@ __all__ = [
     "ProjectTerritoryPost",
     "ProjectTerritoryPut",
     "ProjectTerritoryPatch",
-    "TargetProfilesData",
-    "TargetProfilesPost",
 ]

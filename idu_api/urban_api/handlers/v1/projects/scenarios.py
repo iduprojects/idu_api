@@ -189,7 +189,7 @@ async def add_physical_object_to_scenario(
 @projects_router.post(
     "/scenarios/{scenario_id}/services", response_model=ScenariosUrbanObject, status_code=status.HTTP_201_CREATED
 )
-async def create_scenario_physical_object(
+async def create_scenario_service(
     request: Request,
     service: ServicesDataPost,
     scenario_id: int = Path(..., description="scenario identifier"),
