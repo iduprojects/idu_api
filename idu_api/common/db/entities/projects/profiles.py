@@ -14,10 +14,7 @@ profiles_data = Table(
         nullable=False,
     ),
     Column(
-        "target_profile_id",
-        Integer,
-        ForeignKey(functional_zone_types_dict.c.functional_zone_type_id),
-        nullable=False
+        "target_profile_id", Integer, ForeignKey(functional_zone_types_dict.c.functional_zone_type_id), nullable=False
     ),
     Column("name", String(200), nullable=False, unique=False),
     Column(

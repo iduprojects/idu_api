@@ -38,6 +38,7 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
     centre_point: geom.Point
     admin_center: int | None
     okato_code: str | None
+    oktmo_code: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -69,8 +70,9 @@ class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attribut
     name: str
     level: int
     properties: dict[str, Any]
-    admin_center: int
-    okato_code: str
+    admin_center: int | None
+    okato_code: str | None
+    oktmo_code: str | None
     created_at: datetime
     updated_at: datetime
 

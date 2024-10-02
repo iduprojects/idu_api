@@ -4,7 +4,7 @@ Territory indicators data table is defined here
 
 from typing import Callable
 
-from sqlalchemy import Column, Date, Enum, Float, ForeignKey, String, Table, TIMESTAMP, func
+from sqlalchemy import TIMESTAMP, Column, Date, Enum, Float, ForeignKey, String, Table, func
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.enums import DateFieldType, IndicatorValueType
