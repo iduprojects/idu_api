@@ -35,6 +35,12 @@ from .physical_objects import (
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
 )
+from .profiles_reclamation import (
+    ProfilesReclamationData,
+    ProfilesReclamationDataMatrix,
+    ProfilesReclamationDataPost,
+    ProfilesReclamationDataPut,
+)
 from .projects import (
     Project,
     ProjectPatch,
@@ -143,4 +149,8 @@ __all__ = [
     "ProjectTerritoryPost",
     "ProjectTerritoryPut",
     "ProjectTerritoryPatch",
+    "ProfilesReclamationData",
+    "ProfilesReclamationDataPost",
+    "ProfilesReclamationDataPut",
+    "ProfilesReclamationDataMatrix",
 ]

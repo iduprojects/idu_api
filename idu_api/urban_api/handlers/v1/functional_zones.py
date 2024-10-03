@@ -2,11 +2,18 @@
 Functional zones endpoints are defined here.
 """
 
-from fastapi import Request
+from fastapi import Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.functional_zones import FunctionalZonesService
-from idu_api.urban_api.schemas import FunctionalZoneType, FunctionalZoneTypePost
+from idu_api.urban_api.schemas import (
+    FunctionalZoneType,
+    FunctionalZoneTypePost,
+    ProfilesReclamationData,
+    ProfilesReclamationDataMatrix,
+    ProfilesReclamationDataPost,
+    ProfilesReclamationDataPut,
+)
 
 from .routers import functional_zones_router
 
@@ -37,3 +44,65 @@ async def add_functional_zone_type(request: Request, zone_type: FunctionalZoneTy
     new_zone_type = await functional_zones_service.add_functional_zone_type(zone_type)
 
     return FunctionalZoneType.from_dto(new_zone_type)
+
+
+@functional_zones_router.get(
+    "/profiles_reclamation",
+    response_model=list[ProfilesReclamationData],
+    status_code=status.HTTP_200_OK,
+)
+async def get_profiles_reclamation_data(request: Request) -> list[ProfilesReclamationData]:
+    """Get a list of profiles reclamation data."""
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    profiles_reclamations = await functional_zones_service.get_profiles_reclamation_data()
+
+    return [ProfilesReclamationData.from_dto(profiles_reclamation) for profiles_reclamation in profiles_reclamations]
+
+
+@functional_zones_router.get(
+    "/profiles_reclamation/matrix",
+    response_model=ProfilesReclamationDataMatrix,
+    status_code=status.HTTP_200_OK,
+)
+async def get_profiles_reclamation_data_matrix(
+    request: Request, labels: list[int] | None = Query(None, description="list of profiles labels to get matrix for")
+) -> ProfilesReclamationDataMatrix:
+    """Get a matrix of profiles reclamation data for specific labels."""
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    profiles_reclamation_matrix = await functional_zones_service.get_profiles_reclamation_data_matrix(labels)
+
+    return ProfilesReclamationDataMatrix.from_dto(profiles_reclamation_matrix)
+
+
+@functional_zones_router.post(
+    "/profiles_reclamation",
+    response_model=ProfilesReclamationData,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_profiles_reclamation_data(
+    request: Request, profiles_reclamation: ProfilesReclamationDataPost
+) -> ProfilesReclamationData:
+    """Add a new profiles reclamation data."""
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    new_profiles_reclamation = await functional_zones_service.add_profiles_reclamation_data(profiles_reclamation)
+
+    return ProfilesReclamationData.from_dto(new_profiles_reclamation)
+
+
+@functional_zones_router.put(
+    "/profiles_reclamation",
+    response_model=ProfilesReclamationData,
+    status_code=status.HTTP_200_OK,
+)
+async def put_profiles_reclamation_data(
+    request: Request, profiles_reclamation: ProfilesReclamationDataPut
+) -> ProfilesReclamationData:
+    """Put profiles reclamation data."""
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    changed_profiles_reclamation = await functional_zones_service.put_profiles_reclamation_data(profiles_reclamation)
+
+    return ProfilesReclamationData.from_dto(changed_profiles_reclamation)
