@@ -66,7 +66,7 @@ class ProfilesReclamationDataPut(BaseModel):
 
 
 class ProfilesReclamationDataMatrix(BaseModel):
-    labels: list[int] = Field(..., description="labels of profiles", examples=[1, 2])
+    labels: list[int] = Field(..., description="labels of profiles", examples=[[1, 2]])
     technical_price: list[list[float]] = Field(
         ..., description="technical price matrix", examples=[[[0.0, 1.0], [2.0, 0.0]]]
     )
