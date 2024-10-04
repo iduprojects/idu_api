@@ -56,6 +56,20 @@ async def get_profiles_reclamation_data_from_db(conn: AsyncConnection) -> list[P
     return [ProfilesReclamationDataDTO(**profile_reclamation) for profile_reclamation in profiles_reclamations]
 
 
+async def get_all_sources_from_db(conn: AsyncConnection) -> list[int]:
+    """Get a list of all profiles reclamation sources."""
+
+    statement = (
+        select(profiles_reclamation_data.c.source_profile_id)
+        .group_by(profiles_reclamation_data.c.source_profile_id)
+        .order_by(profiles_reclamation_data.c.source_profile_id)
+    )
+
+    source_ids = (await conn.execute(statement)).scalars().all()
+
+    return [int(source_id) for source_id in source_ids]
+
+
 async def get_profiles_reclamation_data_matrix_from_db(
     conn: AsyncConnection, labels: list[int]
 ) -> ProfilesReclamationDataMatrixDTO:

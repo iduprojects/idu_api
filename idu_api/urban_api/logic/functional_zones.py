@@ -23,6 +23,10 @@ class FunctionalZonesService(Protocol):
         """Get a list of profiles reclamation data."""
 
     @abc.abstractmethod
+    async def get_all_sources(self) -> list[int]:
+        """Get a list of all profiles reclamation sources."""
+
+    @abc.abstractmethod
     async def get_profiles_reclamation_data_matrix(self, labels: list[int]) -> ProfilesReclamationDataMatrixDTO:
         """Get a matrix of profiles reclamation data for specific labels."""
 

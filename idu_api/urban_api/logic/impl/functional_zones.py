@@ -5,6 +5,7 @@ from idu_api.urban_api.logic.functional_zones import FunctionalZonesService
 from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     add_functional_zone_type_to_db,
     add_profiles_reclamation_data_to_db,
+    get_all_sources_from_db,
     get_functional_zone_types_from_db,
     get_profiles_reclamation_data_from_db,
     get_profiles_reclamation_data_matrix_from_db,
@@ -30,6 +31,9 @@ class FunctionalZonesServiceImpl(FunctionalZonesService):
 
     async def get_profiles_reclamation_data(self) -> list[ProfilesReclamationDataDTO]:
         return await get_profiles_reclamation_data_from_db(self._conn)
+
+    async def get_all_sources(self) -> list[int]:
+        return await get_all_sources_from_db(self._conn)
 
     async def get_profiles_reclamation_data_matrix(self, labels: list[int]) -> ProfilesReclamationDataMatrixDTO:
         return await get_profiles_reclamation_data_matrix_from_db(self._conn, labels)

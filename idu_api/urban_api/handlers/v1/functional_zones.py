@@ -66,12 +66,20 @@ async def get_profiles_reclamation_data(request: Request) -> list[ProfilesReclam
     status_code=status.HTTP_200_OK,
 )
 async def get_profiles_reclamation_data_matrix(
-    request: Request, labels: list[int] | None = Query(None, description="list of profiles labels to get matrix for")
+    request: Request, labels: str | None = Query(None, description="list of profiles labels separated with comma")
 ) -> ProfilesReclamationDataMatrix:
-    """Get a matrix of profiles reclamation data for specific labels."""
+    """Get a matrix of profiles reclamation data for specific labels.
+
+    If labels is not specified, all profiles reclamation data will be returned."""
     functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
 
-    profiles_reclamation_matrix = await functional_zones_service.get_profiles_reclamation_data_matrix(labels)
+    labels_array: list[int]
+    if labels is None:
+        labels_array = await functional_zones_service.get_all_sources()
+    else:
+        labels_array = [int(label.strip()) for label in labels.split(sep=",")]
+
+    profiles_reclamation_matrix = await functional_zones_service.get_profiles_reclamation_data_matrix(labels_array)
 
     return ProfilesReclamationDataMatrix.from_dto(profiles_reclamation_matrix)
 
