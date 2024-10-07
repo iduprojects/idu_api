@@ -9,9 +9,8 @@ Create Date: 2024-10-07 13:55:53.346354
 from textwrap import dedent
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0a25fb0c815e"
@@ -58,8 +57,9 @@ def upgrade() -> None:
             name=op.f("profiles_reclamation_data_fk_territory_id__territories_data"),
         ),
         sa.UniqueConstraint(
-            "source_profile_id", "target_profile_id", "territory_id", name=op.f("profiles_reclamation_data_unique_key")),
-        sa.PrimaryKeyConstraint("profile_reclamation_id", name=op.f("profiles_reclamation_data_pk"))
+            "source_profile_id", "target_profile_id", "territory_id", name=op.f("profiles_reclamation_data_unique_key")
+        ),
+        sa.PrimaryKeyConstraint("profile_reclamation_id", name=op.f("profiles_reclamation_data_pk")),
     )
 
 
@@ -100,4 +100,3 @@ def downgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("source_profile_id", "target_profile_id", name=op.f("profiles_reclamation_data_pk")),
     )
-

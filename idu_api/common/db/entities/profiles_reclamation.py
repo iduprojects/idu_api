@@ -1,20 +1,15 @@
-from sqlalchemy import Column, Float, ForeignKey, Integer, Table, Sequence, UniqueConstraint
+from sqlalchemy import Column, Float, ForeignKey, Integer, Sequence, Table, UniqueConstraint
 
 from idu_api.common.db import metadata
-from idu_api.common.db.entities.urban_types_dicts import functional_zone_types_dict
 from idu_api.common.db.entities.territories import territories_data
+from idu_api.common.db.entities.urban_types_dicts import functional_zone_types_dict
 
 profile_reclamation_id_seq = Sequence("profile_reclamation_id_seq")
 
 profiles_reclamation_data = Table(
     "profiles_reclamation_data",
     metadata,
-    Column(
-        "profile_reclamation_id",
-        Integer,
-        primary_key=True,
-        server_default=profile_reclamation_id_seq.next_value()
-    ),
+    Column("profile_reclamation_id", Integer, primary_key=True, server_default=profile_reclamation_id_seq.next_value()),
     Column(
         "source_profile_id", Integer, ForeignKey(functional_zone_types_dict.c.functional_zone_type_id), nullable=False
     ),

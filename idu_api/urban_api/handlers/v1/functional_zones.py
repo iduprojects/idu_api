@@ -1,6 +1,6 @@
 """Functional zones endpoints are defined here."""
 
-from fastapi import Query, Request, Path
+from fastapi import Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.functional_zones import FunctionalZonesService
@@ -88,8 +88,7 @@ async def get_profiles_reclamation_data_matrix(
     status_code=status.HTTP_200_OK,
 )
 async def get_profiles_reclamation_data_matrix_by_territory_id(
-    request: Request,
-    territory_id: int | None = Query(None, description="territory identifier")
+    request: Request, territory_id: int | None = Query(None, description="territory identifier")
 ) -> ProfilesReclamationDataMatrix:
     """Get a matrix of profiles reclamation data for given territory.
 

@@ -121,14 +121,21 @@ async def get_profiles_reclamation_data_matrix_by_territory_id_from_db(
         select(profiles_reclamation_data)
         .where(
             profiles_reclamation_data.c.territory_id == territory_id
-            if territory_id is not None else profiles_reclamation_data.c.territory_id.is_(None)
+            if territory_id is not None
+            else profiles_reclamation_data.c.territory_id.is_(None)
         )
         .order_by(profiles_reclamation_data.c.profile_reclamation_id)
     )
     profiles_reclamations = (await conn.execute(statement)).mappings().all()
 
-    labels = sorted(list(set([row["source_profile_id"] for row in profiles_reclamations] +
-                             [row["target_profile_id"] for row in profiles_reclamations])))
+    labels = sorted(
+        list(
+            set(
+                [row["source_profile_id"] for row in profiles_reclamations]
+                + [row["target_profile_id"] for row in profiles_reclamations]
+            )
+        )
+    )
 
     matrix_size = len(labels)
     technical_price = [[0.0] * matrix_size for _ in range(matrix_size)]
@@ -163,8 +170,11 @@ async def add_profiles_reclamation_data_to_db(
         and_(
             profiles_reclamation_data.c.source_profile_id == profiles_reclamation.source_profile_id,
             profiles_reclamation_data.c.target_profile_id == profiles_reclamation.target_profile_id,
-            profiles_reclamation_data.c.territory_id == profiles_reclamation.territory_id
-            if profiles_reclamation.territory_id is not None else profiles_reclamation_data.c.territory_id.is_(None),
+            (
+                profiles_reclamation_data.c.territory_id == profiles_reclamation.territory_id
+                if profiles_reclamation.territory_id is not None
+                else profiles_reclamation_data.c.territory_id.is_(None)
+            ),
         )
     )
     result = (await conn.execute(statement)).scalar_one_or_none()
@@ -209,9 +219,8 @@ async def put_profiles_reclamation_data_to_db(
 ) -> ProfilesReclamationDataDTO:
     """Put profiles reclamation data."""
 
-    statement = (
-        select(profiles_reclamation_data)
-        .where(profiles_reclamation_data.c.profile_reclamation_id == profile_reclamation_id)
+    statement = select(profiles_reclamation_data).where(
+        profiles_reclamation_data.c.profile_reclamation_id == profile_reclamation_id
     )
     result = (await conn.execute(statement)).scalar_one_or_none()
     if result is None:
@@ -221,8 +230,11 @@ async def put_profiles_reclamation_data_to_db(
         and_(
             profiles_reclamation_data.c.source_profile_id == profiles_reclamation.source_profile_id,
             profiles_reclamation_data.c.target_profile_id == profiles_reclamation.target_profile_id,
-            profiles_reclamation_data.c.territory_id == profiles_reclamation.territory_id
-            if profiles_reclamation.territory_id is not None else profiles_reclamation_data.c.territory_id.is_(None),
+            (
+                profiles_reclamation_data.c.territory_id == profiles_reclamation.territory_id
+                if profiles_reclamation.territory_id is not None
+                else profiles_reclamation_data.c.territory_id.is_(None)
+            ),
         )
     )
     result = (await conn.execute(statement)).scalar_one_or_none()
