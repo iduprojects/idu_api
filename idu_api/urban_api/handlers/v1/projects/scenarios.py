@@ -1,6 +1,4 @@
-"""
-Scenarios endpoints are defined here.
-"""
+"""Scenarios endpoints are defined here."""
 
 from fastapi import Body, Depends, Path, Query, Request
 from starlette import status

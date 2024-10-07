@@ -5,8 +5,11 @@ from dataclasses import dataclass
 
 @dataclass
 class ProfilesReclamationDataDTO:
+    profile_reclamation_id: int
     source_profile_id: int
     target_profile_id: int
+    territory_id: int | None
+    territory_name: str | None
     technical_price: float
     technical_time: float
     biological_price: float

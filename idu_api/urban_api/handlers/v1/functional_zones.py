@@ -1,8 +1,6 @@
-"""
-Functional zones endpoints are defined here.
-"""
+"""Functional zones endpoints are defined here."""
 
-from fastapi import Query, Request
+from fastapi import Query, Request, Path
 from starlette import status
 
 from idu_api.urban_api.logic.functional_zones import FunctionalZonesService
@@ -84,6 +82,25 @@ async def get_profiles_reclamation_data_matrix(
     return ProfilesReclamationDataMatrix.from_dto(profiles_reclamation_matrix)
 
 
+@functional_zones_router.get(
+    "/profiles_reclamation/territory_matrix",
+    response_model=ProfilesReclamationDataMatrix,
+    status_code=status.HTTP_200_OK,
+)
+async def get_profiles_reclamation_data_matrix_by_territory_id(
+    request: Request,
+    territory_id: int | None = Query(None, description="territory identifier")
+) -> ProfilesReclamationDataMatrix:
+    """Get a matrix of profiles reclamation data for given territory.
+
+    Territory id should be null to get default matrix."""
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    matrix_dto = await functional_zones_service.get_profiles_reclamation_data_matrix_by_territory_id(territory_id)
+
+    return ProfilesReclamationDataMatrix.from_dto(matrix_dto)
+
+
 @functional_zones_router.post(
     "/profiles_reclamation",
     response_model=ProfilesReclamationData,
@@ -101,16 +118,20 @@ async def add_profiles_reclamation_data(
 
 
 @functional_zones_router.put(
-    "/profiles_reclamation",
+    "/profiles_reclamation/{profile_reclamation_id}",
     response_model=ProfilesReclamationData,
     status_code=status.HTTP_200_OK,
 )
 async def put_profiles_reclamation_data(
-    request: Request, profiles_reclamation: ProfilesReclamationDataPut
+    request: Request,
+    profiles_reclamation: ProfilesReclamationDataPut,
+    profile_reclamation_id: int = Path(..., description="profile reclamation identifier"),
 ) -> ProfilesReclamationData:
     """Put profiles reclamation data."""
     functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
 
-    changed_profiles_reclamation = await functional_zones_service.put_profiles_reclamation_data(profiles_reclamation)
+    changed_profiles_reclamation = await functional_zones_service.put_profiles_reclamation_data(
+        profile_reclamation_id, profiles_reclamation
+    )
 
     return ProfilesReclamationData.from_dto(changed_profiles_reclamation)

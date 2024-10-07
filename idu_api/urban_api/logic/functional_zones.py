@@ -31,6 +31,12 @@ class FunctionalZonesService(Protocol):
         """Get a matrix of profiles reclamation data for specific labels."""
 
     @abc.abstractmethod
+    async def get_profiles_reclamation_data_matrix_by_territory_id(
+        self, territory_id: int | None
+    ) -> ProfilesReclamationDataMatrixDTO:
+        """Get a matrix of profiles reclamation data for given territory."""
+
+    @abc.abstractmethod
     async def add_profiles_reclamation_data(
         self, profiles_reclamation: ProfilesReclamationDataPost
     ) -> ProfilesReclamationDataDTO:
@@ -38,6 +44,6 @@ class FunctionalZonesService(Protocol):
 
     @abc.abstractmethod
     async def put_profiles_reclamation_data(
-        self, profiles_reclamation: ProfilesReclamationDataPut
+        self, profiles_reclamation_id: int, profiles_reclamation: ProfilesReclamationDataPut
     ) -> ProfilesReclamationDataDTO:
         """Put profiles reclamation data."""

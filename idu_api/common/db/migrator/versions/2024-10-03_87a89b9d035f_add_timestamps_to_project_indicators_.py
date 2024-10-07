@@ -43,8 +43,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_column("scenarios_data", "updated_at")
-    op.drop_column("scenarios_data", "created_at")
+    op.drop_column("scenarios_data", "updated_at", schema="user_projects")
+    op.drop_column("scenarios_data", "created_at", schema="user_projects")
 
-    op.drop_column("indicators_data", "updated_at")
-    op.drop_column("indicators_data", "created_at")
+    op.drop_column("indicators_data", "updated_at", schema="user_projects")
+    op.drop_column("indicators_data", "created_at", schema="user_projects")

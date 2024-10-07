@@ -9,6 +9,7 @@ from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     get_functional_zone_types_from_db,
     get_profiles_reclamation_data_from_db,
     get_profiles_reclamation_data_matrix_from_db,
+    get_profiles_reclamation_data_matrix_by_territory_id_from_db,
     put_profiles_reclamation_data_to_db,
 )
 from idu_api.urban_api.schemas import FunctionalZoneTypePost, ProfilesReclamationDataPost, ProfilesReclamationDataPut
@@ -38,12 +39,17 @@ class FunctionalZonesServiceImpl(FunctionalZonesService):
     async def get_profiles_reclamation_data_matrix(self, labels: list[int]) -> ProfilesReclamationDataMatrixDTO:
         return await get_profiles_reclamation_data_matrix_from_db(self._conn, labels)
 
+    async def get_profiles_reclamation_data_matrix_by_territory_id(
+        self, territory_id: int | None
+    ) -> ProfilesReclamationDataMatrixDTO:
+        return await get_profiles_reclamation_data_matrix_by_territory_id_from_db(self._conn, territory_id)
+
     async def add_profiles_reclamation_data(
         self, profiles_reclamation: ProfilesReclamationDataPost
     ) -> ProfilesReclamationDataDTO:
         return await add_profiles_reclamation_data_to_db(self._conn, profiles_reclamation)
 
     async def put_profiles_reclamation_data(
-        self, profiles_reclamation: ProfilesReclamationDataPut
+        self, profiles_reclamation_id: int, profiles_reclamation: ProfilesReclamationDataPut
     ) -> ProfilesReclamationDataDTO:
-        return await put_profiles_reclamation_data_to_db(self._conn, profiles_reclamation)
+        return await put_profiles_reclamation_data_to_db(self._conn, profiles_reclamation_id, profiles_reclamation)
