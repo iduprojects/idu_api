@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from shapely import Polygon, MultiPolygon, Point
+from shapely import MultiPolygon, Point, Polygon
 
 from idu_api.city_api.dto.base import Base
 

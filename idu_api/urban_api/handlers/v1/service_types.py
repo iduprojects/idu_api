@@ -1,5 +1,4 @@
-"""Service types handlers are defined here.
-"""
+"""Service types handlers are defined here."""
 
 from fastapi import Query, Request
 from starlette import status
