@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from fastapi import Path, Query, Request
+from fastapi import HTTPException, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.indicators import IndicatorsService
@@ -100,19 +100,30 @@ async def update_indicators_group(
     response_model=list[Indicator],
     status_code=status.HTTP_200_OK,
 )
-async def get_indicators_by_parent_id(
+async def get_indicators_by_parent(
     request: Request,
     parent_id: int | None = Query(
         None, description="Parent indicator id to filter, should be skipped to get top level indicators"
+    ),
+    parent_name: str | None = Query(
+        None, description="Parent indicator name to filter, you need to pass the full name"
     ),
     name: str | None = Query(None, description="Filter by indicator name"),
     territory_id: int | None = Query(None, description="Filter by territory id (not including inner territories)"),
     get_all_subtree: bool = Query(False, description="Getting full subtree of indicators"),
 ) -> list[Indicator]:
-    """Get a list of indicators by parent id."""
+    """Get a list of indicators by parent id or name.
+
+    You can't pass parent_id and parent_name at the same time.
+    """
     indicators_service: IndicatorsService = request.state.indicators_service
 
-    indicators = await indicators_service.get_indicators_by_parent_id(parent_id, name, territory_id, get_all_subtree)
+    if parent_id is not None and parent_name is not None:
+        raise HTTPException(400, "you can't pass parent_id and parent_name at the same time")
+
+    indicators = await indicators_service.get_indicators_by_parent(
+        parent_id, parent_name, name, territory_id, get_all_subtree
+    )
 
     return [Indicator.from_dto(indicator) for indicator in indicators]
 

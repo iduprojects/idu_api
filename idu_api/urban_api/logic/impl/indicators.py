@@ -18,7 +18,7 @@ from idu_api.urban_api.logic.impl.helpers.indicators import (
     get_indicator_by_id_from_db,
     get_indicator_value_by_id_from_db,
     get_indicator_values_by_id_from_db,
-    get_indicators_by_parent_id_from_db,
+    get_indicators_by_parent_from_db,
     get_indicators_groups_from_db,
     get_measurement_units_from_db,
     update_indicators_group_from_db,
@@ -53,14 +53,17 @@ class IndicatorsServiceImpl(IndicatorsService):
     ) -> IndicatorsGroupDTO:
         return await update_indicators_group_from_db(self._conn, indicators_group, indicators_group_id)
 
-    async def get_indicators_by_parent_id(
+    async def get_indicators_by_parent(
         self,
         parent_id: int | None,
+        parent_name: str | None,
         name: str | None,
         territory_id: int | None,
         get_all_subtree: bool,
     ) -> list[IndicatorDTO]:
-        return await get_indicators_by_parent_id_from_db(self._conn, parent_id, name, territory_id, get_all_subtree)
+        return await get_indicators_by_parent_from_db(
+            self._conn, parent_id, parent_name, name, territory_id, get_all_subtree
+        )
 
     async def get_indicator_by_id(self, indicator_id: int) -> IndicatorDTO:
         return await get_indicator_by_id_from_db(self._conn, indicator_id)

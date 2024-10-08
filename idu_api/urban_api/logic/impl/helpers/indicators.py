@@ -196,20 +196,27 @@ async def update_indicators_group_from_db(
     )
 
 
-async def get_indicators_by_parent_id_from_db(
+async def get_indicators_by_parent_from_db(
     conn: AsyncConnection,
     parent_id: int | None,
+    parent_name: str | None,
     name: str | None,
     territory_id: int | None,
     get_all_subtree: bool,
 ) -> list[IndicatorDTO]:
-    """Get an indicator or list of indicators by parent."""
+    """Get an indicator or list of indicators by parent id or name."""
 
     if parent_id is not None:
         statement = select(indicators_dict).where(indicators_dict.c.indicator_id == parent_id)
         parent_indicator = (await conn.execute(statement)).one_or_none()
         if parent_indicator is None:
             raise EntityNotFoundById(parent_id, "indicator")
+    if parent_name is not None:
+        statement = select(indicators_dict.c.indicator_id).where(indicators_dict.c.name_full == parent_name.strip())
+        parent_indicator_id = (await conn.execute(statement)).scalar_one_or_none()
+        if parent_indicator_id is None:
+            raise EntityNotFoundByParams("indicator", parent_name)
+        parent_id = parent_indicator_id
 
     statement = select(
         indicators_dict,

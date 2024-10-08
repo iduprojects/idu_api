@@ -5,14 +5,11 @@ class Base:
     """Base DTO entity for territories"""
 
     async def map_from_territory_dto(
-            self,
-            other: dict,
-            attribute_mapper: Optional[dict] = None,
-            exclude: Optional[list] = None
+        self, other: dict, attribute_mapper: Optional[dict] = None, exclude: Optional[list] = None
     ):
         """
         DTO mapper
-        
+
         other: another entity as dict (use .__dict__ over vars())
         attribute_mapper: map attribute from other to entity
         exclude: remove attributes from mapper (if attribute is present in entity, it will be unchanged (default is None))

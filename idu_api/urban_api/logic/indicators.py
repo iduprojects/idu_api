@@ -39,14 +39,15 @@ class IndicatorsService(Protocol):
         """Update indicators group object."""
 
     @abc.abstractmethod
-    async def get_indicators_by_parent_id(
+    async def get_indicators_by_parent(
         self,
         parent_id: int | None,
+        parent_name: str | None,
         name: str | None,
         territory_id: int | None,
         get_all_subtree: bool,
     ) -> list[IndicatorDTO]:
-        """Get an indicator or list of indicators by parent."""
+        """Get an indicator or list of indicators by parent id or name."""
 
     @abc.abstractmethod
     async def get_indicator_by_id(self, indicator_id: int) -> IndicatorDTO:

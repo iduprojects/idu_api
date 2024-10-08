@@ -13,7 +13,4 @@ class ServiceTypesCountsData(BaseModel):
     async def from_dto(cls, dto: ServiceCountDTO):
         """Constructor from DTO"""
 
-        return cls(
-            name=dto.name,
-            count=dto.count
-        )
+        return cls(name=dto.name, count=dto.count)
