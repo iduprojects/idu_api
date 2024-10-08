@@ -31,6 +31,8 @@ class IndicatorValueDTO:
     value: int
     value_type: Literal["real", "forecast", "target"]
     information_source: str
+    created_at: datetime
+    updated_at: datetime
 
 
 @dataclass(frozen=True)

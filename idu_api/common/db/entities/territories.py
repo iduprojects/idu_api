@@ -1,6 +1,4 @@
-"""
-Territories data table is defined here
-"""
+"""Territories data table is defined here."""
 
 from typing import Callable
 
@@ -37,12 +35,13 @@ territories_data = Table(
     Column("okato_code", String(20)),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("oktmo_code", String(20)),
 )
 
 """
 Territories:
 - territory_id int 
-- physical_object_type_id foreign key int
+- territory_type_id foreign key int
 - parent_id foreign key int
 - name string(200)
 - geometry geometry 
@@ -53,4 +52,5 @@ Territories:
 - okato_code string(20)
 - created_at timestamp
 - updated_at timestamp
+- oktmo_code string(20)
 """

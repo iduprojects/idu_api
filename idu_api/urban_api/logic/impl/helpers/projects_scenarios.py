@@ -5,6 +5,7 @@ from sqlalchemy import and_, delete, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    functional_zone_types_dict,
     physical_object_types_dict,
     projects_data,
     projects_object_geometries_data,
@@ -13,7 +14,6 @@ from idu_api.common.db.entities import (
     projects_urban_objects_data,
     scenarios_data,
     service_types_dict,
-    target_profiles_dict,
     territories_data,
     territory_types_dict,
 )
@@ -48,12 +48,13 @@ async def get_scenarios_by_project_id_from_db(
     statement = (
         select(
             scenarios_data,
-            target_profiles_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.zone_nickname.label("target_profile_nickname"),
         )
         .select_from(
             scenarios_data.outerjoin(
-                target_profiles_dict,
-                target_profiles_dict.c.target_profile_id == scenarios_data.c.target_profile_id,
+                functional_zone_types_dict,
+                functional_zone_types_dict.c.functional_zone_type_id == scenarios_data.c.target_profile_id,
             )
         )
         .where(scenarios_data.c.project_id == project_id)
@@ -69,12 +70,13 @@ async def get_scenario_by_id_from_db(conn: AsyncConnection, scenario_id: int, us
     statement = (
         select(
             scenarios_data,
-            target_profiles_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.zone_nickname.label("target_profile_nickname"),
         )
         .select_from(
             scenarios_data.outerjoin(
-                target_profiles_dict,
-                target_profiles_dict.c.target_profile_id == scenarios_data.c.target_profile_id,
+                functional_zone_types_dict,
+                functional_zone_types_dict.c.functional_zone_type_id == scenarios_data.c.target_profile_id,
             )
         )
         .where(scenarios_data.c.scenario_id == scenario_id)
@@ -101,8 +103,8 @@ async def add_scenario_to_db(conn: AsyncConnection, scenario: ScenariosPost, use
     if result.user_id != user_id:
         raise AccessDeniedError(scenario.project_id, "project")
 
-    statement = select(target_profiles_dict).where(
-        target_profiles_dict.c.target_profile_id == scenario.target_profile_id
+    statement = select(functional_zone_types_dict).where(
+        functional_zone_types_dict.c.functional_zone_type_id == scenario.target_profile_id
     )
     profile = (await conn.execute(statement)).mappings().one_or_none()
     if profile is None:
@@ -125,12 +127,13 @@ async def add_scenario_to_db(conn: AsyncConnection, scenario: ScenariosPost, use
     statement = (
         select(
             scenarios_data,
-            target_profiles_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.zone_nickname.label("target_profile_nickname"),
         )
         .select_from(
             scenarios_data.outerjoin(
-                target_profiles_dict,
-                target_profiles_dict.c.target_profile_id == scenarios_data.c.target_profile_id,
+                functional_zone_types_dict,
+                functional_zone_types_dict.c.functional_zone_type_id == scenarios_data.c.target_profile_id,
             )
         )
         .where(scenarios_data.c.scenario_id == scenario_id)
@@ -155,8 +158,8 @@ async def put_scenario_to_db(
     if project.user_id != user_id:
         raise AccessDeniedError(result.project_id, "project")
 
-    statement = select(target_profiles_dict).where(
-        target_profiles_dict.c.target_profile_id == scenario.target_profile_id
+    statement = select(functional_zone_types_dict).where(
+        functional_zone_types_dict.c.functional_zone_type_id == scenario.target_profile_id
     )
     profile = (await conn.execute(statement)).mappings().one_or_none()
     if profile is None:
@@ -174,12 +177,13 @@ async def put_scenario_to_db(
     statement = (
         select(
             scenarios_data,
-            target_profiles_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.zone_nickname.label("target_profile_nickname"),
         )
         .select_from(
             scenarios_data.outerjoin(
-                target_profiles_dict,
-                target_profiles_dict.c.target_profile_id == scenarios_data.c.target_profile_id,
+                functional_zone_types_dict,
+                functional_zone_types_dict.c.functional_zone_type_id == scenarios_data.c.target_profile_id,
             )
         )
         .where(scenarios_data.c.scenario_id == scenario_id)
@@ -205,8 +209,8 @@ async def patch_scenario_to_db(
         raise AccessDeniedError(result.project_id, "project")
 
     if scenario.target_profile_id is not None:
-        statement = select(target_profiles_dict).where(
-            target_profiles_dict.c.target_profile_id == scenario.target_profile_id
+        statement = select(functional_zone_types_dict).where(
+            functional_zone_types_dict.c.functional_zone_type_id == scenario.target_profile_id
         )
         profile = (await conn.execute(statement)).mappings().one_or_none()
         if profile is None:
@@ -224,12 +228,13 @@ async def patch_scenario_to_db(
     statement = (
         select(
             scenarios_data,
-            target_profiles_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.name.label("target_profile_name"),
+            functional_zone_types_dict.c.zone_nickname.label("target_profile_nickname"),
         )
         .select_from(
             scenarios_data.outerjoin(
-                target_profiles_dict,
-                target_profiles_dict.c.target_profile_id == scenarios_data.c.target_profile_id,
+                functional_zone_types_dict,
+                functional_zone_types_dict.c.functional_zone_type_id == scenarios_data.c.target_profile_id,
             )
         )
         .where(scenarios_data.c.scenario_id == scenario_id)

@@ -2,7 +2,7 @@
 Data Transfer Objects (much like entities from database) are defined in this module.
 """
 
-from .functional_zones import FunctionalZoneDataDTO
+from .functional_zones import FunctionalZoneDataDTO, FunctionalZoneTypeDTO
 from .indicators import IndicatorDTO, IndicatorsGroupDTO, IndicatorValueDTO, MeasurementUnitDTO
 from .living_buildings import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
 from .normatives import NormativeDTO
@@ -14,7 +14,7 @@ from .physical_objects import (
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
 )
-from .profiles import TargetProfileDTO
+from .profiles_reclamation import ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO
 from .projects import ProjectDTO, ProjectTerritoryDTO
 from .scenarios import ScenarioDTO
 from .scenarios_urban_objects import ScenarioUrbanObjectDTO
@@ -56,6 +56,7 @@ __all__ = [
     "LivingBuildingsDTO",
     "LivingBuildingsWithGeometryDTO",
     "FunctionalZoneDataDTO",
+    "FunctionalZoneTypeDTO",
     "TerritoryWithIndicatorDTO",
     "TerritoryWithIndicatorsDTO",
     "TerritoryWithNormativesDTO",
@@ -64,5 +65,6 @@ __all__ = [
     "UrbanObjectDTO",
     "ProjectDTO",
     "ProjectTerritoryDTO",
-    "TargetProfileDTO",
+    "ProfilesReclamationDataDTO",
+    "ProfilesReclamationDataMatrixDTO",
 ]

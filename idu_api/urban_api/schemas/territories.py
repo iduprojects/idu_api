@@ -68,6 +68,7 @@ class TerritoryData(BaseModel):
     centre_point: Geometry
     admin_center: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
+    oktmo_code: str | None = Field(..., examples=["1"])
     created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="The time when the territory was last updated"
@@ -88,6 +89,7 @@ class TerritoryData(BaseModel):
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
             admin_center=dto.admin_center,
             okato_code=dto.okato_code,
+            oktmo_code=dto.oktmo_code,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
@@ -108,6 +110,7 @@ class TerritoryDataPost(GeometryValidationModel):
     centre_point: Geometry | None = Field(None, description="Centre coordinates")
     admin_center: int | None = Field(None, examples=[1])
     okato_code: str | None = Field(None, examples=["1"])
+    oktmo_code: str | None = Field(None, examples=["1"])
 
 
 class TerritoryDataPut(GeometryValidationModel):
@@ -125,6 +128,7 @@ class TerritoryDataPut(GeometryValidationModel):
     centre_point: Geometry
     admin_center: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
+    oktmo_code: str | None = Field(..., examples=["1"])
 
 
 class TerritoryDataPatch(GeometryValidationModel):
@@ -142,6 +146,7 @@ class TerritoryDataPatch(GeometryValidationModel):
     centre_point: Geometry | None = Field(None, description="Centre coordinates")
     admin_center: int | None = Field(None, examples=[1])
     okato_code: str | None = Field(None, examples=["1"])
+    oktmo_code: str | None = Field(None, examples=["1"])
 
     @model_validator(mode="before")
     @classmethod
@@ -170,6 +175,8 @@ class TerritoryWithoutGeometry(BaseModel):
     )
     admin_center: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
+    oktmo_code: str | None = Field(..., examples=["1"])
+
     created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="The time when the territory was last updated"
@@ -187,6 +194,7 @@ class TerritoryWithoutGeometry(BaseModel):
             properties=dto.properties,
             admin_center=dto.admin_center,
             okato_code=dto.okato_code,
+            oktmo_code=dto.oktmo_code,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
