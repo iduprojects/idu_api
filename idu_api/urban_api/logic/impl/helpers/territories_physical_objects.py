@@ -35,6 +35,17 @@ async def get_physical_objects_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
+    territories_cte = (
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
+    )
+
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
     statement = (
         select(
             physical_objects_data,
@@ -54,7 +65,7 @@ async def get_physical_objects_by_territory_id_from_db(
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
-        .where(object_geometries_data.c.territory_id == territory_id)
+        .where(object_geometries_data.c.territory_id.in_(territories_cte))
         .distinct()
     )
 
@@ -96,6 +107,17 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
+    territories_cte = (
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
+    )
+
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
     statement = (
         select(
             physical_objects_data,
@@ -118,7 +140,7 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
-        .where(object_geometries_data.c.territory_id == territory_id)
+        .where(object_geometries_data.c.territory_id.in_(territories_cte))
         .distinct()
     )
 

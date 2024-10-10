@@ -13,6 +13,7 @@ from idu_api.common.db.entities import (
     services_data,
     territories_data,
     territory_types_dict,
+    urban_functions_dict,
     urban_objects_data,
 )
 from idu_api.urban_api.dto import PageDTO, ServiceDTO, ServiceWithGeometryDTO
@@ -38,10 +39,22 @@ async def get_services_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
+    territories_cte = (
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
+    )
+
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
     statement = (
         select(
             services_data,
             service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
@@ -54,11 +67,15 @@ async def get_services_by_territory_id_from_db(
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
+            .join(
+                urban_functions_dict,
+                service_types_dict.c.urban_function_id == urban_functions_dict.c.urban_function_id,
+            )
             .outerjoin(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
         )
-        .where(object_geometries_data.c.territory_id == territory_id)
+        .where(object_geometries_data.c.territory_id.in_(territories_cte))
     ).distinct()
 
     if service_type_id is not None:
@@ -99,10 +116,22 @@ async def get_services_with_geometry_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
+    territories_cte = (
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
+    )
+
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
     statement = (
         select(
             services_data,
             service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
@@ -117,11 +146,15 @@ async def get_services_with_geometry_by_territory_id_from_db(
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
+            .join(
+                urban_functions_dict,
+                service_types_dict.c.urban_function_id == urban_functions_dict.c.urban_function_id,
+            )
             .outerjoin(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
         )
-        .where(object_geometries_data.c.territory_id == territory_id)
+        .where(object_geometries_data.c.territory_id.in_(territories_cte))
     ).distinct()
 
     if service_type_id is not None:
