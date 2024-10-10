@@ -19,7 +19,7 @@ class ScenariosUrbanObject(BaseModel):
     scenario_id: int = Field(description="scenario identifier", examples=[1])
 
     @classmethod
-    def from_dto(cls, dto: ScenarioUrbanObjectDTO) -> "ScenarioUrbanObject":
+    def from_dto(cls, dto: ScenarioUrbanObjectDTO) -> "ScenariosUrbanObject":
         if dto.service_id is not None:
             urban_object = cls(
                 urban_object_id=dto.urban_object_id,
