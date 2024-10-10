@@ -135,8 +135,10 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             self._conn, territory_id, service_type_id, name, order_by, ordering, paginate
         )
 
-    async def get_services_capacity_by_territory_id(self, territory_id: int, service_type_id: int | None) -> int:
-        return await get_services_capacity_by_territory_id_from_db(self._conn, territory_id, service_type_id)
+    async def get_services_capacity_by_territory_id(
+        self, territory_id: int, level: int, service_type_id: int | None
+    ) -> list:
+        return await get_services_capacity_by_territory_id_from_db(self._conn, territory_id, level, service_type_id)
 
     async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:
         return await get_indicators_by_territory_id_from_db(self._conn, territory_id)

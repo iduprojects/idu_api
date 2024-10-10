@@ -43,6 +43,8 @@ class ShortIndicatorInfo(BaseModel):
         examples=["Общее количество людей, постоянно проживающих на территории"],
     )
     measurement_unit: MeasurementUnit | None
+    level: int = Field(..., description="Number of indicator functions above in a tree + 1", examples=[1])
+    list_label: str = Field(..., description="Indicator marker in lists", examples=["1.1.1"])
 
 
 class IndicatorsGroup(BaseModel):
@@ -151,6 +153,8 @@ class ShortIndicatorValueInfo(BaseModel):
         examples=["Общее количество людей, постоянно проживающих на территории"],
     )
     measurement_unit_name: str | None = Field(..., description="Measurement unit name", examples=["Количество людей"])
+    level: int = Field(..., description="Number of indicator functions above in a tree + 1", examples=[1])
+    list_label: str = Field(..., description="Indicator marker in lists", examples=["1.1.1"])
     date_value: date = Field(
         ...,
         description="first day of the year for 'year' period, first of june for 'half_year',"
@@ -234,6 +238,8 @@ class IndicatorValue(BaseModel):
             indicator=ShortIndicatorInfo(
                 indicator_id=dto.indicator_id,
                 name_full=dto.name_full,
+                level=dto.level,
+                list_label=dto.list_label,
                 measurement_unit=(
                     MeasurementUnit(
                         measurement_unit_id=dto.measurement_unit_id,

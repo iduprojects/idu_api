@@ -7,6 +7,7 @@ from dataclasses import dataclass
 class ServiceTypesDTO:
     service_type_id: int
     urban_function_id: int | None
+    urban_function_name: str | None
     name: str
     capacity_modeled: int | None
     code: str
@@ -16,6 +17,7 @@ class ServiceTypesDTO:
 class UrbanFunctionDTO:
     urban_function_id: int
     parent_urban_function_id: int | None
+    parent_urban_function_name: str | None
     name: str
     level: int
     list_label: str

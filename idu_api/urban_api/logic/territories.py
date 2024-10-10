@@ -90,7 +90,9 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         """Get service objects with geometry by territory id."""
 
     @abc.abstractmethod
-    async def get_services_capacity_by_territory_id(self, territory_id: int, service_type_id: int | None) -> int:
+    async def get_services_capacity_by_territory_id(
+        self, territory_id: int, level: int, service_type_id: int | None
+    ) -> list:
         """Get aggregated capacity of services by territory id."""
 
     @abc.abstractmethod

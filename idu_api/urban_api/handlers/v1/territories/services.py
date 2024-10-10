@@ -87,17 +87,18 @@ async def get_services_with_geometry_by_territory_id(
 
 @territories_router.get(
     "/territory/{territory_id}/services_capacity",
-    response_model=int | None,
+    response_model=list,
     status_code=status.HTTP_200_OK,
 )
 async def get_total_services_capacity_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
-    service_type_id: int | None = Query(None, description="Service type id", gt=0),
-) -> int | None:
+    level: int = Query(..., description="territory level", gt=0),
+    service_type_id: int | None = Query(None, description="service type identifier", gt=0),
+) -> list:
     """Get aggregated capacity of services for territory."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    capacity = await territories_service.get_services_capacity_by_territory_id(territory_id, service_type_id)
+    capacity = await territories_service.get_services_capacity_by_territory_id(territory_id, level, service_type_id)
 
     return capacity

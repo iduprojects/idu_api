@@ -55,9 +55,13 @@ from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPu
 from .scenarios_urban_objects import ScenariosUrbanObject
 from .service_types import (
     ServiceTypes,
+    ServiceTypesPatch,
     ServiceTypesPost,
+    ServiceTypesPut,
     UrbanFunction,
+    UrbanFunctionPatch,
     UrbanFunctionPost,
+    UrbanFunctionPut,
 )
 from .services import (
     ServicesData,
@@ -104,7 +108,9 @@ __all__ = [
     "ServicesDataWithGeometry",
     "ServiceWithTerritories",
     "ServiceTypes",
+    "ServiceTypesPatch",
     "ServiceTypesPost",
+    "ServiceTypesPut",
     "Indicator",
     "IndicatorsGroup",
     "IndicatorsGroupPost",
@@ -139,7 +145,9 @@ __all__ = [
     "FunctionalZoneType",
     "FunctionalZoneTypePost",
     "UrbanFunction",
+    "UrbanFunctionPatch",
     "UrbanFunctionPost",
+    "UrbanFunctionPut",
     "Page",
     "Project",
     "ProjectPost",

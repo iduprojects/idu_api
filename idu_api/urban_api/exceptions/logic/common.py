@@ -89,7 +89,7 @@ class EntityAlreadyExists(IduApiError):
         super().__init__()
 
     def __str__(self) -> str:
-        return f"Invalid input! '{self.entity}' with the same parameters={self.params} already exists)"
+        return f"Invalid input! '{self.entity}' with the same parameters={self.params} already exists"
 
     def get_status_code(self) -> int:
         """

@@ -93,6 +93,8 @@ async def get_indicator_values_by_territory_id_from_db(
             select(
                 territory_indicators_data,
                 indicators_dict.c.name_full,
+                indicators_dict.c.level,
+                indicators_dict.c.list_label,
                 measurement_units_dict.c.measurement_unit_id,
                 measurement_units_dict.c.name.label("measurement_unit_name"),
             )
@@ -124,6 +126,8 @@ async def get_indicator_values_by_territory_id_from_db(
             select(
                 territory_indicators_data,
                 indicators_dict.c.name_full,
+                indicators_dict.c.level,
+                indicators_dict.c.list_label,
                 measurement_units_dict.c.measurement_unit_id,
                 measurement_units_dict.c.name.label("measurement_unit_name"),
             )

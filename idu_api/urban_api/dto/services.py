@@ -12,6 +12,7 @@ class ServiceDTO:  # pylint: disable=too-many-instance-attributes
     service_id: int
     service_type_id: int
     urban_function_id: int
+    urban_function_name: str
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
@@ -29,6 +30,7 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     service_id: int
     service_type_id: int
     urban_function_id: int
+    urban_function_name: str
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
@@ -56,6 +58,7 @@ class ServiceWithTerritoriesDTO:  # pylint: disable=too-many-instance-attributes
     service_id: int
     service_type_id: int
     urban_function_id: int
+    urban_function_name: str
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
