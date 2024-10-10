@@ -36,8 +36,7 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
     )
 
     territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id)
-        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
+        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
     )
 
     statement = (

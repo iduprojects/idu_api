@@ -47,9 +47,11 @@ class ServicesData(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=TerritoryType(
-                territory_type_id=dto.territory_type_id, name=dto.territory_type_name
-            ) if dto.territory_type_id is not None else None,
+            territory_type=(
+                TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
+                if dto.territory_type_id is not None
+                else None
+            ),
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
@@ -92,9 +94,11 @@ class ServiceWithTerritories(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=TerritoryType(
-                territory_type_id=dto.territory_type_id, name=dto.territory_type_name
-            ) if dto.territory_type_id is not None else None,
+            territory_type=(
+                TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
+                if dto.territory_type_id is not None
+                else None
+            ),
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
@@ -188,9 +192,11 @@ class ServicesDataWithGeometry(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
             ),
-            territory_type=TerritoryType(
-                territory_type_id=dto.territory_type_id, name=dto.territory_type_name
-            ) if dto.territory_type_id is not None else None,
+            territory_type=(
+                TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
+                if dto.territory_type_id is not None
+                else None
+            ),
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,

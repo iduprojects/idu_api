@@ -394,8 +394,6 @@ def upgrade() -> None:
         )
     )
 
-    #
-
 
 def downgrade() -> None:
     # drop `delete rules` for service types and urban functions
