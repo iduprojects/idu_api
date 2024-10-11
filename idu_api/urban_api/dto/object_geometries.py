@@ -11,6 +11,7 @@ class ObjectGeometryDTO:
     object_geometry_id: int
     territory_id: int
     address: str | None
+    osm_id: str | None
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
     created_at: datetime

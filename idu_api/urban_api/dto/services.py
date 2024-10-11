@@ -16,6 +16,7 @@ class ServiceDTO:  # pylint: disable=too-many-instance-attributes
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
+    infrastructure_type: str
     territory_type_id: int | None
     territory_type_name: str | None
     name: str | None
@@ -34,11 +35,14 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
+    infrastructure_type: str
     territory_type_id: int | None
     territory_type_name: str | None
     name: str | None
     capacity_real: int | None
     properties: dict[str, Any]
+    address: str | None
+    osm_id: str | None
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
     created_at: datetime
@@ -62,6 +66,7 @@ class ServiceWithTerritoriesDTO:  # pylint: disable=too-many-instance-attributes
     service_type_name: str
     service_type_capacity_modeled: int
     service_type_code: str
+    infrastructure_type: str
     territory_type_id: int | None
     territory_type_name: str | None
     name: str | None

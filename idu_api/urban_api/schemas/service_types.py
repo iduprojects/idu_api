@@ -1,8 +1,11 @@
 """Service types and urban function models are defined here."""
 
-from pydantic import BaseModel, Field, model_validator
+from enum import Enum
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Any, Literal
 
 from idu_api.urban_api.dto import ServiceTypesDTO, UrbanFunctionDTO
+from idu_api.urban_api.schemas.enums import InfrastructureType
 
 
 class ServiceTypeBasic(BaseModel):
@@ -25,6 +28,16 @@ class ServiceTypes(BaseModel):
     name: str = Field(..., description="Service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
     code: str = Field(..., description="Service type code", examples=["1"])
+    infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
+        ..., description="infrastructure type", examples=["basic"]
+    )
+
+    @field_validator("infrastructure_type", mode="before")
+    @staticmethod
+    def infrastructure_type_to_string(infrastructure_type: Any) -> str:
+        if isinstance(infrastructure_type, Enum):
+            return infrastructure_type.value
+        return infrastructure_type
 
     @classmethod
     def from_dto(cls, dto: ServiceTypesDTO) -> "ServiceTypes":
@@ -40,6 +53,7 @@ class ServiceTypes(BaseModel):
             ),
             capacity_modeled=dto.capacity_modeled,
             code=dto.code,
+            infrastructure_type=dto.infrastructure_type,
         )
 
 
@@ -48,6 +62,9 @@ class ServiceTypesPost(BaseModel):
     name: str = Field(..., description="Service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
     code: str = Field(..., description="Service type code", examples=["1"])
+    infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
+        ..., description="infrastructure type", examples=["basic"]
+    )
 
 
 class ServiceTypesPut(BaseModel):
@@ -55,6 +72,9 @@ class ServiceTypesPut(BaseModel):
     name: str = Field(..., description="Service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(..., description="default capacity", examples=[1])
     code: str = Field(..., description="Service type code", examples=["1"])
+    infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
+        ..., description="infrastructure type", examples=["basic"]
+    )
 
 
 class ServiceTypesPatch(BaseModel):
@@ -62,6 +82,9 @@ class ServiceTypesPatch(BaseModel):
     name: str | None = Field(None, description="Service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
     code: str | None = Field(None, description="Service type code", examples=["1"])
+    infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
+        None, description="infrastructure type", examples=["basic"]
+    )
 
     @model_validator(mode="before")
     @classmethod

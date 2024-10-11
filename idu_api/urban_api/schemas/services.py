@@ -46,6 +46,7 @@ class ServicesData(BaseModel):
                 name=dto.service_type_name,
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
+                infrastructure_type=dto.infrastructure_type,
             ),
             territory_type=(
                 TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
@@ -93,6 +94,7 @@ class ServiceWithTerritories(BaseModel):
                 name=dto.service_type_name,
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
+                infrastructure_type=dto.infrastructure_type,
             ),
             territory_type=(
                 TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
@@ -171,6 +173,8 @@ class ServicesDataWithGeometry(BaseModel):
         description="Service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
+    address: str | None = Field(None, description="Physical object address", examples=["--"])
+    osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
     geometry: Geometry
     centre_point: Geometry
     created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
@@ -191,6 +195,7 @@ class ServicesDataWithGeometry(BaseModel):
                 name=dto.service_type_name,
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
+                infrastructure_type=dto.infrastructure_type,
             ),
             territory_type=(
                 TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)

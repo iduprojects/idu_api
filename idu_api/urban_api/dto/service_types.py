@@ -1,6 +1,7 @@
 """Service types DTO are defined here."""
 
 from dataclasses import dataclass
+from typing import Literal
 
 
 @dataclass(frozen=True)
@@ -11,6 +12,7 @@ class ServiceTypesDTO:
     name: str
     capacity_modeled: int | None
     code: str
+    infrastructure_type: Literal["basic", "additional", "comfort"]
 
 
 @dataclass(frozen=True)

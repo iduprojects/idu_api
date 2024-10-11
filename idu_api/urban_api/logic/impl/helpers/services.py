@@ -34,6 +34,7 @@ async def get_service_by_id_from_db(conn: AsyncConnection, service_id: int) -> S
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
             territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(
@@ -234,6 +235,7 @@ async def get_service_with_territories_by_id_from_db(
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
             territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(

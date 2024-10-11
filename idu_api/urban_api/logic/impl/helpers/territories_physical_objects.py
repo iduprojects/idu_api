@@ -121,6 +121,7 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         )

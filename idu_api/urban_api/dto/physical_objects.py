@@ -33,6 +33,7 @@ class PhysicalObjectWithGeometryDTO:
     physical_object_type_name: str
     name: str | None
     address: str | None
+    osm_id: str | None
     properties: dict[str, Any]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point

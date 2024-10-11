@@ -71,6 +71,7 @@ async def add_service_type_to_db(
             urban_function_id=service_type.urban_function_id,
             capacity_modeled=service_type.capacity_modeled,
             code=service_type.code,
+            infrastructure_type=service_type.infrastructure_type,
         )
         .returning(service_types_dict.c.service_type_id)
     )
@@ -98,7 +99,7 @@ async def put_service_type_to_db(
     service_type_id: int,
     service_type: ServiceTypesPut,
 ) -> ServiceTypesDTO:
-    """Update service type object by getting all its attributes."""
+    """Update service type object by all its attributes."""
 
     statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
     result = (await conn.execute(statement)).one_or_none()
@@ -127,6 +128,7 @@ async def put_service_type_to_db(
             urban_function_id=service_type.urban_function_id,
             capacity_modeled=service_type.capacity_modeled,
             code=service_type.code,
+            infrastructure_type=service_type.infrastructure_type,
         )
     )
     await conn.execute(statement)
@@ -152,7 +154,7 @@ async def patch_service_type_to_db(
     service_type_id: int,
     service_type: ServiceTypesPatch,
 ) -> ServiceTypesDTO:
-    """Update service type object by getting only given attributes."""
+    """Update service type object by only given attributes."""
 
     statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
     result = (await conn.execute(statement)).one_or_none()
