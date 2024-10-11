@@ -16,6 +16,7 @@ from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
+    ServiceTypesDTO,
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
@@ -59,11 +60,15 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def put_territory(self, territory_id: int, territory: TerritoryDataPut) -> TerritoryDTO:
-        """Update territory object (put, update all of the fields)."""
+        """Update territory object (put, update all the fields)."""
 
     @abc.abstractmethod
     async def patch_territory(self, territory_id: int, territory: TerritoryDataPatch) -> TerritoryDTO:
         """Patch territory object (patch, update only non-None fields)."""
+
+    @abc.abstractmethod
+    async def get_service_types_by_territory_id(self, territory_id: int) -> list[ServiceTypesDTO]:
+        """Get all service types that are located in given territory."""
 
     @abc.abstractmethod
     async def get_services_by_territory_id(

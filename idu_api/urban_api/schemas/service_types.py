@@ -1,11 +1,12 @@
 """Service types and urban function models are defined here."""
 
 from enum import Enum
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from idu_api.urban_api.dto import ServiceTypesDTO, UrbanFunctionDTO
+from idu_api.urban_api.dto import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+
 
 class ServiceTypeBasic(BaseModel):
     """Basic service type model to encapsulate in other models."""
@@ -150,3 +151,37 @@ class UrbanFunctionPatch(BaseModel):
         if not values:
             raise ValueError("request body cannot be empty")
         return values
+
+
+class ServiceTypesHierarchy(BaseModel):
+    urban_function_id: int = Field(..., examples=[1])
+    parent_urban_function_id: int | None = Field(
+        ..., description="Parent urban function identifier (null if it is top-level urban function", examples=[1]
+    )
+    name: str = Field(..., description="Urban function unit name", examples=["Образование"])
+    level: int = Field(..., description="Number of urban functions above in a tree + [1]", examples=[1])
+    list_label: str = Field(..., description="Urban function list label", examples=["1.1.1"])
+    code: str = Field(..., description="Urban function code", examples=["1"])
+    children: list[Self | ServiceTypes]
+
+    @classmethod
+    def from_dto(cls, dto: ServiceTypesHierarchyDTO) -> "ServiceTypesHierarchy":
+        """
+        Construct from DTO.
+        """
+        return cls(
+            urban_function_id=dto.urban_function_id,
+            parent_urban_function_id=dto.parent_urban_function_id,
+            name=dto.name,
+            level=dto.level,
+            list_label=dto.list_label,
+            code=dto.code,
+            children=[
+                (
+                    ServiceTypesHierarchy.from_dto(child)
+                    if isinstance(child, ServiceTypesHierarchyDTO)
+                    else ServiceTypes.from_dto(child)
+                )
+                for child in dto.children
+            ],
+        )

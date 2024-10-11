@@ -95,7 +95,7 @@ class EntityAlreadyExists(IduApiError):
         """
         Return '404 Not found' status code.
         """
-        return status.HTTP_404_NOT_FOUND
+        return status.HTTP_400_BAD_REQUEST
 
 
 class TooManyObjectsError(IduApiError):

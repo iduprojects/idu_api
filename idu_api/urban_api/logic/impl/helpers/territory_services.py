@@ -16,11 +16,58 @@ from idu_api.common.db.entities import (
     urban_functions_dict,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import PageDTO, ServiceDTO, ServiceWithGeometryDTO
+from idu_api.urban_api.dto import PageDTO, ServiceDTO, ServiceTypesDTO, ServiceWithGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
+
+
+async def get_service_types_by_territory_id_from_db(conn: AsyncConnection, territory_id: int) -> list[ServiceTypesDTO]:
+    """Get all service types that are located in given territory."""
+
+    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    territory = (await conn.execute(statement)).one_or_none()
+    if territory is None:
+        raise EntityNotFoundById(territory_id, "territory")
+
+    territories_cte = (
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
+    )
+
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
+    statement = (
+        select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
+        .select_from(
+            territories_data.join(
+                object_geometries_data,
+                object_geometries_data.c.territory_id == territories_data.c.territory_id,
+            )
+            .join(
+                urban_objects_data,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
+                services_data,
+                services_data.c.service_id == urban_objects_data.c.service_id,
+            )
+            .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
+            .join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+        )
+        .where(territories_data.c.territory_id.in_(select(territories_cte)))
+        .distinct()
+    )
+    service_types = (await conn.execute(statement)).mappings().all()
+
+    return [ServiceTypesDTO(**s) for s in service_types]
 
 
 async def get_services_by_territory_id_from_db(
@@ -75,7 +122,7 @@ async def get_services_by_territory_id_from_db(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(territories_cte))
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
     ).distinct()
 
     if service_type_id is not None:
@@ -156,7 +203,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(territories_cte))
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
     ).distinct()
 
     if service_type_id is not None:

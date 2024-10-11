@@ -9,8 +9,8 @@ from idu_api.common.db.entities import (
     service_types_dict,
     urban_functions_dict,
 )
-from idu_api.urban_api.dto import ServiceTypesDTO, UrbanFunctionDTO
-from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
+from idu_api.urban_api.dto import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.schemas import (
     ServiceTypesPatch,
     ServiceTypesPost,
@@ -452,3 +452,58 @@ async def delete_urban_function_from_db(conn: AsyncConnection, urban_function_id
     await conn.commit()
 
     return {"result": "ok"}
+
+
+async def get_service_types_hierarchy_from_db(
+    conn: AsyncConnection, service_type_ids: str | None
+) -> list[ServiceTypesHierarchyDTO]:
+    """Get service types hierarchy (from top-level urban function to service type)
+    based on a list of required service type ids.
+
+    If the list of identifiers was not passed, it returns the full hierarchy.
+    """
+
+    statement = (
+        select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
+        .select_from(
+            service_types_dict.join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+        )
+        .order_by(service_types_dict.c.service_type_id)
+    )
+
+    if service_type_ids is not None:
+        ids = [int(indicator.strip()) for indicator in service_type_ids.split(",")]
+        query = select(service_types_dict.c.indicator_id).where(service_types_dict.c.indicator_id.in_(ids))
+        indicators = (await conn.execute(query)).scalars()
+        if not list(indicators):
+            raise EntitiesNotFoundByIds("indicator")
+        statement = statement.where(service_types_dict.c.service_type_id.in_(ids))
+
+    service_types = (await conn.execute(statement)).mappings().all()
+
+    statement = select(urban_functions_dict).order_by(urban_functions_dict.c.level)
+    urban_functions = (await conn.execute(statement)).mappings().all()
+
+    def build_filtered_hierarchy(parent_id: int = None) -> list[ServiceTypesHierarchyDTO]:
+        children = []
+        for uf in [uf for uf in urban_functions if uf.parent_urban_function_id == parent_id]:
+            filtered_children = build_filtered_hierarchy(uf.urban_function_id)
+
+            relevant_service_types = [
+                ServiceTypesDTO(**s) for s in service_types if s.urban_function_id == uf.urban_function_id
+            ]
+
+            if filtered_children or relevant_service_types:
+                children.append(
+                    ServiceTypesHierarchyDTO(
+                        **uf, children=filtered_children if filtered_children else relevant_service_types
+                    )
+                )
+
+        return children
+
+    hierarchy = build_filtered_hierarchy()
+    return hierarchy

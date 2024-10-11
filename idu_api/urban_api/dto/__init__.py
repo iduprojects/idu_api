@@ -18,7 +18,7 @@ from .profiles_reclamation import ProfilesReclamationDataDTO, ProfilesReclamatio
 from .projects import ProjectDTO, ProjectTerritoryDTO
 from .scenarios import ScenarioDTO
 from .scenarios_urban_objects import ScenarioUrbanObjectDTO
-from .service_types import ServiceTypesDTO, UrbanFunctionDTO
+from .service_types import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
     TerritoryDTO,
@@ -40,6 +40,7 @@ __all__ = [
     "ScenarioUrbanObjectDTO",
     "ServiceDTO",
     "ServiceTypesDTO",
+    "ServiceTypesHierarchyDTO",
     "ServiceWithGeometryDTO",
     "ServiceWithTerritoriesDTO",
     "IndicatorDTO",

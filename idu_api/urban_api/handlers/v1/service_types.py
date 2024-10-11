@@ -6,6 +6,7 @@ from starlette import status
 from idu_api.urban_api.logic.service_types import ServiceTypesService
 from idu_api.urban_api.schemas import (
     ServiceTypes,
+    ServiceTypesHierarchy,
     ServiceTypesPatch,
     ServiceTypesPost,
     ServiceTypesPut,
@@ -182,3 +183,24 @@ async def delete_urban_function(
     service_types_service: ServiceTypesService = request.state.service_types_service
 
     return await service_types_service.delete_urban_function(urban_function_id)
+
+
+@service_types_router.get(
+    "/service_types/hierarchy",
+    response_model=list[ServiceTypesHierarchy],
+    status_code=status.HTTP_200_OK,
+)
+async def get_service_types_hierarchy(
+    request: Request,
+    service_types_ids: str | None = Query(None, description="list of service type ids separated by comma"),
+) -> list[ServiceTypesHierarchy]:
+    """Get service types hierarchy (from top-level urban function to service type)
+    based on a list of required service type ids.
+
+    If the list of identifiers was not passed, it returns the full hierarchy.
+    """
+    service_types_service: ServiceTypesService = request.state.service_types_service
+
+    hierarchy = await service_types_service.get_service_types_hierarchy(service_types_ids)
+
+    return [ServiceTypesHierarchy.from_dto(node) for node in hierarchy]

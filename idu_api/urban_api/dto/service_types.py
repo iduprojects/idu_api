@@ -1,7 +1,7 @@
 """Service types DTO are defined here."""
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Self
 
 
 @dataclass(frozen=True)
@@ -24,3 +24,14 @@ class UrbanFunctionDTO:
     level: int
     list_label: str
     code: str
+
+
+@dataclass(frozen=True)
+class ServiceTypesHierarchyDTO:
+    urban_function_id: int
+    parent_urban_function_id: int | None
+    name: str
+    level: int
+    list_label: str
+    code: str
+    children: list[Self | ServiceTypesDTO]

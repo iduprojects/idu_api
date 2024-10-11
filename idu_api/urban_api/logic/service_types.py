@@ -3,7 +3,7 @@
 import abc
 from typing import Protocol
 
-from idu_api.urban_api.dto import ServiceTypesDTO, UrbanFunctionDTO
+from idu_api.urban_api.dto import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from idu_api.urban_api.schemas import (
     ServiceTypesPatch,
     ServiceTypesPost,
@@ -61,3 +61,11 @@ class ServiceTypesService(Protocol):
     @abc.abstractmethod
     async def delete_urban_function(self, urban_function_id: int):
         """Delete urban function object by id."""
+
+    @abc.abstractmethod
+    async def get_service_types_hierarchy(self, service_type_ids: str | None) -> list[ServiceTypesHierarchyDTO]:
+        """Get service types hierarchy (from top-level urban function to service type)
+        based on a list of required service type ids.
+
+        If the list of identifiers was not passed, it returns the full hierarchy.
+        """

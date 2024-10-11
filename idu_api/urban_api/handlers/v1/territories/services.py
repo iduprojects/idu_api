@@ -4,13 +4,30 @@ from fastapi import Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
-from idu_api.urban_api.schemas import ServicesData, ServicesDataWithGeometry
+from idu_api.urban_api.schemas import ServicesData, ServicesDataWithGeometry, ServiceTypes
 from idu_api.urban_api.schemas.enums import Ordering
 from idu_api.urban_api.schemas.pages import Page
 from idu_api.urban_api.schemas.services import ServicesOrderByField
 from idu_api.urban_api.utils.pagination import paginate
 
 from .routers import territories_router
+
+
+@territories_router.get(
+    "/territory/{territory_id}/service_types",
+    response_model=list[ServiceTypes],
+    status_code=status.HTTP_200_OK,
+)
+async def get_service_types_by_territory_id(
+    request: Request,
+    territory_id: int = Path(..., description="territory id", gt=0),
+) -> list[ServiceTypes]:
+    """Get service types for territory by territory identifier."""
+    territories_service: TerritoriesService = request.state.territories_service
+
+    service_types = await territories_service.get_service_types_by_territory_id(territory_id)
+
+    return [ServiceTypes.from_dto(service_type) for service_type in service_types]
 
 
 @territories_router.get(

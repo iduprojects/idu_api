@@ -55,6 +55,7 @@ from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPu
 from .scenarios_urban_objects import ScenariosUrbanObject
 from .service_types import (
     ServiceTypes,
+    ServiceTypesHierarchy,
     ServiceTypesPatch,
     ServiceTypesPost,
     ServiceTypesPut,
@@ -108,6 +109,7 @@ __all__ = [
     "ServicesDataWithGeometry",
     "ServiceWithTerritories",
     "ServiceTypes",
+    "ServiceTypesHierarchy",
     "ServiceTypesPatch",
     "ServiceTypesPost",
     "ServiceTypesPut",

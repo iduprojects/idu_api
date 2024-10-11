@@ -17,6 +17,7 @@ from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
+    ServiceTypesDTO,
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
@@ -59,6 +60,7 @@ from idu_api.urban_api.logic.impl.helpers.territory_objects import (
     put_territory_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territory_services import (
+    get_service_types_by_territory_id_from_db,
     get_services_by_territory_id_from_db,
     get_services_capacity_by_territory_id_from_db,
     get_services_with_geometry_by_territory_id_from_db,
@@ -108,6 +110,9 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
 
     async def patch_territory(self, territory_id: int, territory: TerritoryDataPatch) -> TerritoryDTO:
         return await patch_territory_to_db(self._conn, territory_id, territory)
+
+    async def get_service_types_by_territory_id(self, territory_id: int) -> list[ServiceTypesDTO]:
+        return await get_service_types_by_territory_id_from_db(self._conn, territory_id)
 
     async def get_services_by_territory_id(
         self,

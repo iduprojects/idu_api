@@ -64,7 +64,7 @@ async def get_physical_objects_by_territory_id_from_db(
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(territories_cte))
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
         .distinct()
     )
 
@@ -139,7 +139,7 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(territories_cte))
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
         .distinct()
     )
 
