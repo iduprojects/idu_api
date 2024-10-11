@@ -184,6 +184,7 @@ async def get_children_territories_by_type(
             cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -199,6 +200,7 @@ async def get_children_territories_by_type(
             territories_data.c.properties,
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -253,6 +255,7 @@ async def get_ca_territory_by_id(
             cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -268,6 +271,7 @@ async def get_ca_territory_by_id(
             territories_data.c.properties,
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -370,6 +374,7 @@ def generate_select(
             cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -384,6 +389,7 @@ def generate_select(
             territories_data.c.properties,
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )

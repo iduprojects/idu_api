@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import Path, Query
 
-from idu_api.city_api import app
+from idu_api.city_api.main import app
 from fastapi.requests import Request
 
 from idu_api.city_api.common.feature import Feature
