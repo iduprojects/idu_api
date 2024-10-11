@@ -33,9 +33,9 @@ territories_data = Table(
     ),
     Column("admin_center", Integer),
     Column("okato_code", String(20)),
+    Column("oktmo_code", String(20)),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
-    Column("oktmo_code", String(20)),
 )
 
 """
@@ -50,7 +50,7 @@ Territories:
 - centre_point geometry point
 - admin_center int
 - okato_code string(20)
+- oktmo_code string(20)
 - created_at timestamp
 - updated_at timestamp
-- oktmo_code string(20)
 """
