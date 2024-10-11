@@ -25,6 +25,7 @@ class NormativeType(Enum):
     PARENT = "parent"
     GLOBAL = "global"
 
+
 class InfrastructureType(Enum):
     BASIC = "basic"
     ADDITIONAL = "additional"

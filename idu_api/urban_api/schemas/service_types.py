@@ -1,12 +1,11 @@
 """Service types and urban function models are defined here."""
 
 from enum import Enum
-from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Any, Literal
 
-from idu_api.urban_api.dto import ServiceTypesDTO, UrbanFunctionDTO
-from idu_api.urban_api.schemas.enums import InfrastructureType
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+from idu_api.urban_api.dto import ServiceTypesDTO, UrbanFunctionDTO
 
 class ServiceTypeBasic(BaseModel):
     """Basic service type model to encapsulate in other models."""

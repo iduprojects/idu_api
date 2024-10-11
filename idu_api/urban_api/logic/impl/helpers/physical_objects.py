@@ -19,7 +19,8 @@ from idu_api.common.db.entities import (
     services_data,
     territories_data,
     territory_types_dict,
-    urban_objects_data, urban_functions_dict,
+    urban_functions_dict,
+    urban_objects_data,
 )
 from idu_api.urban_api.dto import (
     LivingBuildingsDTO,

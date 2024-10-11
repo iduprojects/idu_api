@@ -15,7 +15,6 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.common.db.entities.object_geometries import object_geometries_data_id_seq
 from idu_api.urban_api.dto import ObjectGeometryDTO, PhysicalObjectDataDTO, UrbanObjectDTO
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_object_by_id_from_db

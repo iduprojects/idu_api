@@ -39,24 +39,30 @@ class UrbanObject(BaseModel):
                 geometry=Geometry.from_shapely_geometry(dto.geometry),
                 centre_point=Geometry.from_shapely_geometry(dto.centre_point),
             ),
-            service=ServicesData(
-                service_id=dto.service_id,
-                service_type=ServiceTypes(
-                    service_type_id=dto.service_type_id,
-                    urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
-                    name=dto.service_type_name,
-                    capacity_modeled=dto.service_type_capacity_modeled,
-                    code=dto.service_type_code,
-                    infrastructure_type=dto.infrastructure_type,
-                ),
-                territory_type=TerritoryType(
-                    territory_type_id=dto.territory_type_id, name=dto.territory_type_name
-                ) if dto.territory_type_id is not None else None,
-                name=dto.service_name,
-                capacity_real=dto.capacity_real,
-                properties=dto.service_properties,
-                created_at=dto.service_created_at,
-                updated_at=dto.service_updated_at,
-            ) if dto.service_id is not None else None,
+            service=(
+                ServicesData(
+                    service_id=dto.service_id,
+                    service_type=ServiceTypes(
+                        service_type_id=dto.service_type_id,
+                        urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
+                        name=dto.service_type_name,
+                        capacity_modeled=dto.service_type_capacity_modeled,
+                        code=dto.service_type_code,
+                        infrastructure_type=dto.infrastructure_type,
+                    ),
+                    territory_type=(
+                        TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
+                        if dto.territory_type_id is not None
+                        else None
+                    ),
+                    name=dto.service_name,
+                    capacity_real=dto.capacity_real,
+                    properties=dto.service_properties,
+                    created_at=dto.service_created_at,
+                    updated_at=dto.service_updated_at,
+                )
+                if dto.service_id is not None
+                else None
+            ),
         )
         return urban_object
