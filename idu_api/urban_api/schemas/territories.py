@@ -175,7 +175,6 @@ class TerritoryWithoutGeometry(BaseModel):
     admin_center: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
-
     created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="The time when the territory was last updated"

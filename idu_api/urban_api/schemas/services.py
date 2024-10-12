@@ -28,9 +28,9 @@ class ServicesData(BaseModel):
         description="Service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the service was created")
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="The time when the territory was last updated"
+        default_factory=datetime.utcnow, description="The time when the service was last updated"
     )
 
     @classmethod

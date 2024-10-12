@@ -1,6 +1,6 @@
 """Services DTO are defined here."""
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
@@ -55,6 +55,29 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
             self.geometry = self.centre_point
         if isinstance(self.geometry, dict):
             self.geometry = geom.shape(self.geometry)
+
+    def to_geojson_dict(self) -> dict[str, Any]:
+        service = asdict(self)
+        territory_type = service.pop("territory_type_id", None), service.pop("territory_type_name", None)
+        service["territory_type"] = (
+            {"territory_type_id": territory_type[0], "name": territory_type[1]}
+            if territory_type[0] is not None
+            else None
+        )
+        service_type = {
+            "service_type_id": service.pop("service_type_id", None),
+            "urban_function": {
+                "id": service.pop("urban_function_id", None),
+                "name": service.pop("urban_function_name", None),
+            },
+            "name": service.pop("service_type_name", None),
+            "capacity_modeled": service.pop("service_type_capacity_modeled", None),
+            "code": service.pop("service_type_code", None),
+            "infrastructure_type": service.pop("infrastructure_type", None),
+        }
+        service["service_type"] = service_type
+
+        return service
 
 
 @dataclass(frozen=True)

@@ -1,11 +1,14 @@
 """Services territories-related handlers are defined here."""
 
 from fastapi import Path, Query, Request
+from geojson_pydantic import Feature
+from geojson_pydantic.geometries import Geometry
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import ServicesData, ServicesDataWithGeometry, ServiceTypes
 from idu_api.urban_api.schemas.enums import Ordering
+from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.schemas.pages import Page
 from idu_api.urban_api.schemas.services import ServicesOrderByField
 from idu_api.urban_api.utils.pagination import paginate
@@ -100,6 +103,32 @@ async def get_services_with_geometry_by_territory_id(
         services.total,
         transformer=lambda x: [ServicesDataWithGeometry.from_dto(item) for item in x],
     )
+
+
+@territories_router.get(
+    "/territory/{territory_id}/services_geojson",
+    response_model=GeoJSONResponse[Feature[Geometry, ServicesData]],
+    status_code=status.HTTP_200_OK,
+)
+async def get_services_geojson_by_territory_id(
+    request: Request,
+    territory_id: int = Path(..., description="territory id", gt=0),
+    service_type_id: int | None = Query(None, description="Service type id", gt=0),
+    name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
+    centers_only: bool = Query(False, description="to get only center points of geometries"),
+) -> GeoJSONResponse[Feature[Geometry, ServicesData]]:
+    """Get FeatureCollection with geometries of service objects for given territory.
+
+    Service type and name of services could be specified in parameters.
+    Set centers_only = true to get only center points of geometries.
+    """
+    territories_service: TerritoriesService = request.state.territories_service
+
+    services = await territories_service.get_services_with_geometry_by_territory_id(
+        territory_id, service_type_id, name, None, None
+    )
+
+    return await GeoJSONResponse.from_list([service.to_geojson_dict() for service in services], centers_only)
 
 
 @territories_router.get(
