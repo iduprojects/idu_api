@@ -40,7 +40,7 @@ class TerritoryShortInfo(BaseModel):
     @classmethod
     def from_dto(cls, dto: TerritoryDTO) -> "TerritoryShortInfo":
         """Construct from DTO."""
-        return cls(territory_type_id=dto.territory_type_id, name=dto.name)
+        return cls(id=dto.territory_id, name=dto.name)
 
 
 class TerritoryTypesPost(BaseModel):
@@ -152,7 +152,6 @@ class TerritoryDataPatch(GeometryValidationModel):
     @classmethod
     def check_empty_request(cls, values):
         """Ensure the request body is not empty."""
-
         if not values:
             raise ValueError("request body cannot be empty")
         return values

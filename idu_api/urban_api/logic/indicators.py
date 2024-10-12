@@ -10,7 +10,14 @@ from idu_api.urban_api.dto import (
     IndicatorValueDTO,
     MeasurementUnitDTO,
 )
-from idu_api.urban_api.schemas import IndicatorsGroupPost, IndicatorsPost, IndicatorValuePost, MeasurementUnitPost
+from idu_api.urban_api.schemas import (
+    IndicatorsGroupPost,
+    IndicatorsPatch,
+    IndicatorsPost,
+    IndicatorsPut,
+    IndicatorValuePost,
+    MeasurementUnitPost,
+)
 
 
 class IndicatorsService(Protocol):
@@ -58,6 +65,18 @@ class IndicatorsService(Protocol):
         """Create indicator object."""
 
     @abc.abstractmethod
+    async def put_indicator(self, indicator_id: int, indicator: IndicatorsPut) -> IndicatorDTO:
+        """Update indicator object by all its attributes."""
+
+    @abc.abstractmethod
+    async def patch_indicator(self, indicator_id: int, indicator: IndicatorsPatch) -> IndicatorDTO:
+        """Update indicator object by only given attributes."""
+
+    @abc.abstractmethod
+    async def delete_indicator(self, indicator_id: int) -> dict:
+        """Delete indicator object by id."""
+
+    @abc.abstractmethod
     async def get_indicator_value_by_id(
         self,
         indicator_id: int,
@@ -72,6 +91,18 @@ class IndicatorsService(Protocol):
     @abc.abstractmethod
     async def add_indicator_value(self, indicator_value: IndicatorValuePost) -> IndicatorValueDTO:
         """Create indicator value object."""
+
+    @abc.abstractmethod
+    async def delete_indicator_value(
+        self,
+        indicator_id: int,
+        territory_id: int,
+        date_type: str,
+        date_value: datetime,
+        value_type: str,
+        information_source: str,
+    ) -> dict:
+        """Delete indicator value object by id."""
 
     @abc.abstractmethod
     async def get_indicator_values_by_id(

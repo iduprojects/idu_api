@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "idu-api"
-version = "1.11.5"
+version = "1.11.6"
 description = "This is a Digital Territories Platform API in two versions to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
@@ -47,11 +47,11 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.black]
 line-length = 120
-target-version = ['py310']
+target-version = ['py311']
 
 [tool.pylint.format]
 max-line-length = 120
-expected-line-ending-format = "CRLF"
+expected-line-ending-format = "LF"
 max-locals = 20
 max-attributes = 10
 max-args = 9

@@ -87,7 +87,7 @@ def upgrade() -> None:
         ondelete="CASCADE",
     )
 
-    # create triggers/function to auto-set urban function level on insert/update
+    # create triggers/functions to auto-set urban function level on insert/update
     op.execute(
         sa.text(
             dedent(
@@ -176,7 +176,7 @@ def upgrade() -> None:
             dedent(
                 """
                 -- Функция для генерации list_label
-                CREATE FUNCTION public.trigger_generate_list_label()
+                CREATE FUNCTION public.trigger_generate_urban_function_list_label()
                 RETURNS TRIGGER AS $$
                 DECLARE
                     parent_label TEXT;
@@ -206,10 +206,10 @@ def upgrade() -> None:
         sa.text(
             dedent(
                 """
-                CREATE TRIGGER update_list_label_on_insert_trigger
+                CREATE TRIGGER update_urban_function_list_label_on_insert_trigger
                 BEFORE INSERT ON public.urban_functions_dict
                 FOR EACH ROW
-                EXECUTE FUNCTION public.trigger_generate_list_label();
+                EXECUTE FUNCTION public.trigger_generate_urban_function_list_label();
                 """
             )
         )
@@ -218,7 +218,7 @@ def upgrade() -> None:
         sa.text(
             dedent(
                 """
-                CREATE FUNCTION public.trigger_update_list_label_on_update()
+                CREATE FUNCTION public.trigger_update_urban_function_list_label_on_update()
                 RETURNS TRIGGER AS $$
                 DECLARE
                     parent_label TEXT;
@@ -315,10 +315,10 @@ def upgrade() -> None:
         sa.text(
             dedent(
                 """
-                CREATE TRIGGER update_list_label_on_update_trigger
+                CREATE TRIGGER update_urban_function_list_label_on_update_trigger
                 AFTER UPDATE ON public.urban_functions_dict
                 FOR EACH ROW
-                EXECUTE FUNCTION public.trigger_update_list_label_on_update();
+                EXECUTE FUNCTION public.trigger_update_urban_function_list_label_on_update();
                 """
             )
         )
@@ -327,7 +327,7 @@ def upgrade() -> None:
         sa.text(
             dedent(
                 """
-                CREATE FUNCTION public.trigger_update_sibling_labels_on_delete()
+                CREATE FUNCTION public.trigger_update_urban_function_sibling_labels_on_delete()
                 RETURNS TRIGGER AS $$
                 DECLARE
                     sibling_label TEXT;
@@ -385,10 +385,10 @@ def upgrade() -> None:
         sa.text(
             dedent(
                 """
-                CREATE TRIGGER reorder_sibling_labels_on_delete_trigger
+                CREATE TRIGGER reorder_urban_function_sibling_labels_on_delete_trigger
                 AFTER DELETE ON public.urban_functions_dict
                 FOR EACH ROW
-                EXECUTE FUNCTION public.trigger_update_sibling_labels_on_delete();
+                EXECUTE FUNCTION public.trigger_update_urban_function_sibling_labels_on_delete();
                 """
             )
         )
@@ -465,9 +465,15 @@ def downgrade() -> None:
     op.execute("DROP FUNCTION IF EXISTS public.trigger_update_urban_function_level_on_update")
 
     # drop triggers/functions to auto-set urban function list label
-    op.execute("DROP TRIGGER IF EXISTS reorder_sibling_labels_on_delete_trigger ON public.urban_functions_dict")
-    op.execute("DROP TRIGGER IF EXISTS update_list_label_on_update_trigger ON public.urban_functions_dict")
-    op.execute("DROP TRIGGER IF EXISTS update_list_label_on_insert_trigger ON public.urban_functions_dict")
-    op.execute("DROP FUNCTION IF EXISTS public.trigger_update_sibling_labels_on_delete")
-    op.execute("DROP FUNCTION IF EXISTS public.trigger_update_list_label_on_update")
-    op.execute("DROP FUNCTION IF EXISTS public.trigger_generate_list_label")
+    op.execute(
+        "DROP TRIGGER IF EXISTS reorder_urban_function_sibling_labels_on_delete_trigger ON public.urban_functions_dict"
+    )
+    op.execute(
+        "DROP TRIGGER IF EXISTS update_urban_function_list_label_on_update_trigger ON public.urban_functions_dict"
+    )
+    op.execute(
+        "DROP TRIGGER IF EXISTS update_urban_function_list_label_on_insert_trigger ON public.urban_functions_dict"
+    )
+    op.execute("DROP FUNCTION IF EXISTS public.trigger_update_urban_function_sibling_labels_on_delete")
+    op.execute("DROP FUNCTION IF EXISTS public.trigger_update_urban_function_list_label_on_update")
+    op.execute("DROP FUNCTION IF EXISTS public.trigger_generate_urban_function_list_label")

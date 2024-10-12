@@ -177,9 +177,12 @@ async def patch_urban_function(
     status_code=status.HTTP_200_OK,
 )
 async def delete_urban_function(
-    request: Request, urban_function_id: int = Path(..., description="service type identifier")
+    request: Request, urban_function_id: int = Path(..., description="urban function identifier")
 ) -> dict:
-    """Delete urban function by id."""
+    """Delete urban function by id.
+
+    It also removes all child elements of this urban function!!!
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
     return await service_types_service.delete_urban_function(urban_function_id)

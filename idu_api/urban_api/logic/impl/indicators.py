@@ -15,16 +15,27 @@ from idu_api.urban_api.logic.impl.helpers.indicators import (
     add_indicator_value_to_db,
     add_indicators_group_to_db,
     add_measurement_unit_to_db,
+    delete_indicator_from_db,
+    delete_indicator_value_from_db,
     get_indicator_by_id_from_db,
     get_indicator_value_by_id_from_db,
     get_indicator_values_by_id_from_db,
     get_indicators_by_parent_from_db,
     get_indicators_groups_from_db,
     get_measurement_units_from_db,
+    patch_indicator_to_db,
+    put_indicator_to_db,
     update_indicators_group_from_db,
 )
 from idu_api.urban_api.logic.indicators import IndicatorsService
-from idu_api.urban_api.schemas import IndicatorsGroupPost, IndicatorsPost, IndicatorValuePost, MeasurementUnitPost
+from idu_api.urban_api.schemas import (
+    IndicatorsGroupPost,
+    IndicatorsPatch,
+    IndicatorsPost,
+    IndicatorsPut,
+    IndicatorValuePost,
+    MeasurementUnitPost,
+)
 
 
 class IndicatorsServiceImpl(IndicatorsService):
@@ -71,6 +82,15 @@ class IndicatorsServiceImpl(IndicatorsService):
     async def add_indicator(self, indicator: IndicatorsPost) -> IndicatorDTO:
         return await add_indicator_to_db(self._conn, indicator)
 
+    async def put_indicator(self, indicator_id: int, indicator: IndicatorsPut) -> IndicatorDTO:
+        return await put_indicator_to_db(self._conn, indicator_id, indicator)
+
+    async def patch_indicator(self, indicator_id: int, indicator: IndicatorsPatch) -> IndicatorDTO:
+        return await patch_indicator_to_db(self._conn, indicator_id, indicator)
+
+    async def delete_indicator(self, indicator_id: int) -> dict:
+        return await delete_indicator_from_db(self._conn, indicator_id)
+
     async def get_indicator_value_by_id(
         self,
         indicator_id: int,
@@ -86,6 +106,19 @@ class IndicatorsServiceImpl(IndicatorsService):
 
     async def add_indicator_value(self, indicator_value: IndicatorValuePost) -> IndicatorValueDTO:
         return await add_indicator_value_to_db(self._conn, indicator_value)
+
+    async def delete_indicator_value(
+        self,
+        indicator_id: int,
+        territory_id: int,
+        date_type: str,
+        date_value: datetime,
+        value_type: str,
+        information_source: str,
+    ) -> dict:
+        return await delete_indicator_value_from_db(
+            self._conn, indicator_id, territory_id, date_type, date_value, value_type, information_source
+        )
 
     async def get_indicator_values_by_id(
         self,

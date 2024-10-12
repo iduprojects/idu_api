@@ -2,7 +2,7 @@ from datetime import date, datetime
 from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from idu_api.urban_api.dto import IndicatorDTO, IndicatorsGroupDTO, IndicatorValueDTO, MeasurementUnitDTO
 
@@ -126,9 +126,6 @@ class Indicator(BaseModel):
 
 
 class IndicatorsPost(BaseModel):
-    """
-    Indicator with all its attributes
-    """
 
     name_full: str = Field(
         ...,
@@ -136,16 +133,44 @@ class IndicatorsPost(BaseModel):
         examples=["Общее количество людей, постоянно проживающих на территории"],
     )
     name_short: str = Field(..., description="Indicator unit short name", examples=["Численность населения"])
-    measurement_unit_id: int = Field(..., description="Indicator measurement unit id", examples=[1])
-    level: int = Field(..., description="Number of indicator functions above in a tree + 1", examples=[1])
-    list_label: str = Field(..., description="Indicator marker in lists", examples=["1.1.1"])
+    measurement_unit_id: int | None = Field(..., description="Indicator measurement unit id", examples=[1])
     parent_id: int | None = Field(..., description="Indicator parent id", examples=[1])
 
 
+class IndicatorsPut(BaseModel):
+
+    name_full: str = Field(
+        ...,
+        description="Indicator unit full name",
+        examples=["Общее количество людей, постоянно проживающих на территории"],
+    )
+    name_short: str = Field(..., description="Indicator unit short name", examples=["Численность населения"])
+    measurement_unit_id: int | None = Field(..., description="Indicator measurement unit id", examples=[1])
+    parent_id: int | None = Field(..., description="Indicator parent id", examples=[1])
+
+
+class IndicatorsPatch(BaseModel):
+
+    name_full: str | None = Field(
+        None,
+        description="Indicator unit full name",
+        examples=["Общее количество людей, постоянно проживающих на территории"],
+    )
+    name_short: str | None = Field(None, description="Indicator unit short name", examples=["Численность населения"])
+    measurement_unit_id: int | None = Field(None, description="Indicator measurement unit id", examples=[1])
+    parent_id: int | None = Field(None, description="Indicator parent id", examples=[1])
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_empty_request(cls, values):
+        """Ensure the request body is not empty."""
+        if not values:
+            raise ValueError("request body cannot be empty")
+        return values
+
+
 class ShortIndicatorValueInfo(BaseModel):
-    """
-    Indicator value with short information
-    """
+    """Indicator value with short information."""
 
     name_full: str = Field(
         ...,
@@ -183,9 +208,7 @@ class ShortIndicatorValueInfo(BaseModel):
 
 
 class IndicatorValue(BaseModel):
-    """
-    Indicator value with all its attributes
-    """
+    """Indicator value with all its attributes."""
 
     indicator: ShortIndicatorInfo
     territory_id: int = Field(..., description="Territory id", examples=[1])
@@ -259,9 +282,7 @@ class IndicatorValue(BaseModel):
 
 
 class IndicatorValuePost(BaseModel):
-    """
-    Indicator value schema for POST request
-    """
+    """Indicator value schema for POST request."""
 
     indicator_id: int = Field(..., description="Indicator id", examples=[1])
     territory_id: int = Field(..., description="Territory id", examples=[1])
