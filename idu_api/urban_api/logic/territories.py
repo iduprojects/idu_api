@@ -16,6 +16,7 @@ from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
+    ServicesCountCapacityDTO,
     ServiceTypesDTO,
     ServiceWithGeometryDTO,
     TerritoryDTO,
@@ -97,8 +98,8 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def get_services_capacity_by_territory_id(
         self, territory_id: int, level: int, service_type_id: int | None
-    ) -> list:
-        """Get aggregated capacity of services by territory id."""
+    ) -> list[ServicesCountCapacityDTO]:
+        """Get summary capacity and count of services for sub-territories of given territory at the given level."""
 
     @abc.abstractmethod
     async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:

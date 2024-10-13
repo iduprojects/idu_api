@@ -19,7 +19,7 @@ from .projects import ProjectDTO, ProjectTerritoryDTO
 from .scenarios import ScenarioDTO
 from .scenarios_urban_objects import ScenarioUrbanObjectDTO
 from .service_types import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
-from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
+from .services import ServiceDTO, ServicesCountCapacityDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
     TerritoryDTO,
     TerritoryTypeDTO,
@@ -38,6 +38,7 @@ __all__ = [
     "TokensTuple",
     "ScenarioDTO",
     "ScenarioUrbanObjectDTO",
+    "ServicesCountCapacityDTO",
     "ServiceDTO",
     "ServiceTypesDTO",
     "ServiceTypesHierarchyDTO",

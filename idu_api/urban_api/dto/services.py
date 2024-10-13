@@ -98,3 +98,10 @@ class ServiceWithTerritoriesDTO:  # pylint: disable=too-many-instance-attributes
     territories: list[dict[str, Any]]
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class ServicesCountCapacityDTO:
+    territory_id: int
+    count: int
+    capacity: int

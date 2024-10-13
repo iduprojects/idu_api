@@ -6,7 +6,7 @@ from geojson_pydantic.geometries import Geometry
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
-from idu_api.urban_api.schemas import ServicesData, ServicesDataWithGeometry, ServiceTypes
+from idu_api.urban_api.schemas import ServicesCountCapacity, ServicesData, ServicesDataWithGeometry, ServiceTypes
 from idu_api.urban_api.schemas.enums import Ordering
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.schemas.pages import Page
@@ -133,7 +133,7 @@ async def get_services_geojson_by_territory_id(
 
 @territories_router.get(
     "/territory/{territory_id}/services_capacity",
-    response_model=list,
+    response_model=list[ServicesCountCapacity],
     status_code=status.HTTP_200_OK,
 )
 async def get_total_services_capacity_by_territory_id(
@@ -141,10 +141,13 @@ async def get_total_services_capacity_by_territory_id(
     territory_id: int = Path(..., description="territory id", gt=0),
     level: int = Query(..., description="territory level", gt=0),
     service_type_id: int | None = Query(None, description="service type identifier", gt=0),
-) -> list:
-    """Get aggregated capacity of services for territory."""
+) -> list[ServicesCountCapacity]:
+    """Get aggregated count and capacity of services for territories at the given level.
+
+    Could be specified by service type in parameters.
+    """
     territories_service: TerritoriesService = request.state.territories_service
 
-    capacity = await territories_service.get_services_capacity_by_territory_id(territory_id, level, service_type_id)
+    services = await territories_service.get_services_capacity_by_territory_id(territory_id, level, service_type_id)
 
-    return capacity
+    return [ServicesCountCapacity.from_dto(s) for s in services]

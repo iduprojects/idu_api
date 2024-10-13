@@ -67,6 +67,7 @@ from .service_types import (
     UrbanFunctionPut,
 )
 from .services import (
+    ServicesCountCapacity,
     ServicesData,
     ServicesDataPatch,
     ServicesDataPost,
@@ -104,6 +105,7 @@ __all__ = [
     "ScenariosPost",
     "ScenariosPut",
     "ScenariosUrbanObject",
+    "ServicesCountCapacity",
     "ServicesData",
     "ServicesDataPatch",
     "ServicesDataPost",

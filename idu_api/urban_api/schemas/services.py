@@ -4,7 +4,12 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-from idu_api.urban_api.dto import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
+from idu_api.urban_api.dto import (
+    ServiceDTO,
+    ServicesCountCapacityDTO,
+    ServiceWithGeometryDTO,
+    ServiceWithTerritoriesDTO,
+)
 from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
 from idu_api.urban_api.schemas.territories import ShortTerritory, TerritoryType
@@ -211,3 +216,13 @@ class ServicesDataWithGeometry(BaseModel):
             updated_at=dto.updated_at,
         )
         return service
+
+
+class ServicesCountCapacity(BaseModel):
+    territory_id: int = Field(..., description="territory identifier", examples=[1])
+    count: int = Field(..., description="total count of services that are located in the territory")
+    capacity: int = Field(..., description="summary capacity of services that are located in the territory")
+
+    @classmethod
+    def from_dto(cls, dto: ServicesCountCapacityDTO) -> "ServicesCountCapacity":
+        return cls(territory_id=dto.territory_id, count=dto.count, capacity=dto.capacity)

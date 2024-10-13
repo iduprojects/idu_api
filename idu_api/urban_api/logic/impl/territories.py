@@ -17,6 +17,7 @@ from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
+    ServicesCountCapacityDTO,
     ServiceTypesDTO,
     ServiceWithGeometryDTO,
     TerritoryDTO,
@@ -142,7 +143,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
 
     async def get_services_capacity_by_territory_id(
         self, territory_id: int, level: int, service_type_id: int | None
-    ) -> list:
+    ) -> list[ServicesCountCapacityDTO]:
         return await get_services_capacity_by_territory_id_from_db(self._conn, territory_id, level, service_type_id)
 
     async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:
