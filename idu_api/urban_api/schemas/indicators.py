@@ -33,7 +33,7 @@ class MeasurementUnitPost(BaseModel):
 
 class ShortIndicatorInfo(BaseModel):
     """
-    Indicator with only name and measurement unit.
+    Indicator with only name, level, list label and measurement unit.
     """
 
     indicator_id: int = Field(..., examples=[1])
@@ -69,6 +69,8 @@ class IndicatorsGroup(BaseModel):
                         if indicator.measurement_unit_id is not None
                         else None
                     ),
+                    level=indicator.level,
+                    list_label=indicator.list_label,
                 )
                 for indicator in dto.indicators
             ],

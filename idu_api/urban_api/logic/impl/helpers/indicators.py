@@ -84,6 +84,7 @@ async def get_indicators_groups_from_db(conn: AsyncConnection) -> list[Indicator
             .where(indicators_groups_data.c.indicators_group_id == group.indicators_group_id)
         )
         indicators = (await conn.execute(statement)).mappings().all()
+        indicators = [IndicatorDTO(**indicator) for indicator in indicators]
         result.append(
             IndicatorsGroupDTO(
                 indicators_group_id=group.indicators_group_id,
@@ -118,6 +119,7 @@ async def add_indicators_group_to_db(
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
     indicators = (await conn.execute(statement)).mappings().all()
+    indicators = [IndicatorDTO(**indicator) for indicator in indicators]
     if len(indicators) < len(indicators_group.indicators_ids):
         raise EntitiesNotFoundByIds("indicator")
 
@@ -173,6 +175,7 @@ async def update_indicators_group_from_db(
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
     indicators = (await conn.execute(statement)).mappings().all()
+    indicators = [IndicatorDTO(**indicator) for indicator in indicators]
     if len(indicators) < len(indicators_group.indicators_ids):
         raise EntitiesNotFoundByIds("indicator")
 
@@ -581,6 +584,8 @@ async def get_indicator_values_by_id_from_db(
         select(
             territory_indicators_data,
             indicators_dict.c.name_full,
+            indicators_dict.c.level,
+            indicators_dict.c.list_label,
             measurement_units_dict.c.measurement_unit_id,
             measurement_units_dict.c.name.label("measurement_unit_name"),
         )
