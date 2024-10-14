@@ -475,11 +475,11 @@ async def get_service_types_hierarchy_from_db(
     )
 
     if service_type_ids is not None:
-        ids = [int(indicator.strip()) for indicator in service_type_ids.split(",")]
-        query = select(service_types_dict.c.indicator_id).where(service_types_dict.c.indicator_id.in_(ids))
-        indicators = (await conn.execute(query)).scalars()
-        if not list(indicators):
-            raise EntitiesNotFoundByIds("indicator")
+        ids = [int(service_type_id.strip()) for service_type_id in service_type_ids.split(",")]
+        query = select(service_types_dict.c.service_type_id).where(service_types_dict.c.service_type_id.in_(ids))
+        service_types = (await conn.execute(query)).scalars().all()
+        if len(list(service_types)) < len(ids):
+            raise EntitiesNotFoundByIds("service_type")
         statement = statement.where(service_types_dict.c.service_type_id.in_(ids))
 
     service_types = (await conn.execute(statement)).mappings().all()
