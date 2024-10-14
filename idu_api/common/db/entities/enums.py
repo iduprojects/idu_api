@@ -27,3 +27,13 @@ class IndicatorValueType(str, Enum):
     real = "real"
     forecast = "forecast"
     target = "target"
+
+
+class InfrastructureType(str, Enum):
+    """
+    Enumeration of infrastructure types.
+    """
+
+    basic = "basic"
+    additional = "additional"
+    comfort = "comfort"

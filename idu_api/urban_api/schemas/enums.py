@@ -24,3 +24,9 @@ class NormativeType(Enum):
     SELF = "self"
     PARENT = "parent"
     GLOBAL = "global"
+
+
+class InfrastructureType(Enum):
+    BASIC = "basic"
+    ADDITIONAL = "additional"
+    COMFORT = "comfort"

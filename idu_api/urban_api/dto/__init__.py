@@ -18,8 +18,8 @@ from .profiles_reclamation import ProfilesReclamationDataDTO, ProfilesReclamatio
 from .projects import ProjectDTO, ProjectTerritoryDTO
 from .scenarios import ScenarioDTO
 from .scenarios_urban_objects import ScenarioUrbanObjectDTO
-from .service_types import ServiceTypesDTO, UrbanFunctionDTO
-from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
+from .service_types import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from .services import ServiceDTO, ServicesCountCapacityDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
     TerritoryDTO,
     TerritoryTypeDTO,
@@ -38,8 +38,10 @@ __all__ = [
     "TokensTuple",
     "ScenarioDTO",
     "ScenarioUrbanObjectDTO",
+    "ServicesCountCapacityDTO",
     "ServiceDTO",
     "ServiceTypesDTO",
+    "ServiceTypesHierarchyDTO",
     "ServiceWithGeometryDTO",
     "ServiceWithTerritoriesDTO",
     "IndicatorDTO",

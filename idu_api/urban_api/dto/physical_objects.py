@@ -1,6 +1,6 @@
 """Physical objects DTOs are defined here."""
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
@@ -33,6 +33,7 @@ class PhysicalObjectWithGeometryDTO:
     physical_object_type_name: str
     name: str | None
     address: str | None
+    osm_id: str | None
     properties: dict[str, Any]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
@@ -46,6 +47,16 @@ class PhysicalObjectWithGeometryDTO:
             self.geometry = self.centre_point
         if isinstance(self.geometry, dict):
             self.geometry = geom.shape(self.geometry)
+
+    def to_geojson_dict(self) -> dict[str, Any]:
+        physical_object = asdict(self)
+        physical_object_type = {
+            "physical_object_type_id": physical_object.pop("physical_object_type_id", None),
+            "name": physical_object.pop("physical_object_type_name", None),
+        }
+        physical_object["physical_object_type"] = physical_object_type
+
+        return physical_object
 
 
 @dataclass(frozen=True)

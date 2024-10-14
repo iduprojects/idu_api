@@ -1,11 +1,14 @@
 """Physical objects territories-related handlers are defined here."""
 
 from fastapi import Path, Query, Request
+from geojson_pydantic import Feature
+from geojson_pydantic.geometries import Geometry
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import PhysicalObjectsData, PhysicalObjectWithGeometry
 from idu_api.urban_api.schemas.enums import Ordering
+from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.schemas.pages import Page
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsOrderByField
 from idu_api.urban_api.utils.pagination import paginate
@@ -83,3 +86,29 @@ async def get_physical_objects_with_geometry_by_territory_id(
         physical_objects.total,
         transformer=lambda x: [PhysicalObjectWithGeometry.from_dto(item) for item in x],
     )
+
+
+@territories_router.get(
+    "/territory/{territory_id}/physical_objects_geojson",
+    response_model=GeoJSONResponse[Feature[Geometry, PhysicalObjectsData]],
+    status_code=status.HTTP_200_OK,
+)
+async def get_physical_objects_geojson_by_territory_id(
+    request: Request,
+    territory_id: int = Path(..., description="territory id", gt=0),
+    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
+    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
+    centers_only: bool = Query(False, description="to get only center points of geometries"),
+) -> GeoJSONResponse[Feature[Geometry, PhysicalObjectsData]]:
+    """Get FeatureCollection with geometries of physical objects for given territory.
+
+    Physical object type and name could be specified in parameters.
+    Set centers_only = true to get only center points of geometries.
+    """
+    territories_service: TerritoriesService = request.state.territories_service
+
+    physical_objects = await territories_service.get_physical_objects_with_geometry_by_territory_id(
+        territory_id, physical_object_type_id, name, None, None
+    )
+
+    return await GeoJSONResponse.from_list([obj.to_geojson_dict() for obj in physical_objects], centers_only)

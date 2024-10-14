@@ -40,7 +40,7 @@ class TerritoryShortInfo(BaseModel):
     @classmethod
     def from_dto(cls, dto: TerritoryDTO) -> "TerritoryShortInfo":
         """Construct from DTO."""
-        return cls(territory_type_id=dto.territory_type_id, name=dto.name)
+        return cls(id=dto.territory_id, name=dto.name)
 
 
 class TerritoryTypesPost(BaseModel):
@@ -152,7 +152,6 @@ class TerritoryDataPatch(GeometryValidationModel):
     @classmethod
     def check_empty_request(cls, values):
         """Ensure the request body is not empty."""
-
         if not values:
             raise ValueError("request body cannot be empty")
         return values
@@ -176,7 +175,6 @@ class TerritoryWithoutGeometry(BaseModel):
     admin_center: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
-
     created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="The time when the territory was last updated"

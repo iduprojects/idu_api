@@ -123,6 +123,7 @@ class PhysicalObjectWithGeometry(BaseModel):
     physical_object_type: PhysicalObjectsTypes
     name: str | None = Field(None, description="Physical object name", examples=["--"])
     address: str | None = Field(None, description="Physical object address", examples=["--"])
+    osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Physical object additional properties",
@@ -164,6 +165,7 @@ class PhysicalObjectWithGeometryPost(GeometryValidationModel):
     geometry: Geometry
     centre_point: Geometry | None = Field(None, description="Centre coordinates")
     address: str | None = Field(None, description="Physical object address", examples=["--"])
+    osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
     physical_object_type_id: int = Field(..., examples=[1])
     name: str | None = Field(None, description="Physical object name", examples=["--"])
     properties: dict[str, Any] = Field(
