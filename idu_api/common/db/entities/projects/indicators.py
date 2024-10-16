@@ -3,7 +3,7 @@ from sqlalchemy import Column, Date, Enum, Float, ForeignKey, Integer, Table
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.enums import DateFieldType
 
-DateFieldTypeEnum = Enum(DateFieldType, name="date_field_type")
+DateFieldTypeEnum = Enum(DateFieldType, name="date_field_type", schema="user_projects")
 
 projects_indicators_data = Table(
     "indicators_data",

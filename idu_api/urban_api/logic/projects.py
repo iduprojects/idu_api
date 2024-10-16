@@ -1,13 +1,24 @@
 import abc
 from typing import Protocol
 
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ScenarioDTO, ScenarioUrbanObjectDTO, TargetProfileDTO
+from idu_api.urban_api.dto import (
+    ProjectDTO,
+    ProjectsIndicatorDTO,
+    ProjectTerritoryDTO,
+    ScenarioDTO,
+    ScenarioUrbanObjectDTO,
+    TargetProfileDTO,
+)
 from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPost,
     PhysicalObjectWithGeometryPost,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
+    ProjectsIndicator,
+    ProjectsIndicatorPatch,
+    ProjectsIndicatorPost,
+    ProjectsIndicatorPut,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -106,3 +117,39 @@ class UserProjectService(Protocol):
         self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
     ) -> ScenarioUrbanObjectDTO:
         """Add existing service object to scenario."""
+
+    @abc.abstractmethod
+    async def get_all_projects_indicators(self, scenario_id: int, user_id: str) -> list[ProjectsIndicatorDTO]:
+        """Get project's indicators for given scenario if relevant project is public or if you're the project owner."""
+
+    @abc.abstractmethod
+    async def get_specific_projects_indicator(
+        self, scenario_id: int, indicator_id: int, user_id: str
+    ) -> ProjectsIndicatorDTO:
+        """Get project's specific indicator for given scenario if relevant project is public or if you're the project owner."""
+
+    @abc.abstractmethod
+    async def add_projects_indicator(
+        self, projects_indicator: ProjectsIndicatorPost, user_id: str
+    ) -> ProjectsIndicatorDTO:
+        """Add a new project's indicator."""
+
+    @abc.abstractmethod
+    async def put_projects_indicator(
+        self, projects_indicator: ProjectsIndicatorPut, user_id: str
+    ) -> ProjectsIndicatorDTO:
+        """Update a project's indicator by setting all of its attributes."""
+
+    @abc.abstractmethod
+    async def patch_projects_indicator(
+        self, projects_indicator: ProjectsIndicatorPatch, user_id: str
+    ) -> ProjectsIndicatorDTO:
+        """Update a project's indicator by setting given attributes."""
+
+    @abc.abstractmethod
+    async def delete_all_projects_indicators(self, scenario_id: int, user_id: str) -> dict:
+        """Delete all project's indicators for given scenario if you're the project owner."""
+
+    @abc.abstractmethod
+    async def delete_specific_projects_indicator(self, scenario_id: int, indicator_id: int, user_id: str) -> dict:
+        """Delete specific project's indicator for given scenario if you're the project owner."""

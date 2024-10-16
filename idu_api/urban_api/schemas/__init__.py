@@ -46,6 +46,7 @@ from .projects import (
     ProjectTerritoryPost,
     ProjectTerritoryPut,
 )
+from .projects_indicators import ProjectsIndicator, ProjectsIndicatorPatch, ProjectsIndicatorPost, ProjectsIndicatorPut
 from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPut
 from .scenarios_urban_objects import ScenariosUrbanObject
 from .service_types import (
@@ -144,4 +145,8 @@ __all__ = [
     "ProjectTerritoryPatch",
     "TargetProfilesData",
     "TargetProfilesPost",
+    "ProjectsIndicator",
+    "ProjectsIndicatorPost",
+    "ProjectsIndicatorPut",
+    "ProjectsIndicatorPatch",
 ]

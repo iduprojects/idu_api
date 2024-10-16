@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 import shapely.geometry as geom
 
@@ -33,3 +33,12 @@ class ProjectTerritoryDTO:
             self.geometry = self.centre_point
         if isinstance(self.geometry, dict):
             self.geometry = geom.shape(self.geometry)
+
+
+@dataclass
+class ProjectsIndicatorDTO:
+    scenario_id: int
+    indicator_id: int
+    date_type: Literal["year", "half_year", "quarter", "month", "day"]
+    date_value: datetime
+    value: float
