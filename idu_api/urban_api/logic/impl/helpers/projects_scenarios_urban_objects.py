@@ -23,9 +23,12 @@ async def get_scenario_urban_object_by_id_from_db(
 
     statement = (
         select(
-            projects_urban_objects_data,
-            projects_physical_objects_data.c.physical_object_type_id,
+            projects_urban_objects_data.c.urban_object_id,
             projects_urban_objects_data.c.scenario_id,
+            projects_urban_objects_data.c.object_geometry_id,
+            projects_urban_objects_data.c.service_id,
+            projects_physical_objects_data.c.physical_object_id,
+            projects_physical_objects_data.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             projects_physical_objects_data.c.name.label("physical_object_name"),
             projects_physical_objects_data.c.properties.label("physical_object_properties"),

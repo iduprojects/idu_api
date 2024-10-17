@@ -160,7 +160,7 @@ async def create_scenario_physical_object(
 
 
 @projects_router.post(
-    "/scenarios/{scenario_id}/{object_geometry_id}",
+    "/scenarios/{scenario_id}/physical_objects/{object_geometry_id}",
     response_model=ScenariosUrbanObject,
     status_code=status.HTTP_200_OK,
 )
@@ -205,7 +205,7 @@ async def create_scenario_service(
 
 
 @projects_router.post(
-    "/scenarios/{scenario_id}/{service_id}",
+    "/scenarios/{scenario_id}/services/{service_id}",
     response_model=ScenariosUrbanObject,
     status_code=status.HTTP_200_OK,
 )
