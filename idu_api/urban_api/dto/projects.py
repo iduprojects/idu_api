@@ -16,6 +16,7 @@ class ProjectDTO:
     image_url: str | None
     created_at: datetime
     updated_at: datetime
+    properties: dict[str, Any]
 
 
 @dataclass

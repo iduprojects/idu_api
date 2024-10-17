@@ -1,6 +1,7 @@
 from typing import Callable
 
-from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, func
+from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
+from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
 
@@ -22,9 +23,10 @@ projects_data = Table(
     ),
     Column("description", String(600), nullable=True, unique=False),
     Column("public", Boolean, nullable=False, unique=False),
-    Column("image_url", String(200), nullable=True, unique=False),
+    Column("image_url", String(), nullable=True, unique=False),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
     schema="user_projects",
 )
 
@@ -39,4 +41,5 @@ Project data:
 - image_url str
 - created_at timestamp
 - updated_at timestamp
+- properties jsonb
 """

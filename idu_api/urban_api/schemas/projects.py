@@ -86,11 +86,16 @@ class Project(BaseModel):
     user_id: str = Field(description="Project creator id", examples=["admin@test.ru"])
     name: str = Field(description="Project name", examples=["--"])
     project_territory_id: int = Field(description="Project territory id", examples=[1])
-    description: str = Field(description="Project description", examples=["--"])
+    description: str | None = Field(None, description="Project description", examples=["--"])
     public: bool = Field(description="Project publicity", examples=[True])
-    image_url: str = Field(description="Project image url", examples=["url"])
+    image_url: str | None = Field(None, description="Project image url", examples=["url"])
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Project created at")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Project updated at")
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Project's additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
 
     @classmethod
     def from_dto(cls, dto: ProjectDTO) -> "Project":
@@ -104,6 +109,7 @@ class Project(BaseModel):
             image_url=dto.image_url,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
+            properties=dto.properties,
         )
 
 
@@ -112,9 +118,14 @@ class ProjectPost(BaseModel):
 
     name: str = Field(description="Project name", examples=["--"])
     project_territory_info: ProjectTerritoryPost
-    description: str = Field(description="Project description", examples=["--"])
+    description: str | None = Field(None, description="Project description", examples=["--"])
     public: bool = Field(description="Project publicity", examples=[True])
-    image_url: str = Field(description="Project image url", examples=["url"])
+    image_url: str | None = Field(None, description="Project image url", examples=["url"])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Project's additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
 
 
 class ProjectPut(BaseModel):
@@ -122,9 +133,14 @@ class ProjectPut(BaseModel):
 
     name: str = Field(..., description="Project name", examples=["--"])
     project_territory_info: ProjectTerritoryPost
-    description: str = Field(..., description="Project description", examples=["--"])
+    description: str | None = Field(None, description="Project description", examples=["--"])
     public: bool = Field(..., description="Project publicity", examples=[True])
-    image_url: str = Field(..., description="Project image url", examples=["url"])
+    image_url: str | None = Field(None, description="Project image url", examples=["url"])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Project's additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
 
 
 class ProjectPatch(BaseModel):
@@ -135,6 +151,11 @@ class ProjectPatch(BaseModel):
     description: str | None = Field(None, description="Project description", examples=["--"])
     public: bool | None = Field(None, description="Project publicity", examples=[True])
     image_url: str | None = Field(None, description="Project image url", examples=["url"])
+    properties: dict[str, Any] | None = Field(
+        default_factory=dict,
+        description="Project's additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
 
     @model_validator(mode="before")
     @classmethod
