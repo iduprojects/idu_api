@@ -21,6 +21,17 @@ class ProjectsIndicator(BaseModel):
         examples=["2024-01-01"],
     )
     value: float = Field(..., description="Indicator value")
+    value_type: Literal["real", "forecast", "target"] = Field(
+        ..., description="Indicator value type", examples=["real"]
+    )
+    information_source: str = Field(
+        ...,
+        description="Information source",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
+    )
 
     @field_validator("date_type", mode="before")
     @staticmethod
@@ -39,6 +50,8 @@ class ProjectsIndicator(BaseModel):
             date_type=dto.date_type,
             date_value=dto.date_value,
             value=dto.value,
+            value_type=dto.value_type,
+            information_source=dto.information_source,
         )
 
 
@@ -56,6 +69,17 @@ class ProjectsIndicatorPost(BaseModel):
         examples=["2024-01-01"],
     )
     value: float = Field(..., description="Indicator value")
+    value_type: Literal["real", "forecast", "target"] = Field(
+        ..., description="Indicator value type", examples=["real"]
+    )
+    information_source: str = Field(
+        ...,
+        description="Information source",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
+    )
 
     @field_validator("date_type", mode="before")
     @staticmethod
@@ -79,6 +103,17 @@ class ProjectsIndicatorPut(BaseModel):
         examples=["2024-01-01"],
     )
     value: float = Field(..., description="Indicator value")
+    value_type: Literal["real", "forecast", "target"] = Field(
+        ..., description="Indicator value type", examples=["real"]
+    )
+    information_source: str = Field(
+        ...,
+        description="Information source",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
+    )
 
     @field_validator("date_type", mode="before")
     @staticmethod
@@ -102,6 +137,17 @@ class ProjectsIndicatorPatch(BaseModel):
         examples=["2024-01-01"],
     )
     value: float | None = Field(None, description="Indicator value")
+    value_type: Literal["real", "forecast", "target"] | None = Field(
+        None, description="Indicator value type", examples=["real"]
+    )
+    information_source: str | None = Field(
+        None,
+        description="Information source",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
+    )
 
     @field_validator("date_type", mode="before")
     @staticmethod

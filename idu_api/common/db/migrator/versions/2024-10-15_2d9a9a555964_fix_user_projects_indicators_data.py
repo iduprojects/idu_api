@@ -55,8 +55,17 @@ def upgrade() -> None:
         schema="user_projects",
     )
 
+    op.create_primary_key(
+        "indicators_data_pk",
+        "indicators_data",
+        ["indicator_id", "scenario_id", "date_type", "date_value", "value_type", "information_source"],
+        schema="user_projects",
+    )
+
 
 def downgrade() -> None:
+    op.drop_constraint("indicators_data_pk", "indicators_data", schema="user_projects")
+
     op.drop_column(
         "indicators_data",
         "information_source",

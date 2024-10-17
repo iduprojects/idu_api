@@ -42,3 +42,5 @@ class ProjectsIndicatorDTO:
     date_type: Literal["year", "half_year", "quarter", "month", "day"]
     date_value: datetime
     value: float
+    value_type: Literal["real", "forecast", "target"]
+    information_source: str
