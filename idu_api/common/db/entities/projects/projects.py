@@ -1,6 +1,6 @@
 from typing import Callable
 
-from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, func, Text, text
+from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
