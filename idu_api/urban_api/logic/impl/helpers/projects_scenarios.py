@@ -609,6 +609,8 @@ async def add_projects_indicator_to_db(
             date_type=projects_indicator.date_type,
             date_value=projects_indicator.date_value,
             value=projects_indicator.value,
+            value_type=projects_indicator.value_type,
+            information_source=projects_indicator.information_source,
         )
         .returning(projects_indicators_data)
     )
@@ -654,6 +656,8 @@ async def put_projects_indicator_to_db(
             date_type=projects_indicator.date_type,
             date_value=projects_indicator.date_value,
             value=projects_indicator.value,
+            value_type=projects_indicator.value_type,
+            information_source=projects_indicator.information_source,
         )
         .returning(projects_indicators_data)
     )
