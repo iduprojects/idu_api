@@ -34,6 +34,8 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             object_geometries_data.c.territory_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            object_geometries_data.c.created_at.label("object_geometry_created_at"),
+            object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
             services_data.c.name.label("service_name"),
             services_data.c.capacity_real,
             services_data.c.properties.label("service_properties"),

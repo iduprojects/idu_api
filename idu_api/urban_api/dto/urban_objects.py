@@ -21,6 +21,8 @@ class UrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     osm_id: str | None
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
+    object_geometry_created_at: datetime
+    object_geometry_updated_at: datetime
     service_id: int | None
     service_type_id: int | None
     urban_function_id: int | None

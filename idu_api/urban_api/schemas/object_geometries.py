@@ -9,8 +9,8 @@ from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationMod
 class ObjectGeometries(BaseModel):
     object_geometry_id: int = Field(..., examples=[1])
     territory_id: int = Field(..., examples=[1])
-    address: str | None = Field(None, description="physical object address", examples=["--"])
-    osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
+    address: str | None = Field(..., description="physical object address", examples=["--"])
+    osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
     geometry: Geometry
     centre_point: Geometry
     created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the geometry was created")

@@ -3,10 +3,10 @@ from typing import Annotated
 from fastapi import Path, Query
 from fastapi.requests import Request
 
-from idu_api.city_api.main import app
 from idu_api.city_api.common.feature import Feature
 from idu_api.city_api.dto.physical_objects import PhysicalObjectsDTO
 from idu_api.city_api.dto.services import CityServiceDTO
+from idu_api.city_api.main import app
 from idu_api.city_api.schemas.territory import CATerritoriesData, CATerritoriesWithoutGeometryData
 from idu_api.city_api.schemas.territory_hierarchy import TerritoryHierarchyData
 from idu_api.city_api.services.objects.physical_objects import PhysicalObjectsService

@@ -38,6 +38,8 @@ class UrbanObject(BaseModel):
                 osm_id=dto.osm_id,
                 geometry=Geometry.from_shapely_geometry(dto.geometry),
                 centre_point=Geometry.from_shapely_geometry(dto.centre_point),
+                created_at=dto.object_geometry_created_at,
+                updated_at=dto.object_geometry_updated_at,
             ),
             service=(
                 ServicesData(

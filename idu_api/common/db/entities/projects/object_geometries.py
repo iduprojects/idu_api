@@ -43,4 +43,8 @@ Object geometries data:
 - territory_id foreign key int
 - geometry geometry
 - centre_point geometry point
+- address string
+- osm_id string
+- created_at timestamp
+- updated_at timestamp
 """
