@@ -20,6 +20,7 @@ class LivingBuildingsWithGeometry(BaseModel):
     geometry: Geometry
     centre_point: Geometry
     address: Optional[str] = Field(None, description="geometry address", examples=["--"])
+    osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
 
     @classmethod
     def from_dto(cls, dto: LivingBuildingsWithGeometryDTO) -> "LivingBuildingsWithGeometry":
@@ -39,6 +40,7 @@ class LivingBuildingsWithGeometry(BaseModel):
                 updated_at=dto.physical_object_updated_at,
             ),
             address=dto.physical_object_address,
+            osm_id=dto.object_geometry_osm_id,
             residents_number=dto.residents_number,
             living_area=dto.living_area,
             properties=dto.properties,

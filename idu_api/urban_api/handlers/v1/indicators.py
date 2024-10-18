@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from fastapi import Path, Query, Request
+from fastapi import HTTPException, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.indicators import IndicatorsService
@@ -10,7 +10,9 @@ from idu_api.urban_api.schemas import (
     Indicator,
     IndicatorsGroup,
     IndicatorsGroupPost,
+    IndicatorsPatch,
     IndicatorsPost,
+    IndicatorsPut,
     IndicatorValue,
     IndicatorValuePost,
     MeasurementUnit,
@@ -100,31 +102,42 @@ async def update_indicators_group(
     response_model=list[Indicator],
     status_code=status.HTTP_200_OK,
 )
-async def get_indicators_by_parent_id(
+async def get_indicators_by_parent(
     request: Request,
     parent_id: int | None = Query(
         None, description="Parent indicator id to filter, should be skipped to get top level indicators"
+    ),
+    parent_name: str | None = Query(
+        None, description="Parent indicator name to filter, you need to pass the full name"
     ),
     name: str | None = Query(None, description="Filter by indicator name"),
     territory_id: int | None = Query(None, description="Filter by territory id (not including inner territories)"),
     get_all_subtree: bool = Query(False, description="Getting full subtree of indicators"),
 ) -> list[Indicator]:
-    """Get a list of indicators by parent id."""
+    """Get a list of indicators by parent id or name.
+
+    You can't pass parent_id and parent_name at the same time.
+    """
     indicators_service: IndicatorsService = request.state.indicators_service
 
-    indicators = await indicators_service.get_indicators_by_parent_id(parent_id, name, territory_id, get_all_subtree)
+    if parent_id is not None and parent_name is not None:
+        raise HTTPException(400, "you can't pass parent_id and parent_name at the same time")
+
+    indicators = await indicators_service.get_indicators_by_parent(
+        parent_id, parent_name, name, territory_id, get_all_subtree
+    )
 
     return [Indicator.from_dto(indicator) for indicator in indicators]
 
 
 @indicators_router.get(
-    "/indicator",
+    "/indicators/{indicator_id}",
     response_model=Indicator,
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_by_id(
     request: Request,
-    indicator_id: int = Query(..., description="Getting indicator by id"),
+    indicator_id: int = Path(..., description="Getting indicator by id"),
 ) -> Indicator:
     """Get indicator."""
     indicators_service: IndicatorsService = request.state.indicators_service
@@ -135,7 +148,7 @@ async def get_indicator_by_id(
 
 
 @indicators_router.post(
-    "/indicator",
+    "/indicators",
     response_model=Indicator,
     status_code=status.HTTP_201_CREATED,
 )
@@ -146,6 +159,53 @@ async def add_indicator(request: Request, indicator: IndicatorsPost) -> Indicato
     indicator_dto = await indicators_service.add_indicator(indicator)
 
     return Indicator.from_dto(indicator_dto)
+
+
+@indicators_router.put(
+    "/indicators/{indicator_id}",
+    response_model=Indicator,
+    status_code=status.HTTP_201_CREATED,
+)
+async def put_indicator(
+    request: Request, indicator: IndicatorsPut, indicator_id: int = Path(..., description="indicator identifier")
+) -> Indicator:
+    """Update indicator by all its attributes."""
+    indicators_service: IndicatorsService = request.state.indicators_service
+
+    indicator_dto = await indicators_service.put_indicator(indicator_id, indicator)
+
+    return Indicator.from_dto(indicator_dto)
+
+
+@indicators_router.patch(
+    "/indicators/{indicator_id}",
+    response_model=Indicator,
+    status_code=status.HTTP_201_CREATED,
+)
+async def patch_indicator(
+    request: Request, indicator: IndicatorsPatch, indicator_id: int = Path(..., description="indicator identifier")
+) -> Indicator:
+    """Update indicator by only given attributes."""
+    indicators_service: IndicatorsService = request.state.indicators_service
+
+    indicator_dto = await indicators_service.patch_indicator(indicator_id, indicator)
+
+    return Indicator.from_dto(indicator_dto)
+
+
+@indicators_router.delete(
+    "/indicators/{indicator_id}",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+)
+async def delete_indicator(request: Request, indicator_id: int = Path(..., description="indicator identifier")) -> dict:
+    """Delete indicator by id.
+
+    It also removes all child elements of this indicator!!!
+    """
+    indicators_service: IndicatorsService = request.state.indicators_service
+
+    return await indicators_service.delete_indicator(indicator_id)
 
 
 @indicators_router.get(
@@ -184,6 +244,28 @@ async def add_indicator_value(request: Request, indicator_value: IndicatorValueP
     indicator_value_dto = await indicators_service.add_indicator_value(indicator_value)
 
     return IndicatorValue.from_dto(indicator_value_dto)
+
+
+@indicators_router.delete(
+    "/indicator_value",
+    response_model=dict,
+    status_code=status.HTTP_201_CREATED,
+)
+async def delete_indicator_value(
+    request: Request,
+    indicator_id: int = Query(..., description="indicator id"),
+    territory_id: int = Query(..., description="territory id"),
+    date_type: DateType = Query(..., description="date type"),
+    date_value: datetime = Query(..., description="time value"),
+    value_type: ValueType = Query(..., description="value type"),
+    information_source: str = Query(..., description="information source"),
+) -> dict:
+    """Delete indicator value by id."""
+    indicators_service: IndicatorsService = request.state.indicators_service
+
+    return await indicators_service.delete_indicator_value(
+        indicator_id, territory_id, date_type.value, date_value, value_type.value, information_source
+    )
 
 
 @indicators_router.get(

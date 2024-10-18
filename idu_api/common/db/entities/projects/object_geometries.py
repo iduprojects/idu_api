@@ -1,8 +1,12 @@
+from typing import Callable
+
 from geoalchemy2.types import Geometry
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, func
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.territories import territories_data
+
+func: Callable
 
 object_geometries_id_seq = Sequence("object_geometries_id_seq", schema="user_projects")
 
@@ -27,6 +31,9 @@ projects_object_geometries_data = Table(
         nullable=False,
     ),
     Column("address", String(300)),
+    Column("osm_id", String(20)),
+    Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     schema="user_projects",
 )
 

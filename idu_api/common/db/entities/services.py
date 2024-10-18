@@ -18,7 +18,7 @@ services_data = Table(
     "services_data",
     metadata,
     Column("service_id", Integer, primary_key=True, server_default=services_data_id_seq.next_value()),
-    Column("service_type_id", ForeignKey(service_types_dict.c.service_type_id), nullable=False),
+    Column("service_type_id", ForeignKey(service_types_dict.c.service_type_id, ondelete="CASCADE"), nullable=False),
     Column("territory_type_id", ForeignKey(territory_types_dict.c.territory_type_id)),
     Column("name", String(200)),
     Column("capacity_real", Integer),

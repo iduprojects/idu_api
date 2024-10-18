@@ -111,5 +111,5 @@ def downgrade() -> None:
         )
     )
 
-    op.execute("DROP TRIGGER update_inner_data_on_insert_trigger ON public.territories_data")
-    op.execute("DROP FUNCTION public.trigger_update_inner_data_on_insert")
+    op.execute("DROP TRIGGER IF EXISTS update_inner_data_on_insert_trigger ON public.territories_data")
+    op.execute("DROP FUNCTION IF EXISTS public.trigger_update_inner_data_on_insert")

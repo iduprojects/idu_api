@@ -2,7 +2,7 @@ from typing import Annotated, Dict
 
 from fastapi import Path, Query, Request
 
-from idu_api.city_api import app
+from idu_api.city_api.main import app
 from idu_api.city_api.common.feature import Feature
 from idu_api.city_api.dto.physical_objects import PhysicalObjectsDTO
 from idu_api.city_api.dto.services import CityServiceDTO

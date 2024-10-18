@@ -29,6 +29,16 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
+    territories_cte = (
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
+    )
+
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
     statement = (
         select(
             living_buildings_data.c.living_building_id,
@@ -43,6 +53,7 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             object_geometries_data.c.address.label("physical_object_address"),
+            object_geometries_data.c.osm_id.label("object_geometry_osm_id"),
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         )
@@ -64,8 +75,8 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
         )
-        .where(object_geometries_data.c.territory_id == territory_id)
         .distinct()
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
         .order_by(living_buildings_data.c.living_building_id)
     )
 

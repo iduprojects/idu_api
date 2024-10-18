@@ -16,6 +16,8 @@ from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
+    ServicesCountCapacityDTO,
+    ServiceTypesDTO,
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
@@ -59,11 +61,15 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def put_territory(self, territory_id: int, territory: TerritoryDataPut) -> TerritoryDTO:
-        """Update territory object (put, update all of the fields)."""
+        """Update territory object (put, update all the fields)."""
 
     @abc.abstractmethod
     async def patch_territory(self, territory_id: int, territory: TerritoryDataPatch) -> TerritoryDTO:
         """Patch territory object (patch, update only non-None fields)."""
+
+    @abc.abstractmethod
+    async def get_service_types_by_territory_id(self, territory_id: int) -> list[ServiceTypesDTO]:
+        """Get all service types that are located in given territory."""
 
     @abc.abstractmethod
     async def get_services_by_territory_id(
@@ -90,8 +96,10 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         """Get service objects with geometry by territory id."""
 
     @abc.abstractmethod
-    async def get_services_capacity_by_territory_id(self, territory_id: int, service_type_id: int | None) -> int:
-        """Get aggregated capacity of services by territory id."""
+    async def get_services_capacity_by_territory_id(
+        self, territory_id: int, level: int, service_type_id: int | None
+    ) -> list[ServicesCountCapacityDTO]:
+        """Get summary capacity and count of services for sub-territories of given territory at the given level."""
 
     @abc.abstractmethod
     async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:

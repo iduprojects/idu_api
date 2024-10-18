@@ -18,14 +18,17 @@ class UrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     object_geometry_id: int
     territory_id: int
     address: str | None
+    osm_id: str | None
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
     service_id: int | None
     service_type_id: int | None
     urban_function_id: int | None
+    urban_function_name: str | None
     service_type_name: str | None
     service_type_capacity_modeled: int | None
     service_type_code: str | None
+    infrastructure_type: str | None
     territory_type_id: int | None
     territory_type_name: str | None
     service_name: str | None

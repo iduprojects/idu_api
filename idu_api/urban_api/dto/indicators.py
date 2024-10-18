@@ -25,12 +25,16 @@ class IndicatorValueDTO:
     name_full: str
     measurement_unit_id: int | None
     measurement_unit_name: str | None
+    level: int
+    list_label: str
     territory_id: int
     date_type: Literal["year", "half_year", "quarter", "month", "day"]
     date_value: datetime
     value: int
     value_type: Literal["real", "forecast", "target"]
     information_source: str
+    created_at: datetime
+    updated_at: datetime
 
 
 @dataclass(frozen=True)

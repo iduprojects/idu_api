@@ -2,13 +2,15 @@
 Response and request schemas are defined here.
 """
 
-from .functional_zones import FunctionalZoneData
+from .functional_zones import FunctionalZoneData, FunctionalZoneType, FunctionalZoneTypePost
 from .health_check import PingResponse
 from .indicators import (
     Indicator,
     IndicatorsGroup,
     IndicatorsGroupPost,
+    IndicatorsPatch,
     IndicatorsPost,
+    IndicatorsPut,
     IndicatorValue,
     IndicatorValuePost,
     MeasurementUnit,
@@ -35,6 +37,12 @@ from .physical_objects import (
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
 )
+from .profiles_reclamation import (
+    ProfilesReclamationData,
+    ProfilesReclamationDataMatrix,
+    ProfilesReclamationDataPost,
+    ProfilesReclamationDataPut,
+)
 from .projects import (
     Project,
     ProjectPatch,
@@ -49,11 +57,17 @@ from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPu
 from .scenarios_urban_objects import ScenariosUrbanObject
 from .service_types import (
     ServiceTypes,
+    ServiceTypesHierarchy,
+    ServiceTypesPatch,
     ServiceTypesPost,
+    ServiceTypesPut,
     UrbanFunction,
+    UrbanFunctionPatch,
     UrbanFunctionPost,
+    UrbanFunctionPut,
 )
 from .services import (
+    ServicesCountCapacity,
     ServicesData,
     ServicesDataPatch,
     ServicesDataPost,
@@ -91,6 +105,7 @@ __all__ = [
     "ScenariosPost",
     "ScenariosPut",
     "ScenariosUrbanObject",
+    "ServicesCountCapacity",
     "ServicesData",
     "ServicesDataPatch",
     "ServicesDataPost",
@@ -98,11 +113,16 @@ __all__ = [
     "ServicesDataWithGeometry",
     "ServiceWithTerritories",
     "ServiceTypes",
+    "ServiceTypesHierarchy",
+    "ServiceTypesPatch",
     "ServiceTypesPost",
+    "ServiceTypesPut",
     "Indicator",
     "IndicatorsGroup",
     "IndicatorsGroupPost",
+    "IndicatorsPatch",
     "IndicatorsPost",
+    "IndicatorsPut",
     "IndicatorValue",
     "IndicatorValuePost",
     "MeasurementUnit",
@@ -130,8 +150,12 @@ __all__ = [
     "LivingBuildingsDataPut",
     "LivingBuildingsWithGeometry",
     "FunctionalZoneData",
+    "FunctionalZoneType",
+    "FunctionalZoneTypePost",
     "UrbanFunction",
+    "UrbanFunctionPatch",
     "UrbanFunctionPost",
+    "UrbanFunctionPut",
     "Page",
     "Project",
     "ProjectPost",
@@ -141,4 +165,8 @@ __all__ = [
     "ProjectTerritoryPost",
     "ProjectTerritoryPut",
     "ProjectTerritoryPatch",
+    "ProfilesReclamationData",
+    "ProfilesReclamationDataPost",
+    "ProfilesReclamationDataPut",
+    "ProfilesReclamationDataMatrix",
 ]

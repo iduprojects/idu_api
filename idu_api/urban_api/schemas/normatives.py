@@ -212,8 +212,8 @@ class NormativePatch(BaseModel):
                 )
         return self
 
-    @classmethod
     @model_validator(mode="before")
+    @classmethod
     def check_empty_request(cls, values):
         """Ensure the request body is not empty."""
         if not values:

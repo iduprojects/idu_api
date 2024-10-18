@@ -59,6 +59,7 @@ async def get_physical_objects_by_object_geometry_id_from_db(
             )
         )
         .where(urban_objects_data.c.object_geometry_id == object_geometry_id)
+        .distinct()
     )
 
     result = (await conn.execute(statement)).mappings().all()
@@ -78,6 +79,7 @@ async def get_object_geometry_by_ids_from_db(
         cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
         cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         object_geometries_data.c.address,
+        object_geometries_data.c.osm_id,
         object_geometries_data.c.created_at,
         object_geometries_data.c.updated_at,
     ).where(object_geometries_data.c.object_geometry_id.in_(object_geometry_ids))
@@ -115,6 +117,7 @@ async def put_object_geometry_to_db(
             geometry=ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326")),
             centre_point=ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326")),
             address=object_geometry.address,
+            osm_id=object_geometry.osm_id,
             updated_at=datetime.now(timezone.utc),
         )
         .returning(object_geometries_data)
@@ -208,6 +211,7 @@ async def add_object_geometry_to_physical_object_in_db(
             geometry=ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326")),
             centre_point=ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326")),
             address=object_geometry.address,
+            osm_id=object_geometry.osm_id,
         )
         .returning(object_geometries_data.c.object_geometry_id)
     )
