@@ -26,7 +26,7 @@ class TerritoryLevelData(BaseModel):
             population=dto.population,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             center=Geometry.from_shapely_geometry(dto.center),
-            type=dto.type
+            type=dto.type,
         )
 
 
@@ -42,9 +42,4 @@ class TerritoryLevelWithoutGeometryData(BaseModel):
     async def from_dto(cls, dto: TerritoryLevelWithoutGeometryDTO):
         """Constructor from DTO"""
 
-        return cls(
-            id=dto.id,
-            name=dto.name,
-            population=dto.population,
-            type=dto.type
-        )
+        return cls(id=dto.id, name=dto.name, population=dto.population, type=dto.type)

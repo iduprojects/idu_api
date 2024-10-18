@@ -35,7 +35,6 @@ from .physical_objects import (
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
 )
-from .profiles import TargetProfilesData, TargetProfilesPost
 from .projects import (
     Project,
     ProjectPatch,
@@ -142,6 +141,4 @@ __all__ = [
     "ProjectTerritoryPost",
     "ProjectTerritoryPut",
     "ProjectTerritoryPatch",
-    "TargetProfilesData",
-    "TargetProfilesPost",
 ]
