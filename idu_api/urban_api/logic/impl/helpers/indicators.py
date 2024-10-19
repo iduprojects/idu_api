@@ -1,6 +1,6 @@
 """Indicators handlers logic of getting entities from the database is defined here."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -25,7 +25,14 @@ from idu_api.urban_api.exceptions.logic.common import (
     EntityNotFoundById,
     EntityNotFoundByParams,
 )
-from idu_api.urban_api.schemas import IndicatorsGroupPost, IndicatorsPost, IndicatorValuePost, MeasurementUnitPost
+from idu_api.urban_api.schemas import (
+    IndicatorsGroupPost,
+    IndicatorsPatch,
+    IndicatorsPost,
+    IndicatorsPut,
+    IndicatorValuePost,
+    MeasurementUnitPost,
+)
 
 
 async def get_measurement_units_from_db(conn: AsyncConnection) -> list[MeasurementUnitDTO]:
@@ -77,6 +84,7 @@ async def get_indicators_groups_from_db(conn: AsyncConnection) -> list[Indicator
             .where(indicators_groups_data.c.indicators_group_id == group.indicators_group_id)
         )
         indicators = (await conn.execute(statement)).mappings().all()
+        indicators = [IndicatorDTO(**indicator) for indicator in indicators]
         result.append(
             IndicatorsGroupDTO(
                 indicators_group_id=group.indicators_group_id,
@@ -111,6 +119,7 @@ async def add_indicators_group_to_db(
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
     indicators = (await conn.execute(statement)).mappings().all()
+    indicators = [IndicatorDTO(**indicator) for indicator in indicators]
     if len(indicators) < len(indicators_group.indicators_ids):
         raise EntitiesNotFoundByIds("indicator")
 
@@ -166,6 +175,7 @@ async def update_indicators_group_from_db(
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
     indicators = (await conn.execute(statement)).mappings().all()
+    indicators = [IndicatorDTO(**indicator) for indicator in indicators]
     if len(indicators) < len(indicators_group.indicators_ids):
         raise EntitiesNotFoundByIds("indicator")
 
@@ -196,20 +206,27 @@ async def update_indicators_group_from_db(
     )
 
 
-async def get_indicators_by_parent_id_from_db(
+async def get_indicators_by_parent_from_db(
     conn: AsyncConnection,
     parent_id: int | None,
+    parent_name: str | None,
     name: str | None,
     territory_id: int | None,
     get_all_subtree: bool,
 ) -> list[IndicatorDTO]:
-    """Get an indicator or list of indicators by parent."""
+    """Get an indicator or list of indicators by parent id or name."""
 
     if parent_id is not None:
         statement = select(indicators_dict).where(indicators_dict.c.indicator_id == parent_id)
         parent_indicator = (await conn.execute(statement)).one_or_none()
         if parent_indicator is None:
             raise EntityNotFoundById(parent_id, "indicator")
+    if parent_name is not None:
+        statement = select(indicators_dict.c.indicator_id).where(indicators_dict.c.name_full == parent_name.strip())
+        parent_indicator_id = (await conn.execute(statement)).scalar_one_or_none()
+        if parent_indicator_id is None:
+            raise EntityNotFoundByParams("indicator", parent_name)
+        parent_id = parent_indicator_id
 
     statement = select(
         indicators_dict,
@@ -299,12 +316,13 @@ async def add_indicator_to_db(conn: AsyncConnection, indicator: IndicatorsPost) 
     if indicator_name is not None:
         raise EntityAlreadyExists("indicator", indicator.name_full)
 
-    statement = select(measurement_units_dict).where(
-        measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id
-    )
-    measurement_unit = (await conn.execute(statement)).one_or_none()
-    if measurement_unit is None:
-        raise EntityNotFoundById(indicator.measurement_unit_id, "measurement unit")
+    if indicator.measurement_unit_id is not None:
+        statement = select(measurement_units_dict).where(
+            measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id
+        )
+        measurement_unit = (await conn.execute(statement)).one_or_none()
+        if measurement_unit is None:
+            raise EntityNotFoundById(indicator.measurement_unit_id, "measurement unit")
 
     statement = (
         insert(indicators_dict)
@@ -312,17 +330,126 @@ async def add_indicator_to_db(conn: AsyncConnection, indicator: IndicatorsPost) 
             name_full=indicator.name_full,
             name_short=indicator.name_short,
             measurement_unit_id=indicator.measurement_unit_id,
-            level=indicator.level,
-            list_label=indicator.list_label,
             parent_id=indicator.parent_id,
         )
-        .returning(indicators_dict)
+        .returning(indicators_dict.c.indicator_id)
     )
-    result = (await conn.execute(statement)).mappings().one()
+    result_id = (await conn.execute(statement)).scalar_one()
 
     await conn.commit()
 
-    return await get_indicator_by_id_from_db(conn, result.indicator_id)
+    return await get_indicator_by_id_from_db(conn, result_id)
+
+
+async def put_indicator_to_db(conn: AsyncConnection, indicator_id: int, indicator: IndicatorsPut) -> IndicatorDTO:
+    """Update indicator object by all its attributes."""
+
+    statement = select(indicators_dict).where(indicators_dict.c.indicator_id == indicator_id)
+    requested_indicator = (await conn.execute(statement)).one_or_none()
+    if requested_indicator is None:
+        raise EntityNotFoundById(indicator_id, "indicator")
+
+    if indicator.parent_id is not None:
+        statement = select(indicators_dict).where(indicators_dict.c.indicator_id == indicator.parent_id)
+        parent_indicator = (await conn.execute(statement)).one_or_none()
+        if parent_indicator is None:
+            raise EntityNotFoundById(indicator.parent_id, "indicator")
+
+    statement = select(indicators_dict).where(
+        indicators_dict.c.name_full == indicator.name_full,
+        indicators_dict.c.indicator_id != indicator_id,
+    )
+    indicator_name = (await conn.execute(statement)).one_or_none()
+    if indicator_name is not None:
+        raise EntityAlreadyExists("indicator", indicator.name_full)
+
+    if indicator.measurement_unit_id is not None:
+        statement = select(measurement_units_dict).where(
+            measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id
+        )
+        measurement_unit = (await conn.execute(statement)).one_or_none()
+        if measurement_unit is None:
+            raise EntityNotFoundById(indicator.measurement_unit_id, "measurement unit")
+
+    statement = (
+        update(indicators_dict)
+        .where(indicators_dict.c.indicator_id == indicator_id)
+        .values(
+            name_full=indicator.name_full,
+            name_short=indicator.name_short,
+            measurement_unit_id=indicator.measurement_unit_id,
+            parent_id=indicator.parent_id,
+            updated_at=datetime.now(timezone.utc),
+        )
+    )
+
+    await conn.execute(statement)
+    await conn.commit()
+
+    return await get_indicator_by_id_from_db(conn, indicator_id)
+
+
+async def patch_indicator_to_db(conn: AsyncConnection, indicator_id: int, indicator: IndicatorsPatch) -> IndicatorDTO:
+    """Update indicator object by only given attributes."""
+
+    statement = select(indicators_dict).where(indicators_dict.c.indicator_id == indicator_id)
+    requested_indicator = (await conn.execute(statement)).one_or_none()
+    if requested_indicator is None:
+        raise EntityNotFoundById(indicator_id, "indicator")
+
+    if indicator.parent_id is not None:
+        statement = select(indicators_dict).where(indicators_dict.c.indicator_id == indicator.parent_id)
+        parent_indicator = (await conn.execute(statement)).one_or_none()
+        if parent_indicator is None:
+            raise EntityNotFoundById(indicator.parent_id, "indicator")
+
+    if indicator.name_full is not None:
+        statement = select(indicators_dict).where(
+            indicators_dict.c.name_full == indicator.name_full,
+            indicators_dict.c.indicator_id != indicator_id,
+        )
+        indicator_name = (await conn.execute(statement)).one_or_none()
+        if indicator_name is not None:
+            raise EntityAlreadyExists("indicator", indicator.name_full)
+
+    if indicator.measurement_unit_id is not None:
+        statement = select(measurement_units_dict).where(
+            measurement_units_dict.c.measurement_unit_id == indicator.measurement_unit_id
+        )
+        measurement_unit = (await conn.execute(statement)).one_or_none()
+        if measurement_unit is None:
+            raise EntityNotFoundById(indicator.measurement_unit_id, "measurement unit")
+
+    statement = (
+        update(indicators_dict)
+        .where(indicators_dict.c.indicator_id == indicator_id)
+        .values(updated_at=datetime.now(timezone.utc))
+    )
+
+    values_to_update = {}
+    for k, v in indicator.model_dump(exclude_unset=True).items():
+        values_to_update.update({k: v})
+
+    statement = statement.values(**values_to_update)
+    await conn.execute(statement)
+    await conn.commit()
+
+    return await get_indicator_by_id_from_db(conn, indicator_id)
+
+
+async def delete_indicator_from_db(conn: AsyncConnection, indicator_id: int) -> dict:
+    """Delete indicator object by id."""
+
+    statement = select(indicators_dict).where(indicators_dict.c.indicator_id == indicator_id)
+    requested_indicator = (await conn.execute(statement)).one_or_none()
+    if requested_indicator is None:
+        raise EntityNotFoundById(indicator_id, "indicator")
+
+    statement = delete(indicators_dict).where(indicators_dict.c.indicator_id == indicator_id)
+    await conn.execute(statement)
+    await conn.commit()
+
+    return {"result": "ok"}
 
 
 async def get_indicator_value_by_id_from_db(
@@ -340,6 +467,8 @@ async def get_indicator_value_by_id_from_db(
         select(
             territory_indicators_data,
             indicators_dict.c.name_full,
+            indicators_dict.c.level,
+            indicators_dict.c.list_label,
             measurement_units_dict.c.measurement_unit_id,
             measurement_units_dict.c.name.label("measurement_unit_name"),
         )
@@ -455,6 +584,8 @@ async def get_indicator_values_by_id_from_db(
         select(
             territory_indicators_data,
             indicators_dict.c.name_full,
+            indicators_dict.c.level,
+            indicators_dict.c.list_label,
             measurement_units_dict.c.measurement_unit_id,
             measurement_units_dict.c.name.label("measurement_unit_name"),
         )
@@ -488,3 +619,48 @@ async def get_indicator_values_by_id_from_db(
     result = (await conn.execute(statement)).mappings().all()
 
     return [IndicatorValueDTO(**value) for value in result]
+
+
+async def delete_indicator_value_from_db(
+    conn: AsyncConnection,
+    indicator_id: int,
+    territory_id: int,
+    date_type: str,
+    date_value: datetime,
+    value_type: str,
+    information_source: str,
+) -> dict:
+    """Delete indicator value object by id."""
+
+    statement = select(territory_indicators_data).where(
+        territory_indicators_data.c.indicator_id == indicator_id,
+        territory_indicators_data.c.territory_id == territory_id,
+        territory_indicators_data.c.date_type == date_type,
+        territory_indicators_data.c.date_value == date_value,
+        territory_indicators_data.c.value_type == value_type,
+        territory_indicators_data.c.information_source == information_source,
+    )
+    requested_indicator_value = (await conn.execute(statement)).one_or_none()
+    if requested_indicator_value is None:
+        raise EntityNotFoundByParams(
+            "indicator value",
+            indicator_id,
+            territory_id,
+            date_type,
+            date_value,
+            value_type,
+            information_source,
+        )
+
+    statement = delete(territory_indicators_data).where(
+        territory_indicators_data.c.indicator_id == indicator_id,
+        territory_indicators_data.c.territory_id == territory_id,
+        territory_indicators_data.c.date_type == date_type,
+        territory_indicators_data.c.date_value == date_value,
+        territory_indicators_data.c.value_type == value_type,
+        territory_indicators_data.c.information_source == information_source,
+    )
+    await conn.execute(statement)
+    await conn.commit()
+
+    return {"result": "ok"}

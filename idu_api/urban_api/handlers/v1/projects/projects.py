@@ -1,6 +1,4 @@
-"""
-Projects endpoints are defined here.
-"""
+"""Projects endpoints are defined here."""
 
 from fastapi import Depends, Path, Request
 from starlette import status

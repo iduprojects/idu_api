@@ -1,29 +1,28 @@
-from datetime import datetime, date
+from datetime import date, datetime
 
+import shapely.geometry as geom
 from fastapi import HTTPException
 from geoalchemy2.functions import ST_AsGeoJSON, ST_Covers, ST_GeomFromText
-from sqlalchemy import select, cast, and_, text, or_
+from sqlalchemy import and_, cast, or_, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.selectable import NamedFromClause, Select
 
 from idu_api.city_api.dto.territory import CATerritoryDTO, CATerritoryWithoutGeometryDTO
 from idu_api.city_api.dto.territory_hierarchy import TerritoryHierarchyDTO
-from idu_api.common.db.entities import territories_data, territory_types_dict, territory_indicators_data
-import shapely.geometry as geom
-
+from idu_api.common.db.entities import territories_data, territory_indicators_data, territory_types_dict
 from idu_api.urban_api.dto import TerritoryDTO, TerritoryWithoutGeometryDTO
 from idu_api.urban_api.schemas.geometries import Geometry
 
 
 async def get_territories_by_parent_id_and_level(
-        conn: AsyncConnection,
-        parent_id: int | str,
-        level: int | None = None,
-        ids: list[int] | None = None,
-        type: int | None = None,
-        geometry: geom.Polygon | geom.MultiPolygon | None = None,
-        no_geometry: bool = False,
+    conn: AsyncConnection,
+    parent_id: int | str,
+    level: int | None = None,
+    ids: list[int] | None = None,
+    type: int | None = None,
+    geometry: geom.Polygon | geom.MultiPolygon | None = None,
+    no_geometry: bool = False,
 ) -> list[CATerritoryDTO | CATerritoryWithoutGeometryDTO]:
     statement = select(territories_data.c.territory_id)
     if parent_id.isnumeric():
@@ -56,21 +55,25 @@ async def get_territories_by_parent_id_and_level(
 
     statement = select(cte_statement.union_all(recursive_part))
     requested_territories = statement.cte("requested_territories")
-    statement = select(
-        requested_territories,
-        territory_indicators_data.c.value.label("population"),
-    ).select_from(
-        requested_territories.join(
-            territory_indicators_data,
-            requested_territories.c.territory_id == territory_indicators_data.c.territory_id,
-            isouter=True
+    statement = (
+        select(
+            requested_territories,
+            territory_indicators_data.c.value.label("population"),
         )
-    ).where(
-        or_(
-            territory_indicators_data.c.indicator_id.is_(None),
-            and_(
-                territory_indicators_data.c.indicator_id == 1,
-                territory_indicators_data.c.date_value == date(datetime.now().year - 1, 1, 1)
+        .select_from(
+            requested_territories.join(
+                territory_indicators_data,
+                requested_territories.c.territory_id == territory_indicators_data.c.territory_id,
+                isouter=True,
+            )
+        )
+        .where(
+            or_(
+                territory_indicators_data.c.indicator_id.is_(None),
+                and_(
+                    territory_indicators_data.c.indicator_id == 1,
+                    territory_indicators_data.c.date_value == date(datetime.now().year - 1, 1, 1),
+                ),
             )
         )
     )
@@ -80,9 +83,7 @@ async def get_territories_by_parent_id_and_level(
     if type:
         statement = statement.where(requested_territories.c.territory_type_id == type)
     if ids:
-        statement = statement.where(
-            requested_territories.c.territory_id.in_(ids)
-        )
+        statement = statement.where(requested_territories.c.territory_id.in_(ids))
     if geometry and not no_geometry:
         given_geometry = select(ST_GeomFromText(str(geometry), text("4326"))).cte("given_geometry")
 
@@ -98,8 +99,7 @@ async def get_territories_by_parent_id_and_level(
 
 
 async def get_territory_hierarchy_by_parent_id(
-        conn: AsyncConnection,
-        parent_id: int | str
+    conn: AsyncConnection, parent_id: int | str
 ) -> list[TerritoryHierarchyDTO]:
     statement = select(territories_data.c.territory_id)
     if parent_id.isnumeric():
@@ -142,11 +142,13 @@ async def get_territory_hierarchy_by_parent_id(
             requested_territories.c.territory_type_id,
             requested_territories.c.territory_type_name,
             requested_territories.c.level,
-        ).group_by(
+        )
+        .group_by(
             requested_territories.c.territory_type_id,
             requested_territories.c.territory_type_name,
             requested_territories.c.level,
-        ).order_by(
+        )
+        .order_by(
             requested_territories.c.level.asc(),
         )
     )
@@ -155,18 +157,13 @@ async def get_territory_hierarchy_by_parent_id(
     return [TerritoryHierarchyDTO(**territory) for territory in result]
 
 
-async def get_territory_ids_by_parent_id(
-        conn: AsyncConnection,
-        parent_id: int | str
-) -> list[int]:
+async def get_territory_ids_by_parent_id(conn: AsyncConnection, parent_id: int | str) -> list[int]:
     result: list[CATerritoryDTO] = await get_territories_by_parent_id_and_level(conn, parent_id)
     return [territory.territory_id for territory in result]
 
 
 async def get_children_territories_by_type(
-        conn: AsyncConnection,
-        territory: TerritoryDTO | TerritoryWithoutGeometryDTO,
-        type: int, no_geometry: bool = False
+    conn: AsyncConnection, territory: TerritoryDTO | TerritoryWithoutGeometryDTO, type: int, no_geometry: bool = False
 ) -> list[CATerritoryDTO | CATerritoryWithoutGeometryDTO]:
     territories_data_parents = territories_data.alias("territories_data_parents")
     if not no_geometry:
@@ -184,6 +181,7 @@ async def get_children_territories_by_type(
             cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -199,6 +197,7 @@ async def get_children_territories_by_type(
             territories_data.c.properties,
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -206,9 +205,11 @@ async def get_children_territories_by_type(
         statement.select_from(
             territories_data.join(
                 territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-            ).join(
+            )
+            .join(
                 territory_indicators_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id
-            ).join(
+            )
+            .join(
                 territories_data_parents,
                 territories_data.c.parent_id == territories_data_parents.c.territory_id,
                 isouter=True,
@@ -221,8 +222,8 @@ async def get_children_territories_by_type(
                 territory_indicators_data.c.indicator_id.is_(None),
                 and_(
                     territory_indicators_data.c.indicator_id == 1,
-                    territory_indicators_data.c.date_value == date(datetime.now().year - 1, 1, 1)
-                )
+                    territory_indicators_data.c.date_value == date(datetime.now().year - 1, 1, 1),
+                ),
             )
         )
     )
@@ -235,7 +236,7 @@ async def get_children_territories_by_type(
 
 
 async def get_ca_territory_by_id(
-        conn: AsyncConnection, territory_id: int | str, no_geometry: bool = False
+    conn: AsyncConnection, territory_id: int | str, no_geometry: bool = False
 ) -> CATerritoryDTO | CATerritoryWithoutGeometryDTO:
     territories_data_parents = territories_data.alias("territories_data_parents")
     if not no_geometry:
@@ -253,6 +254,7 @@ async def get_ca_territory_by_id(
             cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -268,29 +270,27 @@ async def get_ca_territory_by_id(
             territories_data.c.properties,
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
-    statement = (
-        statement.select_from(
-            territories_data.join(
-                territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-            ).join(
-                territory_indicators_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id
-            ).join(
-                territories_data_parents,
-                territories_data.c.parent_id == territories_data_parents.c.territory_id,
-                isouter=True,
-            )
+    statement = statement.select_from(
+        territories_data.join(
+            territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
         )
-        .where(
-            or_(
-                territory_indicators_data.c.indicator_id.is_(None),
-                and_(
-                    territory_indicators_data.c.indicator_id == 1,
-                    territory_indicators_data.c.date_value == date(datetime.now().year - 1, 1, 1)
-                )
-            )
+        .join(territory_indicators_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id)
+        .join(
+            territories_data_parents,
+            territories_data.c.parent_id == territories_data_parents.c.territory_id,
+            isouter=True,
+        )
+    ).where(
+        or_(
+            territory_indicators_data.c.indicator_id.is_(None),
+            and_(
+                territory_indicators_data.c.indicator_id == 1,
+                territory_indicators_data.c.date_value == date(datetime.now().year - 1, 1, 1),
+            ),
         )
     )
     if territory_id.isnumeric():
@@ -310,10 +310,11 @@ async def get_ca_territory_by_id(
 
 
 async def construct_hierarchy(
-        conn: AsyncConnection,
-        territory: CATerritoryDTO | CATerritoryWithoutGeometryDTO,
-        hierarchy: list[TerritoryHierarchyDTO], cur: int,
-        no_geometry: bool = False,
+    conn: AsyncConnection,
+    territory: CATerritoryDTO | CATerritoryWithoutGeometryDTO,
+    hierarchy: list[TerritoryHierarchyDTO],
+    cur: int,
+    no_geometry: bool = False,
 ) -> dict:
     id = territory.territory_id
     level = territory.level
@@ -333,8 +334,8 @@ async def construct_hierarchy(
 
     i = cur
     while i < end:
-        territories: list[CATerritoryDTO | CATerritoryWithoutGeometryDTO | dict] = await get_children_territories_by_type(
-            conn, territory, hierarchy[i].territory_type_id, no_geometry
+        territories: list[CATerritoryDTO | CATerritoryWithoutGeometryDTO | dict] = (
+            await get_children_territories_by_type(conn, territory, hierarchy[i].territory_type_id, no_geometry)
         )
         for j in range(len(territories)):
             territories[j] = await construct_hierarchy(conn, territories[j], hierarchy, end, no_geometry)
@@ -352,10 +353,7 @@ async def get_territory_hierarchy(conn: AsyncConnection, territory_id: int | str
     return await construct_hierarchy(conn, territory, type_hierarchy, 0, no_geometry)
 
 
-def generate_select(
-        territories_data_parents: NamedFromClause,
-        no_geometry: bool = False
-) -> Select:
+def generate_select(territories_data_parents: NamedFromClause, no_geometry: bool = False) -> Select:
     if not no_geometry:
         return select(
             territories_data.c.territory_id,
@@ -370,6 +368,7 @@ def generate_select(
             cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -384,22 +383,7 @@ def generate_select(
             territories_data.c.properties,
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
-
-
-"""
-WITH RECURSIVE territories_recursive(territory_id, territory_type_id, territory_type_name, parent_id, parent_name, name, geometry, level, properties, centre_point, admin_center, okato_code, created_at, updated_at) AS 
-(SELECT territories_data.territory_id AS territory_id, territories_data.territory_type_id AS territory_type_id, territory_types_dict.name AS territory_type_name, territories_data.parent_id AS parent_id, territories_data_parents.name AS parent_name, territories_data.name AS name, CAST(ST_AsGeoJSON(territories_data.geometry) AS JSONB) AS geometry, territories_data.level AS level, territories_data.properties AS properties, CAST(ST_AsGeoJSON(territories_data.centre_point) AS JSONB) AS centre_point, territories_data.admin_center AS admin_center, territories_data.okato_code AS okato_code, territories_data.created_at AS created_at, territories_data.updated_at AS updated_at 
-FROM territories_data JOIN territory_types_dict ON territory_types_dict.territory_type_id = territories_data.territory_type_id LEFT OUTER JOIN territories_data AS territories_data_parents ON territories_data.parent_id = territories_data_parents.territory_id 
-WHERE territories_data.parent_id = $1::INTEGER UNION ALL SELECT territories_data.territory_id AS territory_id, territories_data.territory_type_id AS territory_type_id, territory_types_dict.name AS territory_type_name, territories_data.parent_id AS parent_id, territories_data_parents.name AS parent_name, territories_data.name AS name, CAST(ST_AsGeoJSON(territories_data.geometry) AS JSONB) AS geometry, territories_data.level AS level, territories_data.properties AS properties, CAST(ST_AsGeoJSON(territories_data.centre_point) AS JSONB) AS centre_point, territories_data.admin_center AS admin_center, territories_data.okato_code AS okato_code, territories_data.created_at AS created_at, territories_data.updated_at AS updated_at 
-FROM territories_data JOIN territory_types_dict ON territory_types_dict.territory_type_id = territories_data.territory_type_id LEFT OUTER JOIN territories_data AS territories_data_parents ON territories_data.parent_id = territories_data_parents.territory_id JOIN territories_recursive ON territories_data.parent_id = territories_recursive.territory_id), 
-requested_territories AS 
-(SELECT territories_recursive.territory_id AS territory_id, territories_recursive.territory_type_id AS territory_type_id, territories_recursive.territory_type_name AS territory_type_name, territories_recursive.parent_id AS parent_id, territories_recursive.parent_name AS parent_name, territories_recursive.name AS name, territories_recursive.geometry AS geometry, territories_recursive.level AS level, territories_recursive.properties AS properties, territories_recursive.centre_point AS centre_point, territories_recursive.admin_center AS admin_center, territories_recursive.okato_code AS okato_code, territories_recursive.created_at AS created_at, territories_recursive.updated_at AS updated_at 
-FROM territories_recursive)
- SELECT requested_territories.territory_type_id, requested_territories.territory_type_name, requested_territories.level
-FROM requested_territories 
-group by requested_territories.territory_type_id, requested_territories.territory_type_name, requested_territories.level
-order by requested_territories.level asc
-"""

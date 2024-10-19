@@ -17,7 +17,9 @@ class ProjectsIndicator(BaseModel):
     )
     date_value: date = Field(
         ...,
-        description="first day of the year for 'year' period, first of june for 'half_year', first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
+        description="first day of the year for 'year' period, "
+                    "first of june for 'half_year', first day of jan/apr/jul/oct for quarter, "
+                    "first day of month for 'month', any valid day value for 'day'",
         examples=["2024-01-01"],
     )
     value: float = Field(..., description="Indicator value")
@@ -65,7 +67,9 @@ class ProjectsIndicatorPost(BaseModel):
     )
     date_value: date = Field(
         ...,
-        description="first day of the year for 'year' period, first of june for 'half_year', first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
+        description="first day of the year for 'year' period, "
+                    "first of june for 'half_year', first day of jan/apr/jul/oct for quarter, "
+                    "first day of month for 'month', any valid day value for 'day'",
         examples=["2024-01-01"],
     )
     value: float = Field(..., description="Indicator value")
@@ -99,7 +103,9 @@ class ProjectsIndicatorPut(BaseModel):
     )
     date_value: date = Field(
         ...,
-        description="first day of the year for 'year' period, first of june for 'half_year', first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
+        description="first day of the year for 'year' period, first of june for 'half_year', "
+                    "first day of jan/apr/jul/oct for quarter, first day of month for 'month', "
+                    "any valid day value for 'day'",
         examples=["2024-01-01"],
     )
     value: float = Field(..., description="Indicator value")
@@ -133,7 +139,9 @@ class ProjectsIndicatorPatch(BaseModel):
     )
     date_value: date | None = Field(
         None,
-        description="first day of the year for 'year' period, first of june for 'half_year', first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
+        description="first day of the year for 'year' period, first of june for 'half_year', "
+                    "first day of jan/apr/jul/oct for quarter, first day of month for 'month', "
+                    "any valid day value for 'day'",
         examples=["2024-01-01"],
     )
     value: float | None = Field(None, description="Indicator value")

@@ -36,6 +36,7 @@ async def get_territories_by_ids(conn: AsyncConnection, territory_ids: list[int]
             cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
             territories_data.c.admin_center,
             territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -96,6 +97,7 @@ async def add_territory_to_db(
             centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326")),
             admin_center=territory.admin_center,
             okato_code=territory.okato_code,
+            oktmo_code=territory.oktmo_code,
         )
         .returning(territories_data.c.territory_id)
     )
@@ -145,7 +147,8 @@ async def put_territory_to_db(
             centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326")),
             admin_center=territory.admin_center,
             okato_code=territory.okato_code,
-            updated_at=datetime.utcnow(),
+            oktmo_code=territory.oktmo_code,
+            updated_at=datetime.now(timezone.utc),
         )
         .returning(territories_data.c.territory_id)
     )
@@ -236,6 +239,7 @@ async def get_territories_by_parent_id_from_db(
         cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
         territories_data.c.admin_center,
         territories_data.c.okato_code,
+        territories_data.c.oktmo_code,
         territories_data.c.created_at,
         territories_data.c.updated_at,
     ).select_from(
@@ -324,6 +328,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         territories_data.c.properties,
         territories_data.c.admin_center,
         territories_data.c.okato_code,
+        territories_data.c.oktmo_code,
         territories_data.c.created_at,
         territories_data.c.updated_at,
     ).select_from(

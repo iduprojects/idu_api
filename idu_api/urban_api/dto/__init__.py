@@ -2,7 +2,7 @@
 Data Transfer Objects (much like entities from database) are defined in this module.
 """
 
-from .functional_zones import FunctionalZoneDataDTO
+from .functional_zones import FunctionalZoneDataDTO, FunctionalZoneTypeDTO
 from .indicators import IndicatorDTO, IndicatorsGroupDTO, IndicatorValueDTO, MeasurementUnitDTO
 from .living_buildings import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
 from .normatives import NormativeDTO
@@ -14,12 +14,12 @@ from .physical_objects import (
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
 )
-from .profiles import TargetProfileDTO
+from .profiles_reclamation import ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO
 from .projects import ProjectDTO, ProjectsIndicatorDTO, ProjectTerritoryDTO
 from .scenarios import ScenarioDTO
 from .scenarios_urban_objects import ScenarioUrbanObjectDTO
-from .service_types import ServiceTypesDTO, UrbanFunctionDTO
-from .services import ServiceDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
+from .service_types import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from .services import ServiceDTO, ServicesCountCapacityDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
     TerritoryDTO,
     TerritoryTypeDTO,
@@ -38,8 +38,10 @@ __all__ = [
     "TokensTuple",
     "ScenarioDTO",
     "ScenarioUrbanObjectDTO",
+    "ServicesCountCapacityDTO",
     "ServiceDTO",
     "ServiceTypesDTO",
+    "ServiceTypesHierarchyDTO",
     "ServiceWithGeometryDTO",
     "ServiceWithTerritoriesDTO",
     "IndicatorDTO",
@@ -56,6 +58,7 @@ __all__ = [
     "LivingBuildingsDTO",
     "LivingBuildingsWithGeometryDTO",
     "FunctionalZoneDataDTO",
+    "FunctionalZoneTypeDTO",
     "TerritoryWithIndicatorDTO",
     "TerritoryWithIndicatorsDTO",
     "TerritoryWithNormativesDTO",
@@ -64,6 +67,7 @@ __all__ = [
     "UrbanObjectDTO",
     "ProjectDTO",
     "ProjectTerritoryDTO",
-    "TargetProfileDTO",
+    "ProfilesReclamationDataDTO",
+    "ProfilesReclamationDataMatrixDTO",
     "ProjectsIndicatorDTO",
 ]

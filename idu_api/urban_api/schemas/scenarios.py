@@ -3,13 +3,13 @@ from typing import Any
 from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import ScenarioDTO
-from idu_api.urban_api.schemas.profiles import TargetProfilesData
+from idu_api.urban_api.schemas.functional_zones import FunctionalZoneType
 
 
 class ScenariosData(BaseModel):
     scenario_id: int = Field(description="scenario identifier", examples=[1])
     project_id: int = Field(description="project identifier for the scenario", examples=[1])
-    target_profile: TargetProfilesData | None
+    target_profile: FunctionalZoneType | None
     name: str = Field(description="name of the scenario", examples=["--"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
@@ -23,9 +23,10 @@ class ScenariosData(BaseModel):
             return cls(
                 scenario_id=dto.scenario_id,
                 project_id=dto.project_id,
-                target_profile=TargetProfilesData(
-                    target_profile_id=dto.target_profile_id,
+                target_profile=FunctionalZoneType(
+                    functional_zone_type_id=dto.target_profile_id,
                     name=dto.target_profile_name,
+                    zone_nickname=dto.target_profile_nickname,
                 ),
                 name=dto.name,
                 properties=dto.properties,

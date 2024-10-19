@@ -35,6 +35,16 @@ async def get_physical_objects_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
+    territories_cte = (
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
+    )
+
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
     statement = (
         select(
             physical_objects_data,
@@ -54,7 +64,7 @@ async def get_physical_objects_by_territory_id_from_db(
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
-        .where(object_geometries_data.c.territory_id == territory_id)
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
         .distinct()
     )
 
@@ -96,11 +106,22 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
+    territories_cte = (
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
+    )
+
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
     statement = (
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         )
@@ -118,7 +139,7 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
-        .where(object_geometries_data.c.territory_id == territory_id)
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
         .distinct()
     )
 

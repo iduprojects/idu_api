@@ -7,7 +7,6 @@ from idu_api.urban_api.dto import (
     ProjectTerritoryDTO,
     ScenarioDTO,
     ScenarioUrbanObjectDTO,
-    TargetProfileDTO,
 )
 from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPost,
@@ -15,7 +14,6 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectsIndicator,
     ProjectsIndicatorPatch,
     ProjectsIndicatorPost,
     ProjectsIndicatorPut,
@@ -23,7 +21,6 @@ from idu_api.urban_api.schemas import (
     ScenariosPost,
     ScenariosPut,
     ServicesDataPost,
-    TargetProfilesPost,
 )
 
 
@@ -85,14 +82,6 @@ class UserProjectService(Protocol):
     @abc.abstractmethod
     async def delete_scenario(self, scenario_id: int, user_id: str) -> dict:
         """Delete scenario object."""
-
-    @abc.abstractmethod
-    async def get_target_profiles(self) -> list[TargetProfileDTO]:
-        """Get all target profile objects."""
-
-    @abc.abstractmethod
-    async def add_target_profile(self, target_profile: TargetProfilesPost) -> TargetProfileDTO:
-        """Create a new target profile object."""
 
     @abc.abstractmethod
     async def add_physical_object_to_scenario(

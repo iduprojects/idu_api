@@ -29,6 +29,7 @@ object_geometries_data = Table(
         nullable=False,
     ),
     Column("address", String(300)),
+    Column("osm_id", String(20)),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
 )
@@ -40,6 +41,7 @@ Object geometries:
 - geometry geometry 
 - centre_point geometry point
 - address string(300)
+- osm_id string(20)
 - created_at timestamp
 - updated_at timestamp
 """

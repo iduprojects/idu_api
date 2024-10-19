@@ -6,7 +6,6 @@ from idu_api.urban_api.dto import (
     ProjectTerritoryDTO,
     ScenarioDTO,
     ScenarioUrbanObjectDTO,
-    TargetProfileDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
@@ -17,10 +16,6 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     get_user_projects_from_db,
     patch_project_to_db,
     put_project_to_db,
-)
-from idu_api.urban_api.logic.impl.helpers.projects_profiles import (
-    add_target_profile_to_db,
-    get_target_profiles_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     add_existing_physical_object_to_scenario_in_db,
@@ -48,7 +43,6 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectsIndicator,
     ProjectsIndicatorPatch,
     ProjectsIndicatorPost,
     ProjectsIndicatorPut,
@@ -56,7 +50,6 @@ from idu_api.urban_api.schemas import (
     ScenariosPost,
     ScenariosPut,
     ServicesDataPost,
-    TargetProfilesPost,
 )
 
 
@@ -110,12 +103,6 @@ class UserProjectServiceImpl(UserProjectService):
 
     async def delete_scenario(self, scenario_id: int, user_id: str) -> dict:
         return await delete_scenario_from_db(self._conn, scenario_id, user_id)
-
-    async def get_target_profiles(self) -> list[TargetProfileDTO]:
-        return await get_target_profiles_from_db(self._conn)
-
-    async def add_target_profile(self, target_profile: TargetProfilesPost) -> TargetProfileDTO:
-        return await add_target_profile_to_db(self._conn, target_profile)
 
     async def add_physical_object_to_scenario(
         self, scenario_id: int, physical_object: PhysicalObjectWithGeometryPost, user_id: str

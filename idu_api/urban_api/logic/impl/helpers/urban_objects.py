@@ -12,6 +12,7 @@ from idu_api.common.db.entities import (
     service_types_dict,
     services_data,
     territory_types_dict,
+    urban_functions_dict,
     urban_objects_data,
 )
 from idu_api.urban_api.dto import UrbanObjectDTO
@@ -33,17 +34,22 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             object_geometries_data.c.territory_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            object_geometries_data.c.created_at.label("object_geometry_created_at"),
+            object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
             services_data.c.name.label("service_name"),
             services_data.c.capacity_real,
             services_data.c.properties.label("service_properties"),
             services_data.c.created_at.label("service_created_at"),
             services_data.c.updated_at.label("service_updated_at"),
             object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
             service_types_dict.c.service_type_id,
             service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
         )
@@ -62,6 +68,10 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             )
             .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
+            .outerjoin(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
             .outerjoin(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )

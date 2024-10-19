@@ -12,6 +12,7 @@ from idu_api.common.db.entities import (
     services_data,
     territories_data,
     territory_types_dict,
+    urban_functions_dict,
     urban_objects_data,
 )
 from idu_api.urban_api.dto import ServiceDTO, ServiceWithTerritoriesDTO, UrbanObjectDTO
@@ -29,15 +30,22 @@ async def get_service_by_id_from_db(conn: AsyncConnection, service_id: int) -> S
         select(
             services_data,
             service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
             territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(
             services_data.join(
                 service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id
-            ).outerjoin(
+            )
+            .join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+            .outerjoin(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
         )
@@ -223,15 +231,24 @@ async def get_service_with_territories_by_id_from_db(
         select(
             services_data,
             service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
             territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(
             services_data.join(
                 service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id
-            ).join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
+            )
+            .join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+            .outerjoin(
+                territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
+            )
         )
         .where(services_data.c.service_id == service_id)
     )

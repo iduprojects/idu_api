@@ -89,13 +89,13 @@ class EntityAlreadyExists(IduApiError):
         super().__init__()
 
     def __str__(self) -> str:
-        return f"Invalid input! '{self.entity}' with the same parameters={self.params} already exists)"
+        return f"Invalid input! '{self.entity}' with the same parameters={self.params} already exists"
 
     def get_status_code(self) -> int:
         """
         Return '404 Not found' status code.
         """
-        return status.HTTP_404_NOT_FOUND
+        return status.HTTP_400_BAD_REQUEST
 
 
 class TooManyObjectsError(IduApiError):

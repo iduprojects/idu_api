@@ -42,7 +42,8 @@ async def get_specific_projects_indicator(
     indicator_id: int = Query(..., description="indicator identifier"),
     user: UserDTO = Depends(user_dependency),
 ) -> ProjectsIndicator:
-    """Get project's specific indicator for given scenario if relevant project is public or if you're the project owner."""
+    """Get project's specific indicator for given scenario
+    if relevant project is public or if you're the project owner."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator = await user_project_service.get_specific_projects_indicator(scenario_id, indicator_id, user.id)

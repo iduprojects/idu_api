@@ -11,6 +11,7 @@ from idu_api.common.db.entities import (
     projects_urban_objects_data,
     service_types_dict,
     territory_types_dict,
+    urban_functions_dict,
 )
 from idu_api.urban_api.dto import ScenarioUrbanObjectDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
@@ -25,15 +26,17 @@ async def get_scenario_urban_object_by_id_from_db(
         select(
             projects_urban_objects_data,
             projects_physical_objects_data.c.physical_object_type_id,
-            projects_urban_objects_data.c.scenario_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             projects_physical_objects_data.c.name.label("physical_object_name"),
             projects_physical_objects_data.c.properties.label("physical_object_properties"),
             projects_physical_objects_data.c.created_at.label("physical_object_created_at"),
             projects_physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             projects_object_geometries_data.c.territory_id,
+            projects_object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            projects_object_geometries_data.c.created_at.label("object_geometry_created_at"),
+            projects_object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
             projects_services_data.c.name.label("service_name"),
             projects_services_data.c.capacity_real,
             projects_services_data.c.properties.label("service_properties"),
@@ -42,9 +45,11 @@ async def get_scenario_urban_object_by_id_from_db(
             projects_object_geometries_data.c.address,
             service_types_dict.c.service_type_id,
             service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
         )
@@ -68,6 +73,10 @@ async def get_scenario_urban_object_by_id_from_db(
             )
             .outerjoin(
                 service_types_dict, service_types_dict.c.service_type_id == projects_services_data.c.service_type_id
+            )
+            .outerjoin(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
             )
             .outerjoin(
                 territory_types_dict,

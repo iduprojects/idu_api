@@ -19,6 +19,7 @@ from idu_api.common.db.entities import (
     services_data,
     territories_data,
     territory_types_dict,
+    urban_functions_dict,
     urban_objects_data,
 )
 from idu_api.urban_api.dto import (
@@ -69,6 +70,7 @@ async def get_physical_objects_by_ids_from_db(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         )
@@ -259,6 +261,7 @@ async def add_physical_object_with_geometry_to_db(
             geometry=ST_GeomFromText(str(physical_object.geometry.as_shapely_geometry()), text("4326")),
             centre_point=ST_GeomFromText(str(physical_object.centre_point.as_shapely_geometry()), text("4326")),
             address=physical_object.address,
+            osm_id=physical_object.osm_id,
         )
         .returning(object_geometries_data.c.object_geometry_id)
     )
@@ -592,15 +595,23 @@ async def get_services_by_physical_object_id_from_db(
         select(
             services_data,
             service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
             territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(
-            services_data.join(urban_objects_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            urban_objects_data.join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
             .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
-            .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
+            .join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+            .outerjoin(
+                territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
+            )
         )
         .where(urban_objects_data.c.physical_object_id == physical_object_id)
     ).distinct()
@@ -636,10 +647,14 @@ async def get_services_with_geometry_by_physical_object_id_from_db(
         select(
             services_data,
             service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
             service_types_dict.c.name.label("service_type_name"),
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
             territory_types_dict.c.name.label("territory_type_name"),
+            object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         )
@@ -650,7 +665,13 @@ async def get_services_with_geometry_by_physical_object_id_from_db(
                 object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
             )
             .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
-            .join(territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id)
+            .join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+            .outerjoin(
+                territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
+            )
         )
         .where(urban_objects_data.c.physical_object_id == physical_object_id)
     ).distinct()
@@ -682,6 +703,7 @@ async def get_physical_object_geometries_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.territory_id,
             object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
             object_geometries_data.c.created_at,
@@ -694,6 +716,7 @@ async def get_physical_object_geometries_from_db(
             )
         )
         .where(urban_objects_data.c.physical_object_id == physical_object_id)
+        .distinct()
     )
 
     result = (await conn.execute(statement)).mappings().all()
