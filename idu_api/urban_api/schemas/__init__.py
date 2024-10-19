@@ -55,9 +55,7 @@ from .projects import (
 )
 from .projects_indicators import (
     ProjectsIndicator,
-    ProjectsIndicatorPatch,
     ProjectsIndicatorPost,
-    ProjectsIndicatorPut,
 )
 from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPut
 from .scenarios_urban_objects import ScenariosUrbanObject
@@ -176,7 +174,5 @@ __all__ = [
     "ProfilesReclamationDataPut",
     "ProfilesReclamationDataMatrix",
     "ProjectsIndicator",
-    "ProjectsIndicatorPatch",
     "ProjectsIndicatorPost",
-    "ProjectsIndicatorPut",
 ]

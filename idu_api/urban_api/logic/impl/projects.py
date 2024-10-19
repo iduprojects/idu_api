@@ -7,6 +7,13 @@ from idu_api.urban_api.dto import (
     ScenarioDTO,
     ScenarioUrbanObjectDTO,
 )
+from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
+    add_projects_indicator_value_to_db,
+    delete_all_projects_indicators_values_from_db,
+    delete_specific_projects_indicator_values_from_db,
+    get_all_projects_indicators_values_from_db,
+    get_specific_projects_indicator_values_from_db,
+)
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     delete_project_from_db,
@@ -21,19 +28,12 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     add_existing_physical_object_to_scenario_in_db,
     add_existing_service_to_scenario_in_db,
     add_physical_object_to_scenario_in_db,
-    add_projects_indicator_to_db,
     add_scenario_to_db,
     add_service_to_scenario_in_db,
-    delete_all_projects_indicators_from_db,
     delete_scenario_from_db,
-    delete_specific_projects_indicator_from_db,
-    get_all_projects_indicators_from_db,
     get_scenario_by_id_from_db,
     get_scenarios_by_project_id_from_db,
-    get_specific_projects_indicator_from_db,
-    patch_projects_indicator_to_db,
     patch_scenario_to_db,
-    put_projects_indicator_to_db,
     put_scenario_to_db,
 )
 from idu_api.urban_api.logic.projects import UserProjectService
@@ -43,9 +43,7 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectsIndicatorPatch,
     ProjectsIndicatorPost,
-    ProjectsIndicatorPut,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -128,31 +126,23 @@ class UserProjectServiceImpl(UserProjectService):
             self._conn, scenario_id, service_id, physical_object_id, object_geometry_id, user_id
         )
 
-    async def get_all_projects_indicators(self, scenario_id: int, user_id: str) -> list[ProjectsIndicatorDTO]:
-        return await get_all_projects_indicators_from_db(self._conn, scenario_id, user_id)
+    async def get_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> list[ProjectsIndicatorDTO]:
+        return await get_all_projects_indicators_values_from_db(self._conn, scenario_id, user_id)
 
-    async def get_specific_projects_indicator(
+    async def get_specific_projects_indicator_values(
         self, scenario_id: int, indicator_id: int, user_id: str
-    ) -> ProjectsIndicatorDTO:
-        return await get_specific_projects_indicator_from_db(self._conn, scenario_id, indicator_id, user_id)
+    ) -> list[ProjectsIndicatorDTO]:
+        return await get_specific_projects_indicator_values_from_db(self._conn, scenario_id, indicator_id, user_id)
 
-    async def add_projects_indicator(
+    async def add_projects_indicator_value(
         self, projects_indicator: ProjectsIndicatorPost, user_id: str
     ) -> ProjectsIndicatorDTO:
-        return await add_projects_indicator_to_db(self._conn, projects_indicator, user_id)
+        return await add_projects_indicator_value_to_db(self._conn, projects_indicator, user_id)
 
-    async def put_projects_indicator(
-        self, projects_indicator: ProjectsIndicatorPut, user_id: str
-    ) -> ProjectsIndicatorDTO:
-        return await put_projects_indicator_to_db(self._conn, projects_indicator, user_id)
+    async def delete_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> dict:
+        return await delete_all_projects_indicators_values_from_db(self._conn, scenario_id, user_id)
 
-    async def patch_projects_indicator(
-        self, projects_indicator: ProjectsIndicatorPatch, user_id: str
-    ) -> ProjectsIndicatorDTO:
-        return await patch_projects_indicator_to_db(self._conn, projects_indicator, user_id)
-
-    async def delete_all_projects_indicators(self, scenario_id: int, user_id: str) -> dict:
-        return await delete_all_projects_indicators_from_db(self._conn, scenario_id, user_id)
-
-    async def delete_specific_projects_indicator(self, scenario_id: int, indicator_id: int, user_id: str) -> dict:
-        return await delete_specific_projects_indicator_from_db(self._conn, scenario_id, indicator_id, user_id)
+    async def delete_specific_projects_indicator_values(
+        self, scenario_id: int, indicator_id: int, user_id: str
+    ) -> dict:
+        return await delete_specific_projects_indicator_values_from_db(self._conn, scenario_id, indicator_id, user_id)
