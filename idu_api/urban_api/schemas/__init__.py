@@ -53,6 +53,10 @@ from .projects import (
     ProjectTerritoryPost,
     ProjectTerritoryPut,
 )
+from .projects_indicators import (
+    ProjectsIndicator,
+    ProjectsIndicatorPost,
+)
 from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPut
 from .scenarios_urban_objects import ScenariosUrbanObject
 from .service_types import (
@@ -169,4 +173,6 @@ __all__ = [
     "ProfilesReclamationDataPost",
     "ProfilesReclamationDataPut",
     "ProfilesReclamationDataMatrix",
+    "ProjectsIndicator",
+    "ProjectsIndicatorPost",
 ]

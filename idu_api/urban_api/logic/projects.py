@@ -1,13 +1,20 @@
 import abc
 from typing import Protocol
 
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ScenarioDTO, ScenarioUrbanObjectDTO
+from idu_api.urban_api.dto import (
+    ProjectDTO,
+    ProjectsIndicatorDTO,
+    ProjectTerritoryDTO,
+    ScenarioDTO,
+    ScenarioUrbanObjectDTO,
+)
 from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPost,
     PhysicalObjectWithGeometryPost,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
+    ProjectsIndicatorPost,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -97,3 +104,31 @@ class UserProjectService(Protocol):
         self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
     ) -> ScenarioUrbanObjectDTO:
         """Add existing service object to scenario."""
+
+    @abc.abstractmethod
+    async def get_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> list[ProjectsIndicatorDTO]:
+        """Get project's indicators values for given scenario
+        if relevant project is public or if you're the project owner."""
+
+    @abc.abstractmethod
+    async def get_specific_projects_indicator_values(
+        self, scenario_id: int, indicator_id: int, user_id: str
+    ) -> list[ProjectsIndicatorDTO]:
+        """Get project's specific indicator values for given scenario
+        if relevant project is public or if you're the project owner."""
+
+    @abc.abstractmethod
+    async def add_projects_indicator_value(
+        self, projects_indicator: ProjectsIndicatorPost, user_id: str
+    ) -> ProjectsIndicatorDTO:
+        """Add a new project's indicator value."""
+
+    @abc.abstractmethod
+    async def delete_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> dict:
+        """Delete all project's indicators values for given scenario if you're the project owner."""
+
+    @abc.abstractmethod
+    async def delete_specific_projects_indicator_values(
+        self, scenario_id: int, indicator_id: int, user_id: str
+    ) -> dict:
+        """Delete specific project's indicator values for given scenario if you're the project owner."""
