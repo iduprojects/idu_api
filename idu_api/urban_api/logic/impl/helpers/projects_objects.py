@@ -70,6 +70,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
             description=project.description,
             public=project.public,
             image_url=project.image_url,
+            properties=project.properties,
         )
         .returning(projects_data.c.project_id)
     )
@@ -299,6 +300,7 @@ async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_
             public=project.public,
             image_url=project.image_url,
             updated_at=datetime.now(timezone.utc),
+            properties=project.properties,
         )
         .returning(projects_data.c.project_id)
     )
