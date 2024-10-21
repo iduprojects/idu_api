@@ -26,13 +26,21 @@ from .living_buildings import (
 from .normatives import Normative, NormativeDelete, NormativePatch, NormativePost
 from .object_geometries import ObjectGeometries, ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
 from .pages import Page
+from .physical_object_types import (
+    PhysicalObjectFunction,
+    PhysicalObjectFunctionPatch,
+    PhysicalObjectFunctionPost,
+    PhysicalObjectFunctionPut,
+    PhysicalObjectsTypes,
+    PhysicalObjectsTypesHierarchy,
+    PhysicalObjectsTypesPatch,
+    PhysicalObjectsTypesPost,
+)
 from .physical_objects import (
     PhysicalObjectsData,
     PhysicalObjectsDataPatch,
     PhysicalObjectsDataPost,
     PhysicalObjectsDataPut,
-    PhysicalObjectsTypes,
-    PhysicalObjectsTypesPost,
     PhysicalObjectsWithTerritory,
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
@@ -146,7 +154,13 @@ __all__ = [
     "PhysicalObjectsWithTerritory",
     "PhysicalObjectsDataPut",
     "PhysicalObjectWithGeometry",
+    "PhysicalObjectFunction",
+    "PhysicalObjectFunctionPatch",
+    "PhysicalObjectFunctionPost",
+    "PhysicalObjectFunctionPut",
     "PhysicalObjectsTypes",
+    "PhysicalObjectsTypesHierarchy",
+    "PhysicalObjectsTypesPatch",
     "PhysicalObjectsTypesPost",
     "LivingBuildingsData",
     "LivingBuildingsDataPatch",

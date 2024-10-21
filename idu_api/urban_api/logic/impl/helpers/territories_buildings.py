@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from idu_api.common.db.entities import (
     living_buildings_data,
     object_geometries_data,
+    physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
     territories_data,
@@ -52,6 +53,8 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
             physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
             object_geometries_data.c.address.label("physical_object_address"),
             object_geometries_data.c.osm_id.label("object_geometry_osm_id"),
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
@@ -65,6 +68,11 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
             .join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+            .join(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
             .join(
                 urban_objects_data,

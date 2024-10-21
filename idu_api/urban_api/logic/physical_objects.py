@@ -9,7 +9,6 @@ from idu_api.urban_api.dto import (
     LivingBuildingsDTO,
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
-    PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
     ServiceDTO,
@@ -23,7 +22,6 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPatch,
     PhysicalObjectsDataPost,
     PhysicalObjectsDataPut,
-    PhysicalObjectsTypesPost,
     PhysicalObjectWithGeometryPost,
 )
 
@@ -42,14 +40,6 @@ class PhysicalObjectsService(Protocol):
         self, geometry: Geom, physical_object_type_id: int | None, buffer_meters: int
     ) -> list[PhysicalObjectWithGeometryDTO]:
         """Get physical objects which are in buffer area of the given geometry."""
-
-    @abc.abstractmethod
-    async def get_physical_object_types(self) -> list[PhysicalObjectTypeDTO]:
-        """Get all physical object type objects."""
-
-    @abc.abstractmethod
-    async def add_physical_object_type(self, physical_object_type: PhysicalObjectsTypesPost) -> PhysicalObjectTypeDTO:
-        """Create physical object type object."""
 
     @abc.abstractmethod
     async def add_physical_object_with_geometry(

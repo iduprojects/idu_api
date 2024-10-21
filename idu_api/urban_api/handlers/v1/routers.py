@@ -14,6 +14,8 @@ service_types_router = APIRouter(tags=["service_types"], prefix="/v1")
 
 functional_zones_router = APIRouter(tags=["functional_zones"], prefix="/v1")
 
+physical_object_types_router = APIRouter(tags=["physical_object_types"], prefix="/v1")
+
 physical_objects_router = APIRouter(tags=["physical_objects"], prefix="/v1")
 
 object_geometries_router = APIRouter(tags=["object_geometries"], prefix="/v1")
@@ -26,6 +28,7 @@ routers_list = [
     indicators_router,
     services_router,
     functional_zones_router,
+    physical_object_types_router,
     physical_objects_router,
     object_geometries_router,
     service_types_router,

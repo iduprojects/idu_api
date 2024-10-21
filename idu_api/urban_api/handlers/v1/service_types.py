@@ -113,7 +113,7 @@ async def get_urban_functions_by_parent_id(
     name: str | None = Query(None, description="Search by urban function name"),
     get_all_subtree: bool = Query(False, description="Getting full subtree of urban functions"),
 ) -> list[UrbanFunction]:
-    """Get indicators by parent id (skip it to get upper level)."""
+    """Get urban functions by parent id (skip it to get upper level)."""
     service_types_service: ServiceTypesService = request.state.service_types_service
 
     urban_functions = await service_types_service.get_urban_functions_by_parent_id(parent_id, name, get_all_subtree)

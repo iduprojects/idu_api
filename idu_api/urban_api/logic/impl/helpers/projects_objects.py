@@ -151,6 +151,9 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                         geometry=ST_GeomFromText(str(urban_object.geometry), text("4326")),
                         centre_point=ST_GeomFromText(str(urban_object.centre_point), text("4326")),
                         address=urban_object.address,
+                        osm_id=urban_object.osm_id,
+                        created_at=urban_object.object_geometry_created_at,
+                        updated_at=urban_object.object_geometry_updated_at,
                     )
                     .returning(projects_object_geometries_data.c.object_geometry_id)
                 )

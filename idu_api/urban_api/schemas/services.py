@@ -52,6 +52,7 @@ class ServicesData(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
                 infrastructure_type=dto.infrastructure_type,
+                properties=dto.service_type_properties,
             ),
             territory_type=(
                 TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
@@ -100,6 +101,7 @@ class ServiceWithTerritories(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
                 infrastructure_type=dto.infrastructure_type,
+                properties=dto.service_type_properties,
             ),
             territory_type=(
                 TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
@@ -201,6 +203,7 @@ class ServicesDataWithGeometry(BaseModel):
                 capacity_modeled=dto.service_type_capacity_modeled,
                 code=dto.service_type_code,
                 infrastructure_type=dto.infrastructure_type,
+                properties=dto.service_type_properties,
             ),
             territory_type=(
                 TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)

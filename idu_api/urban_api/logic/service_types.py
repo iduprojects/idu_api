@@ -26,15 +26,15 @@ class ServiceTypesService(Protocol):
         """Create service type object."""
 
     @abc.abstractmethod
-    async def put_service_type(self, service_type_id: int, service_type: ServiceTypesPut):
+    async def put_service_type(self, service_type_id: int, service_type: ServiceTypesPut) -> ServiceTypesDTO:
         """Update service type object by getting all its attributes."""
 
     @abc.abstractmethod
-    async def patch_service_type(self, service_type_id: int, service_type: ServiceTypesPatch):
+    async def patch_service_type(self, service_type_id: int, service_type: ServiceTypesPatch) -> ServiceTypesDTO:
         """Update service type object by getting only given attributes."""
 
     @abc.abstractmethod
-    async def delete_service_type(self, service_type_id: int):
+    async def delete_service_type(self, service_type_id: int) -> dict:
         """Delete service type object by id."""
 
     @abc.abstractmethod
@@ -51,15 +51,17 @@ class ServiceTypesService(Protocol):
         """Create urban function object."""
 
     @abc.abstractmethod
-    async def put_urban_function(self, urban_function_id: int, urban_function: UrbanFunctionPut):
+    async def put_urban_function(self, urban_function_id: int, urban_function: UrbanFunctionPut) -> UrbanFunctionDTO:
         """Update urban function object by getting all its attributes."""
 
     @abc.abstractmethod
-    async def patch_urban_function(self, urban_function_id: int, urban_function: UrbanFunctionPatch):
+    async def patch_urban_function(
+        self, urban_function_id: int, urban_function: UrbanFunctionPatch
+    ) -> UrbanFunctionDTO:
         """Update urban function object by getting only given attributes."""
 
     @abc.abstractmethod
-    async def delete_urban_function(self, urban_function_id: int):
+    async def delete_urban_function(self, urban_function_id: int) -> dict:
         """Delete urban function object by id."""
 
     @abc.abstractmethod

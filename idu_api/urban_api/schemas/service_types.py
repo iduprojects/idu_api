@@ -31,6 +31,11 @@ class ServiceTypes(BaseModel):
     infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
         ..., description="infrastructure type", examples=["basic"]
     )
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Service type additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
 
     @field_validator("infrastructure_type", mode="before")
     @staticmethod
@@ -54,6 +59,7 @@ class ServiceTypes(BaseModel):
             capacity_modeled=dto.capacity_modeled,
             code=dto.code,
             infrastructure_type=dto.infrastructure_type,
+            properties=dto.properties,
         )
 
 
@@ -65,6 +71,11 @@ class ServiceTypesPost(BaseModel):
     infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
         ..., description="infrastructure type", examples=["basic"]
     )
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Service type additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
 
 
 class ServiceTypesPut(BaseModel):
@@ -75,6 +86,11 @@ class ServiceTypesPut(BaseModel):
     infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
         ..., description="infrastructure type", examples=["basic"]
     )
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Service type additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
 
 
 class ServiceTypesPatch(BaseModel):
@@ -84,6 +100,11 @@ class ServiceTypesPatch(BaseModel):
     code: str | None = Field(None, description="Service type code", examples=["1"])
     infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
         None, description="infrastructure type", examples=["basic"]
+    )
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Service type additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
     @model_validator(mode="before")

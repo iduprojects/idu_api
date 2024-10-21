@@ -72,6 +72,7 @@ async def add_service_type_to_db(
             capacity_modeled=service_type.capacity_modeled,
             code=service_type.code,
             infrastructure_type=service_type.infrastructure_type,
+            properties=service_type.properties,
         )
         .returning(service_types_dict.c.service_type_id)
     )
@@ -129,6 +130,7 @@ async def put_service_type_to_db(
             capacity_modeled=service_type.capacity_modeled,
             code=service_type.code,
             infrastructure_type=service_type.infrastructure_type,
+            properties=service_type.properties,
         )
     )
     await conn.execute(statement)
@@ -271,7 +273,7 @@ async def get_urban_functions_by_parent_id_from_db(
 
     result = (await conn.execute(statement)).mappings().all()
 
-    return [UrbanFunctionDTO(**indicator) for indicator in result]
+    return [UrbanFunctionDTO(**urban_function) for urban_function in result]
 
 
 async def add_urban_function_to_db(
@@ -505,5 +507,4 @@ async def get_service_types_hierarchy_from_db(
 
         return children
 
-    hierarchy = build_filtered_hierarchy()
-    return hierarchy
+    return build_filtered_hierarchy()

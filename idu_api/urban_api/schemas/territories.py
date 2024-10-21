@@ -1,6 +1,4 @@
-"""
-Territory schemas are defined here.
-"""
+"""Territory schemas are defined here."""
 
 from datetime import datetime
 from enum import Enum
@@ -57,21 +55,21 @@ class TerritoryData(BaseModel):
     territory_id: int = Field(..., examples=[1])
     territory_type: TerritoryType
     parent: TerritoryShortInfo | None
-    name: str = Field(..., description="Territory name", examples=["--"])
+    name: str = Field(..., description="territory name", examples=["--"])
     geometry: Geometry
     level: int = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Service additional properties",
+        description="territory additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
     centre_point: Geometry
     admin_center: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the territory was created")
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="The time when the territory was last updated"
+        default_factory=datetime.utcnow, description="the time when the territory was last updated"
     )
 
     @classmethod

@@ -22,9 +22,7 @@ class TerritoryTypeDTO:
 
 @dataclass
 class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
-    """
-    Territory DTO used to transfer territory data
-    """
+    """Territory DTO used to transfer territory data."""
 
     territory_id: int
     territory_type_id: int
@@ -59,9 +57,7 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
 
 @dataclass(frozen=True)
 class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attributes
-    """
-    Territory DTO used to transfer territory data without geometry
-    """
+    """Territory DTO used to transfer territory data without geometry."""
 
     territory_id: int
     territory_type_id: int
@@ -79,9 +75,7 @@ class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attribut
 
 @dataclass
 class TerritoryWithIndicatorDTO:
-    """
-    Territory DTO used to transfer short territory data with indicator
-    """
+    """Territory DTO used to transfer short territory data with indicator."""
 
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
@@ -105,9 +99,7 @@ class TerritoryWithIndicatorDTO:
 
 @dataclass
 class TerritoryWithIndicatorsDTO:
-    """
-    Territory DTO used to transfer short territory data with list of indicators
-    """
+    """Territory DTO used to transfer short territory data with list of indicators."""
 
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
@@ -137,9 +129,7 @@ class TerritoryWithIndicatorsDTO:
 
 @dataclass
 class TerritoryWithNormativesDTO:
-    """
-    Territory DTO used to transfer short territory data with list of indicators
-    """
+    """Territory DTO used to transfer short territory data with list of indicators."""
 
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point

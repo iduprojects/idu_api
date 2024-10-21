@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
 from idu_api.urban_api.schemas.geometries import Geometry
+from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, PhysicalObjectsTypes
 
 
@@ -32,7 +33,11 @@ class LivingBuildingsWithGeometry(BaseModel):
             physical_object=PhysicalObjectsData(
                 physical_object_id=dto.physical_object_id,
                 physical_object_type=PhysicalObjectsTypes(
-                    physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
+                    physical_object_type_id=dto.physical_object_type_id,
+                    name=dto.physical_object_type_name,
+                    physical_object_function=PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    ),
                 ),
                 name=dto.physical_object_name,
                 properties=dto.physical_object_properties,
@@ -70,7 +75,11 @@ class LivingBuildingsData(BaseModel):
             physical_object=PhysicalObjectsData(
                 physical_object_id=dto.physical_object_id,
                 physical_object_type=PhysicalObjectsTypes(
-                    physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
+                    physical_object_type_id=dto.physical_object_type_id,
+                    name=dto.physical_object_type_name,
+                    physical_object_function=PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    ),
                 ),
                 name=dto.physical_object_name,
                 created_at=dto.physical_object_created_at,

@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
     object_geometries_data,
+    physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
     territories_data,
@@ -41,6 +42,8 @@ async def get_physical_objects_by_object_geometry_id_from_db(
             physical_objects_data.c.properties,
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_functions_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
             physical_objects_data.c.created_at,
             physical_objects_data.c.updated_at,
         )
@@ -52,6 +55,11 @@ async def get_physical_objects_by_object_geometry_id_from_db(
             .join(
                 physical_object_types_dict,
                 physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
+            )
+            .join(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
             .join(
                 object_geometries_data,

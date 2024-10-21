@@ -7,7 +7,6 @@ from idu_api.urban_api.dto import (
     LivingBuildingsDTO,
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
-    PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
     ServiceDTO,
@@ -17,13 +16,11 @@ from idu_api.urban_api.dto import (
 from idu_api.urban_api.logic.impl.helpers.physical_objects import (
     add_living_building_to_db,
     add_physical_object_to_object_geometry_in_db,
-    add_physical_object_type_to_db,
     add_physical_object_with_geometry_to_db,
     delete_living_building_in_db,
     delete_physical_object_in_db,
     get_living_buildings_by_physical_object_id_from_db,
     get_physical_object_geometries_from_db,
-    get_physical_object_types_from_db,
     get_physical_object_with_territories_by_id_from_db,
     get_physical_objects_around_from_db,
     get_physical_objects_by_ids_from_db,
@@ -42,7 +39,6 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPatch,
     PhysicalObjectsDataPost,
     PhysicalObjectsDataPut,
-    PhysicalObjectsTypesPost,
     PhysicalObjectWithGeometryPost,
 )
 
@@ -65,12 +61,6 @@ class PhysicalObjectsServiceImpl(PhysicalObjectsService):
         self, geometry: Geom, physical_object_type_id: int | None, buffer_meters: int
     ) -> list[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_around_from_db(self._conn, geometry, physical_object_type_id, buffer_meters)
-
-    async def get_physical_object_types(self) -> list[PhysicalObjectTypeDTO]:
-        return await get_physical_object_types_from_db(self._conn)
-
-    async def add_physical_object_type(self, physical_object_type: PhysicalObjectsTypesPost) -> PhysicalObjectTypeDTO:
-        return await add_physical_object_type_to_db(self._conn, physical_object_type)
 
     async def add_physical_object_with_geometry(
         self, physical_object: PhysicalObjectWithGeometryPost
