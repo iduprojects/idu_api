@@ -8,18 +8,12 @@ import shapely.geometry as geom
 
 
 @dataclass(frozen=True)
-class PhysicalObjectTypeDTO:
-    """Physical object type with all its attributes."""
-
-    physical_object_type_id: int
-    name: str
-
-
-@dataclass(frozen=True)
 class PhysicalObjectDataDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
+    physical_object_function_id: int
+    physical_object_function_name: str
     name: str | None
     properties: dict[str, Any]
     created_at: datetime
@@ -31,6 +25,8 @@ class PhysicalObjectWithGeometryDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
+    physical_object_function_id: int
+    physical_object_function_name: str
     name: str | None
     address: str | None
     osm_id: str | None
@@ -53,6 +49,10 @@ class PhysicalObjectWithGeometryDTO:
         physical_object_type = {
             "physical_object_type_id": physical_object.pop("physical_object_type_id", None),
             "name": physical_object.pop("physical_object_type_name", None),
+            "physical_object_function": {
+                "id": physical_object.pop("physical_object_function_id", None),
+                "name": physical_object.pop("physical_object_function_name", None),
+            },
         }
         physical_object["physical_object_type"] = physical_object_type
 
@@ -64,6 +64,8 @@ class PhysicalObjectWithTerritoryDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
+    physical_object_function_id: int
+    physical_object_function_name: str
     name: str | None
     properties: dict[str, Any]
     territories: list[dict[str, Any]]

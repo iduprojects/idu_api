@@ -8,7 +8,8 @@ Current list is:
 - service_types_dict
 """
 
-from sqlalchemy import Column, Enum, ForeignKey, Integer, Sequence, String, Table, Text
+from sqlalchemy import Column, Enum, ForeignKey, Integer, Sequence, String, Table, Text, text
+from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.enums import InfrastructureType
@@ -49,12 +50,19 @@ physical_object_types_dict = Table(
         server_default=physical_object_types_dict_id_seq.next_value(),
     ),
     Column("name", String(200), nullable=False, unique=True),
+    Column(
+        "physical_object_function_id",
+        Integer,
+        ForeignKey("physical_object_functions_dict.physical_object_function_id"),
+        nullable=True,
+    ),
 )
 
 """
 Physical object types:
 - physical_object_type_id int 
 - name string(200)
+- physical_object_function_id foreign key int
 """
 
 territory_types_dict_id_seq = Sequence("territory_types_dict_id_seq")
@@ -84,6 +92,7 @@ service_types_dict = Table(
     Column("capacity_modeled", Integer),
     Column("code", String(50), nullable=False),
     Column("infrastructure_type", InfrastructureTypeEnum, default=InfrastructureType.basic, nullable=False),
+    Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
 )
 
 """
@@ -94,4 +103,5 @@ Service types:
 - capacity_modeled int
 - code string(50)
 - infrastructure_type enum
+- properties jsonb
 """

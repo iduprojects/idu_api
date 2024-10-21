@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
     object_geometries_data,
+    physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
     service_types_dict,
@@ -27,6 +28,8 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             urban_objects_data,
             physical_objects_data.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
             physical_objects_data.c.created_at.label("physical_object_created_at"),
@@ -50,6 +53,7 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
             service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
         )
@@ -65,6 +69,11 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             .join(
                 physical_object_types_dict,
                 physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
+            )
+            .join(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
             .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)

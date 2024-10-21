@@ -12,6 +12,7 @@ from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.logic.impl.functional_zones import FunctionalZonesServiceImpl
 from idu_api.urban_api.logic.impl.indicators import IndicatorsServiceImpl
 from idu_api.urban_api.logic.impl.object_geometries import ObjectGeometriesServiceImpl
+from idu_api.urban_api.logic.impl.physical_object_types import PhysicalObjectTypesServiceImpl
 from idu_api.urban_api.logic.impl.physical_objects import PhysicalObjectsServiceImpl
 from idu_api.urban_api.logic.impl.projects import UserProjectServiceImpl
 from idu_api.urban_api.logic.impl.service_types import ServiceTypesServiceImpl
@@ -83,6 +84,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
         functional_zones_service=FunctionalZonesServiceImpl,
         indicators_service=IndicatorsServiceImpl,
         object_geometries_service=ObjectGeometriesServiceImpl,
+        physical_object_types_service=PhysicalObjectTypesServiceImpl,
         physical_objects_service=PhysicalObjectsServiceImpl,
         service_types_service=ServiceTypesServiceImpl,
         services_data_service=ServicesDataServiceImpl,
