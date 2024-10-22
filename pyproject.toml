@@ -51,7 +51,7 @@ target-version = ['py311']
 
 [tool.pylint.format]
 max-line-length = 120
-expected-line-ending-format = "CRLF"
+expected-line-ending-format = "LF"
 max-locals = 20
 max-attributes = 10
 max-args = 9
