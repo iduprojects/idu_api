@@ -15,9 +15,63 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import PageDTO, PhysicalObjectDataDTO, PhysicalObjectWithGeometryDTO
+from idu_api.urban_api.dto import PageDTO, PhysicalObjectDataDTO, PhysicalObjectTypeDTO, PhysicalObjectWithGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.utils.pagination import paginate_dto
+
+
+async def get_physical_object_types_by_territory_id_from_db(
+    conn: AsyncConnection, territory_id: int
+) -> list[PhysicalObjectTypeDTO]:
+    """Get all physical object types that are located in given territory."""
+
+    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    territory = (await conn.execute(statement)).one_or_none()
+    if territory is None:
+        raise EntityNotFoundById(territory_id, "territory")
+
+    territories_cte = (
+        select(territories_data.c.territory_id)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
+    )
+
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
+    statement = (
+        select(physical_object_types_dict, physical_object_functions_dict.c.name.label("physical_object_function_name"))
+        .select_from(
+            territories_data.join(
+                object_geometries_data,
+                object_geometries_data.c.territory_id == territories_data.c.territory_id,
+            )
+            .join(
+                urban_objects_data,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+            )
+            .join(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
+            )
+            .outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
+            )
+        )
+        .where(territories_data.c.territory_id.in_(select(territories_cte)))
+        .order_by(physical_object_types_dict.c.physical_object_type_id)
+        .distinct()
+    )
+    physical_object_types = (await conn.execute(statement)).mappings().all()
+
+    return [PhysicalObjectTypeDTO(**s) for s in physical_object_types]
 
 
 async def get_physical_objects_by_territory_id_from_db(

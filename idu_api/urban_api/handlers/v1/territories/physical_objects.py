@@ -6,7 +6,7 @@ from geojson_pydantic.geometries import Geometry
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
-from idu_api.urban_api.schemas import PhysicalObjectsData, PhysicalObjectWithGeometry
+from idu_api.urban_api.schemas import PhysicalObjectsData, PhysicalObjectsTypes, PhysicalObjectWithGeometry
 from idu_api.urban_api.schemas.enums import Ordering
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.schemas.pages import Page
@@ -14,6 +14,23 @@ from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsOrderByFie
 from idu_api.urban_api.utils.pagination import paginate
 
 from .routers import territories_router
+
+
+@territories_router.get(
+    "/territory/{territory_id}/physical_object_types",
+    response_model=list[PhysicalObjectsTypes],
+    status_code=status.HTTP_200_OK,
+)
+async def get_physical_object_types_by_territory_id(
+    request: Request,
+    territory_id: int = Path(..., description="territory id", gt=0),
+) -> list[PhysicalObjectsTypes]:
+    """Get physical object types for territory by territory identifier."""
+    territories_service: TerritoriesService = request.state.territories_service
+
+    physical_object_types = await territories_service.get_physical_object_types_by_territory_id(territory_id)
+
+    return [PhysicalObjectsTypes.from_dto(service_type) for service_type in physical_object_types]
 
 
 @territories_router.get(

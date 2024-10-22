@@ -64,6 +64,7 @@ async def get_service_types_by_territory_id_from_db(conn: AsyncConnection, terri
             )
         )
         .where(territories_data.c.territory_id.in_(select(territories_cte)))
+        .order_by(service_types_dict.c.service_type_id)
         .distinct()
     )
     service_types = (await conn.execute(statement)).mappings().all()

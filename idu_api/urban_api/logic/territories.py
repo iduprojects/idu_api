@@ -14,6 +14,7 @@ from idu_api.urban_api.dto import (
     NormativeDTO,
     PageDTO,
     PhysicalObjectDataDTO,
+    PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
     ServicesCountCapacityDTO,
@@ -174,6 +175,10 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         year: int,
     ) -> list[TerritoryWithNormativesDTO]:
         """Get list of normatives with values for territory by parent id and year."""
+
+    @abc.abstractmethod
+    async def get_physical_object_types_by_territory_id(self, territory_id: int) -> list[PhysicalObjectTypeDTO]:
+        """Get all physical object types for given territory."""
 
     @abc.abstractmethod
     async def get_physical_objects_by_territory_id(

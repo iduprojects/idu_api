@@ -15,6 +15,7 @@ from idu_api.urban_api.dto import (
     NormativeDTO,
     PageDTO,
     PhysicalObjectDataDTO,
+    PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
     ServicesCountCapacityDTO,
@@ -46,6 +47,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_normatives import (
     put_normatives_by_territory_id_in_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_physical_objects import (
+    get_physical_object_types_by_territory_id_from_db,
     get_physical_objects_by_territory_id_from_db,
     get_physical_objects_with_geometry_by_territory_id_from_db,
 )
@@ -220,6 +222,9 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         self, parent_id: int | None, year: int
     ) -> list[TerritoryWithNormativesDTO]:
         return await get_normatives_values_by_parent_id_from_db(self._conn, parent_id, year)
+
+    async def get_physical_object_types_by_territory_id(self, territory_id: int) -> list[PhysicalObjectTypeDTO]:
+        return await get_physical_object_types_by_territory_id_from_db(self._conn, territory_id)
 
     async def get_physical_objects_by_territory_id(
         self,
