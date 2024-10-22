@@ -1,0 +1,59 @@
+name: deploy
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  deploy-509:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Run command on remote server
+      uses: D3rHase/ssh-command-action@v0.2.2
+      with:
+        host: ${{secrets.SSH_HOST_509}}
+        user: ${{secrets.SSH_USER_509}}
+        private_key: ${{secrets.SSH_PRIVATE_KEY_509}}
+        command: |
+          echo '--- START WORK ON REMOTE SERVER ---';
+          cd ${{ secrets.PROJECT_FOLDER_509 }};
+          echo '--- LIST OF FILES ---';
+          ls -al;
+          echo '--- GIT INFORMATION ---'
+          git co main;
+          git pull;
+          echo '--- DOCKER OPERATIONS ---';
+          docker compose down;
+          echo '--- LIST OF DOCKER CONTAINERS AFTER STOPPING DOCKER CONTAINERS ---';
+          docker ps;
+          docker compose up -d --build;
+          docker system prune --all --force;
+          echo '--- LIST OF DOCKER CONTAINERS AFTER STARTING DOCKER CONTAINERS ---';
+          docker ps;
+  deploy-107:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run command on remote server
+        uses: D3rHase/ssh-command-action@v0.2.2
+        with:
+          host: ${{secrets.SSH_HOST_107}}
+          user: ${{secrets.SSH_USER_107}}
+          private_key: ${{secrets.SSH_PRIVATE_KEY_107}}
+          command: |
+            echo '--- START WORK ON REMOTE SERVER ---';
+            cd ${{ secrets.PROJECT_FOLDER_107 }};
+            echo '--- LIST OF FILES ---';
+            ls -al;
+            echo '--- GIT INFORMATION ---'
+            git co main;
+            git pull;
+            echo '--- DOCKER OPERATIONS ---';
+            docker compose down;
+            echo '--- LIST OF DOCKER CONTAINERS AFTER STOPPING DOCKER CONTAINERS ---';
+            docker ps;
+            docker compose up -d --build;
+            docker system prune --all --force;
+            echo '--- LIST OF DOCKER CONTAINERS AFTER STARTING DOCKER CONTAINERS ---';
+            docker ps;
