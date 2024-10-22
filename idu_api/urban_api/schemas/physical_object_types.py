@@ -30,7 +30,7 @@ class PhysicalObjectsTypes(BaseModel):
 
     physical_object_type_id: int = Field(..., description="physical object type identifier", examples=[1])
     name: str = Field(..., description="physical object type unit name", examples=["Здание"])
-    physical_object_function: PhysicalObjectFunctionBasic
+    physical_object_function: PhysicalObjectFunctionBasic | None
 
     @classmethod
     def from_dto(cls, dto: PhysicalObjectTypeDTO) -> "PhysicalObjectsTypes":
@@ -40,9 +40,13 @@ class PhysicalObjectsTypes(BaseModel):
         return cls(
             physical_object_type_id=dto.physical_object_type_id,
             name=dto.name,
-            physical_object_function=PhysicalObjectFunctionBasic(
-                id=dto.physical_object_function_id,
-                name=dto.physical_object_function_name,
+            physical_object_function=(
+                PhysicalObjectFunctionBasic(
+                    id=dto.physical_object_function_id,
+                    name=dto.physical_object_function_name,
+                )
+                if dto.physical_object_function_id is not None
+                else None
             ),
         )
 

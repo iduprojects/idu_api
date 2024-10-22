@@ -70,7 +70,7 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
                 physical_object_types_dict,
                 physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
             )
-            .join(
+            .outerjoin(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,

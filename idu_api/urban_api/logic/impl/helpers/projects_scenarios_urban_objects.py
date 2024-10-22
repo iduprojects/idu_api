@@ -72,7 +72,7 @@ async def get_scenario_urban_object_by_id_from_db(
                 physical_object_types_dict.c.physical_object_type_id
                 == projects_physical_objects_data.c.physical_object_type_id,
             )
-            .join(
+            .outerjoin(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,

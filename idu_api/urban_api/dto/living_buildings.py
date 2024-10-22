@@ -13,8 +13,8 @@ class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attri
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    physical_object_function_id: int
-    physical_object_function_name: str
+    physical_object_function_id: int | None
+    physical_object_function_name: str | None
     physical_object_name: str | None
     physical_object_properties: dict[str, str]
     physical_object_created_at: datetime

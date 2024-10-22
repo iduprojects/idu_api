@@ -69,7 +69,7 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
-            .join(
+            .outerjoin(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,

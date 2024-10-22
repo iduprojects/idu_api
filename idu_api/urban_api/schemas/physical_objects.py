@@ -47,8 +47,12 @@ class PhysicalObjectsData(BaseModel):
             physical_object_type=PhysicalObjectsTypes(
                 physical_object_type_id=dto.physical_object_type_id,
                 name=dto.physical_object_type_name,
-                physical_object_function=PhysicalObjectFunctionBasic(
-                    id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                physical_object_function=(
+                    PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    )
+                    if dto.physical_object_function_id is not None
+                    else None
                 ),
             ),
             name=dto.name,
@@ -85,8 +89,12 @@ class PhysicalObjectsWithTerritory(BaseModel):
             physical_object_type=PhysicalObjectsTypes(
                 physical_object_type_id=dto.physical_object_type_id,
                 name=dto.physical_object_type_name,
-                physical_object_function=PhysicalObjectFunctionBasic(
-                    id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                physical_object_function=(
+                    PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    )
+                    if dto.physical_object_function_id is not None
+                    else None
                 ),
             ),
             name=dto.name,
@@ -128,8 +136,12 @@ class PhysicalObjectWithGeometry(BaseModel):
             physical_object_type=PhysicalObjectsTypes(
                 physical_object_type_id=dto.physical_object_type_id,
                 name=dto.physical_object_type_name,
-                physical_object_function=PhysicalObjectFunctionBasic(
-                    id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                physical_object_function=(
+                    PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    )
+                    if dto.physical_object_function_id is not None
+                    else None
                 ),
             ),
             name=dto.name,
