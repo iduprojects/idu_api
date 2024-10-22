@@ -310,6 +310,7 @@ async def add_physical_object_to_scenario_in_db(
             geometry=ST_GeomFromText(str(physical_object.geometry.as_shapely_geometry()), text("4326")),
             centre_point=ST_GeomFromText(str(physical_object.centre_point.as_shapely_geometry()), text("4326")),
             address=physical_object.address,
+            osm_id=physical_object.osm_id,
         )
         .returning(projects_object_geometries_data.c.object_geometry_id)
     )

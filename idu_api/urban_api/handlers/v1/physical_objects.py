@@ -14,8 +14,6 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPatch,
     PhysicalObjectsDataPost,
     PhysicalObjectsDataPut,
-    PhysicalObjectsTypes,
-    PhysicalObjectsTypesPost,
     PhysicalObjectsWithTerritory,
     PhysicalObjectWithGeometryPost,
     ServicesData,
@@ -26,36 +24,6 @@ from idu_api.urban_api.schemas.physical_objects import PhysicalObjectWithGeometr
 from idu_api.urban_api.schemas.urban_objects import UrbanObject
 
 from .routers import physical_objects_router
-
-
-@physical_objects_router.get(
-    "/physical_object_types",
-    response_model=list[PhysicalObjectsTypes],
-    status_code=status.HTTP_200_OK,
-)
-async def get_physical_object_types(request: Request) -> list[PhysicalObjectsTypes]:
-    """Get all physical object types."""
-    physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
-
-    physical_object_types = await physical_objects_service.get_physical_object_types()
-
-    return [PhysicalObjectsTypes.from_dto(object_type) for object_type in physical_object_types]
-
-
-@physical_objects_router.post(
-    "/physical_object_types",
-    response_model=PhysicalObjectsTypes,
-    status_code=status.HTTP_201_CREATED,
-)
-async def add_physical_object_type(
-    request: Request, physical_object_type: PhysicalObjectsTypesPost
-) -> PhysicalObjectsTypes:
-    """Add a physical object type."""
-    physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
-
-    physical_object_type_dto = await physical_objects_service.add_physical_object_type(physical_object_type)
-
-    return PhysicalObjectsTypes.from_dto(physical_object_type_dto)
 
 
 @physical_objects_router.post(

@@ -1,6 +1,4 @@
-"""
-Data Transfer Objects (much like entities from database) are defined in this module.
-"""
+"""Data Transfer Objects (much like entities from database) are defined in this module."""
 
 from .functional_zones import FunctionalZoneDataDTO, FunctionalZoneTypeDTO
 from .indicators import IndicatorDTO, IndicatorsGroupDTO, IndicatorValueDTO, MeasurementUnitDTO
@@ -8,9 +6,13 @@ from .living_buildings import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
 from .normatives import NormativeDTO
 from .object_geometries import ObjectGeometryDTO
 from .pages import PageDTO
+from .physical_object_types import (
+    PhysicalObjectFunctionDTO,
+    PhysicalObjectTypeDTO,
+    PhysicalObjectTypesHierarchyDTO,
+)
 from .physical_objects import (
     PhysicalObjectDataDTO,
-    PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
 )
@@ -52,7 +54,9 @@ __all__ = [
     "ObjectGeometryDTO",
     "PageDTO",
     "PhysicalObjectDataDTO",
+    "PhysicalObjectFunctionDTO",
     "PhysicalObjectTypeDTO",
+    "PhysicalObjectTypesHierarchyDTO",
     "PhysicalObjectWithGeometryDTO",
     "PhysicalObjectWithTerritoryDTO",
     "LivingBuildingsDTO",

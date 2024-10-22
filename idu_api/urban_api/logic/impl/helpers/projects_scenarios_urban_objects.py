@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    physical_object_functions_dict,
     physical_object_types_dict,
     projects_object_geometries_data,
     projects_physical_objects_data,
@@ -27,6 +28,8 @@ async def get_scenario_urban_object_by_id_from_db(
             projects_urban_objects_data,
             projects_physical_objects_data.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
             projects_physical_objects_data.c.name.label("physical_object_name"),
             projects_physical_objects_data.c.properties.label("physical_object_properties"),
             projects_physical_objects_data.c.created_at.label("physical_object_created_at"),
@@ -50,6 +53,7 @@ async def get_scenario_urban_object_by_id_from_db(
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
             service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
         )
@@ -67,6 +71,11 @@ async def get_scenario_urban_object_by_id_from_db(
                 physical_object_types_dict,
                 physical_object_types_dict.c.physical_object_type_id
                 == projects_physical_objects_data.c.physical_object_type_id,
+            )
+            .outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
             .outerjoin(
                 projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id

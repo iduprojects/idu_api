@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import shapely.geometry as geom
 
@@ -12,6 +12,8 @@ class ScenarioUrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
+    physical_object_function_id: int | None
+    physical_object_function_name: str | None
     physical_object_name: str | None
     physical_object_properties: dict[str, Any]
     physical_object_created_at: datetime
@@ -32,11 +34,12 @@ class ScenarioUrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     service_type_capacity_modeled: int | None
     service_type_code: str | None
     infrastructure_type: str | None
+    service_type_properties: dict[str, Any] | None
     territory_type_id: int | None
     territory_type_name: str | None
     service_name: str | None
     capacity_real: int | None
-    service_properties: Optional[dict[str, Any]]
+    service_properties: dict[str, Any] | None
     service_created_at: datetime | None
     service_updated_at: datetime | None
 

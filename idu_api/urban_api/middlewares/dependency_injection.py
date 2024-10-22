@@ -1,4 +1,4 @@
-"""Dependency indejction middleware is defined here."""
+"""Dependency injection middleware is defined here."""
 
 from asyncio import Lock
 from typing import Any, Callable

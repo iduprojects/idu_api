@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from idu_api.common.db.entities import (
     living_buildings_data,
     object_geometries_data,
+    physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
     service_types_dict,
@@ -26,7 +27,6 @@ from idu_api.urban_api.dto import (
     LivingBuildingsDTO,
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
-    PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
     ServiceDTO,
@@ -35,7 +35,6 @@ from idu_api.urban_api.dto import (
 )
 from idu_api.urban_api.exceptions.logic.common import (
     EntitiesNotFoundByIds,
-    EntityAlreadyExists,
     EntityNotFoundById,
     TooManyObjectsError,
 )
@@ -47,7 +46,6 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPatch,
     PhysicalObjectsDataPost,
     PhysicalObjectsDataPut,
-    PhysicalObjectsTypesPost,
     PhysicalObjectWithGeometryPost,
 )
 
@@ -69,6 +67,8 @@ async def get_physical_objects_by_ids_from_db(
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
@@ -86,6 +86,11 @@ async def get_physical_objects_by_ids_from_db(
             .join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+            .outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
         )
         .where(physical_objects_data.c.physical_object_id.in_(ids))
@@ -169,39 +174,6 @@ async def get_physical_objects_around_from_db(
     return await get_physical_objects_by_ids_from_db(conn, ids)
 
 
-async def get_physical_object_types_from_db(conn: AsyncConnection) -> list[PhysicalObjectTypeDTO]:
-    """Get all physical object type objects."""
-
-    statement = select(physical_object_types_dict).order_by(physical_object_types_dict.c.physical_object_type_id)
-
-    return [PhysicalObjectTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
-
-
-async def add_physical_object_type_to_db(
-    conn: AsyncConnection,
-    physical_object_type: PhysicalObjectsTypesPost,
-) -> PhysicalObjectTypeDTO:
-    """Create physical object type object."""
-
-    statement = select(physical_object_types_dict).where(physical_object_types_dict.c.name == physical_object_type.name)
-    result = (await conn.execute(statement)).one_or_none()
-    if result is not None:
-        raise EntityAlreadyExists("physical object type", physical_object_type.name)
-
-    statement = (
-        insert(physical_object_types_dict)
-        .values(
-            name=physical_object_type.name,
-        )
-        .returning(physical_object_types_dict)
-    )
-    result = (await conn.execute(statement)).mappings().one()
-
-    await conn.commit()
-
-    return PhysicalObjectTypeDTO(**result)
-
-
 async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_object_id: int) -> PhysicalObjectDataDTO:
     """Get physical object by id."""
 
@@ -209,11 +181,17 @@ async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_obje
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
         )
         .select_from(
             physical_objects_data.join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            ).outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
         )
         .where(physical_objects_data.c.physical_object_id == physical_object_id)
@@ -380,6 +358,8 @@ async def get_living_building_by_id_from_db(conn: AsyncConnection, living_buildi
             physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_functions_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
         )
         .select_from(
             living_buildings_data.join(
@@ -389,6 +369,11 @@ async def get_living_building_by_id_from_db(conn: AsyncConnection, living_buildi
             .join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+            .outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
             .join(
                 urban_objects_data,
@@ -547,6 +532,8 @@ async def get_living_buildings_by_physical_object_id_from_db(
             physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_functions_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
         )
         .select_from(
             living_buildings_data.join(
@@ -556,6 +543,11 @@ async def get_living_buildings_by_physical_object_id_from_db(
             .join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+            .outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
             .join(
                 urban_objects_data,
@@ -600,6 +592,7 @@ async def get_services_by_physical_object_id_from_db(
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
             service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(
@@ -652,6 +645,7 @@ async def get_services_with_geometry_by_physical_object_id_from_db(
             service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
             service_types_dict.c.code.label("service_type_code"),
             service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.name.label("territory_type_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
@@ -774,11 +768,17 @@ async def get_physical_object_with_territories_by_id_from_db(
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
         )
         .select_from(
             physical_objects_data.join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            ).outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
         )
         .where(physical_objects_data.c.physical_object_id == physical_object_id)

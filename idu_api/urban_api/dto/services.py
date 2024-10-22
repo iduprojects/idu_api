@@ -17,6 +17,7 @@ class ServiceDTO:  # pylint: disable=too-many-instance-attributes
     service_type_capacity_modeled: int
     service_type_code: str
     infrastructure_type: str
+    service_type_properties: dict[str, Any]
     territory_type_id: int | None
     territory_type_name: str | None
     name: str | None
@@ -36,6 +37,7 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     service_type_capacity_modeled: int
     service_type_code: str
     infrastructure_type: str
+    service_type_properties: dict[str, Any]
     territory_type_id: int | None
     territory_type_name: str | None
     name: str | None
@@ -74,6 +76,7 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
             "capacity_modeled": service.pop("service_type_capacity_modeled", None),
             "code": service.pop("service_type_code", None),
             "infrastructure_type": service.pop("infrastructure_type", None),
+            "properties": service.pop("service_type_properties", None),
         }
         service["service_type"] = service_type
 
@@ -90,6 +93,7 @@ class ServiceWithTerritoriesDTO:  # pylint: disable=too-many-instance-attributes
     service_type_capacity_modeled: int
     service_type_code: str
     infrastructure_type: str
+    service_type_properties: dict[str, Any]
     territory_type_id: int | None
     territory_type_name: str | None
     name: str | None

@@ -1,3 +1,5 @@
+"""Physical object schemas are defined here."""
+
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
@@ -6,11 +8,11 @@ from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
-    PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
 )
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
+from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic, PhysicalObjectsTypes
 from idu_api.urban_api.schemas.territories import ShortTerritory
 
 
@@ -19,34 +21,8 @@ class PhysicalObjectsOrderByField(str, Enum):
     UPDATED_AT = "updated_at"
 
 
-class PhysicalObjectsTypes(BaseModel):
-    """
-    Physical object type with all its attributes
-    """
-
-    physical_object_type_id: int = Field(..., description="Physical object type id, if set", examples=[1])
-    name: str = Field(..., description="Physical object type unit name", examples=["Здание"])
-
-    @classmethod
-    def from_dto(cls, dto: PhysicalObjectTypeDTO) -> "PhysicalObjectsTypes":
-        """
-        Construct from DTO.
-        """
-        return cls(physical_object_type_id=dto.physical_object_type_id, name=dto.name)
-
-
-class PhysicalObjectsTypesPost(BaseModel):
-    """
-    Schema of physical object type for POST request
-    """
-
-    name: str = Field(..., description="Physical object type unit name", examples=["Здание"])
-
-
 class PhysicalObjectsData(BaseModel):
-    """
-    Physical object with all its attributes
-    """
+    """Physical object with all its attributes."""
 
     physical_object_id: int = Field(..., examples=[1])
     physical_object_type: PhysicalObjectsTypes
@@ -69,7 +45,15 @@ class PhysicalObjectsData(BaseModel):
         return cls(
             physical_object_id=dto.physical_object_id,
             physical_object_type=PhysicalObjectsTypes(
-                physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
+                physical_object_type_id=dto.physical_object_type_id,
+                name=dto.physical_object_type_name,
+                physical_object_function=(
+                    PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    )
+                    if dto.physical_object_function_id is not None
+                    else None
+                ),
             ),
             name=dto.name,
             properties=dto.properties,
@@ -79,9 +63,7 @@ class PhysicalObjectsData(BaseModel):
 
 
 class PhysicalObjectsWithTerritory(BaseModel):
-    """
-    Physical object with all its attributes and parent territory
-    """
+    """Physical object with all its attributes and parent territory."""
 
     physical_object_id: int = Field(..., examples=[1])
     physical_object_type: PhysicalObjectsTypes
@@ -105,7 +87,15 @@ class PhysicalObjectsWithTerritory(BaseModel):
         return cls(
             physical_object_id=dto.physical_object_id,
             physical_object_type=PhysicalObjectsTypes(
-                physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
+                physical_object_type_id=dto.physical_object_type_id,
+                name=dto.physical_object_type_name,
+                physical_object_function=(
+                    PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    )
+                    if dto.physical_object_function_id is not None
+                    else None
+                ),
             ),
             name=dto.name,
             properties=dto.properties,
@@ -144,7 +134,15 @@ class PhysicalObjectWithGeometry(BaseModel):
         return cls(
             physical_object_id=dto.physical_object_id,
             physical_object_type=PhysicalObjectsTypes(
-                physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
+                physical_object_type_id=dto.physical_object_type_id,
+                name=dto.physical_object_type_name,
+                physical_object_function=(
+                    PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    )
+                    if dto.physical_object_function_id is not None
+                    else None
+                ),
             ),
             name=dto.name,
             address=dto.address,
@@ -157,9 +155,7 @@ class PhysicalObjectWithGeometry(BaseModel):
 
 
 class PhysicalObjectWithGeometryPost(GeometryValidationModel):
-    """
-    Schema of physical object with geometry for POST request
-    """
+    """Schema of physical object with geometry for POST request."""
 
     territory_id: int = Field(..., examples=[1])
     geometry: Geometry
@@ -176,9 +172,7 @@ class PhysicalObjectWithGeometryPost(GeometryValidationModel):
 
 
 class PhysicalObjectsDataPost(BaseModel):
-    """
-    Schema of physical object for POST request
-    """
+    """Schema of physical object for POST request."""
 
     physical_object_type_id: int = Field(..., examples=[1])
     name: str | None = Field(None, description="Physical object name", examples=["--"])
@@ -190,9 +184,7 @@ class PhysicalObjectsDataPost(BaseModel):
 
 
 class PhysicalObjectsDataPut(BaseModel):
-    """
-    Schema of physical object for PUT request
-    """
+    """Schema of physical object for PUT request."""
 
     physical_object_type_id: int = Field(..., examples=[1])
     name: str | None = Field(..., description="Physical object name", examples=["--"])
@@ -204,9 +196,7 @@ class PhysicalObjectsDataPut(BaseModel):
 
 
 class PhysicalObjectsDataPatch(BaseModel):
-    """
-    Schema of physical object for PATCH request
-    """
+    """Schema of physical object for PATCH request."""
 
     physical_object_type_id: int | None = Field(None, examples=[1])
     name: str | None = Field(None, description="Physical object name", examples=["--"])

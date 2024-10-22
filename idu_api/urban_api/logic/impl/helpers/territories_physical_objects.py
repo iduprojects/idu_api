@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
     object_geometries_data,
+    physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
     territories_data,
@@ -49,6 +50,8 @@ async def get_physical_objects_by_territory_id_from_db(
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
         )
         .select_from(
             physical_objects_data.join(
@@ -62,6 +65,11 @@ async def get_physical_objects_by_territory_id_from_db(
             .join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+            .outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
         )
         .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
@@ -120,6 +128,8 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
@@ -137,6 +147,11 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
             .join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+            .outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
             )
         )
         .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))

@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from idu_api.urban_api.dto import UrbanObjectDTO
 from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.object_geometries import ObjectGeometries
+from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, PhysicalObjectsTypes
 from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
 from idu_api.urban_api.schemas.services import ServicesData
@@ -24,7 +25,15 @@ class UrbanObject(BaseModel):
             physical_object=PhysicalObjectsData(
                 physical_object_id=dto.physical_object_id,
                 physical_object_type=PhysicalObjectsTypes(
-                    physical_object_type_id=dto.physical_object_type_id, name=dto.physical_object_type_name
+                    physical_object_type_id=dto.physical_object_type_id,
+                    name=dto.physical_object_type_name,
+                    physical_object_function=(
+                        PhysicalObjectFunctionBasic(
+                            id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                        )
+                        if dto.physical_object_function_id is not None
+                        else None
+                    ),
                 ),
                 name=dto.physical_object_name,
                 properties=dto.physical_object_properties,
@@ -51,6 +60,7 @@ class UrbanObject(BaseModel):
                         capacity_modeled=dto.service_type_capacity_modeled,
                         code=dto.service_type_code,
                         infrastructure_type=dto.infrastructure_type,
+                        properties=dto.service_type_properties,
                     ),
                     territory_type=(
                         TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
