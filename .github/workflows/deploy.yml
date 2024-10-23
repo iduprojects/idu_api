@@ -23,7 +23,7 @@ jobs:
           git co main;
           git pull;
           echo '--- DOCKER OPERATIONS ---';
-          docker compose down;
+          docker compose down -f "urban_api/docker-compose.yml";
           echo '--- LIST OF DOCKER CONTAINERS AFTER STOPPING DOCKER CONTAINERS ---';
           docker ps;
           docker compose up -f "urban_api/docker-compose.yml" -d --build;
