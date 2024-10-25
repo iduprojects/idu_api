@@ -1,4 +1,5 @@
 import abc
+import io
 from typing import Protocol
 
 from idu_api.urban_api.dto import (
@@ -20,6 +21,7 @@ from idu_api.urban_api.schemas import (
     ScenariosPut,
     ServicesDataPost,
 )
+from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
 
 class UserProjectService(Protocol):
@@ -56,6 +58,22 @@ class UserProjectService(Protocol):
     @abc.abstractmethod
     async def patch_project(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO:
         """Patch project object."""
+
+    @abc.abstractmethod
+    async def upload_project_image(
+        self, minio_client: AsyncMinioClient, project_id: int, user_id: str, file: bytes
+    ) -> dict:
+        """Create project image preview and upload it (full and preview) to minio bucket."""
+
+    @abc.abstractmethod
+    async def get_full_project_image(self, minio_client: AsyncMinioClient, project_id: int, user_id: str) -> io.BytesIO:
+        """Get full image for given project."""
+
+    @abc.abstractmethod
+    async def get_preview_project_image(
+        self, minio_client: AsyncMinioClient, project_id: int, user_id: str
+    ) -> io.BytesIO:
+        """Get preview image for given project."""
 
     @abc.abstractmethod
     async def get_scenarios_by_project_id(self, project_id: int, user_id) -> list[ScenarioDTO]:

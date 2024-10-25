@@ -87,7 +87,7 @@ class ServiceTypesPut(BaseModel):
         ..., description="infrastructure type", examples=["basic"]
     )
     properties: dict[str, Any] = Field(
-        default_factory=dict,
+        ...,
         description="Service type additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
@@ -102,7 +102,7 @@ class ServiceTypesPatch(BaseModel):
         None, description="infrastructure type", examples=["basic"]
     )
     properties: dict[str, Any] = Field(
-        default_factory=dict,
+        None,
         description="Service type additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )

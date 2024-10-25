@@ -29,7 +29,9 @@ def test_valid_geometry():
 
 
 def test_invalid_geometry_type():
-    with pytest.raises(ValidationError, match="Input should be 'Point', 'Polygon', 'MultiPolygon' or 'LineString'"):
+    with pytest.raises(
+        ValidationError, match="Input should be 'Point', 'Polygon', 'MultiPolygon', 'LineString' or 'MultiLineString'"
+    ):
         Geometry(
             type="InvalidType",
             coordinates=[

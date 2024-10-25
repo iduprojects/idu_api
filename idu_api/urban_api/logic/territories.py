@@ -239,12 +239,14 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def get_common_territory_for_geometry(
-        self, geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+        self, geometry: geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
     ) -> TerritoryDTO | None:
         """Get the deepest territory which covers given geometry. None if there is no such territory."""
 
     @abc.abstractmethod
     async def get_intersecting_territories_for_geometry(
-        self, parent_territory: int, geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+        self,
+        parent_territory: int,
+        geometry: geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString,
     ) -> list[TerritoryDTO]:
         """Get all territories of the (level of given parent + 1) which intersect with given geometry."""

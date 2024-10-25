@@ -88,7 +88,6 @@ class Project(BaseModel):
     project_territory_id: int = Field(description="Project territory id", examples=[1])
     description: str | None = Field(None, description="Project description", examples=["--"])
     public: bool = Field(description="Project publicity", examples=[True])
-    image_url: str | None = Field(None, description="Project image url", examples=["url"])
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Project created at")
     updated_at: datetime = Field(default_factory=datetime.utcnow, description="Project updated at")
     properties: dict[str, Any] = Field(
@@ -106,7 +105,6 @@ class Project(BaseModel):
             project_territory_id=dto.project_territory_id,
             description=dto.description,
             public=dto.public,
-            image_url=dto.image_url,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
             properties=dto.properties,
@@ -120,7 +118,6 @@ class ProjectPost(BaseModel):
     project_territory_info: ProjectTerritoryPost
     description: str | None = Field(None, description="Project description", examples=["--"])
     public: bool = Field(description="Project publicity", examples=[True])
-    image_url: str | None = Field(None, description="Project image url", examples=["url"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Project's additional properties",
@@ -135,7 +132,6 @@ class ProjectPut(BaseModel):
     project_territory_info: ProjectTerritoryPost
     description: str | None = Field(None, description="Project description", examples=["--"])
     public: bool = Field(..., description="Project publicity", examples=[True])
-    image_url: str | None = Field(None, description="Project image url", examples=["url"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="Project's additional properties",
@@ -150,7 +146,6 @@ class ProjectPatch(BaseModel):
     project_territory_info: ProjectTerritoryPatch | None = None
     description: str | None = Field(None, description="Project description", examples=["--"])
     public: bool | None = Field(None, description="Project publicity", examples=[True])
-    image_url: str | None = Field(None, description="Project image url", examples=["url"])
     properties: dict[str, Any] | None = Field(
         default_factory=dict,
         description="Project's additional properties",

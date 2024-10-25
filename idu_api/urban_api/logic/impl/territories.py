@@ -4,7 +4,7 @@ from datetime import date, datetime
 from typing import Callable, Literal
 
 import shapely.geometry as geom
-from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
@@ -81,7 +81,7 @@ from idu_api.urban_api.schemas import (
 )
 
 func: Callable
-Geom = Point | Polygon | MultiPolygon | LineString
+Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString
 
 
 class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-public-methods
@@ -286,11 +286,13 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
 
     async def get_common_territory_for_geometry(
         self,
-        geometry: geom.Polygon | geom.MultiPolygon | geom.Point,
+        geometry: geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString,
     ) -> TerritoryDTO | None:
         return await get_common_territory_for_geometry(self._conn, geometry)
 
     async def get_intersecting_territories_for_geometry(
-        self, parent_territory: int, geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+        self,
+        parent_territory: int,
+        geometry: geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString,
     ) -> list[TerritoryDTO]:
         return await get_intersecting_territories_for_geometry(self._conn, parent_territory, geometry)

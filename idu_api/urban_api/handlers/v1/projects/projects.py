@@ -1,13 +1,15 @@
 """Projects endpoints are defined here."""
 
-from fastapi import Depends, Path, Request
+from fastapi import Depends, File, HTTPException, Path, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from starlette import status
 
 from idu_api.urban_api.dto.users import UserDTO
 from idu_api.urban_api.handlers.v1.projects.routers import projects_router
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import Project, ProjectPatch, ProjectPost, ProjectPut, ProjectTerritory
-from idu_api.urban_api.utils.dependencies import user_dependency
+from idu_api.urban_api.utils.auth_client import user_dependency
+from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client
 
 
 @projects_router.get(
@@ -86,6 +88,63 @@ async def post_project(request: Request, project: ProjectPost, user: UserDTO = D
     project_dto = await user_project_service.add_project(project, user.id)
 
     return Project.from_dto(project_dto)
+
+
+@projects_router.put(
+    "/projects/{project_id}/image",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+)
+async def upload_project_image(
+    request: Request,
+    project_id: int = Path(..., description="project identifier"),
+    file: UploadFile = File(...),
+    user: UserDTO = Depends(user_dependency),
+    minio_client: AsyncMinioClient = Depends(get_minio_client),
+) -> dict:
+    """Upload project image to minio."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Uploaded file is not an image.")
+
+    return await user_project_service.upload_project_image(minio_client, project_id, user.id, await file.read())
+
+
+@projects_router.get(
+    "/projects/{project_id}/image",
+    status_code=status.HTTP_200_OK,
+)
+async def get_full_project_image(
+    request: Request,
+    project_id: int = Path(..., description="project identifier"),
+    user: UserDTO = Depends(user_dependency),
+    minio_client: AsyncMinioClient = Depends(get_minio_client),
+) -> StreamingResponse:
+    """Get full image for given project."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    image_stream = await user_project_service.get_full_project_image(minio_client, project_id, user.id)
+
+    return StreamingResponse(image_stream, media_type="image/jpeg")
+
+
+@projects_router.get(
+    "/projects/{project_id}/preview",
+    status_code=status.HTTP_200_OK,
+)
+async def get_preview_project_image(
+    request: Request,
+    project_id: int = Path(..., description="project identifier"),
+    user: UserDTO = Depends(user_dependency),
+    minio_client: AsyncMinioClient = Depends(get_minio_client),
+) -> StreamingResponse:
+    """Get preview image for given project."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    image_stream = await user_project_service.get_preview_project_image(minio_client, project_id, user.id)
+
+    return StreamingResponse(image_stream, media_type="image/png")
 
 
 @projects_router.put(

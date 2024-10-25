@@ -8,7 +8,7 @@ from idu_api.urban_api.schemas import (
     ProjectsIndicator,
     ProjectsIndicatorPost,
 )
-from idu_api.urban_api.utils.dependencies import user_dependency
+from idu_api.urban_api.utils.auth_client import user_dependency
 
 
 @projects_router.get(
