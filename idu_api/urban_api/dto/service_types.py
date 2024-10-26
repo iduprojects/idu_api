@@ -12,7 +12,7 @@ class ServiceTypesDTO:
     name: str
     capacity_modeled: int | None
     code: str
-    infrastructure_type: Literal["basic", "additional", "comfort"]
+    infrastructure_type: Literal["basic", "additional", "comfort"] | None
     properties: dict[str, Any]
 
 

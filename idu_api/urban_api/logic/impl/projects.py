@@ -20,10 +20,12 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     delete_project_from_db,
     get_all_available_projects_from_db,
+    get_all_preview_projects_images_from_minio,
     get_full_project_image_from_minio,
     get_preview_project_image_from_minio,
     get_project_by_id_from_db,
     get_project_territory_by_id_from_db,
+    get_user_preview_projects_images_from_minio,
     get_user_projects_from_db,
     patch_project_to_db,
     put_project_to_db,
@@ -72,17 +74,23 @@ class UserProjectServiceImpl(UserProjectService):
     async def add_project(self, project: ProjectPost, user_id: str) -> ProjectDTO:
         return await add_project_to_db(self._conn, project, user_id)
 
-    async def get_all_available_projects(self, user_id: str) -> list[ProjectDTO]:
+    async def get_all_available_projects(self, user_id: str | None) -> list[ProjectDTO]:
         return await get_all_available_projects_from_db(self._conn, user_id)
+
+    async def get_all_preview_projects_images(self, minio_client: AsyncMinioClient, user_id: str | None) -> io.BytesIO:
+        return await get_all_preview_projects_images_from_minio(self._conn, minio_client, user_id)
 
     async def get_user_projects(self, user_id: str) -> list[ProjectDTO]:
         return await get_user_projects_from_db(self._conn, user_id)
 
+    async def get_user_preview_projects_images(self, minio_client: AsyncMinioClient, user_id: str) -> io.BytesIO:
+        return await get_user_preview_projects_images_from_minio(self._conn, minio_client, user_id)
+
     async def get_project_territory_by_id(self, project_id: int, user_id: str) -> ProjectTerritoryDTO:
         return await get_project_territory_by_id_from_db(self._conn, project_id, user_id)
 
-    async def delete_project(self, project_id: int, user_id: str) -> dict:
-        return await delete_project_from_db(self._conn, project_id, user_id)
+    async def delete_project(self, project_id: int, minio_client: AsyncMinioClient, user_id: str) -> dict:
+        return await delete_project_from_db(self._conn, project_id, minio_client, user_id)
 
     async def put_project(self, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO:
         return await put_project_to_db(self._conn, project, project_id, user_id)

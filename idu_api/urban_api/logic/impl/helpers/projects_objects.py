@@ -1,6 +1,8 @@
 """Projects internal logic is defined here."""
 
+import asyncio
 import io
+import zipfile
 from datetime import datetime, timezone
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText, ST_Intersects, ST_Within
@@ -22,8 +24,8 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
-from idu_api.urban_api.exceptions.logic.files import InvalidImageError
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
+from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
 from idu_api.urban_api.logic.impl.helpers.territory_objects import get_common_territory_for_geometry
 from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_object_by_object_geometry_id_from_db
 from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut
@@ -193,17 +195,50 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
     return await get_project_by_id_from_db(conn, project_id, user_id)
 
 
-async def get_all_available_projects_from_db(conn: AsyncConnection, user_id: str) -> list[ProjectDTO]:
+async def get_all_available_projects_from_db(conn: AsyncConnection, user_id: str | None) -> list[ProjectDTO]:
     """Get all public and user's projects."""
 
-    statement = (
-        select(projects_data)
-        .where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
-        .order_by(projects_data.c.project_id)
-    )
+    statement = select(projects_data).order_by(projects_data.c.project_id)
+
+    if user_id is not None:
+        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
+    else:
+        statement = statement.where(projects_data.c.public.is_(True))
+
     results = (await conn.execute(statement)).mappings().all()
 
     return [ProjectDTO(**result) for result in results]
+
+
+async def get_all_preview_projects_images_from_minio(
+    conn: AsyncConnection, minio_client: AsyncMinioClient, user_id: str | None
+) -> io.BytesIO:
+    """Get preview images for all public and user's projects with parallel MinIO requests."""
+
+    statement = select(projects_data.c.project_id).order_by(projects_data.c.project_id)
+    if user_id is not None:
+        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
+    else:
+        statement = statement.where(projects_data.c.public.is_(True))
+    project_ids = (await conn.execute(statement)).scalars().all()
+
+    async def fetch_image(project_id: int) -> (int, io.BytesIO):
+        """Get preview image for given project identifier."""
+
+        image = await minio_client.get_file(f"projects/{project_id}/preview.png")
+        return project_id, image
+
+    results = await asyncio.gather(*(fetch_image(project_id) for project_id in project_ids))
+    images = {project_id: image for project_id, image in results if image is not None}
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        for project_id, image_stream in images.items():
+            if image_stream:
+                zip_file.writestr(f"preview_{project_id}.png", image_stream.read())
+    zip_buffer.seek(0)
+
+    return zip_buffer
 
 
 async def get_user_projects_from_db(conn: AsyncConnection, user_id: str) -> list[ProjectDTO]:
@@ -213,6 +248,37 @@ async def get_user_projects_from_db(conn: AsyncConnection, user_id: str) -> list
     results = (await conn.execute(statement)).mappings().all()
 
     return [ProjectDTO(**result) for result in results]
+
+
+async def get_user_preview_projects_images_from_minio(
+    conn: AsyncConnection, minio_client: AsyncMinioClient, user_id: str
+) -> io.BytesIO:
+    """Get preview images for all user's projects with parallel MinIO requests."""
+
+    statement = (
+        select(projects_data.c.project_id)
+        .where(projects_data.c.user_id == user_id)
+        .order_by(projects_data.c.project_id)
+    )
+    project_ids = (await conn.execute(statement)).scalars().all()
+
+    async def fetch_image(project_id: int) -> (int, io.BytesIO):
+        """Get preview image for given project identifier."""
+
+        image = await minio_client.get_file(f"projects/{project_id}/preview.png")
+        return project_id, image
+
+    results = await asyncio.gather(*(fetch_image(project_id) for project_id in project_ids))
+    images = {project_id: image for project_id, image in results if image is not None}
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        for project_id, image_stream in images.items():
+            if image_stream:
+                zip_file.writestr(f"preview_{project_id}.png", image_stream.read())
+    zip_buffer.seek(0)
+
+    return zip_buffer
 
 
 async def get_project_territory_by_id_from_db(
@@ -242,7 +308,9 @@ async def get_project_territory_by_id_from_db(
     return ProjectTerritoryDTO(**result)
 
 
-async def delete_project_from_db(conn: AsyncConnection, project_id: int, user_id: str) -> dict:
+async def delete_project_from_db(
+    conn: AsyncConnection, project_id: int, minio_client: AsyncMinioClient, user_id: str
+) -> dict:
     """Delete project object."""
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
@@ -262,6 +330,8 @@ async def delete_project_from_db(conn: AsyncConnection, project_id: int, user_id
     await conn.execute(statement_for_territory)
 
     await conn.commit()
+
+    await minio_client.delete_file(f"projects/{project_id}/")
 
     return {"status": "ok"}
 
@@ -383,14 +453,14 @@ async def upload_project_image_to_minio(
         raise AccessDeniedError(project_id, "project")
 
     try:
-        image = Image.open(file)
+        image = Image.open(io.BytesIO(file))
     except Exception as exc:
         raise InvalidImageError(project_id) from exc
 
     preview_image = image.copy()
     width, height = preview_image.size
-    target_width = 160
-    target_height = 90
+    target_width = 100
+    target_height = 100
 
     target_aspect_ratio = target_width / target_height
     current_aspect_ratio = width / height

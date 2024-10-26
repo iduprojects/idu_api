@@ -5,22 +5,22 @@ app:
   logger_verbosity: INFO
   name: ""
 db:
-  addr: "localhost"
+  addr: localhost
   port: 5432
-  name: "urban_db"
-  user: "postgres"
-  password: "postgres"
+  name: urban_db
+  user: postgres
+  password: postgres
   pool_size: 15
 
 auth:
-  url: "http://10.32.1.100:8086/introspect"
+  url: http://10.32.1.100:8086/introspect
   validate: 0
   cache_size: 100
   cache_ttl: 1800
 
 fileserver:
-  host: "10.32.1.42"
+  host: 10.32.1.42
   port: 9000
-  projects_bucket: "projects.images"
+  projects_bucket: projects.images
   access-key: ""
   secret-key: ""

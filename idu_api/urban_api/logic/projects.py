@@ -36,19 +36,27 @@ class UserProjectService(Protocol):
         """Create project object and base scenario."""
 
     @abc.abstractmethod
-    async def get_all_available_projects(self, user_id: str) -> list[ProjectDTO]:
+    async def get_all_available_projects(self, user_id: str | None) -> list[ProjectDTO]:
         """Get all public and user's projects."""
+
+    @abc.abstractmethod
+    async def get_all_preview_projects_images(self, minio_client: AsyncMinioClient, user_id: str | None) -> io.BytesIO:
+        """Get preview images for all public and user's projects with parallel MinIO requests."""
 
     @abc.abstractmethod
     async def get_user_projects(self, user_id: str) -> list[ProjectDTO]:
         """Get all user's projects."""
 
     @abc.abstractmethod
-    async def get_project_territory_by_id(self, project_id: int, user_id) -> ProjectTerritoryDTO:
+    async def get_user_preview_projects_images(self, minio_client: AsyncMinioClient, user_id: str) -> io.BytesIO:
+        """Get preview images for all user's projects with parallel MinIO requests."""
+
+    @abc.abstractmethod
+    async def get_project_territory_by_id(self, project_id: int, user_id: str) -> ProjectTerritoryDTO:
         """Get project object by id."""
 
     @abc.abstractmethod
-    async def delete_project(self, project_id: int, user_id) -> dict:
+    async def delete_project(self, project_id: int, minio_client: AsyncMinioClient, user_id: str) -> dict:
         """Delete project object."""
 
     @abc.abstractmethod

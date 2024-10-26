@@ -1,9 +1,16 @@
 import io
+from sys import prefix
 
 import aioboto3
 from botocore.exceptions import ClientError
 
 from idu_api.urban_api.config import UrbanAPIConfig
+from idu_api.urban_api.exceptions.utils.minio import (
+    DeleteFileError,
+    DownloadFileError,
+    GetPresignedURLError,
+    UploadFileError,
+)
 
 
 class AsyncMinioClient:
@@ -38,7 +45,7 @@ class AsyncMinioClient:
                 await client.upload_fileobj(file_stream, self._bucket_name, object_name)
                 return object_name
             except ClientError as exc:
-                raise Exception(f"Failed to upload file to Minio: {str(exc)}") from exc
+                raise UploadFileError(str(exc)) from exc
 
     async def get_file(self, object_name: str) -> io.BytesIO:
         """
@@ -60,16 +67,14 @@ class AsyncMinioClient:
                     # Download the file from the bucket
                     await client.download_fileobj(self._bucket_name, object_name, file_stream)
                 except ClientError:
-                    if "preview" in object_name:
-                        await client.download_fileobj(self._bucket_name, "defaultImg.png", file_stream)
-                    else:
-                        await client.download_fileobj(self._bucket_name, "defaultImg.jpg", file_stream)
+                    default_name = "defaultImg.png" if "preview" in object_name else "defaultImg.jpg"
+                    await client.download_fileobj(self._bucket_name, default_name, file_stream)
 
                 # Get the bytes data from the stream
                 file_stream.seek(0)
                 return file_stream
             except ClientError as exc:
-                raise Exception(f"Failed to download file from Minio: {str(exc)}") from exc
+                raise DownloadFileError(str(exc)) from exc
 
     async def get_presigned_url(self, object_name: str, expires_in: int = 3600) -> str:
         """
@@ -91,7 +96,26 @@ class AsyncMinioClient:
                     "get_object", Params={"Bucket": self._bucket_name, "Key": object_name}, ExpiresIn=expires_in
                 )
             except ClientError as exc:
-                raise Exception(f"Failed to generate presigned URL: {str(exc)}") from exc
+                raise GetPresignedURLError(str(exc)) from exc
+
+    async def delete_file(self, object_name: str) -> None:
+        """
+        Delete a file from the specified bucket asynchronously.
+
+        :param object_name: Name of the file to delete from the bucket.
+        :raises ClientError: If the delete operation fails.
+        """
+        async with aioboto3.Session().resource(
+            "s3",
+            endpoint_url=self._endpoint_url,
+            aws_access_key_id=self._access_key,
+            aws_secret_access_key=self._secret_key,
+        ) as s3:
+            try:
+                # Delete the file from the bucket
+                await (await s3.Bucket(self._bucket_name)).objects.filter(Prefix=object_name).delete()
+            except ClientError as exc:
+                raise DeleteFileError(str(exc)) from exc
 
 
 async def get_minio_client() -> AsyncMinioClient:

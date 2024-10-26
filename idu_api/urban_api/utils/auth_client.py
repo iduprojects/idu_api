@@ -6,8 +6,7 @@ from datetime import datetime
 
 import httpx
 from cachetools import TTLCache
-from fastapi import HTTPException, Request
-from starlette import status
+from fastapi import Request
 
 from idu_api.urban_api.dto.users import UserDTO
 
@@ -45,7 +44,11 @@ class AuthenticationClient:
     ) -> None:
         self._validate_token = validate_token or self._validate_token
         self._auth_url = auth_url or self._auth_url
-        self._cache = TTLCache(maxsize=cache_size, ttl=cache_ttl) or self._cache
+        self._cache = (
+            TTLCache(maxsize=cache_size, ttl=cache_ttl)
+            if cache_size is not None and cache_ttl is not None
+            else self._cache
+        )
 
     async def validate_token_online(self, token: str) -> None:
         """Validate token by calling an external service if needed."""
@@ -79,7 +82,5 @@ class AuthenticationClient:
         return user_dto
 
 
-def user_dependency(request: Request):
-    if not request.state.user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    return request.state.user
+def get_user(request: Request):
+    return request.state.user if hasattr(request.state, "user") else None

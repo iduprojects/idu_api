@@ -28,7 +28,7 @@ class ServiceTypes(BaseModel):
     name: str = Field(..., description="Service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
     code: str = Field(..., description="Service type code", examples=["1"])
-    infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
+    infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
         ..., description="infrastructure type", examples=["basic"]
     )
     properties: dict[str, Any] = Field(
@@ -68,7 +68,7 @@ class ServiceTypesPost(BaseModel):
     name: str = Field(..., description="Service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
     code: str = Field(..., description="Service type code", examples=["1"])
-    infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
+    infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
         ..., description="infrastructure type", examples=["basic"]
     )
     properties: dict[str, Any] = Field(
@@ -83,7 +83,7 @@ class ServiceTypesPut(BaseModel):
     name: str = Field(..., description="Service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(..., description="default capacity", examples=[1])
     code: str = Field(..., description="Service type code", examples=["1"])
-    infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
+    infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
         ..., description="infrastructure type", examples=["basic"]
     )
     properties: dict[str, Any] = Field(

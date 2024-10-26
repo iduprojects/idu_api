@@ -1,5 +1,5 @@
 """
-Exceptions connected with user's logic are defined here.
+Exceptions connected with image and Pillow library are defined here.
 """
 
 from fastapi import status
@@ -9,7 +9,7 @@ from idu_api.urban_api.exceptions import IduApiError
 
 class InvalidImageError(IduApiError):
     """
-    Exception to raise when you do not have access rights to a resource.
+    Exception to raise when user upload invalid imagee.
     """
 
     def __init__(self, project_id: int):
@@ -20,7 +20,7 @@ class InvalidImageError(IduApiError):
         super().__init__()
 
     def __str__(self) -> str:
-        return f"You uploaded invalid image for project with id = {self.project_id}."
+        return f"Invalid image for project with id = {self.project_id} was uploaded."
 
     def get_status_code(self) -> int:
         """
