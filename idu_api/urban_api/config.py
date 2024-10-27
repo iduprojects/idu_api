@@ -17,7 +17,10 @@ class AppConfig:
     port: int = 8000
     debug: int = 0
     logger_verbosity: Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
-    name: str = f"urban_api ({api_version})"
+    name: str = "urban_api"
+
+    def __post_init__(self):
+        self.name = f"urban_api ({api_version})"
 
 
 @dataclass
@@ -32,7 +35,7 @@ class DBConfig:
 
 @dataclass
 class AuthConfig:
-    url: str = "http://10.32.1.100:8086/introspect"
+    url: str = ""
     validate: int = 0
     cache_size: int = 100
     cache_ttl: int = 1800
@@ -40,11 +43,15 @@ class AuthConfig:
 
 @dataclass
 class FileServerConfig:
-    host: str = "10.32.1.42"
+    host: str = ""
     port: int = 9000
-    projects_bucket: str = "projects.images"
+    projects_bucket: str = ""
     access_key: str = ""
     secret_key: str = ""
+    region_name: str = ""
+    connect_timeout: int = 5
+    read_timeout: int = 20
+    retries: int = 3
 
 
 @dataclass
@@ -57,25 +64,25 @@ class UrbanAPIConfig:
     def to_order_dict(self) -> OrderedDict:
         """OrderDict transformer."""
 
+        def to_ordered_dict_recursive(obj) -> OrderedDict:
+            """Recursive OrderDict transformer."""
+
+            if isinstance(obj, (dict, OrderedDict)):
+                return OrderedDict((k, to_ordered_dict_recursive(v)) for k, v in obj.items())
+            if hasattr(obj, "__dataclass_fields__"):
+                return OrderedDict(
+                    (field, to_ordered_dict_recursive(getattr(obj, field))) for field in obj.__dataclass_fields__
+                )
+            return obj
+
         return OrderedDict(
             [
-                ("app", self._to_ordered_dict_recursive(self.app)),
-                ("db", self._to_ordered_dict_recursive(self.db)),
-                ("auth", self._to_ordered_dict_recursive(self.auth)),
-                ("fileserver", self._to_ordered_dict_recursive(self.fileserver)),
+                ("app", to_ordered_dict_recursive(self.app)),
+                ("db", to_ordered_dict_recursive(self.db)),
+                ("auth", to_ordered_dict_recursive(self.auth)),
+                ("fileserver", to_ordered_dict_recursive(self.fileserver)),
             ]
         )
-
-    def _to_ordered_dict_recursive(self, obj) -> OrderedDict:
-        """Recursive OrderDict transformer."""
-
-        if isinstance(obj, (dict, OrderedDict)):
-            return OrderedDict((k, self._to_ordered_dict_recursive(v)) for k, v in obj.items())
-        if hasattr(obj, "__dataclass_fields__"):
-            return OrderedDict(
-                (field, self._to_ordered_dict_recursive(getattr(obj, field))) for field in obj.__dataclass_fields__
-            )
-        return obj
 
     def dump(self, file: str | Path | TextIO) -> None:
         """Export current configuration to a file"""
@@ -119,10 +126,9 @@ class UrbanAPIConfig:
             raise ValueError("Could not read app config file") from exc
 
     @classmethod
-    def try_from_env(cls) -> "UrbanAPIConfig":
+    def from_file_or_default(cls, config_path: str = os.getenv("CONFIG_PATH")) -> "UrbanAPIConfig":
         """Try to load configuration from the path specified in the environment variable."""
 
-        config_path = os.getenv("CONFIG_PATH")  # Ensure this matches your .env variable name
         if not config_path:
             return cls.example()
 

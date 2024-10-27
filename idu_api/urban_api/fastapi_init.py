@@ -1,5 +1,5 @@
 """FastAPI application initialization is performed here."""
-
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -109,7 +109,7 @@ async def lifespan(application: FastAPI):
 
     Initializes database connection in pass_services_dependencies middleware.
     """
-    app_config = UrbanAPIConfig.try_from_env()
+    app_config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
     for middleware in application.user_middleware:
         if middleware.cls == PassServicesDependencies:
             connection_manager: PostgresConnectionManager = middleware.kwargs["connection_manager"]

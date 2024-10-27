@@ -16,6 +16,7 @@ from idu_api.urban_api.schemas import TerritoryDataPatch, TerritoryDataPost, Ter
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
+Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
 
 
 async def get_territories_by_ids(conn: AsyncConnection, territory_ids: list[int]) -> list[TerritoryDTO]:
@@ -383,10 +384,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     return [TerritoryWithoutGeometryDTO(**territory) for territory in result]
 
 
-async def get_common_territory_for_geometry(
-    conn: AsyncConnection,
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString,
-) -> TerritoryDTO | None:
+async def get_common_territory_for_geometry(conn: AsyncConnection, geometry: Geom) -> TerritoryDTO | None:
     """Get the deepest territory which covers given geometry. None if there is no such territory."""
 
     statement = (
@@ -407,7 +405,7 @@ async def get_common_territory_for_geometry(
 async def get_intersecting_territories_for_geometry(
     conn: AsyncConnection,
     parent_territory: int,
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString,
+    geometry: Geom,
 ) -> list[TerritoryDTO]:
     """Get all territories of the (level of given parent + 1) which intersect with given geometry."""
 

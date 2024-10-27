@@ -3,7 +3,6 @@
 from datetime import date, datetime
 from typing import Callable, Literal
 
-import shapely.geometry as geom
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -284,15 +283,12 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             self._conn, parent_id, get_all_levels, order_by, created_at, name, ordering, paginate
         )
 
-    async def get_common_territory_for_geometry(
-        self,
-        geometry: geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString,
-    ) -> TerritoryDTO | None:
+    async def get_common_territory_for_geometry(self, geometry: Geom) -> TerritoryDTO | None:
         return await get_common_territory_for_geometry(self._conn, geometry)
 
     async def get_intersecting_territories_for_geometry(
         self,
         parent_territory: int,
-        geometry: geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString,
+        geometry: Geom,
     ) -> list[TerritoryDTO]:
         return await get_intersecting_territories_for_geometry(self._conn, parent_territory, geometry)

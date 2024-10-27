@@ -23,7 +23,7 @@ try_load_envfile(os.environ.get("ENVFILE", ".env"))
 config = context.config
 section = config.config_ini_section
 
-app_settings = UrbanAPIConfig.try_from_env()
+app_settings = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 
 config.set_section_option(section, "POSTGRES_DB", app_settings.db.name)
 config.set_section_option(section, "POSTGRES_HOST", app_settings.db.addr)

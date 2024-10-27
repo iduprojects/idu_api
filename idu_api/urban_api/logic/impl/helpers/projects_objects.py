@@ -222,7 +222,7 @@ async def get_all_preview_projects_images_from_minio(
         statement = statement.where(projects_data.c.public.is_(True))
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    async def fetch_image(project_id: int) -> (int, io.BytesIO):
+    async def fetch_image(project_id: int) -> tuple[int, io.BytesIO]:
         """Get preview image for given project identifier."""
 
         image = await minio_client.get_file(f"projects/{project_id}/preview.png")
@@ -262,7 +262,7 @@ async def get_user_preview_projects_images_from_minio(
     )
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    async def fetch_image(project_id: int) -> (int, io.BytesIO):
+    async def fetch_image(project_id: int) -> tuple[int, io.BytesIO]:
         """Get preview image for given project identifier."""
 
         image = await minio_client.get_file(f"projects/{project_id}/preview.png")
