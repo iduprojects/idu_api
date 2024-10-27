@@ -40,6 +40,10 @@ class IndicatorsService(Protocol):
         """Create indicators group object."""
 
     @abc.abstractmethod
+    async def get_indicators_by_group_id(self, indicators_group_id: int) -> list[IndicatorDTO]:
+        """Get all indicators by indicators group id."""
+
+    @abc.abstractmethod
     async def update_indicators_group(
         self, indicators_group: IndicatorsGroupPost, indicators_group_id: int
     ) -> IndicatorsGroupDTO:

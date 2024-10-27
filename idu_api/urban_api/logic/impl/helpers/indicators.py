@@ -145,6 +145,34 @@ async def add_indicators_group_to_db(
     )
 
 
+async def get_indicators_by_group_id_from_db(conn: AsyncConnection, indicators_group_id: int) -> list[IndicatorDTO]:
+    """Get all indicators by indicators group id."""
+
+    statement = select(indicators_groups_dict).where(
+        indicators_groups_dict.c.indicators_group_id == indicators_group_id
+    )
+    group = (await conn.execute(statement)).mappings().one_or_none()
+    if group is None:
+        raise EntityNotFoundById(indicators_group_id, "indicators group")
+
+    statement = (
+        select(indicators_dict, measurement_units_dict.c.name.label("measurement_unit_name"))
+        .select_from(
+            indicators_groups_data.join(
+                indicators_dict,
+                indicators_dict.c.indicator_id == indicators_groups_data.c.indicator_id,
+            ).outerjoin(
+                measurement_units_dict,
+                indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+        )
+        .where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
+    )
+    indicators = (await conn.execute(statement)).mappings().all()
+
+    return [IndicatorDTO(**indicator) for indicator in indicators]
+
+
 async def update_indicators_group_from_db(
     conn: AsyncConnection, indicators_group: IndicatorsGroupPost, indicators_group_id: int
 ) -> IndicatorsGroupDTO:

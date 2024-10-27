@@ -79,6 +79,23 @@ async def add_indicators_group(request: Request, indicators_group: IndicatorsGro
     return IndicatorsGroup.from_dto(group)
 
 
+@indicators_router.get(
+    "/indicators_groups/{indicators_group_id}",
+    response_model=list[Indicator],
+    status_code=status.HTTP_200_OK,
+)
+async def get_indicators_by_group_id(
+    request: Request,
+    indicators_group_id: int = Path(..., description="indicators group identifier"),
+) -> list[Indicator]:
+    """Get all indicators by indicators group id."""
+    indicators_service: IndicatorsService = request.state.indicators_service
+
+    indicators = await indicators_service.get_indicators_by_group_id(indicators_group_id)
+
+    return [Indicator.from_dto(indicator) for indicator in indicators]
+
+
 @indicators_router.put(
     "/indicators_groups/{indicators_group_id}",
     response_model=IndicatorsGroup,
