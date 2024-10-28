@@ -1,27 +1,44 @@
 name: urban-api
 
 services:
-#  database:
-#    container_name: ${POSTGRES_CONTAINER_NAME:-urban_db}
-#    image: postgis/postgis:16-3.4
-#    restart: on-failure
-#    ports:
-#      - ${EXPORT_POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}
-#    env_file:
-#      - ./db.env
-#    volumes:
-#      - ./pg_data:/var/lib/postgresql/data
-#    healthcheck:
-#      test: pg_isready -d postgres
-#      interval: 10s
-#      timeout: 5s
-#      retries: 3
-#      start_period: 5s
-#    logging:
-#      driver: "json-file"
-#      options:
-#        max-size: "200k"
-#        max-file: "10"
+  database:
+    container_name: ${POSTGRES_CONTAINER_NAME:-urban_db}
+    image: postgis/postgis:16-3.4
+    restart: on-failure
+    env_file:
+      - ./db.env
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: pg_isready -d postgres
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+
+  fileserver:
+    container_name: ${MINIO_CONTAINER_NAME:-fileserver}
+    image: minio/minio
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - ./minio_data:/data
+    env_file:
+      - ./minio.env
+    healthcheck:
+      test: mc ready local
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    command: server --console-address ":9001" /data
+
 
   migrator:
     container_name: migrator
@@ -32,9 +49,9 @@ services:
       - ./.env
     environment:
       - DEBUG
-#    depends_on:
-#      database:
-#        condition: service_healthy
+    depends_on:
+      database:
+        condition: service_healthy
 
   api:
     container_name: urban_api_and_city_api
@@ -49,8 +66,8 @@ services:
     environment:
       - DEBUG
     depends_on:
-      # keycloak:
-      #   condition: service_healthy
+      fileserver:
+        condition: service_healthy
       migrator:
         condition: service_completed_successfully
     healthcheck:

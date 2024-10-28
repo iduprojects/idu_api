@@ -1,0 +1,28 @@
+app:
+  host: 0.0.0.0
+  port: 8000
+  debug: 0
+  logger_verbosity: INFO
+  name: urban_api (0.22.1)
+db:
+  addr: localhost
+  port: 5432
+  name: urban_db
+  user: postgres
+  password: postgres
+  pool_size: 15
+auth:
+  url: http://10.32.1.100:8086/introspect
+  validate: 0
+  cache_size: 100
+  cache_ttl: 1800
+fileserver:
+  host: 10.32.1.42
+  port: 9000
+  projects_bucket: projects.images
+  access_key: ''
+  secret_key: ''
+  region_name: us-west-rack-2
+  connect_timeout: 5
+  read_timeout: 20
+  retries: 3

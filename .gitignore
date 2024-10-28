@@ -18,3 +18,5 @@ pg_data/
 *.sublime-*
 
 /dist
+
+*.config.yaml

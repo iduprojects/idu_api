@@ -1,6 +1,7 @@
 `# Ignore docker volumes
 kc_data/
 pg_data/
+minio_data/
 
 # Ignore editor-specific files
 .vscode/

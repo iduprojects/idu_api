@@ -1,4 +1,5 @@
 import abc
+import io
 from typing import Protocol
 
 from idu_api.urban_api.dto import (
@@ -20,6 +21,7 @@ from idu_api.urban_api.schemas import (
     ScenariosPut,
     ServicesDataPost,
 )
+from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
 
 class UserProjectService(Protocol):
@@ -34,19 +36,27 @@ class UserProjectService(Protocol):
         """Create project object and base scenario."""
 
     @abc.abstractmethod
-    async def get_all_available_projects(self, user_id: str) -> list[ProjectDTO]:
+    async def get_all_available_projects(self, user_id: str | None) -> list[ProjectDTO]:
         """Get all public and user's projects."""
+
+    @abc.abstractmethod
+    async def get_all_preview_projects_images(self, minio_client: AsyncMinioClient, user_id: str | None) -> io.BytesIO:
+        """Get preview images for all public and user's projects with parallel MinIO requests."""
 
     @abc.abstractmethod
     async def get_user_projects(self, user_id: str) -> list[ProjectDTO]:
         """Get all user's projects."""
 
     @abc.abstractmethod
-    async def get_project_territory_by_id(self, project_id: int, user_id) -> ProjectTerritoryDTO:
+    async def get_user_preview_projects_images(self, minio_client: AsyncMinioClient, user_id: str) -> io.BytesIO:
+        """Get preview images for all user's projects with parallel MinIO requests."""
+
+    @abc.abstractmethod
+    async def get_project_territory_by_id(self, project_id: int, user_id: str) -> ProjectTerritoryDTO:
         """Get project object by id."""
 
     @abc.abstractmethod
-    async def delete_project(self, project_id: int, user_id) -> dict:
+    async def delete_project(self, project_id: int, minio_client: AsyncMinioClient, user_id: str) -> dict:
         """Delete project object."""
 
     @abc.abstractmethod
@@ -56,6 +66,22 @@ class UserProjectService(Protocol):
     @abc.abstractmethod
     async def patch_project(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO:
         """Patch project object."""
+
+    @abc.abstractmethod
+    async def upload_project_image(
+        self, minio_client: AsyncMinioClient, project_id: int, user_id: str, file: bytes
+    ) -> dict:
+        """Create project image preview and upload it (full and preview) to minio bucket."""
+
+    @abc.abstractmethod
+    async def get_full_project_image(self, minio_client: AsyncMinioClient, project_id: int, user_id: str) -> io.BytesIO:
+        """Get full image for given project."""
+
+    @abc.abstractmethod
+    async def get_preview_project_image(
+        self, minio_client: AsyncMinioClient, project_id: int, user_id: str
+    ) -> io.BytesIO:
+        """Get preview image for given project."""
 
     @abc.abstractmethod
     async def get_scenarios_by_project_id(self, project_id: int, user_id) -> list[ScenarioDTO]:

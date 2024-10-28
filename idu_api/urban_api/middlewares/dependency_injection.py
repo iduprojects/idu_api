@@ -33,7 +33,6 @@ class PassServicesDependencies(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         get_conn = anext(self._connection_manager.get_connection())
         conn = await get_conn
-        request.state.conn = conn  # to be removed after all handler use services
 
         for dependency, init in self._dependencies.items():
             setattr(request.state, dependency, init(conn))

@@ -13,6 +13,7 @@ RUN poetry config virtualenvs.create false
 RUN poetry install --with dev
 
 COPY README.md /app/README.md
+COPY urban-api.config.yaml /app/urban-api.config.yaml
 COPY idu_api /app/idu_api
 
 RUN pip3 install .

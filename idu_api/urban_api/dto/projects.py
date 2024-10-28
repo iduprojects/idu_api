@@ -13,7 +13,6 @@ class ProjectDTO:
     project_territory_id: int
     description: str | None
     public: bool
-    image_url: str | None
     created_at: datetime
     updated_at: datetime
     properties: dict[str, Any]

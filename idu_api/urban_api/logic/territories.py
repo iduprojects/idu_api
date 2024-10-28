@@ -4,7 +4,7 @@ import abc
 from datetime import datetime
 from typing import Literal, Optional, Protocol
 
-import shapely.geometry as geom
+from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
@@ -35,6 +35,8 @@ from idu_api.urban_api.schemas import (
     TerritoryDataPut,
     TerritoryTypesPost,
 )
+
+Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString
 
 
 class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
@@ -238,13 +240,13 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         ordering and filters can be specified in parameters."""
 
     @abc.abstractmethod
-    async def get_common_territory_for_geometry(
-        self, geometry: geom.Polygon | geom.MultiPolygon | geom.Point
-    ) -> TerritoryDTO | None:
+    async def get_common_territory_for_geometry(self, geometry: Geom) -> TerritoryDTO | None:
         """Get the deepest territory which covers given geometry. None if there is no such territory."""
 
     @abc.abstractmethod
     async def get_intersecting_territories_for_geometry(
-        self, parent_territory: int, geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+        self,
+        parent_territory: int,
+        geometry: Geom,
     ) -> list[TerritoryDTO]:
         """Get all territories of the (level of given parent + 1) which intersect with given geometry."""

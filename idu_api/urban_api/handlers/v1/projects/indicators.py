@@ -1,4 +1,5 @@
-from fastapi import Depends, Path, Request
+from fastapi import Depends, Path, Request, Security
+from fastapi.security import HTTPBearer
 from starlette import status
 
 from idu_api.urban_api.dto.users import UserDTO
@@ -8,18 +9,19 @@ from idu_api.urban_api.schemas import (
     ProjectsIndicator,
     ProjectsIndicatorPost,
 )
-from idu_api.urban_api.utils.dependencies import user_dependency
+from idu_api.urban_api.utils.auth_client import get_user
 
 
 @projects_router.get(
     "/scenarios/{scenario_id}/indicators_values",
     response_model=list[ProjectsIndicator],
     status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
 )
 async def get_all_projects_indicators(
     request: Request,
     scenario_id: int = Path(..., description="scenario identifier"),
-    user: UserDTO = Depends(user_dependency),
+    user: UserDTO = Depends(get_user),
 ) -> list[ProjectsIndicator]:
     """Get project's indicators values for given scenario
     if relevant project is public or if you're the project owner."""
@@ -34,12 +36,13 @@ async def get_all_projects_indicators(
     "/scenarios/{scenario_id}/indicator_values/{indicator_id}",
     response_model=list[ProjectsIndicator],
     status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
 )
 async def get_specific_projects_indicator_values(
     request: Request,
     scenario_id: int = Path(..., description="scenario identifier"),
     indicator_id: int = Path(..., description="indicator identifier"),
-    user: UserDTO = Depends(user_dependency),
+    user: UserDTO = Depends(get_user),
 ) -> list[ProjectsIndicator]:
     """Get project's specific indicator values for given scenario
     if relevant project is public or if you're the project owner."""
@@ -56,9 +59,10 @@ async def get_specific_projects_indicator_values(
     "/scenarios/{scenario_id}/indicators_values",
     response_model=ProjectsIndicator,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Security(HTTPBearer())],
 )
 async def post_projects_indicator(
-    request: Request, projects_indicator: ProjectsIndicatorPost, user: UserDTO = Depends(user_dependency)
+    request: Request, projects_indicator: ProjectsIndicatorPost, user: UserDTO = Depends(get_user)
 ) -> ProjectsIndicator:
     """Add a new project's indicator value."""
     user_project_service: UserProjectService = request.state.user_project_service
@@ -71,11 +75,12 @@ async def post_projects_indicator(
 @projects_router.delete(
     "/scenarios/{scenario_id}/indicators_values",
     status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
 )
 async def delete_all_projects_indicators(
     request: Request,
     scenario_id: int = Path(..., description="scenario identifier"),
-    user: UserDTO = Depends(user_dependency),
+    user: UserDTO = Depends(get_user),
 ) -> dict:
     """Delete all project's indicators values for given scenario if you're the project owner."""
     user_project_service: UserProjectService = request.state.user_project_service
@@ -86,12 +91,13 @@ async def delete_all_projects_indicators(
 @projects_router.delete(
     "/scenarios/{scenario_id}/indicator_values/{indicator_id}",
     status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
 )
 async def delete_specific_projects_indicator(
     request: Request,
     scenario_id: int = Path(..., description="scenario identifier"),
     indicator_id: int = Path(..., description="indicator identifier"),
-    user: UserDTO = Depends(user_dependency),
+    user: UserDTO = Depends(get_user),
 ) -> dict:
     """Delete specific project's indicator values for given scenario if you're the project owner."""
     user_project_service: UserProjectService = request.state.user_project_service

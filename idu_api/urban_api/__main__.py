@@ -6,7 +6,7 @@ import typing as tp
 import click
 import uvicorn
 
-from .config import UrbanAPIConfig
+from .config import AppConfig, UrbanAPIConfig
 from .utils.dotenv import try_load_envfile
 
 LogLevel = tp.Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR"]
@@ -31,67 +31,11 @@ def logger_from_str(logger_text: str) -> list[tuple[LogLevel, str]]:
 
 @click.command("Run urban api service")
 @click.option(
-    "--db_addr",
-    "-H",
-    envvar="DB_ADDR",
-    default="localhost",
-    show_default=True,
-    show_envvar=True,
-    help="Postgres DBMS address",
-)
-@click.option(
-    "--db_port",
-    "-P",
-    envvar="DB_PORT",
-    type=int,
-    default=5432,
-    show_default=True,
-    show_envvar=True,
-    help="Postgres DBMS port",
-)
-@click.option(
-    "--db_name",
-    "-D",
-    envvar="DB_NAME",
-    default="urban_db",
-    show_default=True,
-    show_envvar=True,
-    help="Postgres database name",
-)
-@click.option(
-    "--db_user",
-    "-U",
-    envvar="DB_USER",
-    default="postgres",
-    show_default=True,
-    show_envvar=True,
-    help="Postgres database user",
-)
-@click.option(
-    "--db_pass",
-    "-W",
-    envvar="DB_PASS",
-    default="postgres",
-    show_default=True,
-    show_envvar=True,
-    help="Postgres user password",
-)
-@click.option(
-    "--db_pool_size",
-    "-s",
-    envvar="DB_POOL_SIZE",
-    type=int,
-    default=15,
-    show_default=True,
-    show_envvar=True,
-    help="asyncpg database pool maximum size",
-)
-@click.option(
     "--port",
     "-p",
     envvar="PORT",
-    type=int,
     default=8000,
+    type=int,
     show_default=True,
     show_envvar=True,
     help="Service port number",
@@ -132,70 +76,83 @@ def logger_from_str(logger_text: str) -> list[tuple[LogLevel, str]]:
     is_flag=True,
     help="Enable debug mode (auto-reload on change, traceback returned to user, etc.)",
 )
-def main(  # pylint: disable=too-many-arguments
-    db_addr: str,
-    db_port: int,
-    db_name: str,
-    db_user: str,
-    db_pass: str,
-    db_pool_size: int,
+@click.option(
+    "--config_path",
+    envvar="CONFIG_PATH",
+    default="urban-api.config.yaml",
+    show_default=True,
+    show_envvar=True,
+    help="Path to YAML configuration file",
+)
+def main(
     port: int,
     host: str,
     logger_verbosity: LogLevel,
     additional_loggers: list[tuple[LogLevel, str]],
     debug: bool,
+    config_path: str,
 ):
     """
     Urban api backend service main function, performs configuration
     via command line parameters and environment variables.
     """
     additional_loggers = list(itertools.chain.from_iterable(additional_loggers))
-    settings = UrbanAPIConfig(
-        host=host,
-        port=port,
-        db_addr=db_addr,
-        db_port=db_port,
-        db_name=db_name,
-        db_user=db_user,
-        db_pass=db_pass,
-        db_pool_size=db_pool_size,
-        debug=debug,
+    ctx = click.get_current_context()
+    user_params = {
+        param: ctx.params[param]
+        for param in ctx.params
+        if ctx.get_parameter_source(param) == click.core.ParameterSource.COMMANDLINE
+    }
+    config = UrbanAPIConfig.load(config_path)
+    config = UrbanAPIConfig(
+        app=AppConfig(
+            host=user_params.get("host", config.app.host),
+            port=user_params.get("port", config.app.port),
+            logger_verbosity=user_params.get("logger_verbosity", config.app.logger_verbosity),
+            debug=int(user_params.get("debug", config.app.debug)),
+        ),
+        db=config.db,
+        auth=config.auth,
+        fileserver=config.fileserver,
     )
-    config = UrbanAPIConfig.try_from_env()
-    config.update(settings)
+    temp_yaml_config_path = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
+    config.dump(temp_yaml_config_path)
     temp_envfile_path = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
     try:
-        config.to_envfile(temp_envfile_path)
-        if debug:
+        with open(temp_envfile_path, "w", encoding="utf-8") as env_file:
+            env_file.write(f"CONFIG_PATH={temp_yaml_config_path}\n")
+        if config.app.debug:
             try:
                 uvicorn.run(
                     "idu_api.urban_api:app",
-                    host=host,
-                    port=port,
+                    host=config.app.host,
+                    port=config.app.port,
                     reload=True,
-                    log_level=logger_verbosity.lower(),
+                    log_level=config.app.logger_verbosity.lower(),
                     env_file=temp_envfile_path,
                 )
-            except:  # pylint: disable=bare-except
+            except:
                 print("Debug reload is disabled")
                 uvicorn.run(
                     "idu_api.urban_api:app",
-                    host=host,
-                    port=port,
-                    log_level=logger_verbosity.lower(),
+                    host=config.app.host,
+                    port=config.app.port,
+                    log_level=config.app.logger_verbosity.lower(),
                     env_file=temp_envfile_path,
                 )
         else:
             uvicorn.run(
                 "idu_api.urban_api:app",
-                host=host,
-                port=port,
-                log_level=logger_verbosity.lower(),
+                host=config.app.host,
+                port=config.app.port,
+                log_level=config.app.logger_verbosity.lower(),
                 env_file=temp_envfile_path,
             )
     finally:
         if os.path.exists(temp_envfile_path):
             os.remove(temp_envfile_path)
+        if os.path.exists(temp_yaml_config_path):
+            os.remove(temp_yaml_config_path)
 
 
 if __name__ in ("__main__", "idu_api.urban_api.__main__"):

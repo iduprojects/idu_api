@@ -1,5 +1,5 @@
 """FastAPI application initialization is performed here."""
-
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -19,8 +19,10 @@ from idu_api.urban_api.logic.impl.service_types import ServiceTypesServiceImpl
 from idu_api.urban_api.logic.impl.services import ServicesDataServiceImpl
 from idu_api.urban_api.logic.impl.territories import TerritoriesServiceImpl
 from idu_api.urban_api.logic.impl.urban_objects import UrbanObjectsServiceImpl
+from idu_api.urban_api.middlewares.authentication import AuthenticationMiddleware
 from idu_api.urban_api.middlewares.dependency_injection import PassServicesDependencies
 from idu_api.urban_api.middlewares.exception_handler import ExceptionHandlerMiddleware
+from idu_api.urban_api.utils.auth_client import AuthenticationClient
 
 from .handlers import list_of_routes
 from .version import LAST_UPDATE, VERSION
@@ -73,6 +75,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
     add_pagination(application)
 
     connection_manager = PostgresConnectionManager("", 0, "", "", "", 0, "")
+    auth_client = AuthenticationClient(0, 0, False, "")
 
     application.add_middleware(
         ExceptionHandlerMiddleware,
@@ -92,6 +95,10 @@ def get_app(prefix: str = "/api") -> FastAPI:
         urban_objects_service=UrbanObjectsServiceImpl,
         user_project_service=UserProjectServiceImpl,
     )
+    application.add_middleware(
+        AuthenticationMiddleware,
+        auth_client=auth_client,  # reinitialized on startup
+    )
 
     return application
 
@@ -102,23 +109,30 @@ async def lifespan(application: FastAPI):
 
     Initializes database connection in pass_services_dependencies middleware.
     """
-
+    app_config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
     for middleware in application.user_middleware:
         if middleware.cls == PassServicesDependencies:
-            app_config = UrbanAPIConfig.try_from_env()
             connection_manager: PostgresConnectionManager = middleware.kwargs["connection_manager"]
             await connection_manager.update(
-                app_config.db_addr,
-                app_config.db_port,
-                app_config.db_name,
-                app_config.db_user,
-                app_config.db_pass,
-                app_config.db_pool_size,
-                app_config.application_name,
+                app_config.db.addr,
+                app_config.db.port,
+                app_config.db.name,
+                app_config.db.user,
+                app_config.db.password,
+                app_config.db.pool_size,
+                app_config.app.name,
             )
             await connection_manager.refresh()
         elif middleware.cls == ExceptionHandlerMiddleware:
-            middleware.kwargs["debug"][0] = app_config.debug
+            middleware.kwargs["debug"][0] = app_config.app.debug
+        elif middleware.cls == AuthenticationMiddleware:
+            auth_client: AuthenticationClient = middleware.kwargs["auth_client"]
+            auth_client.update(
+                app_config.auth.cache_size,
+                app_config.auth.cache_ttl,
+                app_config.auth.validate,
+                app_config.auth.url,
+            )
 
     yield
 

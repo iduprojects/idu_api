@@ -104,4 +104,5 @@ class PostgresConnectionManager:
         async with self._engine.connect() as conn:
             if self._application_name is not None:
                 await conn.execute(text(f'SET application_name TO "{self._application_name}"'))
+                await conn.commit()
             yield conn

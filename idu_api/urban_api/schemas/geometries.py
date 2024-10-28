@@ -57,7 +57,7 @@ class Geometry(BaseModel):
     Geometry representation for GeoJSON model appliable for points, polygons, multipolygons and linestrings.
     """
 
-    type: Literal["Point", "Polygon", "MultiPolygon", "LineString"] = Field(default="Polygon")
+    type: Literal["Point", "Polygon", "MultiPolygon", "LineString", "MultiLineString"] = Field(default="Polygon")
     coordinates: list[Any] = Field(
         description="list[int] for Point,\n" "list[list[list[int]]] for Polygon",
         default=[
