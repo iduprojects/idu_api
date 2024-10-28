@@ -1,14 +1,18 @@
 """Projects indicators internal logic is defined here."""
 
-from sqlalchemy import and_, delete, insert, select
+from geoalchemy2.functions import ST_AsGeoJSON
+from sqlalchemy import and_, cast, delete, insert, select
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    functional_zone_types_dict,
     projects_data,
+    projects_functional_zones_data,
     projects_indicators_data,
     scenarios_data,
 )
-from idu_api.urban_api.dto import ProjectsIndicatorDTO
+from idu_api.urban_api.dto import ProjectsFunctionalZoneDTO, ProjectsIndicatorDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.schemas import ProjectsIndicatorPost
@@ -168,3 +172,45 @@ async def delete_specific_projects_indicator_values_from_db(
     await conn.commit()
 
     return {"status": "ok"}
+
+
+async def get_functional_zones_for_scenario_from_db(
+    conn: AsyncConnection, scenario_id: int, user_id: str
+) -> list[ProjectsFunctionalZoneDTO]:
+    """Get all functional zones for a scenario."""
+
+    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
+    project_id = (await conn.execute(statement)).scalar_one_or_none()
+    if project_id is None:
+        raise EntityNotFoundById(scenario_id, "scenario")
+
+    statement = select(projects_data).where(projects_data.c.project_id == project_id)
+    project = (await conn.execute(statement)).mappings().one_or_none()
+    if project is None:
+        raise EntityNotFoundById(project_id, "project")
+    if project.user_id != user_id:
+        raise AccessDeniedError(project_id, "project")
+
+    statement = (
+        select(
+            projects_functional_zones_data.c.scenario_id,
+            projects_functional_zones_data.c.functional_zone_type_id,
+            projects_functional_zones_data.c.name,
+            cast(ST_AsGeoJSON(projects_functional_zones_data.c.geometry), JSONB).label("geometry"),
+            functional_zone_types_dict.c.name.label("type_name"),
+            functional_zone_types_dict.c.zone_nickname,
+            functional_zone_types_dict.c.description,
+        )
+        .select_from(
+            projects_functional_zones_data.join(
+                functional_zone_types_dict,
+                projects_functional_zones_data.c.functional_zone_type_id
+                == functional_zone_types_dict.c.functional_zone_type_id,
+            )
+        )
+        .where(projects_functional_zones_data.c.scenario_id == scenario_id)
+    )
+
+    zones = (await conn.execute(statement)).mappings().all()
+
+    return [ProjectsFunctionalZoneDTO(**zone) for zone in zones]

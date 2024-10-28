@@ -3,7 +3,9 @@ import io
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
+    FunctionalZoneDataDTO,
     ProjectDTO,
+    ProjectsFunctionalZoneDTO,
     ProjectsIndicatorDTO,
     ProjectTerritoryDTO,
     ScenarioDTO,
@@ -14,6 +16,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
     delete_all_projects_indicators_values_from_db,
     delete_specific_projects_indicator_values_from_db,
     get_all_projects_indicators_values_from_db,
+    get_functional_zones_for_scenario_from_db,
     get_specific_projects_indicator_values_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
@@ -173,3 +176,8 @@ class UserProjectServiceImpl(UserProjectService):
         self, scenario_id: int, indicator_id: int, user_id: str
     ) -> dict:
         return await delete_specific_projects_indicator_values_from_db(self._conn, scenario_id, indicator_id, user_id)
+
+    async def get_functional_zones_for_scenario(
+        self, scenario_id: int, user_id: str
+    ) -> list[ProjectsFunctionalZoneDTO]:
+        return await get_functional_zones_for_scenario_from_db(self._conn, scenario_id, user_id)

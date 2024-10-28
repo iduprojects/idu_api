@@ -3,7 +3,9 @@ import io
 from typing import Protocol
 
 from idu_api.urban_api.dto import (
+    FunctionalZoneDataDTO,
     ProjectDTO,
+    ProjectsFunctionalZoneDTO,
     ProjectsIndicatorDTO,
     ProjectTerritoryDTO,
     ScenarioDTO,
@@ -158,3 +160,9 @@ class UserProjectService(Protocol):
         self, scenario_id: int, indicator_id: int, user_id: str
     ) -> dict:
         """Delete specific project's indicator values for given scenario if you're the project owner."""
+
+    @abc.abstractmethod
+    async def get_functional_zones_for_scenario(
+        self, scenario_id: int, user_id: str
+    ) -> list[ProjectsFunctionalZoneDTO]:
+        """Get all functional zones for a scenario."""

@@ -61,6 +61,12 @@ from .projects import (
     ProjectTerritoryPost,
     ProjectTerritoryPut,
 )
+from .projects_functional_zones import (
+    ProjectsFunctionalZone,
+    ProjectsFunctionalZonePatch,
+    ProjectsFunctionalZonePost,
+    ProjectsFunctionalZonePut,
+)
 from .projects_indicators import (
     ProjectsIndicator,
     ProjectsIndicatorPost,
@@ -189,4 +195,8 @@ __all__ = [
     "ProfilesReclamationDataMatrix",
     "ProjectsIndicator",
     "ProjectsIndicatorPost",
+    "ProjectsFunctionalZone",
+    "ProjectsFunctionalZonePost",
+    "ProjectsFunctionalZonePut",
+    "ProjectsFunctionalZonePatch",
 ]

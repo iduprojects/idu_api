@@ -8,8 +8,10 @@ from idu_api.urban_api.dto.users import UserDTO
 from idu_api.urban_api.handlers.v1.projects.routers import projects_router
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
+    FunctionalZoneData,
     PhysicalObjectsDataPost,
     PhysicalObjectWithGeometryPost,
+    ProjectsFunctionalZone,
     ScenariosData,
     ScenariosPatch,
     ScenariosPost,
@@ -239,3 +241,21 @@ async def add_service_to_scenario(
     )
 
     return ScenariosUrbanObject.from_dto(urban_object)
+
+
+@projects_router.get(
+    "/scenarios/{scenario_id}/functional_zones",
+    response_model=list[ProjectsFunctionalZone],
+    status_code=status.HTTP_200_OK,
+)
+async def get_functional_zones_for_scenario(
+    request: Request,
+    scenario_id: int = Path(..., description="scenario identifier"),
+    user: UserDTO = Depends(user_dependency),
+) -> list[ProjectsFunctionalZone]:
+    """Get all functional zones for a scenario."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    zones = await user_project_service.get_functional_zones_for_scenario(scenario_id, user.id)
+
+    return [ProjectsFunctionalZone.from_dto(zone) for zone in zones]

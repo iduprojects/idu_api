@@ -44,3 +44,14 @@ class ProjectsIndicatorDTO:
     value: float
     value_type: Literal["real", "forecast", "target"]
     information_source: str
+
+
+@dataclass
+class ProjectsFunctionalZoneDTO:
+    scenario_id: int
+    functional_zone_type_id: int
+    type_name: str
+    zone_nickname: str | None
+    description: str | None
+    name: str
+    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
