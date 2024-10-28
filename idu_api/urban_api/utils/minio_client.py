@@ -72,7 +72,11 @@ class AsyncMinioClient:
         ) as client:
             try:
                 file_stream = io.BytesIO()
-                await client.download_fileobj(self._bucket_name, object_name, file_stream)
+                try:
+                    await client.download_fileobj(self._bucket_name, object_name, file_stream)
+                except ClientError:
+                    default_name = "defaultImg.png" if "preview" in object_name else "defaultImg.jpg"
+                    await client.download_fileobj(self._bucket_name, default_name, file_stream)
                 file_stream.seek(0)
                 return file_stream
             except ClientError as exc:

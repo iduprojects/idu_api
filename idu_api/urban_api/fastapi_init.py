@@ -1,4 +1,5 @@
 """FastAPI application initialization is performed here."""
+
 import os
 from contextlib import asynccontextmanager
 
