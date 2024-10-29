@@ -304,19 +304,22 @@ async def add_service_to_object_in_db(
         raise EntityNotFoundById(service_id, "service")
 
     flag = False
+    urban_object_id = None
     for urban_object in urban_objects:
-        if urban_object.service_id is None:
-            statement = (
-                update(urban_objects_data)
-                .where(urban_objects_data.c.urban_object_id == urban_object.urban_object_id)
-                .values(service_id=service_id)
-                .returning(urban_objects_data.c.urban_object_id)
-            )
+        if urban_object.service_id is None and not flag:
             flag = True
+            urban_object_id = urban_object.urban_object_id
         if urban_object.service_id == service_id:
             raise EntityAlreadyExists("urban object", physical_object_id, object_geometry_id, service_id)
 
-    if not flag:
+    if flag:
+        statement = (
+            update(urban_objects_data)
+            .where(urban_objects_data.c.urban_object_id == urban_object_id)
+            .values(service_id=service_id)
+            .returning(urban_objects_data.c.urban_object_id)
+        )
+    else:
         statement = (
             insert(urban_objects_data)
             .values(
