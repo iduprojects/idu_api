@@ -1,11 +1,12 @@
 """Urban object handlers are defined here."""
 
-from fastapi import Path, Query, Request
+from fastapi import Body, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.urban_objects import UrbanObjectsService
 from idu_api.urban_api.schemas.urban_objects import UrbanObject
 
+from ...schemas.geometries import Geometry
 from .routers import urban_objects_router
 
 
@@ -89,3 +90,19 @@ async def delete_urban_object_by_id(
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
 
     return await urban_objects_service.delete_urban_object_by_id(urban_object_id)
+
+
+@urban_objects_router.get(
+    "/urban_objects_by_territory_id",
+    response_model=list[UrbanObject],
+    status_code=status.HTTP_200_OK,
+)
+async def get_urban_objects_by_territory_id(
+    request: Request, territory_id: int = Query(..., description="Parent territory id")
+) -> list[UrbanObject]:
+    """Get a list of urban objects by territory_id."""
+    urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
+
+    urban_objects = await urban_objects_service.get_urban_objects_by_territory_id(territory_id)
+
+    return [UrbanObject.from_dto(urban_object) for urban_object in urban_objects]
