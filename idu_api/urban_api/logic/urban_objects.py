@@ -4,6 +4,7 @@ import abc
 from typing import Protocol
 
 from idu_api.urban_api.dto import UrbanObjectDTO
+from idu_api.urban_api.schemas.geometries import Geometry
 
 
 class UrbanObjectsService(Protocol):
@@ -28,3 +29,7 @@ class UrbanObjectsService(Protocol):
     @abc.abstractmethod
     async def delete_urban_object_by_id(self, urban_object_id: int) -> dict:
         """Delete urban object by urban object id."""
+
+    @abc.abstractmethod
+    async def get_urban_objects_by_territory_id(self, territory_id: int) -> list[UrbanObjectDTO]:
+        """Get a list of urban objects by territory_id."""

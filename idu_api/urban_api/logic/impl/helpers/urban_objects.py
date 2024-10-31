@@ -1,7 +1,7 @@
 """Urban objects handlers logic of getting entities from the database is defined here."""
 
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, delete, select
+from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText, ST_Intersects, ST_Within
+from sqlalchemy import cast, delete, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -12,12 +12,15 @@ from idu_api.common.db.entities import (
     physical_objects_data,
     service_types_dict,
     services_data,
+    territories_data,
     territory_types_dict,
     urban_functions_dict,
     urban_objects_data,
 )
 from idu_api.urban_api.dto import UrbanObjectDTO
-from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
+from idu_api.urban_api.logic.impl.helpers.territory_objects import get_common_territory_for_geometry
+from idu_api.urban_api.schemas.geometries import Geometry
 
 
 async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id: int) -> UrbanObjectDTO:
@@ -160,3 +163,21 @@ async def delete_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_
     await conn.commit()
 
     return {"result": "ok"}
+
+
+async def get_urban_objects_by_territory_id_from_db(conn: AsyncConnection, territory_id: int) -> list[UrbanObjectDTO]:
+    """Get a list of urban objects by territory_id."""
+
+    objects = select(object_geometries_data.c.object_geometry_id).where(
+        object_geometries_data.c.territory_id == territory_id
+    )
+
+    object_geometries_ids = (await conn.execute(objects)).scalars().all()
+
+    result = []
+
+    for object_geometry_id in object_geometries_ids:
+        urban_objects = await get_urban_object_by_object_geometry_id_from_db(conn, object_geometry_id)
+        result.extend(urban_objects)
+
+    return result
