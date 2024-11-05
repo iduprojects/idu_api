@@ -21,114 +21,31 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # add validate geometry trigger for `user_projects` schema
-    op.execute(
-        sa.text(
-            dedent(
-                """
-                CREATE OR REPLACE FUNCTION user_projects.trigger_set_centre_point()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                AS $function$
-                BEGIN
-                    IF NEW.centre_point is NULL THEN
-                        NEW.centre_point = ST_Centroid(NEW.geometry);
-                    END IF;
-
-                    RETURN NEW;
-                END;
-                $function$;
-                """
-            )
-        )
-    )
-    op.execute(
-        sa.text(
-            dedent(
-                """
-                CREATE OR REPLACE FUNCTION user_projects.trigger_validate_geometry()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                AS $function$
-                BEGIN
-                    IF TG_OP = 'UPDATE' AND OLD.geometry = NEW.geometry THEN
-                        return NEW;
-                    END IF;
-                    IF NOT (ST_GeometryType(NEW.geometry)
-                    IN ('ST_Point', 'ST_Polygon', 'ST_MultiPolygon', 'ST_LineString', 'ST_MultiLineString')) THEN
-                        RAISE EXCEPTION 'Invalid geometry type!';
-                    END IF;
-
-                    IF NOT ST_IsValid(NEW.geometry) THEN
-                        RAISE EXCEPTION 'Invalid geometry!';
-                    END IF;
-
-                    IF ST_IsEmpty(NEW.geometry) THEN
-                        RAISE EXCEPTION 'Empty geometry!';
-                    END IF;
-
-                    RETURN NEW;
-                END;
-                $function$;
-                """
-            )
-        )
-    )
-    op.execute(
-        sa.text(
-            dedent(
-                """
-                CREATE OR REPLACE FUNCTION user_projects.trigger_validate_geometry_not_point()
-                RETURNS trigger
-                LANGUAGE plpgsql
-                AS $function$
-                BEGIN
-                    IF TG_OP = 'UPDATE' AND OLD.geometry = NEW.geometry THEN
-                        return NEW;
-                    END IF;
-                    IF NOT (ST_GeometryType(NEW.geometry) IN ('ST_Polygon', 'ST_MultiPolygon')) THEN
-                        RAISE EXCEPTION 'Invalid geometry type!';
-                    END IF;
-
-                    IF NOT ST_IsValid(NEW.geometry) THEN
-                        RAISE EXCEPTION 'Invalid geometry!';
-                    END IF;
-
-                    IF ST_IsEmpty(NEW.geometry) THEN
-                        RAISE EXCEPTION 'Empty geometry!';
-                    END IF;
-
-                    RETURN NEW;
-                END;
-                $function$;
-                """
-            )
-        )
-    )
     for trigger_name, table_name, procedure_name in [
         (
             "check_geometry_correctness_trigger",
             "user_projects.object_geometries_data",
-            "user_projects.trigger_validate_geometry",
+            "public.trigger_validate_geometry",
         ),
         (
             "set_center_point_trigger",
             "user_projects.object_geometries_data",
-            "user_projects.trigger_set_centre_point",
+            "public.trigger_set_centre_point",
         ),
         (
             "check_geometry_correctness_trigger",
             "user_projects.profiles_data",
-            "user_projects.trigger_validate_geometry_not_point",
+            "public.trigger_validate_geometry_not_point",
         ),
         (
             "check_geometry_correctness_trigger",
             "user_projects.projects_territory_data",
-            "user_projects.trigger_validate_geometry_not_point",
+            "public.trigger_validate_geometry_not_point",
         ),
         (
             "set_center_point_trigger",
             "user_projects.projects_territory_data",
-            "user_projects.trigger_set_centre_point",
+            "public.trigger_set_centre_point",
         ),
     ]:
         op.execute(
@@ -161,8 +78,3 @@ def downgrade() -> None:
                 """
             )
         )
-
-    # drop functions
-    op.execute("DROP FUNCTION IF EXISTS user_projects.trigger_set_centre_point;")
-    op.execute("DROP FUNCTION IF EXISTS user_projects.trigger_validate_geometry;")
-    op.execute("DROP FUNCTION IF EXISTS user_projects.trigger_validate_geometry_not_point;")

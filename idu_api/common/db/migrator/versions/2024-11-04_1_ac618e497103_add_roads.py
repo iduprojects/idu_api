@@ -125,45 +125,12 @@ def upgrade() -> None:
         )
     )
 
-    op.execute(
-        sa.text(
-            dedent(
-                """
-                CREATE OR REPLACE FUNCTION user_projects.trigger_validate_line_geometry()
-                 RETURNS trigger
-                 LANGUAGE plpgsql
-                AS $function$
-                BEGIN
-                    IF TG_OP = 'UPDATE' AND OLD.geometry = NEW.geometry THEN
-                        return NEW;
-                    END IF;
-                    IF NOT (ST_GeometryType(NEW.geometry) IN ('ST_LineString', 'ST_MultiLineString')) THEN
-                        RAISE EXCEPTION 'Invalid geometry type!';
-                    END IF;
-
-                    IF NOT ST_IsValid(NEW.geometry) THEN
-                        RAISE EXCEPTION 'Invalid geometry!';
-                    END IF;
-
-                    IF ST_IsEmpty(NEW.geometry) THEN
-                        RAISE EXCEPTION 'Empty geometry!';
-                    END IF;
-
-                    RETURN NEW;
-                END;
-                $function$
-                ;
-                """
-            )
-        )
-    )
-
     for trigger_name, table_name, procedure_name in [
         ("check_line_geometry_correctness_trigger", "public.roads_data", "public.trigger_validate_line_geometry"),
         (
             "check_line_geometry_correctness_trigger",
             "user_projects.roads_data",
-            "user_projects.trigger_validate_line_geometry",
+            "public.trigger_validate_line_geometry",
         ),
     ]:
         op.execute(
@@ -196,7 +163,6 @@ def downgrade() -> None:
 
     # drop functions
     op.execute("DROP FUNCTION IF EXISTS public.trigger_validate_line_geometry;")
-    op.execute("DROP FUNCTION IF EXISTS user_projects.trigger_validate_line_geometry;")
 
     # drop tables
     op.drop_table("roads_data", schema="user_projects")
