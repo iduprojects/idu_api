@@ -250,3 +250,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         geometry: Geom,
     ) -> list[TerritoryDTO]:
         """Get all territories of the (level of given parent + 1) which intersect with given geometry."""
+
+    @abc.abstractmethod
+    async def get_territory_geojson_by_territory_id(self, territory_id: int) -> TerritoryDTO:
+        """Get geojson for a given territory."""

@@ -58,6 +58,7 @@ from idu_api.urban_api.logic.impl.helpers.territory_objects import (
     get_territories_by_parent_id_from_db,
     get_territories_without_geometry_by_parent_id_from_db,
     get_territory_by_id,
+    get_territory_geojson_by_territory_id_from_db,
     patch_territory_to_db,
     put_territory_to_db,
 )
@@ -292,3 +293,6 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         geometry: Geom,
     ) -> list[TerritoryDTO]:
         return await get_intersecting_territories_for_geometry(self._conn, parent_territory, geometry)
+
+    async def get_territory_geojson_by_territory_id(self, territory_id: int) -> TerritoryDTO:
+        return await get_territory_geojson_by_territory_id_from_db(self._conn, territory_id)
