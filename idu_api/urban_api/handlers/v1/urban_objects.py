@@ -98,11 +98,16 @@ async def delete_urban_object_by_id(
     status_code=status.HTTP_200_OK,
 )
 async def get_urban_objects_by_territory_id(
-    request: Request, territory_id: int = Query(..., description="Parent territory id")
+    request: Request,
+    territory_id: int = Query(..., description="Parent territory id"),
+    service_type_id: int | None = Query(None, description="Service type id"),
+    physical_object_type_id: int | None = Query(None, description="Physical object type id"),
 ) -> list[UrbanObject]:
-    """Get a list of urban objects by territory_id."""
+    """Get a list of urban objects by territory_id with service_type and physical_object_type filters."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
 
-    urban_objects = await urban_objects_service.get_urban_objects_by_territory_id(territory_id)
+    urban_objects = await urban_objects_service.get_urban_objects_by_territory_id(
+        territory_id, service_type_id, physical_object_type_id
+    )
 
     return [UrbanObject.from_dto(urban_object) for urban_object in urban_objects]

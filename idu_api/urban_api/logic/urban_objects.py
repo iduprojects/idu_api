@@ -31,5 +31,7 @@ class UrbanObjectsService(Protocol):
         """Delete urban object by urban object id."""
 
     @abc.abstractmethod
-    async def get_urban_objects_by_territory_id(self, territory_id: int) -> list[UrbanObjectDTO]:
-        """Get a list of urban objects by territory_id."""
+    async def get_urban_objects_by_territory_id(
+        self, territory_id: int, service_type_id: int, physical_object_type_id: int
+    ) -> list[UrbanObjectDTO]:
+        """Get a list of urban objects by territory_id with service_type and physical_object_type filters."""
