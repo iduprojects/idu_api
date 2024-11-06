@@ -8,8 +8,8 @@ class PhysicalObjectTypeDTO:
 
     physical_object_type_id: int
     name: str
-    physical_object_function_id: int | None
-    physical_object_function_name: str | None
+    physical_object_function_id: int
+    physical_object_function_name: str
 
 
 @dataclass(frozen=True)

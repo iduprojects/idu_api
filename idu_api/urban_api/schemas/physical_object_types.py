@@ -9,20 +9,7 @@ from idu_api.urban_api.dto import (
     PhysicalObjectTypeDTO,
     PhysicalObjectTypesHierarchyDTO,
 )
-
-
-class PhysicalObjectTypeBasic(BaseModel):
-    """Basic physical object type model to encapsulate in other models."""
-
-    id: int
-    name: str
-
-
-class PhysicalObjectFunctionBasic(BaseModel):
-    """Basic physical object function model to encapsulate in other models."""
-
-    id: int
-    name: str
+from idu_api.urban_api.schemas.short_models import PhysicalObjectFunctionBasic
 
 
 class PhysicalObjectsTypes(BaseModel):
@@ -129,12 +116,12 @@ class PhysicalObjectFunctionPatch(BaseModel):
 class PhysicalObjectsTypesHierarchy(BaseModel):
     physical_object_function_id: int = Field(..., examples=[1])
     parent_id: int | None = Field(
-        ..., description="Parent urban function identifier (null if it is top-level urban function", examples=[1]
+        ..., description="parent physical object function identifier (null if it is top-level function)", examples=[1]
     )
-    name: str = Field(..., description="Urban function unit name", examples=["--"])
-    level: int = Field(..., description="Number of urban functions above in a tree + [1]", examples=[1])
-    list_label: str = Field(..., description="Urban function list label", examples=["1.1.1"])
-    code: str = Field(..., description="Urban function code", examples=["1"])
+    name: str = Field(..., description="physical object function unit name", examples=["--"])
+    level: int = Field(..., description="number of physical object functions above in a tree + [1]", examples=[1])
+    list_label: str = Field(..., description="physical object function list label", examples=["1.1.1"])
+    code: str = Field(..., description="physical object function code", examples=["1"])
     children: list[Self | PhysicalObjectsTypes]
 
     @classmethod

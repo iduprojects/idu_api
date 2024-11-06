@@ -96,9 +96,7 @@ T = TypeVar("T", bound="GeometryValidationModel")
 
 
 class GeometryValidationModel(BaseModel):
-    """
-    Base model with geometry validation methods.
-    """
+    """Base model with geometry validation methods."""
 
     geometry: Geometry | None = None
     centre_point: Geometry | None = None
@@ -136,6 +134,24 @@ class GeometryValidationModel(BaseModel):
         if model.centre_point is None and model.geometry:
             model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)
         return model
+
+
+class NotPointGeometryValidationModel(BaseModel):
+    """Base model with geometry validation methods (without points)."""
+
+    geometry: Geometry | None = None
+
+    @field_validator("geometry")
+    @classmethod
+    def validate_geometry(cls, geometry: "Geometry") -> "Geometry":
+        """Validate that given geometry is valid by creating a Shapely object."""
+        if geometry:
+            try:
+                geometry.as_shapely_geometry()
+            except (AttributeError, ValueError, TypeError) as exc:
+                logger.debug("Exception on passing geometry: {!r}", exc)
+                raise ValueError("Invalid geometry passed") from exc
+        return geometry
 
 
 class GeoJSONResponse(FeatureCollection):

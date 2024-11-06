@@ -9,25 +9,46 @@ projects_urban_objects_data = Table(
     metadata,
     Column("urban_object_id", Integer, primary_key=True, server_default=urban_objects_id_seq.next_value()),
     Column(
+        "scenario_id",
+        Integer,
+        ForeignKey("user_projects.scenarios_data.scenario_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column(
+        "public_urban_object_id",
+        Integer,
+        ForeignKey("public.urban_objects_data.urban_object_id", ondelete="CASCADE"),
+        nullable=True,
+    ),
+    Column(
         "object_geometry_id",
         Integer,
         ForeignKey("user_projects.object_geometries_data.object_geometry_id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     ),
     Column(
         "physical_object_id",
         Integer,
         ForeignKey("user_projects.physical_objects_data.physical_object_id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     ),
     Column(
         "service_id", Integer, ForeignKey("user_projects.services_data.service_id", ondelete="CASCADE"), nullable=True
     ),
     Column(
-        "scenario_id",
+        "public_object_geometry_id",
         Integer,
-        ForeignKey("user_projects.scenarios_data.scenario_id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("public.object_geometries_data.object_geometry_id", ondelete="CASCADE"),
+        nullable=True,
+    ),
+    Column(
+        "public_physical_object_id",
+        Integer,
+        ForeignKey("public.physical_objects_data.physical_object_id", ondelete="CASCADE"),
+        nullable=True,
+    ),
+    Column(
+        "public_service_id", Integer, ForeignKey("public.services_data.service_id", ondelete="CASCADE"), nullable=True
     ),
     schema="user_projects",
 )

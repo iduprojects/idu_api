@@ -17,7 +17,7 @@ from idu_api.common.db.entities import (
     territories_data,
     territory_types_dict,
 )
-from idu_api.urban_api.dto import ScenarioDTO, ScenarioUrbanObjectDTO
+from idu_api.urban_api.dto import ScenarioDTO, ScenariosUrbanObjectDTO
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios_urban_objects import (
@@ -267,7 +267,7 @@ async def delete_scenario_from_db(conn: AsyncConnection, scenario_id: int, user_
 
 async def add_physical_object_to_scenario_in_db(
     conn: AsyncConnection, scenario_id: int, physical_object: PhysicalObjectWithGeometryPost, user_id: str
-) -> ScenarioUrbanObjectDTO:
+) -> ScenariosUrbanObjectDTO:
     """Add physical object to scenario."""
 
     statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
@@ -334,7 +334,7 @@ async def add_existing_physical_object_to_scenario_in_db(
     object_geometry_id: int,
     physical_object: PhysicalObjectsDataPost,
     user_id: str,
-) -> ScenarioUrbanObjectDTO:
+) -> ScenariosUrbanObjectDTO:
     """Add existing physical object to scenario."""
 
     statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
@@ -386,7 +386,7 @@ async def add_existing_physical_object_to_scenario_in_db(
 
 async def add_service_to_scenario_in_db(
     conn: AsyncConnection, scenario_id: int, service: ServicesDataPost, user_id: str
-) -> ScenarioUrbanObjectDTO:
+) -> ScenariosUrbanObjectDTO:
     """Add service object to scenario."""
 
     statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
@@ -471,7 +471,7 @@ async def add_existing_service_to_scenario_in_db(
     physical_object_id: int,
     object_geometry_id: int,
     user_id: str,
-) -> ScenarioUrbanObjectDTO:
+) -> ScenariosUrbanObjectDTO:
     """Add existing service object to scenario."""
 
     statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)

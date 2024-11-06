@@ -4,10 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
     ProjectDTO,
-    ProjectsIndicatorDTO,
+    ProjectsIndicatorValueDTO,
     ProjectTerritoryDTO,
     ScenarioDTO,
-    ScenarioUrbanObjectDTO,
+    ScenariosUrbanObjectDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
     add_projects_indicator_value_to_db,
@@ -50,7 +50,7 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectsIndicatorPost,
+    ProjectsIndicatorValuePost,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -131,39 +131,41 @@ class UserProjectServiceImpl(UserProjectService):
 
     async def add_physical_object_to_scenario(
         self, scenario_id: int, physical_object: PhysicalObjectWithGeometryPost, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
+    ) -> ScenariosUrbanObjectDTO:
         return await add_physical_object_to_scenario_in_db(self._conn, scenario_id, physical_object, user_id)
 
     async def add_existing_physical_object_to_scenario(
         self, scenario_id: int, object_geometry_id: int, physical_object: PhysicalObjectsDataPost, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
+    ) -> ScenariosUrbanObjectDTO:
         return await add_existing_physical_object_to_scenario_in_db(
             self._conn, scenario_id, object_geometry_id, physical_object, user_id
         )
 
     async def add_service_to_scenario(
         self, scenario_id: int, service: ServicesDataPost, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
+    ) -> ScenariosUrbanObjectDTO:
         return await add_service_to_scenario_in_db(self._conn, scenario_id, service, user_id)
 
     async def add_existing_service_to_scenario(
         self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
+    ) -> ScenariosUrbanObjectDTO:
         return await add_existing_service_to_scenario_in_db(
             self._conn, scenario_id, service_id, physical_object_id, object_geometry_id, user_id
         )
 
-    async def get_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> list[ProjectsIndicatorDTO]:
+    async def get_all_projects_indicators_values(
+        self, scenario_id: int, user_id: str
+    ) -> list[ProjectsIndicatorValueDTO]:
         return await get_all_projects_indicators_values_from_db(self._conn, scenario_id, user_id)
 
     async def get_specific_projects_indicator_values(
         self, scenario_id: int, indicator_id: int, user_id: str
-    ) -> list[ProjectsIndicatorDTO]:
+    ) -> list[ProjectsIndicatorValueDTO]:
         return await get_specific_projects_indicator_values_from_db(self._conn, scenario_id, indicator_id, user_id)
 
     async def add_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorPost, user_id: str
-    ) -> ProjectsIndicatorDTO:
+        self, projects_indicator: ProjectsIndicatorValuePost, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
         return await add_projects_indicator_value_to_db(self._conn, projects_indicator, user_id)
 
     async def delete_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> dict:

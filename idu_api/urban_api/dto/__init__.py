@@ -1,7 +1,13 @@
 """Data Transfer Objects (much like entities from database) are defined in this module."""
 
-from .functional_zones import FunctionalZoneDataDTO, FunctionalZoneTypeDTO
-from .indicators import IndicatorDTO, IndicatorsGroupDTO, IndicatorValueDTO, MeasurementUnitDTO
+from .functional_zones import FunctionalZoneDataDTO, FunctionalZoneTypeDTO, ProjectsProfileDTO
+from .indicators import (
+    IndicatorDTO,
+    IndicatorsGroupDTO,
+    IndicatorValueDTO,
+    MeasurementUnitDTO,
+    ProjectsIndicatorValueDTO,
+)
 from .living_buildings import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
 from .normatives import NormativeDTO
 from .object_geometries import ObjectGeometryDTO
@@ -17,9 +23,8 @@ from .physical_objects import (
     PhysicalObjectWithTerritoryDTO,
 )
 from .profiles_reclamation import ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO
-from .projects import ProjectDTO, ProjectsIndicatorDTO, ProjectTerritoryDTO
+from .projects import ProjectDTO, ProjectTerritoryDTO
 from .scenarios import ScenarioDTO
-from .scenarios_urban_objects import ScenarioUrbanObjectDTO
 from .service_types import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from .services import ServiceDTO, ServicesCountCapacityDTO, ServiceWithGeometryDTO, ServiceWithTerritoriesDTO
 from .territories import (
@@ -30,7 +35,7 @@ from .territories import (
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
 )
-from .urban_objects import UrbanObjectDTO
+from .urban_objects import ScenariosUrbanObjectDTO, UrbanObjectDTO
 from .users import TokensTuple, UserDTO
 
 __all__ = [
@@ -39,7 +44,6 @@ __all__ = [
     "UserDTO",
     "TokensTuple",
     "ScenarioDTO",
-    "ScenarioUrbanObjectDTO",
     "ServicesCountCapacityDTO",
     "ServiceDTO",
     "ServiceTypesDTO",
@@ -69,9 +73,11 @@ __all__ = [
     "TerritoryWithoutGeometryDTO",
     "UrbanFunctionDTO",
     "UrbanObjectDTO",
+    "ScenariosUrbanObjectDTO",
     "ProjectDTO",
     "ProjectTerritoryDTO",
     "ProfilesReclamationDataDTO",
     "ProfilesReclamationDataMatrixDTO",
-    "ProjectsIndicatorDTO",
+    "ProjectsIndicatorValueDTO",
+    "ProjectsProfileDTO",
 ]

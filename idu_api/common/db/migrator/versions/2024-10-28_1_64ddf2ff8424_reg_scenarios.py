@@ -6,13 +6,10 @@ Revises: 21b28a319b43
 Create Date: 2024-10-28 11:56:03.414307
 
 """
-from textwrap import dedent
 from typing import Sequence, Union
 
-import geoalchemy2
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = "64ddf2ff8424"
@@ -34,17 +31,18 @@ def upgrade() -> None:
     op.drop_column("projects_data", "project_territory_id", schema="user_projects")
     op.add_column(
         "projects_data",
-        sa.Column("region_id", sa.Integer(), nullable=True),
+        sa.Column("territory_id", sa.Integer(), nullable=True),
         schema="user_projects",
     )
     op.create_foreign_key(
         "projects_data_fk_region_id__territories_data",
         "projects_data",
         "territories_data",
-        ["region_id"],
+        ["territory_id"],
         ["territory_id"],
         source_schema="user_projects",
         referent_schema="public",
+        ondelete="CASCADE",
     )
 
     # fix `projects_territory_data
@@ -61,6 +59,7 @@ def upgrade() -> None:
         ["project_id"],
         source_schema="user_projects",
         referent_schema="user_projects",
+        ondelete="CASCADE",
     )
     op.drop_constraint(
         "projects_territory_data_fk_parent_territory_id__project_5a39",
@@ -90,6 +89,7 @@ def upgrade() -> None:
         ["scenario_id"],
         source_schema="user_projects",
         referent_schema="user_projects",
+        ondelete="CASCADE",
     )
 
     # fix 'urban_objects_data`
@@ -168,14 +168,23 @@ def downgrade() -> None:
     op.alter_column("indicators_data", "information_source", nullable=False, schema="user_projects")
     op.add_column(
         "indicators_data",
-        sa.Column("value_type", sa.Enum("real", "forecast", "target", name="indicator_value_type"), nullable=False),
+        sa.Column("value_type", sa.Enum(name="indicator_value_type", inherit_schema=True), nullable=False),
         schema="user_projects",
     )
     op.add_column("indicators_data", sa.Column("date_value", sa.Date(), nullable=False), schema="user_projects")
     op.add_column(
         "indicators_data",
         sa.Column(
-            "date_type", sa.Enum("year", "half_year", "quarter", "month", "day", name="date_field_type"), nullable=False
+            "date_type",
+            sa.Enum(
+                "year",
+                "half_year",
+                "quarter",
+                "month",
+                "day",
+                name="date_field_type",
+            ),
+            nullable=False,
         ),
         schema="user_projects",
     )
@@ -229,7 +238,7 @@ def downgrade() -> None:
 
     # reverse changes in `projects_data`
     op.drop_constraint("projects_data_fk_region_id__territories_data", "projects_data", schema="user_projects")
-    op.drop_column("projects_data", "region_id", schema="user_projects")
+    op.drop_column("projects_data", "territory_id", schema="user_projects")
     op.add_column(
         "projects_data",
         sa.Column("project_territory_id", sa.Integer(), nullable=True),

@@ -1,14 +1,18 @@
+"""Profiles reclamation schemas are defined here."""
+
 from pydantic import BaseModel, Field
 
 from idu_api.urban_api.dto import ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO
-from idu_api.urban_api.schemas.territories import TerritoryShortInfo
+from idu_api.urban_api.schemas.short_models import ShortTerritory
 
 
 class ProfilesReclamationData(BaseModel):
+    """Profiles reclamation with all its attributes."""
+
     profile_reclamation_id: int = Field(..., description="id of profile reclamation object", examples=[1])
     source_profile_id: int = Field(..., description="id of profile (functional zone) to be reclamated", examples=[1])
     target_profile_id: int = Field(..., description="id of profile (functional zone) to be reclamated to", examples=[1])
-    territory: TerritoryShortInfo | None
+    territory: ShortTerritory | None
     technical_price: float = Field(
         ..., description="technical price to reclamate source profile (functional zone) to target one", examples=[1.0]
     )
@@ -29,7 +33,7 @@ class ProfilesReclamationData(BaseModel):
             source_profile_id=dto.source_profile_id,
             target_profile_id=dto.target_profile_id,
             territory=(
-                TerritoryShortInfo(
+                ShortTerritory(
                     id=dto.territory_id,
                     name=dto.territory_name,
                 )
@@ -44,6 +48,8 @@ class ProfilesReclamationData(BaseModel):
 
 
 class ProfilesReclamationDataPost(BaseModel):
+    """Profiles reclamation schema for POST requests."""
+
     source_profile_id: int = Field(..., description="id of profile (functional zone) to be reclamated", examples=[1])
     target_profile_id: int = Field(..., description="id of profile (functional zone) to be reclamated to", examples=[1])
     territory_id: int | None = Field(
@@ -64,6 +70,8 @@ class ProfilesReclamationDataPost(BaseModel):
 
 
 class ProfilesReclamationDataPut(BaseModel):
+    """Profiles reclamation schema for PUT requests."""
+
     source_profile_id: int = Field(..., description="id of profile (functional zone) to be reclamated", examples=[1])
     target_profile_id: int = Field(..., description="id of profile (functional zone) to be reclamated to", examples=[1])
     territory_id: int | None = Field(
@@ -84,6 +92,8 @@ class ProfilesReclamationDataPut(BaseModel):
 
 
 class ProfilesReclamationDataMatrix(BaseModel):
+    """Profiles reclamation matrix schema."""
+
     labels: list[int] = Field(..., description="labels of profiles", examples=[[1, 2]])
     technical_price: list[list[float]] = Field(
         ..., description="technical price matrix", examples=[[[0.0, 1.0], [2.0, 0.0]]]

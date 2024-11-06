@@ -1,6 +1,8 @@
+"""Services schemas are defined here."""
+
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -26,16 +28,16 @@ class ServicesData(BaseModel):
     service_id: int = Field(..., examples=[1])
     service_type: ServiceTypes
     territory_type: TerritoryType | None
-    name: str | None = Field(None, description="Service name", examples=["--"])
+    name: str | None = Field(None, description="service name", examples=["--"])
     capacity_real: int | None = Field(None, examples=[1])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Service additional properties",
+        description="service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the service was created")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the service was created")
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="The time when the service was last updated"
+        default_factory=datetime.utcnow, description="the time when the service was last updated"
     )
 
     @classmethod
@@ -74,17 +76,17 @@ class ServiceWithTerritories(BaseModel):
     service_id: int = Field(..., examples=[1])
     service_type: ServiceTypes
     territory_type: TerritoryType | None
-    name: str | None = Field(..., description="Service name", examples=["--"])
+    name: str | None = Field(..., description="service name", examples=["--"])
     capacity_real: int | None = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Service additional properties",
+        description="service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
     territories: list[ShortTerritory]
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the service was created")
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="The time when the territory was last updated"
+        default_factory=datetime.utcnow, description="the time when the service was last updated"
     )
 
     @classmethod
@@ -112,8 +114,7 @@ class ServiceWithTerritories(BaseModel):
             capacity_real=dto.capacity_real,
             properties=dto.properties,
             territories=[
-                ShortTerritory(territory_id=territory["territory_id"], name=territory["name"])
-                for territory in dto.territories
+                ShortTerritory(id=territory["territory_id"], name=territory["name"]) for territory in dto.territories
             ],
             created_at=dto.created_at,
             updated_at=dto.updated_at,
@@ -126,11 +127,11 @@ class ServicesDataPost(BaseModel):
     object_geometry_id: int = Field(..., examples=[1])
     service_type_id: int = Field(..., examples=[1])
     territory_type_id: int | None = Field(None, examples=[1])
-    name: str | None = Field(None, description="Service name", examples=["--"])
+    name: str | None = Field(None, description="service name", examples=["--"])
     capacity_real: int | None = Field(None, examples=[1])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Service additional properties",
+        description="service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
@@ -138,11 +139,11 @@ class ServicesDataPost(BaseModel):
 class ServicesDataPut(BaseModel):
     service_type_id: int = Field(..., examples=[1])
     territory_type_id: int | None = Field(..., examples=[1])
-    name: str | None = Field(..., description="Service name", examples=["--"])
+    name: str | None = Field(..., description="service name", examples=["--"])
     capacity_real: int | None = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
         ...,
-        description="Service additional properties",
+        description="service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
@@ -150,11 +151,11 @@ class ServicesDataPut(BaseModel):
 class ServicesDataPatch(BaseModel):
     service_type_id: int | None = Field(None, examples=[1])
     territory_type_id: int | None = Field(None, examples=[1])
-    name: str | None = Field(None, description="Service name", examples=["--"])
+    name: str | None = Field(None, description="service name", examples=["--"])
     capacity_real: int | None = Field(None, examples=[1])
-    properties: Optional[dict[str, Any]] = Field(
+    properties: dict[str, Any] | None = Field(
         None,
-        description="Service additional properties",
+        description="service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
@@ -173,20 +174,20 @@ class ServicesDataWithGeometry(BaseModel):
     service_id: int = Field(..., examples=[1])
     service_type: ServiceTypes
     territory_type: TerritoryType | None = None
-    name: str | None = Field(..., description="Service name", examples=["--"])
+    name: str | None = Field(..., description="service name", examples=["--"])
     capacity_real: int | None = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Service additional properties",
+        description="service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    address: str | None = Field(None, description="Physical object address", examples=["--"])
+    address: str | None = Field(None, description="physical object address", examples=["--"])
     osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
     geometry: Geometry
     centre_point: Geometry
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="The time when the territory was created")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the service was created")
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="The time when the territory was last updated"
+        default_factory=datetime.utcnow, description="the time when the service was last updated"
     )
 
     @classmethod

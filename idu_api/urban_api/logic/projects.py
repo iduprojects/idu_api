@@ -4,10 +4,10 @@ from typing import Protocol
 
 from idu_api.urban_api.dto import (
     ProjectDTO,
-    ProjectsIndicatorDTO,
+    ProjectsIndicatorValueDTO,
     ProjectTerritoryDTO,
     ScenarioDTO,
-    ScenarioUrbanObjectDTO,
+    ScenariosUrbanObjectDTO,
 )
 from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPost,
@@ -15,7 +15,7 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectsIndicatorPost,
+    ProjectsIndicatorValuePost,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -110,43 +110,45 @@ class UserProjectService(Protocol):
     @abc.abstractmethod
     async def add_physical_object_to_scenario(
         self, scenario_id: int, physical_object: PhysicalObjectWithGeometryPost, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
+    ) -> ScenariosUrbanObjectDTO:
         """Add physical object to scenario."""
 
     @abc.abstractmethod
     async def add_existing_physical_object_to_scenario(
         self, scenario_id: int, object_geometry_id: int, physical_object: PhysicalObjectsDataPost, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
+    ) -> ScenariosUrbanObjectDTO:
         """Add existing physical object to scenario."""
 
     @abc.abstractmethod
     async def add_service_to_scenario(
         self, scenario_id: int, service: ServicesDataPost, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
+    ) -> ScenariosUrbanObjectDTO:
         """Add service object to scenario."""
 
     @abc.abstractmethod
     async def add_existing_service_to_scenario(
         self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
+    ) -> ScenariosUrbanObjectDTO:
         """Add existing service object to scenario."""
 
     @abc.abstractmethod
-    async def get_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> list[ProjectsIndicatorDTO]:
+    async def get_all_projects_indicators_values(
+        self, scenario_id: int, user_id: str
+    ) -> list[ProjectsIndicatorValueDTO]:
         """Get project's indicators values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
     async def get_specific_projects_indicator_values(
         self, scenario_id: int, indicator_id: int, user_id: str
-    ) -> list[ProjectsIndicatorDTO]:
+    ) -> list[ProjectsIndicatorValueDTO]:
         """Get project's specific indicator values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
     async def add_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorPost, user_id: str
-    ) -> ProjectsIndicatorDTO:
+        self, projects_indicator: ProjectsIndicatorValuePost, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
         """Add a new project's indicator value."""
 
     @abc.abstractmethod

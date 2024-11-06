@@ -14,9 +14,9 @@ from idu_api.urban_api.schemas import (
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
+    ScenariosUrbanObject,
     ServicesDataPost,
 )
-from idu_api.urban_api.schemas.scenarios_urban_objects import ScenariosUrbanObject
 from idu_api.urban_api.utils.auth_client import get_user
 
 

@@ -374,8 +374,8 @@ async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_
             name=project.name,
             description=project.description,
             public=project.public,
-            updated_at=datetime.now(timezone.utc),
             properties=project.properties,
+            updated_at=datetime.now(timezone.utc),
         )
         .returning(projects_data.c.project_id)
     )

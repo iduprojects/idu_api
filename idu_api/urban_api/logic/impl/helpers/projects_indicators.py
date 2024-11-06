@@ -8,15 +8,15 @@ from idu_api.common.db.entities import (
     projects_indicators_data,
     scenarios_data,
 )
-from idu_api.urban_api.dto import ProjectsIndicatorDTO
+from idu_api.urban_api.dto import ProjectsIndicatorValueDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
-from idu_api.urban_api.schemas import ProjectsIndicatorPost
+from idu_api.urban_api.schemas import ProjectsIndicatorValuePost
 
 
 async def get_all_projects_indicators_values_from_db(
     conn: AsyncConnection, scenario_id: int, user_id: str
-) -> list[ProjectsIndicatorDTO]:
+) -> list[ProjectsIndicatorValueDTO]:
     """Get project's indicators values for given scenario
     if relevant project is public or if you're the project owner."""
 
@@ -35,12 +35,12 @@ async def get_all_projects_indicators_values_from_db(
     statement = select(projects_indicators_data).where(projects_indicators_data.c.scenario_id == scenario_id)
     results = (await conn.execute(statement)).mappings().all()
 
-    return [ProjectsIndicatorDTO(**result) for result in results]
+    return [ProjectsIndicatorValueDTO(**result) for result in results]
 
 
 async def get_specific_projects_indicator_values_from_db(
     conn: AsyncConnection, scenario_id: int, indicator_id: int, user_id: str
-) -> list[ProjectsIndicatorDTO]:
+) -> list[ProjectsIndicatorValueDTO]:
     """Get project's specific indicator values for given scenario
     if relevant project is public or if you're the project owner."""
 
@@ -66,12 +66,12 @@ async def get_specific_projects_indicator_values_from_db(
     if result is None:
         raise EntityNotFoundById(indicator_id, "indicator")
 
-    return [ProjectsIndicatorDTO(**indicator) for indicator in result]
+    return [ProjectsIndicatorValueDTO(**indicator) for indicator in result]
 
 
 async def add_projects_indicator_value_to_db(
-    conn: AsyncConnection, projects_indicator: ProjectsIndicatorPost, user_id: str
-) -> ProjectsIndicatorDTO:
+    conn: AsyncConnection, projects_indicator: ProjectsIndicatorValuePost, user_id: str
+) -> ProjectsIndicatorValueDTO:
     """Add a new project's indicator value."""
 
     statement = select(scenarios_data.c.project_id).where(
@@ -114,7 +114,7 @@ async def add_projects_indicator_value_to_db(
 
     await conn.commit()
 
-    return ProjectsIndicatorDTO(**result)
+    return ProjectsIndicatorValueDTO(**result)
 
 
 async def delete_all_projects_indicators_values_from_db(conn: AsyncConnection, scenario_id: int, user_id: str) -> dict:

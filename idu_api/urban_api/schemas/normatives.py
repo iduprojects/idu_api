@@ -1,4 +1,4 @@
-"""Normatives schemas are defined here."""
+"""Normative schemas are defined here."""
 
 from datetime import datetime
 from enum import Enum
@@ -8,12 +8,11 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from idu_api.urban_api.dto import NormativeDTO
 from idu_api.urban_api.schemas.enums import NormativeType
-
-from .service_types import ServiceTypeBasic, UrbanFunctionBasic
+from idu_api.urban_api.schemas.short_models import ServiceTypeBasic, UrbanFunctionBasic
 
 
 class Normative(BaseModel):
-    """Normative response model for a given territory"""
+    """Normative response model for a given territory."""
 
     service_type: ServiceTypeBasic | None = None
     urban_function: UrbanFunctionBasic | None = None
@@ -120,7 +119,7 @@ class NormativePost(BaseModel):
     is_regulated: bool = Field(..., examples=[True])
     source: str | None = Field(
         ...,
-        description="Information source",
+        description="information source",
         examples=[
             "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
             "structure_version/229/"
@@ -171,7 +170,7 @@ class NormativePatch(BaseModel):
     is_regulated: bool | None = Field(None, examples=[True])
     source: str | None = Field(
         None,
-        description="Information source",
+        description="information source",
         examples=[
             "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
             "structure_version/229/"
@@ -222,38 +221,8 @@ class NormativePatch(BaseModel):
 
 
 class NormativeDelete(BaseModel):
-    """Normative delete model"""
+    """Normative delete model."""
 
     service_type_id: int | None = None
     urban_function_id: int | None = None
     year: int = Field(..., examples=[2024])
-
-
-class ShortNormativeInfo(BaseModel):
-    """Normative geojson response model for a given territory"""
-
-    type: str = Field(..., examples=["Школа"])
-    year: int = Field(..., examples=[2024])
-    radius_availability_meters: int | None = Field(None, examples=[1])
-    time_availability_minutes: int | None = Field(None, examples=None)
-    services_per_1000_normative: int | None = Field(None, examples=[1])
-    services_capacity_per_1000_normative: int | None = Field(None, examples=None)
-    is_regulated: bool = Field(..., examples=[True])
-
-    @model_validator(mode="after")
-    def validate_radius_or_time_availability(self):
-        if self.radius_availability_meters is None and self.time_availability_minutes is None:
-            raise ValueError("radius_availability_meters and time_availability_minutes cannot both be unset")
-        if self.radius_availability_meters is not None and self.time_availability_minutes is not None:
-            raise ValueError("radius_availability_meters and time_availability_minutes cannot both be set")
-        return self
-
-    @model_validator(mode="after")
-    def validate_services_or_capacity_normative(self):
-        if self.services_per_1000_normative is None and self.services_capacity_per_1000_normative is None:
-            raise ValueError(
-                "services_per_1000_normative and services_capacity_per_1000_normative cannot both be unset"
-            )
-        if self.services_per_1000_normative is not None and self.services_capacity_per_1000_normative is not None:
-            raise ValueError("services_per_1000_normative and services_capacity_per_1000_normative cannot both be set")
-        return self
