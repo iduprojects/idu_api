@@ -39,5 +39,9 @@ class UrbanObjectsServiceImpl(UrbanObjectsService):
     async def delete_urban_object_by_id(self, urban_object_id: int) -> dict:
         return await delete_urban_object_by_id_from_db(self._conn, urban_object_id)
 
-    async def get_urban_objects_by_territory_id(self, territory_id: int) -> list[UrbanObjectDTO]:
-        return await get_urban_objects_by_territory_id_from_db(self._conn, territory_id)
+    async def get_urban_objects_by_territory_id(
+        self, territory_id: int, service_type_id: int, physical_object_type_id: int
+    ) -> list[UrbanObjectDTO]:
+        return await get_urban_objects_by_territory_id_from_db(
+            self._conn, territory_id, service_type_id, physical_object_type_id
+        )
