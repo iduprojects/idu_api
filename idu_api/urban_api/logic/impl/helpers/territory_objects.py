@@ -429,3 +429,44 @@ async def get_intersecting_territories_for_geometry(
     territory_ids = (await conn.execute(statement)).scalars().all()
 
     return await get_territories_by_ids(conn, territory_ids)
+
+
+async def get_territory_geojson_by_territory_id_from_db(conn: AsyncConnection, territory_id: int) -> TerritoryDTO:
+    """Get geojson for a given territory."""
+
+    territories_data_parents = territories_data.alias("territories_data_parents")
+    statement = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.territory_type_id,
+            territory_types_dict.c.name.label("territory_type_name"),
+            territories_data.c.parent_id,
+            territories_data_parents.c.name.label("parent_name"),
+            territories_data.c.name,
+            cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
+            territories_data.c.level,
+            territories_data.c.properties,
+            cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
+            territories_data.c.admin_center,
+            territories_data.c.okato_code,
+            territories_data.c.oktmo_code,
+            territories_data.c.created_at,
+            territories_data.c.updated_at,
+        )
+        .select_from(
+            territories_data.join(
+                territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
+            ).join(
+                territories_data_parents,
+                territories_data.c.parent_id == territories_data_parents.c.territory_id,
+                isouter=True,
+            )
+        )
+        .where(territories_data.c.territory_id == territory_id)
+    )
+
+    territory = (await conn.execute(statement)).mappings().one_or_none()
+    if territory is None:
+        raise EntityNotFoundById(territory_id, "territory")
+
+    return TerritoryDTO(**territory)
