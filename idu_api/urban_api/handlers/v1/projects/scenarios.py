@@ -251,7 +251,7 @@ async def add_service_to_scenario(
 async def get_functional_zones_for_scenario(
     request: Request,
     scenario_id: int = Path(..., description="scenario identifier"),
-    user: UserDTO = Depends(user_dependency),
+    user: UserDTO = Depends(get_user),
 ) -> list[ProjectsFunctionalZone]:
     """Get all functional zones for a scenario."""
     user_project_service: UserProjectService = request.state.user_project_service
