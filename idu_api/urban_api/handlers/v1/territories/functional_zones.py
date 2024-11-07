@@ -18,13 +18,16 @@ async def get_functional_zones_for_territory(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
     functional_zone_type_id: int | None = Query(None, description="functional_zone_type_id", gt=0),
+    include_child_territories: bool = Query(False, description="to get functional zones for child territories"),
 ) -> list[FunctionalZoneData]:
     """Get functional zones for territory.
 
-    functional_zone_type could be specified in parameters.
+    functional_zone_type and include_child_territories could be specified in parameters.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    zones = await territories_service.get_functional_zones_by_territory_id(territory_id, functional_zone_type_id)
+    zones = await territories_service.get_functional_zones_by_territory_id(
+        territory_id, functional_zone_type_id, include_child_territories
+    )
 
     return [FunctionalZoneData.from_dto(zone) for zone in zones]

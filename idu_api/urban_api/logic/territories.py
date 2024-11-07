@@ -215,7 +215,10 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def get_functional_zones_by_territory_id(
-        self, territory_id: int, functional_zone_type_id: int | None
+        self,
+        territory_id: int,
+        functional_zone_type_id: int | None,
+        include_child_territories: bool,
     ) -> list[FunctionalZoneDataDTO]:
         """Get functional zones with geometry by territory id."""
 

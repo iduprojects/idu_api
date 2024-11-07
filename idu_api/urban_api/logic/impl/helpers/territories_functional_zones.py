@@ -15,14 +15,13 @@ func: Callable
 
 
 async def get_functional_zones_by_territory_id_from_db(
-    conn: AsyncConnection,
-    territory_id: int,
-    functional_zone_type_id: int | None,
+    conn: AsyncConnection, territory_id: int, functional_zone_type_id: int | None, include_child_territories: bool
 ) -> list[FunctionalZoneDataDTO]:
     """Get functional zones with geometry by territory id."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
+
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
@@ -31,10 +30,27 @@ async def get_functional_zones_by_territory_id_from_db(
         functional_zones_data.c.territory_id,
         functional_zones_data.c.functional_zone_type_id,
         cast(ST_AsGeoJSON(functional_zones_data.c.geometry), JSONB).label("geometry"),
-    ).where(functional_zones_data.c.territory_id == territory_id)
+    )
 
     if functional_zone_type_id is not None:
         statement = statement.where(functional_zones_data.c.functional_zone_type_id == functional_zone_type_id)
+
+    if include_child_territories:
+        territories_cte = (
+            select(territories_data.c.territory_id)
+            .where(territories_data.c.territory_id == territory_id)
+            .cte(recursive=True)
+        )
+
+        territories_cte = territories_cte.union_all(
+            select(territories_data.c.territory_id).where(
+                territories_data.c.parent_id == territories_cte.c.territory_id
+            )
+        )
+
+        statement = statement.where(functional_zones_data.c.territory_id.in_(territories_cte)).distinct()
+    else:
+        statement = statement.where(functional_zones_data.c.territory_id == territory_id)
 
     result = (await conn.execute(statement)).mappings().all()
 

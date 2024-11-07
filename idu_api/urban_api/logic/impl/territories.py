@@ -259,9 +259,14 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         return await get_living_buildings_with_geometry_by_territory_id_from_db(self._conn, territory_id)
 
     async def get_functional_zones_by_territory_id(
-        self, territory_id: int, functional_zone_type_id: int | None
+        self,
+        territory_id: int,
+        functional_zone_type_id: int | None,
+        include_child_territories: bool,
     ) -> list[FunctionalZoneDataDTO]:
-        return await get_functional_zones_by_territory_id_from_db(self._conn, territory_id, functional_zone_type_id)
+        return await get_functional_zones_by_territory_id_from_db(
+            self._conn, territory_id, functional_zone_type_id, include_child_territories
+        )
 
     async def get_territories_by_parent_id(
         self, parent_id: int | None, get_all_levels: bool | None, territory_type_id: int | None, paginate: bool = False
