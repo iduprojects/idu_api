@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import FunctionalZoneDataDTO, FunctionalZoneTypeDTO
 from idu_api.urban_api.schemas.geometries import Geometry
@@ -38,5 +38,28 @@ class FunctionalZoneData(BaseModel):
             functional_zone_id=dto.functional_zone_id,
             territory_id=dto.territory_id,
             functional_zone_type_id=dto.functional_zone_type_id,
-            geometry=dto.geometry,
+            geometry=Geometry.from_shapely_geometry(dto.geometry),
         )
+
+
+class FunctionalZoneDataPost(BaseModel):
+    functional_zone_type_id: int = Field(..., examples=[1])
+    geometry: Geometry = Field(..., description="Functional zone geometry")
+
+
+class FunctionalZoneDataPut(BaseModel):
+    functional_zone_type_id: int = Field(..., examples=[1])
+    geometry: Geometry = Field(..., description="Functional zone geometry")
+
+
+class FunctionalZoneDataPatch(BaseModel):
+    functional_zone_type_id: int | None = Field(None, examples=[1])
+    geometry: Geometry | None = Field(None, description="Functional zone geometry")
+
+    @model_validator(mode="before")
+    @classmethod
+    def check_empty_request(cls, values):
+        """Ensure the request body is not empty."""
+        if not values:
+            raise ValueError("request body cannot be empty")
+        return values

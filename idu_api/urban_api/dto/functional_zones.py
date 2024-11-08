@@ -19,3 +19,7 @@ class FunctionalZoneDataDTO:
     territory_id: int
     functional_zone_type_id: int
     geometry: geom.Polygon | geom.MultiPolygon
+
+    def __post_init__(self) -> None:
+        if isinstance(self.geometry, dict):
+            self.geometry = geom.shape(self.geometry)

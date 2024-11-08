@@ -27,6 +27,9 @@ from idu_api.urban_api.dto import (
     TerritoryWithoutGeometryDTO,
 )
 from idu_api.urban_api.schemas import (
+    FunctionalZoneDataPatch,
+    FunctionalZoneDataPost,
+    FunctionalZoneDataPut,
     NormativeDelete,
     NormativePatch,
     NormativePost,
@@ -221,6 +224,38 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         include_child_territories: bool,
     ) -> list[FunctionalZoneDataDTO]:
         """Get functional zones with geometry by territory id."""
+
+    @abc.abstractmethod
+    async def add_functional_zone_for_territory(
+        self, territory_id: int, functional_zone: FunctionalZoneDataPost
+    ) -> FunctionalZoneDataDTO:
+        """Add functional zone for territory."""
+
+    @abc.abstractmethod
+    async def add_functional_zones_for_territory(
+        self, territory_id: int, functional_zones: list[FunctionalZoneDataPost]
+    ) -> list[FunctionalZoneDataDTO]:
+        """Add a bunch of functional zones for territory."""
+
+    @abc.abstractmethod
+    async def put_functional_zone_for_territory(
+        self, territory_id: int, functional_zone_id: int, functional_zone: FunctionalZoneDataPut
+    ) -> FunctionalZoneDataDTO:
+        """Put functional zone for territory."""
+
+    @abc.abstractmethod
+    async def patch_functional_zone_for_territory(
+        self, territory_id: int, functional_zone_id: int, functional_zone: FunctionalZoneDataPatch
+    ) -> FunctionalZoneDataDTO:
+        """Patch functional zone for territory."""
+
+    @abc.abstractmethod
+    async def delete_specific_functional_zone_for_territory(self, territory_id, functional_zone_id) -> dict:
+        """Delete specific functional zone for territory."""
+
+    @abc.abstractmethod
+    async def delete_all_functional_zones_for_territory(self, territory_id) -> dict:
+        """Delete all functional zones for territory."""
 
     @abc.abstractmethod
     async def get_territories_by_parent_id(

@@ -30,7 +30,13 @@ from idu_api.urban_api.logic.impl.helpers.territories_buildings import (
     get_living_buildings_with_geometry_by_territory_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_functional_zones import (
+    add_functional_zone_for_territory_to_db,
+    add_functional_zones_for_territory_to_db,
+    delete_all_functional_zones_for_territory_from_db,
+    delete_specific_functional_zone_for_territory_from_db,
     get_functional_zones_by_territory_id_from_db,
+    patch_functional_zone_for_territory_to_db,
+    put_functional_zone_for_territory_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_indicators import (
     get_indicator_values_by_parent_id_from_db,
@@ -71,6 +77,9 @@ from idu_api.urban_api.logic.impl.helpers.territory_services import (
 from idu_api.urban_api.logic.impl.helpers.territory_types import add_territory_type_to_db, get_territory_types_from_db
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import (
+    FunctionalZoneDataPatch,
+    FunctionalZoneDataPost,
+    FunctionalZoneDataPut,
     NormativeDelete,
     NormativePatch,
     NormativePost,
@@ -267,6 +276,36 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         return await get_functional_zones_by_territory_id_from_db(
             self._conn, territory_id, functional_zone_type_id, include_child_territories
         )
+
+    async def add_functional_zone_for_territory(
+        self, territory_id: int, functional_zone: FunctionalZoneDataPost
+    ) -> FunctionalZoneDataDTO:
+        return await add_functional_zone_for_territory_to_db(self._conn, territory_id, functional_zone)
+
+    async def add_functional_zones_for_territory(
+        self, territory_id: int, functional_zones: list[FunctionalZoneDataPost]
+    ) -> list[FunctionalZoneDataDTO]:
+        return await add_functional_zones_for_territory_to_db(self._conn, territory_id, functional_zones)
+
+    async def put_functional_zone_for_territory(
+        self, territory_id: int, functional_zone_id: int, functional_zone: FunctionalZoneDataPut
+    ) -> FunctionalZoneDataDTO:
+        return await put_functional_zone_for_territory_to_db(
+            self._conn, territory_id, functional_zone_id, functional_zone
+        )
+
+    async def patch_functional_zone_for_territory(
+        self, territory_id: int, functional_zone_id: int, functional_zone: FunctionalZoneDataPatch
+    ) -> FunctionalZoneDataDTO:
+        return await patch_functional_zone_for_territory_to_db(
+            self._conn, territory_id, functional_zone_id, functional_zone
+        )
+
+    async def delete_specific_functional_zone_for_territory(self, territory_id: int, functional_zone_id: int) -> dict:
+        return await delete_specific_functional_zone_for_territory_from_db(self._conn, territory_id, functional_zone_id)
+
+    async def delete_all_functional_zones_for_territory(self, territory_id: int) -> dict:
+        return await delete_all_functional_zones_for_territory_from_db(self._conn, territory_id)
 
     async def get_territories_by_parent_id(
         self, parent_id: int | None, get_all_levels: bool | None, territory_type_id: int | None, paginate: bool = False
