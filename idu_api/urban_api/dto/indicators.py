@@ -1,4 +1,4 @@
-"""Indicators DTO are defined here."""
+"""Indicators DTOs are defined here."""
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -28,6 +28,7 @@ class IndicatorValueDTO:
     level: int
     list_label: str
     territory_id: int
+    territory_name: str
     date_type: Literal["year", "half_year", "quarter", "month", "day"]
     date_value: datetime
     value: int
@@ -48,3 +49,24 @@ class IndicatorsGroupDTO:
     indicators_group_id: int
     name: str
     indicators: list[IndicatorDTO]
+
+
+@dataclass(frozen=True)
+class ProjectsIndicatorValueDTO:
+    indicator_value_id: int
+    indicator_id: int
+    name_full: str
+    measurement_unit_id: int | None
+    measurement_unit_name: str | None
+    level: int
+    list_label: str
+    scenario_id: int
+    scenario_name: str
+    territory_id: int | None
+    territory_name: str | None
+    hexagon_id: int | None
+    value: int
+    comment: str
+    information_source: str | None
+    created_at: datetime
+    updated_at: datetime

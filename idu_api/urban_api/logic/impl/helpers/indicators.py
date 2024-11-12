@@ -1,4 +1,4 @@
-"""Indicators handlers logic of getting entities from the database is defined here."""
+"""Indicators internal logic is defined here."""
 
 from datetime import datetime, timezone
 

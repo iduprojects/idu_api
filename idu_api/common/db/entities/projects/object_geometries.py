@@ -1,9 +1,12 @@
+"""Projects object geometries data table is defined here."""
+
 from typing import Callable
 
 from geoalchemy2.types import Geometry
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, func
 
 from idu_api.common.db import metadata
+from idu_api.common.db.entities.object_geometries import object_geometries_data
 from idu_api.common.db.entities.territories import territories_data
 
 func: Callable
@@ -14,6 +17,12 @@ projects_object_geometries_data = Table(
     "object_geometries_data",
     metadata,
     Column("object_geometry_id", Integer, primary_key=True, server_default=object_geometries_id_seq.next_value()),
+    Column(
+        "public_object_geometry_id",
+        Integer,
+        ForeignKey(object_geometries_data.c.object_geometry_id, ondelete="SET NULL"),
+        nullable=True,
+    ),
     Column(
         "territory_id",
         Integer,
@@ -40,6 +49,7 @@ projects_object_geometries_data = Table(
 """
 Object geometries data:
 - object_geometry_id int 
+- public_object_geometry_id foreign key int
 - territory_id foreign key int
 - geometry geometry
 - centre_point geometry point

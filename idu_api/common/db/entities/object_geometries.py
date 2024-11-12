@@ -1,6 +1,4 @@
-"""
-Object geometries data table is defined here
-"""
+"""Object geometries data table is defined here."""
 
 from typing import Callable
 
@@ -8,6 +6,7 @@ from geoalchemy2.types import Geometry
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, func
 
 from idu_api.common.db import metadata
+from idu_api.common.db.entities.territories import territories_data
 
 func: Callable
 
@@ -17,7 +16,7 @@ object_geometries_data = Table(
     "object_geometries_data",
     metadata,
     Column("object_geometry_id", Integer, primary_key=True, server_default=object_geometries_data_id_seq.next_value()),
-    Column("territory_id", ForeignKey("territories_data.territory_id"), nullable=True),
+    Column("territory_id", ForeignKey(territories_data.c.territory_id), nullable=False),
     Column(
         "geometry",
         Geometry(spatial_index=False, from_text="ST_GeomFromEWKT", name="geometry", nullable=False),

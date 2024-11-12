@@ -1,4 +1,4 @@
-"""Profiles reclamations DTO are defined here."""
+"""Profiles reclamations DTOs are defined here."""
 
 from dataclasses import dataclass
 

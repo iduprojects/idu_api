@@ -1,9 +1,11 @@
+"""Projects territories data table is defined here."""
+
 from geoalchemy2.types import Geometry
 from sqlalchemy import Column, ForeignKey, Integer, Sequence, Table, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
-from idu_api.common.db.entities.territories import territories_data
+from idu_api.common.db.entities.projects.projects import projects_data
 
 project_territory_id_seq = Sequence("project_territory_id_seq", schema="user_projects")
 
@@ -12,10 +14,10 @@ projects_territory_data = Table(
     metadata,
     Column("project_territory_id", Integer, primary_key=True, server_default=project_territory_id_seq.next_value()),
     Column(
-        "parent_territory_id",
+        "project_id",
         Integer,
-        ForeignKey(territories_data.c.territory_id),
-        nullable=True,
+        ForeignKey(projects_data.c.project_id, ondelete="CASCADE"),
+        nullable=False,
     ),
     Column(
         "geometry",
@@ -34,7 +36,7 @@ projects_territory_data = Table(
 """
 Project territory data:
 - project_territory_id int 
-- parent_territory_id foreign key int
+- project_id foreign key int
 - geometry geometry
 - centre_point geometry point
 - properties jsonb

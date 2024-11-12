@@ -1,4 +1,4 @@
-"""Physical objects handlers logic of getting entities from the database is defined here."""
+"""Physical objects internal logic is defined here."""
 
 from datetime import datetime, timezone
 from typing import Callable

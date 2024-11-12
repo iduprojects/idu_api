@@ -1,4 +1,4 @@
-"""Services DTO are defined here."""
+"""Services DTOs are defined here."""
 
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -109,3 +109,17 @@ class ServicesCountCapacityDTO:
     territory_id: int
     count: int
     capacity: int
+
+
+@dataclass(frozen=True)
+class ShortScenarioServiceDTO:
+    service_id: int
+    service_type_id: int
+    territory_type_id: int | None
+    name: str | None
+    capacity_real: int | None
+    is_scenario_object: bool
+
+@dataclass(frozen=True)
+class ScenarioServiceDTO(ServiceDTO):
+    is_scenario_object: bool

@@ -1,4 +1,4 @@
-"""Living buildings DTO are defined here."""
+"""Living buildings DTOs are defined here."""
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -19,7 +19,6 @@ class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attri
     physical_object_properties: dict[str, str]
     physical_object_created_at: datetime
     physical_object_updated_at: datetime
-    residents_number: int | None
     living_area: float | None
     properties: dict[str, Any]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
@@ -48,6 +47,5 @@ class LivingBuildingsDTO:  # pylint: disable=too-many-instance-attributes
     physical_object_properties: dict[str, Any]
     physical_object_created_at: datetime
     physical_object_updated_at: datetime
-    residents_number: int | None
     living_area: float | None
     properties: dict[str, Any]

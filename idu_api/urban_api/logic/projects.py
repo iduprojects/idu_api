@@ -1,25 +1,23 @@
 import abc
 import io
-from typing import Protocol
+from typing import Any, Protocol
 
 from idu_api.urban_api.dto import (
     ProjectDTO,
-    ProjectsIndicatorDTO,
+    ProjectsIndicatorValueDTO,
     ProjectTerritoryDTO,
     ScenarioDTO,
-    ScenarioUrbanObjectDTO,
+    ScenarioGeometryDTO,
+    ScenarioGeometryWithAllObjectsDTO, ScenarioPhysicalObjectDTO, ScenarioServiceDTO,
 )
 from idu_api.urban_api.schemas import (
-    PhysicalObjectsDataPost,
-    PhysicalObjectWithGeometryPost,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectsIndicatorPost,
+    ProjectsIndicatorValuePost,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
-    ServicesDataPost,
 )
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
@@ -32,40 +30,56 @@ class UserProjectService(Protocol):
         """Get project object by id."""
 
     @abc.abstractmethod
-    async def add_project(self, project: ProjectPost, user_id: str) -> ProjectDTO:
-        """Create project object and base scenario."""
+    async def get_project_territory_by_id(self, project_id: int, user_id: str) -> ProjectTerritoryDTO:
+        """Get project territory object by id."""
 
     @abc.abstractmethod
-    async def get_all_available_projects(self, user_id: str | None) -> list[ProjectDTO]:
+    async def get_all_available_projects(self, user_id: str | None, is_regional: bool) -> list[ProjectDTO]:
         """Get all public and user's projects."""
 
     @abc.abstractmethod
-    async def get_all_preview_projects_images(self, minio_client: AsyncMinioClient, user_id: str | None) -> io.BytesIO:
-        """Get preview images for all public and user's projects with parallel MinIO requests."""
+    async def get_all_preview_projects_images(
+        self, minio_client: AsyncMinioClient, user_id: str | None, is_regional: bool
+    ) -> io.BytesIO:
+        """Get preview images (zip) for all public and user's projects."""
 
     @abc.abstractmethod
-    async def get_user_projects(self, user_id: str) -> list[ProjectDTO]:
+    async def get_all_preview_projects_images_url(
+        self, minio_client: AsyncMinioClient, user_id: str | None, is_regional: bool
+    ) -> list[dict[str, int | str]]:
+        """Get preview images url for all public and user's projects."""
+
+    @abc.abstractmethod
+    async def get_user_projects(self, user_id: str, is_regional: bool) -> list[ProjectDTO]:
         """Get all user's projects."""
 
     @abc.abstractmethod
-    async def get_user_preview_projects_images(self, minio_client: AsyncMinioClient, user_id: str) -> io.BytesIO:
-        """Get preview images for all user's projects with parallel MinIO requests."""
+    async def get_user_preview_projects_images(
+        self, minio_client: AsyncMinioClient, user_id: str, is_regional: bool
+    ) -> io.BytesIO:
+        """Get preview images (zip) for all user's projects with parallel MinIO requests."""
 
     @abc.abstractmethod
-    async def get_project_territory_by_id(self, project_id: int, user_id: str) -> ProjectTerritoryDTO:
-        """Get project object by id."""
+    async def get_user_preview_projects_images_url(
+        self, minio_client: AsyncMinioClient, user_id: str, is_regional: bool
+    ) -> list[dict[str, int | str]]:
+        """Get preview images url for all user's projects."""
+
+    @abc.abstractmethod
+    async def add_project(self, project: ProjectPost, user_id: str) -> ProjectDTO:
+        """Create project object."""
+
+    @abc.abstractmethod
+    async def put_project(self, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO:
+        """Update project object by all its attributes."""
+
+    @abc.abstractmethod
+    async def patch_project(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO:
+        """Update project object by only given attributes."""
 
     @abc.abstractmethod
     async def delete_project(self, project_id: int, minio_client: AsyncMinioClient, user_id: str) -> dict:
         """Delete project object."""
-
-    @abc.abstractmethod
-    async def put_project(self, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO:
-        """Put project object."""
-
-    @abc.abstractmethod
-    async def patch_project(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO:
-        """Patch project object."""
 
     @abc.abstractmethod
     async def upload_project_image(
@@ -84,11 +98,15 @@ class UserProjectService(Protocol):
         """Get preview image for given project."""
 
     @abc.abstractmethod
-    async def get_scenarios_by_project_id(self, project_id: int, user_id) -> list[ScenarioDTO]:
+    async def get_full_project_image_url(self, minio_client: AsyncMinioClient, project_id: int, user_id: str) -> str:
+        """Get full image url for given project."""
+
+    @abc.abstractmethod
+    async def get_scenarios_by_project_id(self, project_id: int, user_id: str) -> list[ScenarioDTO]:
         """Get list of scenario objects by project id."""
 
     @abc.abstractmethod
-    async def get_scenario_by_id(self, scenario_id: int, user_id) -> ScenarioDTO:
+    async def get_scenario_by_id(self, scenario_id: int, user_id: str) -> ScenarioDTO:
         """Get scenario object by id."""
 
     @abc.abstractmethod
@@ -108,45 +126,69 @@ class UserProjectService(Protocol):
         """Delete scenario object."""
 
     @abc.abstractmethod
-    async def add_physical_object_to_scenario(
-        self, scenario_id: int, physical_object: PhysicalObjectWithGeometryPost, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
-        """Add physical object to scenario."""
+    async def get_physical_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
+        for_context: bool,
+    ) -> list[ScenarioPhysicalObjectDTO]:
+        """Get list of physical objects by scenario identifier."""
 
     @abc.abstractmethod
-    async def add_existing_physical_object_to_scenario(
-        self, scenario_id: int, object_geometry_id: int, physical_object: PhysicalObjectsDataPost, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
-        """Add existing physical object to scenario."""
+    async def get_services_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        service_type_id: int | None,
+        urban_function_id: int | None,
+        for_context: bool,
+    ) -> list[ScenarioServiceDTO]:
+        """Get list of services by scenario identifier."""
 
     @abc.abstractmethod
-    async def add_service_to_scenario(
-        self, scenario_id: int, service: ServicesDataPost, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
-        """Add service object to scenario."""
+    async def get_geometries_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_id: int | None,
+        service_id: int | None,
+        for_context: bool,
+    ) -> list[ScenarioGeometryDTO]:
+        """Get all geometries for given scenario."""
 
     @abc.abstractmethod
-    async def add_existing_service_to_scenario(
-        self, scenario_id: int, service_id: int, physical_object_id: int, object_geometry_id: int, user_id: str
-    ) -> ScenarioUrbanObjectDTO:
-        """Add existing service object to scenario."""
+    async def get_geometries_with_all_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+        physical_object_function_id: int | None,
+        urban_function_id: int | None,
+        for_context: bool,
+    ) -> list[ScenarioGeometryWithAllObjectsDTO]:
+        """Get geometries with list of physical objects and services by scenario identifier."""
 
     @abc.abstractmethod
-    async def get_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> list[ProjectsIndicatorDTO]:
+    async def get_all_projects_indicators_values(
+        self, scenario_id: int, user_id: str
+    ) -> list[ProjectsIndicatorValueDTO]:
         """Get project's indicators values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
     async def get_specific_projects_indicator_values(
         self, scenario_id: int, indicator_id: int, user_id: str
-    ) -> list[ProjectsIndicatorDTO]:
+    ) -> list[ProjectsIndicatorValueDTO]:
         """Get project's specific indicator values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
     async def add_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorPost, user_id: str
-    ) -> ProjectsIndicatorDTO:
+        self, projects_indicator: ProjectsIndicatorValuePost, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
         """Add a new project's indicator value."""
 
     @abc.abstractmethod

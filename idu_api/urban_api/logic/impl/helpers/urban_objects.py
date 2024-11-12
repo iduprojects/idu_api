@@ -1,4 +1,4 @@
-"""Urban objects handlers logic of getting entities from the database is defined here."""
+"""Urban objects internal logic is defined here."""
 
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import cast, delete, select
