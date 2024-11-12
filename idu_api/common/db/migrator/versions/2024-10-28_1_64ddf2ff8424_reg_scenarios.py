@@ -211,9 +211,15 @@ def upgrade() -> None:
         referent_schema="user_projects",
         ondelete="CASCADE",
     )
+    op.execute(sa.schema.CreateSequence(sa.Sequence("indicators_data_id_seq", schema="user_projects")))
     op.add_column(
         "indicators_data",
-        sa.Column("indicator_value_id", sa.Integer(), nullable=False),
+        sa.Column(
+            "indicator_value_id",
+            sa.Integer(),
+            nullable=False,
+            server_default=sa.text("nextval('user_projects.indicators_data_id_seq')"),
+        ),
         schema="user_projects",
     )
     op.create_primary_key("indicators_data_pk", "indicators_data", ["indicator_value_id"], schema="user_projects")
@@ -224,6 +230,7 @@ def downgrade() -> None:
     op.drop_constraint("indicators_data_pk", "indicators_data", schema="user_projects")
     op.drop_constraint("indicators_data_fk_scenario_id__scenarios_data", "indicators_data", schema="user_projects")
     op.drop_column("indicators_data", "indicator_value_id", schema="user_projects")
+    op.execute(sa.schema.DropSequence(sa.Sequence("indicators_data_id_seq", schema="user_projects")))
     op.drop_constraint("indicators_data_fk_project_territory_id__ptd", "indicators_data", schema="user_projects")
     op.drop_constraint("indicators_data_fk_territory_id__territories_data", "indicators_data", schema="user_projects")
     op.drop_column("indicators_data", "project_territory_id", schema="user_projects")

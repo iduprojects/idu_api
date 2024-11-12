@@ -1,5 +1,5 @@
 # pylint: disable=no-member,invalid-name,missing-function-docstring,too-many-statements
-"""profiles indicators pk
+"""profiles pk
 
 Revision ID: d8568eb83f18
 Revises: 60931341d80d
@@ -19,7 +19,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.execute(sa.schema.CreateSequence(sa.Sequence("indicators_data_id_seq", schema="user_projects")))
     op.execute(sa.schema.CreateSequence(sa.Sequence("profiles_data_id_seq", schema="user_projects")))
 
     op.add_column(
@@ -39,18 +38,9 @@ def upgrade() -> None:
         schema="user_projects",
     )
 
-    op.alter_column(
-        "indicators_data",
-        "indicator_value_id",
-        server_default=sa.text("nextval('user_projects.indicators_data_id_seq')"),
-        schema="user_projects",
-    )
-
 
 def downgrade() -> None:
-    op.alter_column("indicators_data", "indicator_value_id", server_default=None, schema="user_projects")
     op.drop_constraint("profiles_data_pk", "profiles_data", schema="user_projects")
     op.drop_column("profiles_data", "profile_id", schema="user_projects")
 
-    op.execute(sa.schema.DropSequence(sa.Sequence("indicators_data_id_seq", schema="user_projects")))
     op.execute(sa.schema.DropSequence(sa.Sequence("profiles_data_id_seq", schema="user_projects")))
