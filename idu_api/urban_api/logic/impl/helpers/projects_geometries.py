@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 
+from geoalchemy2 import Geography, Geometry
 from geoalchemy2.functions import ST_AsGeoJSON, ST_Buffer, ST_Within
 from sqlalchemy import cast, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
@@ -53,12 +54,25 @@ async def get_geometries_by_scenario_id(
     if project.user_id != user_id:
         raise AccessDeniedError(scenario.project_id, "project")
 
+    buffer_meters = 3000
+
     if for_context:
         project_geometry = (
-            select(ST_Buffer(projects_territory_data.c.geometry, 1000)).where(
-                projects_territory_data.c.project_id == project.project_id
+            select(
+                cast(
+                    ST_Buffer(
+                        cast(
+                            projects_territory_data.c.geometry,
+                            Geography(srid=4326),
+                        ),
+                        buffer_meters,
+                    ),
+                    Geometry(srid=4326),
+                ).label("geometry")
             )
-        ).alias("project_geometry")
+            .where(projects_territory_data.c.project_id == project.project_id)
+            .alias("project_geometry")
+        )
     else:
         project_geometry = (
             select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -260,12 +274,25 @@ async def get_geometries_with_all_objects_by_scenario_id(
     if project.user_id != user_id:
         raise AccessDeniedError(scenario.project_id, "project")
 
+    buffer_meters = 3000
+
     if for_context:
         project_geometry = (
-            select(ST_Buffer(projects_territory_data.c.geometry, 1000)).where(
-                projects_territory_data.c.project_id == project.project_id
+            select(
+                cast(
+                    ST_Buffer(
+                        cast(
+                            projects_territory_data.c.geometry,
+                            Geography(srid=4326),
+                        ),
+                        buffer_meters,
+                    ),
+                    Geometry(srid=4326),
+                ).label("geometry")
             )
-        ).alias("project_geometry")
+            .where(projects_territory_data.c.project_id == project.project_id)
+            .alias("project_geometry")
+        )
     else:
         project_geometry = (
             select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
