@@ -28,7 +28,7 @@ async def get_physical_object_types_from_db(conn: AsyncConnection) -> list[Physi
     statement = (
         select(physical_object_types_dict, physical_object_functions_dict.c.name.label("physical_object_function_name"))
         .select_from(
-            physical_object_types_dict.outerjoin(
+            physical_object_types_dict.join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
@@ -71,7 +71,7 @@ async def add_physical_object_type_to_db(
     statement = (
         select(physical_object_types_dict, physical_object_functions_dict.c.name.label("physical_object_function_name"))
         .select_from(
-            physical_object_types_dict.outerjoin(
+            physical_object_types_dict.join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
@@ -133,7 +133,7 @@ async def patch_physical_object_type_to_db(
     statement = (
         select(physical_object_types_dict, physical_object_functions_dict.c.name.label("physical_object_function_name"))
         .select_from(
-            physical_object_types_dict.outerjoin(
+            physical_object_types_dict.join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,

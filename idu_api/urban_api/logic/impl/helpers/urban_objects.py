@@ -1,7 +1,7 @@
 """Urban objects internal logic is defined here."""
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, delete, select, text
+from sqlalchemy import cast, delete, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -71,7 +71,7 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
                 physical_object_types_dict,
                 physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
             )
-            .outerjoin(
+            .join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
@@ -164,9 +164,12 @@ async def delete_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_
 
 
 async def get_urban_objects_by_territory_id_from_db(
-    conn: AsyncConnection, territory_id: int, service_type_id: int, physical_object_type_id: int
+    conn: AsyncConnection,
+    territory_id: int,
+    service_type_id: int | None,
+    physical_object_type_id: int | None,
 ) -> list[UrbanObjectDTO]:
-    """Get a list of urban objects by territory_id with service_type and physical_object_type filters."""
+    """Get a list of urban objects by territory id with service type and physical object type filters."""
 
     territories_cte = (
         select(territories_data.c.territory_id)
@@ -227,7 +230,7 @@ async def get_urban_objects_by_territory_id_from_db(
                     physical_object_types_dict.c.physical_object_type_id
                     == physical_objects_data.c.physical_object_type_id,
                 )
-                .outerjoin(
+                .join(
                     physical_object_functions_dict,
                     physical_object_functions_dict.c.physical_object_function_id
                     == physical_object_types_dict.c.physical_object_function_id,
@@ -242,16 +245,26 @@ async def get_urban_objects_by_territory_id_from_db(
                     territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
                 )
             )
-            .where(urban_objects_data.c.object_geometry_id.in_(select(territories_cte)))
+            .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
         )
         .order_by(urban_objects_data.c.urban_object_id)
         .distinct()
     )
 
     if physical_object_type_id is not None:
+        query = select(physical_object_types_dict).where(
+            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id
+        )
+        physical_object_type = (await conn.execute(query)).scalar_one_or_none()
+        if physical_object_type is None:
+            raise EntityNotFoundById(physical_object_type_id, "physical object type")
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
 
     if service_type_id is not None:
+        query = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
+        service_type = (await conn.execute(query)).scalar_one_or_none()
+        if service_type is None:
+            raise EntityNotFoundById(service_type_id, "service type")
         statement = statement.where(services_data.c.service_type_id == service_type_id)
 
     urban_objects = (await conn.execute(statement)).mappings().all()

@@ -43,7 +43,7 @@ async def get_services_by_territory_id(
     territory_id: int = Path(..., description="territory id", gt=0),
     service_type_id: int | None = Query(None, description="Service type id", gt=0),
     name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
-    is_city: bool | None = Query(None, description="true, false or none to adjust query"),
+    cities_only: bool = Query(False, description="to get only cities or not"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
@@ -60,7 +60,7 @@ async def get_services_by_territory_id(
     order_by_value = order_by.value if order_by is not None else None
 
     services = await territories_service.get_services_by_territory_id(
-        territory_id, service_type_id, name, is_city, order_by_value, ordering.value, paginate=True
+        territory_id, service_type_id, name, cities_only, order_by_value, ordering.value, paginate=True
     )
 
     return paginate(
@@ -80,6 +80,7 @@ async def get_services_with_geometry_by_territory_id(
     territory_id: int = Path(..., description="territory id", gt=0),
     service_type_id: int | None = Query(None, description="Service type id", gt=0),
     name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
+    cities_only: bool = Query(False, description="to get only cities or not"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
@@ -96,7 +97,7 @@ async def get_services_with_geometry_by_territory_id(
     order_by_value = order_by.value if order_by is not None else None
 
     services = await territories_service.get_services_with_geometry_by_territory_id(
-        territory_id, service_type_id, name, order_by_value, ordering.value, paginate=True
+        territory_id, service_type_id, name, cities_only, order_by_value, ordering.value, paginate=True
     )
 
     return paginate(
@@ -116,6 +117,7 @@ async def get_services_geojson_by_territory_id(
     territory_id: int = Path(..., description="territory id", gt=0),
     service_type_id: int | None = Query(None, description="Service type id", gt=0),
     name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
+    cities_only: bool = Query(False, description="to get only cities or not"),
     centers_only: bool = Query(False, description="to get only center points of geometries"),
 ) -> GeoJSONResponse[Feature[Geometry, ServicesData]]:
     """Get FeatureCollection with geometries of service objects for given territory.
@@ -126,7 +128,7 @@ async def get_services_geojson_by_territory_id(
     territories_service: TerritoriesService = request.state.territories_service
 
     services = await territories_service.get_services_with_geometry_by_territory_id(
-        territory_id, service_type_id, name, None, None
+        territory_id, service_type_id, name, cities_only, None, None
     )
 
     return await GeoJSONResponse.from_list([service.to_geojson_dict() for service in services], centers_only)

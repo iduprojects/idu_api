@@ -120,6 +120,7 @@ class ShortScenarioServiceDTO:
     capacity_real: int | None
     is_scenario_object: bool
 
+
 @dataclass(frozen=True)
 class ScenarioServiceDTO(ServiceDTO):
     is_scenario_object: bool

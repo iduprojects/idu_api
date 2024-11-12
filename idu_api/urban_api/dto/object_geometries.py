@@ -6,7 +6,6 @@ from typing import Any
 
 import shapely.geometry as geom
 
-from idu_api.common.db.entities import measurement_units_dict
 from idu_api.urban_api.dto.physical_objects import ShortScenarioPhysicalObjectDTO
 from idu_api.urban_api.dto.services import ShortScenarioServiceDTO
 

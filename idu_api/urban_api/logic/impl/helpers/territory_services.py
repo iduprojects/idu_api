@@ -77,7 +77,7 @@ async def get_services_by_territory_id_from_db(
     territory_id: int,
     service_type_id: int | None,
     name: str | None,
-    is_city: bool | None,
+    cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
     paginate: bool = False,
@@ -89,16 +89,18 @@ async def get_services_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
-    territories_cte = select(territories_data.c.territory_id).where(territories_data.c.territory_id == territory_id)
-
-    if is_city is not None:
-        territories_cte = territories_cte.where(territories_data.c.is_city.is_(is_city))
-
-    territories_cte = territories_cte.cte(recursive=True)
-
-    territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    territories_cte = (
+        select(territories_data.c.territory_id, territories_data.c.is_city)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
     )
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id, territories_data.c.is_city)
+        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
+    if cities_only:
+        territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
 
     statement = (
         select(
@@ -127,7 +129,7 @@ async def get_services_by_territory_id_from_db(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
     ).distinct()
 
     if service_type_id is not None:
@@ -157,6 +159,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
     territory_id: int,
     service_type_id: int | None,
     name: str | None,
+    cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
     paginate: bool = False,
@@ -169,14 +172,17 @@ async def get_services_with_geometry_by_territory_id_from_db(
         raise EntityNotFoundById(territory_id, "territory")
 
     territories_cte = (
-        select(territories_data.c.territory_id)
+        select(territories_data.c.territory_id, territories_data.c.is_city)
         .where(territories_data.c.territory_id == territory_id)
         .cte(recursive=True)
     )
-
     territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+        select(territories_data.c.territory_id, territories_data.c.is_city)
+        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
     )
+
+    if cities_only:
+        territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
 
     statement = (
         select(
@@ -209,7 +215,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
     ).distinct()
 
     if service_type_id is not None:

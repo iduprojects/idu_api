@@ -10,7 +10,7 @@ from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
-    ShortScenarioPhysicalObjectDTO, ScenarioPhysicalObjectDTO,
+    ScenarioPhysicalObjectDTO,
 )
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
 from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic, PhysicalObjectsTypes

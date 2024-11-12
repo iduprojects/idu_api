@@ -3,7 +3,7 @@
 from typing import Callable
 
 from geoalchemy2.types import Geometry
-from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
+from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, Text, false, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
@@ -49,7 +49,7 @@ territories_data = Table(
     Column("admin_center", ForeignKey("territories_data.territory_id"), nullable=True),
     Column("okato_code", String(20)),
     Column("oktmo_code", String(20)),
-    Column("is_city", Boolean, default=False, nullable=False),
+    Column("is_city", Boolean, nullable=False, server_default=false()),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
 )

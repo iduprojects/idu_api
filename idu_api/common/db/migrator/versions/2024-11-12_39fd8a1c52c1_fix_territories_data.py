@@ -14,14 +14,13 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "39fd8a1c52c1"
-down_revision: Union[str, None] = "21b28a319b43"
+down_revision: Union[str, None] = "4d49d7db0f5f"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
     op.add_column("territories_data", sa.Column("is_city", sa.Boolean(), server_default=sa.false(), nullable=False))
-
     op.execute(
         sa.text(
             dedent(
@@ -33,7 +32,6 @@ def upgrade() -> None:
             )
         )
     )
-
     op.execute(
         sa.text(
             dedent(
@@ -45,7 +43,6 @@ def upgrade() -> None:
             )
         )
     )
-
     op.create_foreign_key(
         "territories_data_fk_admin_center__territories_data",
         "territories_data",
@@ -55,9 +52,18 @@ def upgrade() -> None:
         ondelete="SET NULL",
     )
 
-    op.execute(sa.text("UPDATE territories_data SET admin_center = NULL"))
-
 
 def downgrade() -> None:
-    op.drop_constraint("territories_data_fk_admin_center__territories_data", "territories_data", "foreignkey")
+    op.drop_constraint("territories_data_fk_admin_center__territories_data", "territories_data", type_="foreignkey")
+    op.execute(
+        sa.text(
+            dedent(
+                """
+                UPDATE territories_data
+                SET properties = jsonb_set(properties, '{was_point}', 'true', true)
+                WHERE is_city = TRUE
+                """
+            )
+        )
+    )
     op.drop_column("territories_data", "is_city")

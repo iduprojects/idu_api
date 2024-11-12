@@ -1,12 +1,11 @@
 """Urban object handlers are defined here."""
 
-from fastapi import Body, Path, Query, Request
+from fastapi import Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.urban_objects import UrbanObjectsService
 from idu_api.urban_api.schemas.urban_objects import UrbanObject
 
-from ...schemas.geometries import Geometry
 from .routers import urban_objects_router
 
 
@@ -17,7 +16,7 @@ from .routers import urban_objects_router
 )
 async def get_urban_object_by_id(
     request: Request,
-    urban_object_id: int = Path(..., description="Urban object id"),
+    urban_object_id: int = Path(..., description="urban object identifier"),
 ) -> UrbanObject:
     """Get an urban object by id."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
@@ -34,7 +33,7 @@ async def get_urban_object_by_id(
 )
 async def get_urban_objects_by_physical_object_id(
     request: Request,
-    physical_object_id: int = Query(..., description="Physical object id"),
+    physical_object_id: int = Query(..., description="physical object identifier"),
 ) -> list[UrbanObject]:
     """Get a list of urban objects by physical object id."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
@@ -51,7 +50,7 @@ async def get_urban_objects_by_physical_object_id(
 )
 async def get_urban_objects_by_object_geometry_id(
     request: Request,
-    object_geometry_id: int = Query(..., description="Object geometry id"),
+    object_geometry_id: int = Query(..., description="object geometry identifier"),
 ) -> list[UrbanObject]:
     """Get a list of urban objects by object geometry id."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
@@ -68,7 +67,7 @@ async def get_urban_objects_by_object_geometry_id(
 )
 async def get_urban_objects_by_service_id(
     request: Request,
-    service_id: int = Query(..., description="Service id"),
+    service_id: int = Query(..., description="service identifier"),
 ) -> list[UrbanObject]:
     """Get a list of urban objects by service id."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
@@ -84,7 +83,7 @@ async def get_urban_objects_by_service_id(
     status_code=status.HTTP_200_OK,
 )
 async def delete_urban_object_by_id(
-    request: Request, urban_object_id: int = Path(..., description="Urban object id", gt=0)
+    request: Request, urban_object_id: int = Path(..., description="urban object identifier", gt=0)
 ) -> dict:
     """Delete urban object by given identifier."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
@@ -99,11 +98,13 @@ async def delete_urban_object_by_id(
 )
 async def get_urban_objects_by_territory_id(
     request: Request,
-    territory_id: int = Query(..., description="Parent territory id"),
-    service_type_id: int | None = Query(None, description="Service type id"),
-    physical_object_type_id: int | None = Query(None, description="Physical object type id"),
+    territory_id: int = Query(..., description="parent territory identifier"),
+    service_type_id: int | None = Query(None, description="service type identifier"),
+    physical_object_type_id: int | None = Query(None, description="physical object type identifier"),
 ) -> list[UrbanObject]:
-    """Get a list of urban objects by territory_id with service_type and physical_object_type filters."""
+    """Get a list of urban objects by territory identifier
+
+    It could be specified by service type and physical object type."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
 
     urban_objects = await urban_objects_service.get_urban_objects_by_territory_id(

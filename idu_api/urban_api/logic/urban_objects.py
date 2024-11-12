@@ -4,7 +4,6 @@ import abc
 from typing import Protocol
 
 from idu_api.urban_api.dto import UrbanObjectDTO
-from idu_api.urban_api.schemas.geometries import Geometry
 
 
 class UrbanObjectsService(Protocol):
@@ -32,6 +31,6 @@ class UrbanObjectsService(Protocol):
 
     @abc.abstractmethod
     async def get_urban_objects_by_territory_id(
-        self, territory_id: int, service_type_id: int, physical_object_type_id: int
+        self, territory_id: int, service_type_id: int | None, physical_object_type_id: int | None
     ) -> list[UrbanObjectDTO]:
         """Get a list of urban objects by territory_id with service_type and physical_object_type filters."""

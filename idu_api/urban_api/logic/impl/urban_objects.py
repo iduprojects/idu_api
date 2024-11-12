@@ -12,7 +12,6 @@ from idu_api.urban_api.logic.impl.helpers.urban_objects import (
     get_urban_objects_by_territory_id_from_db,
 )
 from idu_api.urban_api.logic.urban_objects import UrbanObjectsService
-from idu_api.urban_api.schemas.geometries import Geometry
 
 
 class UrbanObjectsServiceImpl(UrbanObjectsService):
@@ -40,7 +39,7 @@ class UrbanObjectsServiceImpl(UrbanObjectsService):
         return await delete_urban_object_by_id_from_db(self._conn, urban_object_id)
 
     async def get_urban_objects_by_territory_id(
-        self, territory_id: int, service_type_id: int, physical_object_type_id: int
+        self, territory_id: int, service_type_id: int | None, physical_object_type_id: int | None
     ) -> list[UrbanObjectDTO]:
         return await get_urban_objects_by_territory_id_from_db(
             self._conn, territory_id, service_type_id, physical_object_type_id

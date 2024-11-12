@@ -19,6 +19,18 @@ func: Callable
 Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
 
 
+async def check_territory_existence(conn: AsyncConnection, territory_id: int) -> bool:
+    """Territory existence checker function."""
+
+    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    territory = (await conn.execute(statement)).mappings().one_or_none()
+
+    if territory is None:
+        return False
+
+    return True
+
+
 async def get_territories_by_ids(conn: AsyncConnection, territory_ids: list[int]) -> list[TerritoryDTO]:
     """Get territory objects by ids list."""
 
@@ -216,7 +228,7 @@ async def get_territories_by_parent_id_from_db(
     parent_id: int | None,
     get_all_levels: bool | None,
     territory_type_id: int | None,
-    centers_only: bool | None,
+    cities_only: bool,
     paginate: bool = False,
 ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
     """Get a territory or list of territories by parent, territory type could be specified in parameters."""
@@ -290,11 +302,11 @@ async def get_territories_by_parent_id_from_db(
                 raise EntityNotFoundById(territory_type_id, "territory type")
             statement = statement.where(territories_data.c.territory_type_id == territory_type_id)
 
-    if centers_only is not None:
-        statement = statement.where(territories_data.c.is_city.is_(centers_only))
-
     requested_territories = statement.cte("requested_territories")
     statement = select(requested_territories).order_by(requested_territories.c.territory_id)
+
+    if cities_only:
+        statement = statement.where(requested_territories.c.is_city.is_(cities_only))
 
     if paginate:
         return await paginate_dto(conn, statement, transformer=lambda x: [TerritoryDTO(**item) for item in x])
@@ -310,7 +322,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     order_by: Optional[Literal["created_at", "updated_at"]],
     created_at: date | None,
     name: str | None,
-    centers_only: bool | None,
+    cities_only: bool,
     ordering: Optional[Literal["asc", "desc"]] = "asc",
     paginate: bool = False,
 ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
@@ -364,12 +376,11 @@ async def get_territories_without_geometry_by_parent_id_from_db(
             else territories_data.c.parent_id.is_(None)
         )
 
-    if centers_only is not None:
-        statement = statement.where(territories_data.c.is_city.is_(centers_only))
-
     requested_territories = statement.cte("requested_territories")
     statement = select(requested_territories)
 
+    if cities_only:
+        statement = statement.where(requested_territories.c.is_city.is_(cities_only))
     if name is not None:
         statement = statement.where(requested_territories.c.name.ilike(f"%{name}%"))
     if created_at is not None:
@@ -439,44 +450,3 @@ async def get_intersecting_territories_for_geometry(
     territory_ids = (await conn.execute(statement)).scalars().all()
 
     return await get_territories_by_ids(conn, territory_ids)
-
-
-async def get_territory_geojson_by_territory_id_from_db(conn: AsyncConnection, territory_id: int) -> TerritoryDTO:
-    """Get geojson for a given territory."""
-
-    territories_data_parents = territories_data.alias("territories_data_parents")
-    statement = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.territory_type_id,
-            territory_types_dict.c.name.label("territory_type_name"),
-            territories_data.c.parent_id,
-            territories_data_parents.c.name.label("parent_name"),
-            territories_data.c.name,
-            cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
-            territories_data.c.level,
-            territories_data.c.properties,
-            cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
-            territories_data.c.admin_center,
-            territories_data.c.okato_code,
-            territories_data.c.oktmo_code,
-            territories_data.c.created_at,
-            territories_data.c.updated_at,
-        )
-        .select_from(
-            territories_data.join(
-                territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-            ).join(
-                territories_data_parents,
-                territories_data.c.parent_id == territories_data_parents.c.territory_id,
-                isouter=True,
-            )
-        )
-        .where(territories_data.c.territory_id == territory_id)
-    )
-
-    territory = (await conn.execute(statement)).mappings().one_or_none()
-    if territory is None:
-        raise EntityNotFoundById(territory_id, "territory")
-
-    return TerritoryDTO(**territory)

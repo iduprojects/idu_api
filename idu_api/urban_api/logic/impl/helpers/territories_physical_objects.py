@@ -79,7 +79,7 @@ async def get_physical_objects_by_territory_id_from_db(
     territory_id: int,
     physical_object_type: int | None,
     name: str | None,
-    is_city: bool | None,
+    cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
     paginate: bool = False,
@@ -91,16 +91,18 @@ async def get_physical_objects_by_territory_id_from_db(
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
-    territories_cte = select(territories_data.c.territory_id).where(territories_data.c.territory_id == territory_id)
-
-    if is_city is not None:
-        territories_cte = territories_cte.where(territories_data.c.is_city.is_(is_city))
-
-    territories_cte = territories_cte.cte(recursive=True)
-
-    territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    territories_cte = (
+        select(territories_data.c.territory_id, territories_data.c.is_city)
+        .where(territories_data.c.territory_id == territory_id)
+        .cte(recursive=True)
     )
+    territories_cte = territories_cte.union_all(
+        select(territories_data.c.territory_id, territories_data.c.is_city)
+        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
+    )
+
+    if cities_only:
+        territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
 
     statement = (
         select(
@@ -122,13 +124,13 @@ async def get_physical_objects_by_territory_id_from_db(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
-            .outerjoin(
+            .join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
         .distinct()
     )
 
@@ -159,26 +161,30 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     territory_id: int,
     physical_object_type: int | None,
     name: str | None,
+    cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
     paginate: bool = False,
 ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
     """Get physical objects with geometry by territory id, optional physical object type."""
 
-    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    statement = select(territories_data.c.territory_id).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
     territories_cte = (
-        select(territories_data.c.territory_id)
+        select(territories_data.c.territory_id, territories_data.c.is_city)
         .where(territories_data.c.territory_id == territory_id)
         .cte(recursive=True)
     )
-
     territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+        select(territories_data.c.territory_id, territories_data.c.is_city)
+        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
     )
+
+    if cities_only:
+        territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
 
     statement = (
         select(
@@ -204,13 +210,13 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
-            .outerjoin(
+            .join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
         .distinct()
     )
 

@@ -26,8 +26,8 @@ from idu_api.common.db.entities import (
 from idu_api.urban_api.dto import (
     ScenarioGeometryDTO,
     ScenarioGeometryWithAllObjectsDTO,
-    ShortScenarioServiceDTO,
     ShortScenarioPhysicalObjectDTO,
+    ShortScenarioServiceDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError

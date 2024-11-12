@@ -27,9 +27,6 @@ from idu_api.urban_api.dto import (
     TerritoryWithoutGeometryDTO,
 )
 from idu_api.urban_api.schemas import (
-    FunctionalZoneDataPatch,
-    FunctionalZoneDataPost,
-    FunctionalZoneDataPut,
     NormativeDelete,
     NormativePatch,
     NormativePost,
@@ -83,7 +80,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         service_type_id: int | None,
         name: str | None,
-        is_city: bool | None,
+        cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
@@ -96,6 +93,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         service_type_id: int | None,
         name: str | None,
+        cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
@@ -109,11 +107,8 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         """Get summary capacity and count of services for sub-territories of given territory at the given level."""
 
     @abc.abstractmethod
-    async def get_indicators_by_territory_id(self, territory_id: int, is_city: bool | None) -> list[IndicatorDTO]:
-        """Get indicators for a given territory.
-
-        is_city can be passed to filter results.
-        """
+    async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:
+        """Get indicators for a given territory."""
 
     @abc.abstractmethod
     async def get_indicator_values_by_territory_id(
@@ -195,7 +190,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         physical_object_type: int | None,
         name: str | None,
-        is_city: bool | None,
+        cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
@@ -208,6 +203,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         physical_object_type: int | None,
         name: str | None,
+        cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
@@ -231,34 +227,6 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         """Get functional zones with geometry by territory id."""
 
     @abc.abstractmethod
-    async def add_functional_zone_for_territory(
-        self, territory_id: int, functional_zone: FunctionalZoneDataPost
-    ) -> FunctionalZoneDataDTO:
-        """Add functional zone for territory."""
-
-    @abc.abstractmethod
-    async def add_functional_zones_for_territory(
-        self, territory_id: int, functional_zones: list[FunctionalZoneDataPost]
-    ) -> list[FunctionalZoneDataDTO]:
-        """Add a bunch of functional zones for territory."""
-
-    @abc.abstractmethod
-    async def put_functional_zone_for_territory(
-        self, territory_id: int, functional_zone_id: int, functional_zone: FunctionalZoneDataPut
-    ) -> FunctionalZoneDataDTO:
-        """Put functional zone for territory."""
-
-    @abc.abstractmethod
-    async def patch_functional_zone_for_territory(
-        self, territory_id: int, functional_zone_id: int, functional_zone: FunctionalZoneDataPatch
-    ) -> FunctionalZoneDataDTO:
-        """Patch functional zone for territory."""
-
-    @abc.abstractmethod
-    async def delete_specific_functional_zone_for_territory(self, territory_id, functional_zone_id) -> dict:
-        """Delete specific functional zone for territory."""
-
-    @abc.abstractmethod
     async def delete_all_functional_zones_for_territory(self, territory_id) -> dict:
         """Delete all functional zones for territory."""
 
@@ -268,7 +236,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         parent_id: int | None,
         get_all_levels: bool,
         territory_type_id: int | None,
-        centers_only: bool | None,
+        cities_only: bool | None,
         paginate: bool = False,
     ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
         """Get a territory or list of territories by parent, territory type could be specified in parameters."""
@@ -281,7 +249,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         order_by: Optional[Literal["created_at", "updated_at"]],
         created_at: datetime | None,
         name: str | None,
-        centers_only: bool | None,
+        cities_only: bool | None,
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
     ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
@@ -299,7 +267,3 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         geometry: Geom,
     ) -> list[TerritoryDTO]:
         """Get all territories of the (level of given parent + 1) which intersect with given geometry."""
-
-    @abc.abstractmethod
-    async def get_territory_geojson_by_territory_id(self, territory_id: int) -> TerritoryDTO:
-        """Get geojson for a given territory."""

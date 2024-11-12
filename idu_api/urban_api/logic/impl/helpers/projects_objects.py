@@ -281,7 +281,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
             territories_data.c.parent_id,
             territories_data.c.level,
             territories_data.c.geometry,
-            territories_data.c.properties,
+            territories_data.c.is_city,
         )
         .where(territories_data.c.territory_id == project.territory_id)
         .cte(recursive=True)
@@ -293,25 +293,25 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
             territories_data.c.parent_id,
             territories_data.c.level,
             territories_data.c.geometry,
-            territories_data.c.properties,
+            territories_data.c.is_city,
         ).join(
             territories_cte,
             territories_data.c.parent_id == territories_cte.c.territory_id,
         )
     )
-    territory_with_was_point = (
+    cities_level = (
         select(territories_cte.c.level)
-        .where(territories_cte.c.properties["was_point"].astext == "true")
+        .where(territories_cte.c.is_city.is_(True))
         .order_by(territories_cte.c.level)
         .limit(1)
-        .cte(name="territory_with_was_point")
+        .cte(name="cities_level")
     )
     intersecting_territories = select(territories_cte.c.name).where(
-        territories_cte.c.level == (territory_with_was_point.c.level - 1),
+        territories_cte.c.level == (cities_level.c.level - 1),
         ST_Intersects(territories_cte.c.geometry, select(given_geometry).scalar_subquery()),
     )
     intersecting_district = select(territories_cte.c.name).where(
-        territories_cte.c.level == (territory_with_was_point.c.level - 2),
+        territories_cte.c.level == (cities_level.c.level - 2),
         ST_Intersects(territories_cte.c.geometry, select(given_geometry).scalar_subquery()),
     )
     project.properties.update(

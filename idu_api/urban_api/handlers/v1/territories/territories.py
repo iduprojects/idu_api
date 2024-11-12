@@ -108,7 +108,7 @@ async def get_territory_by_parent_id(
         False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
     territory_type_id: int | None = Query(None, description="Specifying territory type"),
-    centers_only: bool | None = Query(None, description="Display only centers"),
+    cities_only: bool = Query(False, description="to get only cities or not"),
 ) -> Page[TerritoryData]:
     """Get a territory or list of territories by parent.
 
@@ -117,7 +117,7 @@ async def get_territory_by_parent_id(
     territories_service: TerritoriesService = request.state.territories_service
 
     territories = await territories_service.get_territories_by_parent_id(
-        parent_id, get_all_levels, territory_type_id, centers_only, paginate=True
+        parent_id, get_all_levels, territory_type_id, cities_only, paginate=True
     )
 
     return paginate(
@@ -142,16 +142,17 @@ async def get_all_territories_by_parent_id(
         False, description="Getting full subtree of territories (unsafe for high level parents)"
     ),
     territory_type_id: int | None = Query(None, description="Specifying territory type"),
+    cities_only: bool = Query(False, description="to get only cities or not"),
     centers_only: bool | None = Query(None, description="Display only centers"),
 ) -> GeoJSONResponse[Feature[FeatureGeometry, TerritoryWithoutGeometry]]:
     """Get FeatureCollection with all territories information by parent id."""
     territories_service: TerritoriesService = request.state.territories_service
 
     territories = await territories_service.get_territories_by_parent_id(
-        parent_id, get_all_levels, territory_type_id, centers_only
+        parent_id, get_all_levels, territory_type_id, cities_only
     )
 
-    return await GeoJSONResponse.from_list([territory.to_geojson_dict() for territory in territories])
+    return await GeoJSONResponse.from_list([territory.to_geojson_dict() for territory in territories], centers_only)
 
 
 @territories_router.get(
@@ -175,7 +176,7 @@ async def get_territory_without_geometry_by_parent_id(
     ),
     created_at: date | None = Query(None, description="Filter by created date"),
     name: str | None = Query(None, description="Filter territories by name substring (case-insensitive)"),
-    centers_only: bool | None = Query(None, description="Display only centers"),
+    cities_only: bool = Query(False, description="to get only cities or not"),
 ) -> Page[TerritoryWithoutGeometry]:
     """Get territories by parent id."""
     territories_service: TerritoriesService = request.state.territories_service
@@ -183,7 +184,7 @@ async def get_territory_without_geometry_by_parent_id(
     order_by_value = order_by.value if order_by is not None else "null"
 
     territories = await territories_service.get_territories_without_geometry_by_parent_id(
-        parent_id, get_all_levels, order_by_value, created_at, name, centers_only, ordering.value, paginate=True
+        parent_id, get_all_levels, order_by_value, created_at, name, cities_only, ordering.value, paginate=True
     )
 
     return paginate(
@@ -214,7 +215,7 @@ async def get_all_territories_without_geometry_by_parent_id(
     ),
     created_at: date | None = Query(None, description="Filter by created date"),
     name: str | None = Query(None, description="Filter territories by name substring (case-insensitive)"),
-    centers_only: bool | None = Query(None, description="Display only centers"),
+    cities_only: bool = Query(False, description="to get only cities or not"),
 ) -> list[TerritoryWithoutGeometry]:
     """Get territories by parent id."""
     territories_service: TerritoriesService = request.state.territories_service
@@ -222,7 +223,7 @@ async def get_all_territories_without_geometry_by_parent_id(
     order_by_value = order_by.value if order_by is not None else "null"
 
     territories = await territories_service.get_territories_without_geometry_by_parent_id(
-        parent_id, get_all_levels, order_by_value, created_at, name, centers_only, ordering.value
+        parent_id, get_all_levels, order_by_value, created_at, name, cities_only, ordering.value
     )
 
     return [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
