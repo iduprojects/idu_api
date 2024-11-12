@@ -131,12 +131,13 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         territory_id: int,
         service_type_id: int | None,
         name: str | None,
+        is_city: bool | None,
         order_by: Literal["created_at", "updated_at"] | None,
         ordering: Literal["asc", "desc"] | None = "asc",
         paginate: bool = False,
     ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
         return await get_services_by_territory_id_from_db(
-            self._conn, territory_id, service_type_id, name, order_by, ordering, paginate
+            self._conn, territory_id, service_type_id, name, is_city, order_by, ordering, paginate
         )
 
     async def get_services_with_geometry_by_territory_id(
@@ -157,8 +158,8 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     ) -> list[ServicesCountCapacityDTO]:
         return await get_services_capacity_by_territory_id_from_db(self._conn, territory_id, level, service_type_id)
 
-    async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:
-        return await get_indicators_by_territory_id_from_db(self._conn, territory_id)
+    async def get_indicators_by_territory_id(self, territory_id: int, is_city: bool | None) -> list[IndicatorDTO]:
+        return await get_indicators_by_territory_id_from_db(self._conn, territory_id, is_city)
 
     async def get_indicator_values_by_territory_id(
         self,
@@ -240,12 +241,13 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         territory_id: int,
         physical_object_type: int | None,
         name: str | None,
+        is_city: bool | None,
         order_by: Literal["created_at", "updated_at"] | None,
         ordering: Literal["asc", "desc"] | None = "asc",
         paginate: bool = False,
     ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
         return await get_physical_objects_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name, order_by, ordering, paginate
+            self._conn, territory_id, physical_object_type, name, is_city, order_by, ordering, paginate
         )
 
     async def get_physical_objects_with_geometry_by_territory_id(

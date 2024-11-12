@@ -83,6 +83,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         service_type_id: int | None,
         name: str | None,
+        is_city: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
@@ -108,8 +109,11 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         """Get summary capacity and count of services for sub-territories of given territory at the given level."""
 
     @abc.abstractmethod
-    async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:
-        """Get indicators by territory id."""
+    async def get_indicators_by_territory_id(self, territory_id: int, is_city: bool | None) -> list[IndicatorDTO]:
+        """Get indicators for a given territory.
+
+        is_city can be passed to filter results.
+        """
 
     @abc.abstractmethod
     async def get_indicator_values_by_territory_id(
@@ -191,11 +195,12 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         physical_object_type: int | None,
         name: str | None,
+        is_city: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
     ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
-        """Get physical objects by territory id, optional physical object type."""
+        """Get physical objects by territory id, optional physical object type and is_city."""
 
     @abc.abstractmethod
     async def get_physical_objects_with_geometry_by_territory_id(

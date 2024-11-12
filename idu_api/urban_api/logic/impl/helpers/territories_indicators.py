@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Callable
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, func, select
+from sqlalchemy import and_, cast, func, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -25,8 +25,12 @@ func: Callable
 async def get_indicators_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
+    is_city: bool | None,
 ) -> list[IndicatorDTO]:
-    """Get indicators by territory id."""
+    """Get indicators for a given territory.
+
+    is_city can be passed to filter results.
+    """
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
@@ -38,13 +42,18 @@ async def get_indicators_by_territory_id_from_db(
         .select_from(
             territory_indicators_data.join(
                 indicators_dict, territory_indicators_data.c.indicator_id == indicators_dict.c.indicator_id
-            ).outerjoin(
+            )
+            .outerjoin(
                 measurement_units_dict,
                 measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
             )
+            .join(territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id)
         )
         .where(territory_indicators_data.c.territory_id == territory_id)
     )
+
+    if is_city is not None:
+        statement = statement.where(territories_data.c.is_city.is_(is_city))
 
     result = (await conn.execute(statement)).mappings().all()
 
