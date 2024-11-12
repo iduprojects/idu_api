@@ -79,22 +79,24 @@ async def get_physical_objects_by_territory_id_from_db(
     territory_id: int,
     physical_object_type: int | None,
     name: str | None,
+    is_city: bool | None,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
     paginate: bool = False,
 ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
-    """Get physical objects by territory id, optional physical object type."""
+    """Get physical objects by territory id, optional physical object type and is_city."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()
     if territory is None:
         raise EntityNotFoundById(territory_id, "territory")
 
-    territories_cte = (
-        select(territories_data.c.territory_id)
-        .where(territories_data.c.territory_id == territory_id)
-        .cte(recursive=True)
-    )
+    territories_cte = select(territories_data.c.territory_id).where(territories_data.c.territory_id == territory_id)
+
+    if is_city is not None:
+        territories_cte = territories_cte.where(territories_data.c.is_city.is_(is_city))
+
+    territories_cte = territories_cte.cte(recursive=True)
 
     territories_cte = territories_cte.union_all(
         select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)

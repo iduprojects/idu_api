@@ -21,12 +21,17 @@ from .routers import territories_router
     status_code=status.HTTP_200_OK,
 )
 async def get_indicators_by_territory_id(
-    request: Request, territory_id: int = Path(..., description="territory id", gt=0)
+    request: Request,
+    territory_id: int = Path(..., description="territory id", gt=0),
+    is_city: bool | None = Query(None, description="true, false or none to adjust query"),
 ) -> list[Indicator]:
-    """Get indicators for a given territory."""
+    """Get indicators for a given territory.
+
+    is_city can be passed to filter results.
+    """
     territories_service: TerritoriesService = request.state.territories_service
 
-    indicators = await territories_service.get_indicators_by_territory_id(territory_id)
+    indicators = await territories_service.get_indicators_by_territory_id(territory_id, is_city)
 
     return [Indicator.from_dto(indicator) for indicator in indicators]
 
