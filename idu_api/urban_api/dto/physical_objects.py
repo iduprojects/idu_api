@@ -12,8 +12,8 @@ class PhysicalObjectDataDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    physical_object_function_id: int | None
-    physical_object_function_name: str | None
+    physical_object_function_id: int
+    physical_object_function_name: str
     name: str | None
     properties: dict[str, Any]
     created_at: datetime
@@ -25,8 +25,8 @@ class PhysicalObjectWithGeometryDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    physical_object_function_id: int | None
-    physical_object_function_name: str | None
+    physical_object_function_id: int
+    physical_object_function_name: str
     name: str | None
     address: str | None
     osm_id: str | None
@@ -74,3 +74,16 @@ class PhysicalObjectWithTerritoryDTO:
     territories: list[dict[str, Any]]
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class ShortScenarioPhysicalObjectDTO:
+    physical_object_id: int
+    physical_object_type_id: int
+    name: str | None
+    is_scenario_object: bool
+
+
+@dataclass(frozen=True)
+class ScenarioPhysicalObjectDTO(PhysicalObjectDataDTO):
+    is_scenario_object: bool

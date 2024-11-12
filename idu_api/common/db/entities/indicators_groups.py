@@ -1,3 +1,11 @@
+"""
+Tables which represent indicators groups are defined here.
+
+Current list is:
+- indicators_groups_dict
+- indicators_groups_data
+"""
+
 from sqlalchemy import Column, ForeignKey, Integer, PrimaryKeyConstraint, Sequence, String, Table
 
 from idu_api.common.db import metadata

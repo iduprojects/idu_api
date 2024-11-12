@@ -1,6 +1,4 @@
-"""
-Territory indicators data table is defined here
-"""
+"""Territory indicators data table is defined here."""
 
 from typing import Callable
 
@@ -8,6 +6,8 @@ from sqlalchemy import TIMESTAMP, Column, Date, Enum, Float, ForeignKey, String,
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.enums import DateFieldType, IndicatorValueType
+from idu_api.common.db.entities.indicators_dict import indicators_dict
+from idu_api.common.db.entities.territories import territories_data
 
 func: Callable
 
@@ -17,8 +17,8 @@ IndicatorValueTypeEnum = Enum(IndicatorValueType, name="indicator_value_type")
 territory_indicators_data = Table(
     "territory_indicators_data",
     metadata,
-    Column("indicator_id", ForeignKey("indicators_dict.indicator_id"), primary_key=True, nullable=False),
-    Column("territory_id", ForeignKey("territories_data.territory_id"), primary_key=True, nullable=False),
+    Column("indicator_id", ForeignKey(indicators_dict.c.indicator_id), primary_key=True, nullable=False),
+    Column("territory_id", ForeignKey(territories_data.c.territory_id), primary_key=True, nullable=False),
     Column("date_type", DateFieldTypeEnum, primary_key=True, nullable=False),
     Column("date_value", Date, primary_key=True, nullable=False),
     Column("value_type", IndicatorValueTypeEnum, primary_key=True, nullable=False),

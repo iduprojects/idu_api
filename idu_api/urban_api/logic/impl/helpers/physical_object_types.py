@@ -1,4 +1,4 @@
-"""Physical objects types handlers logic of getting entities from the database is defined here."""
+"""Physical objects types internal logic is defined here."""
 
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection

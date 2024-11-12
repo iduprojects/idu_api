@@ -1,26 +1,22 @@
-"""Projects indicators internal logic is defined here."""
+"""Projects indicators values internal logic is defined here."""
 
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import and_, cast, delete, insert, select
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import and_, delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
-    functional_zone_types_dict,
     projects_data,
-    projects_functional_zones_data,
     projects_indicators_data,
     scenarios_data,
 )
-from idu_api.urban_api.dto import ProjectsFunctionalZoneDTO, ProjectsIndicatorDTO
+from idu_api.urban_api.dto import ProjectsIndicatorValueDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
-from idu_api.urban_api.schemas import ProjectsIndicatorPost
+from idu_api.urban_api.schemas import ProjectsIndicatorValuePost
 
 
 async def get_all_projects_indicators_values_from_db(
     conn: AsyncConnection, scenario_id: int, user_id: str
-) -> list[ProjectsIndicatorDTO]:
+) -> list[ProjectsIndicatorValueDTO]:
     """Get project's indicators values for given scenario
     if relevant project is public or if you're the project owner."""
 
@@ -39,12 +35,12 @@ async def get_all_projects_indicators_values_from_db(
     statement = select(projects_indicators_data).where(projects_indicators_data.c.scenario_id == scenario_id)
     results = (await conn.execute(statement)).mappings().all()
 
-    return [ProjectsIndicatorDTO(**result) for result in results]
+    return [ProjectsIndicatorValueDTO(**result) for result in results]
 
 
 async def get_specific_projects_indicator_values_from_db(
     conn: AsyncConnection, scenario_id: int, indicator_id: int, user_id: str
-) -> list[ProjectsIndicatorDTO]:
+) -> list[ProjectsIndicatorValueDTO]:
     """Get project's specific indicator values for given scenario
     if relevant project is public or if you're the project owner."""
 
@@ -70,12 +66,12 @@ async def get_specific_projects_indicator_values_from_db(
     if result is None:
         raise EntityNotFoundById(indicator_id, "indicator")
 
-    return [ProjectsIndicatorDTO(**indicator) for indicator in result]
+    return [ProjectsIndicatorValueDTO(**indicator) for indicator in result]
 
 
 async def add_projects_indicator_value_to_db(
-    conn: AsyncConnection, projects_indicator: ProjectsIndicatorPost, user_id: str
-) -> ProjectsIndicatorDTO:
+    conn: AsyncConnection, projects_indicator: ProjectsIndicatorValuePost, user_id: str
+) -> ProjectsIndicatorValueDTO:
     """Add a new project's indicator value."""
 
     statement = select(scenarios_data.c.project_id).where(
@@ -118,7 +114,7 @@ async def add_projects_indicator_value_to_db(
 
     await conn.commit()
 
-    return ProjectsIndicatorDTO(**result)
+    return ProjectsIndicatorValueDTO(**result)
 
 
 async def delete_all_projects_indicators_values_from_db(conn: AsyncConnection, scenario_id: int, user_id: str) -> dict:
@@ -172,45 +168,3 @@ async def delete_specific_projects_indicator_values_from_db(
     await conn.commit()
 
     return {"status": "ok"}
-
-
-async def get_functional_zones_for_scenario_from_db(
-    conn: AsyncConnection, scenario_id: int, user_id: str
-) -> list[ProjectsFunctionalZoneDTO]:
-    """Get all functional zones for a scenario."""
-
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project is None:
-        raise EntityNotFoundById(project_id, "project")
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    statement = (
-        select(
-            projects_functional_zones_data.c.scenario_id,
-            projects_functional_zones_data.c.functional_zone_type_id,
-            projects_functional_zones_data.c.name,
-            cast(ST_AsGeoJSON(projects_functional_zones_data.c.geometry), JSONB).label("geometry"),
-            functional_zone_types_dict.c.name.label("type_name"),
-            functional_zone_types_dict.c.zone_nickname,
-            functional_zone_types_dict.c.description,
-        )
-        .select_from(
-            projects_functional_zones_data.join(
-                functional_zone_types_dict,
-                projects_functional_zones_data.c.functional_zone_type_id
-                == functional_zone_types_dict.c.functional_zone_type_id,
-            )
-        )
-        .where(projects_functional_zones_data.c.scenario_id == scenario_id)
-    )
-
-    zones = (await conn.execute(statement)).mappings().all()
-
-    return [ProjectsFunctionalZoneDTO(**zone) for zone in zones]

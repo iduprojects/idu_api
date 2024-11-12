@@ -1,4 +1,4 @@
-"""Service types handlers logic of getting entities from the database is defined here."""
+"""Service types internal logic is defined here."""
 
 from typing import Callable
 

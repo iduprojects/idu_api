@@ -1,8 +1,10 @@
+"""Profiles reclamation data table is defined here."""
+
 from sqlalchemy import Column, Float, ForeignKey, Integer, Sequence, Table, UniqueConstraint
 
 from idu_api.common.db import metadata
+from idu_api.common.db.entities.functional_zones import functional_zone_types_dict
 from idu_api.common.db.entities.territories import territories_data
-from idu_api.common.db.entities.urban_types_dicts import functional_zone_types_dict
 
 profile_reclamation_id_seq = Sequence("profile_reclamation_id_seq")
 

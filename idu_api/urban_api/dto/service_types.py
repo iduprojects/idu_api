@@ -1,4 +1,4 @@
-"""Service types DTO are defined here."""
+"""Service types DTOs are defined here."""
 
 from dataclasses import dataclass
 from typing import Any, Literal, Self

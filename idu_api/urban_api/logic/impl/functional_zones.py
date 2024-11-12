@@ -1,3 +1,5 @@
+"""Functional zones handlers logic of getting entities from the database is defined here."""
+
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import FunctionalZoneTypeDTO, ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO

@@ -1,4 +1,6 @@
-from typing import Any, Optional
+"""Living buildings schemas are defined here."""
+
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -9,18 +11,19 @@ from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, Phys
 
 
 class LivingBuildingsWithGeometry(BaseModel):
+    """Living building with all its attributes and geometry."""
+
     living_building_id: int = Field(..., examples=[1])
     physical_object: PhysicalObjectsData
-    residents_number: int | None = Field(..., examples=[200])
     living_area: float | None = Field(..., examples=[300.0])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Additional properties",
+        description="additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
     geometry: Geometry
     centre_point: Geometry
-    address: Optional[str] = Field(None, description="geometry address", examples=["--"])
+    address: str | None = Field(None, description="geometry address", examples=["--"])
     osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
 
     @classmethod
@@ -46,7 +49,6 @@ class LivingBuildingsWithGeometry(BaseModel):
             ),
             address=dto.physical_object_address,
             osm_id=dto.object_geometry_osm_id,
-            residents_number=dto.residents_number,
             living_area=dto.living_area,
             properties=dto.properties,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
@@ -55,13 +57,14 @@ class LivingBuildingsWithGeometry(BaseModel):
 
 
 class LivingBuildingsData(BaseModel):
+    """Living building with all its attributes."""
+
     living_building_id: int = Field(..., examples=[1])
     physical_object: PhysicalObjectsData
-    residents_number: int | None = Field(..., examples=[200])
     living_area: float | None = Field(..., examples=[300.0])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Additional properties",
+        description="additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
@@ -89,39 +92,41 @@ class LivingBuildingsData(BaseModel):
                 created_at=dto.physical_object_created_at,
                 updated_at=dto.physical_object_updated_at,
             ),
-            residents_number=dto.residents_number,
             living_area=dto.living_area,
             properties=dto.properties,
         )
 
 
 class LivingBuildingsDataPost(BaseModel):
+    """Living building schema for POST requests."""
+
     physical_object_id: int = Field(..., examples=[1])
-    residents_number: int | None = Field(None, examples=[200])
     living_area: float | None = Field(None, examples=[300.0])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Additional properties",
+        description="additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
 
 class LivingBuildingsDataPut(BaseModel):
+    """Living building schema for PUT requests."""
+
     physical_object_id: int = Field(..., examples=[1])
-    residents_number: int | None = Field(..., examples=[200])
     living_area: float | None = Field(..., examples=[300.0])
     properties: dict[str, Any] = Field(
-        ..., description="Additional properties", examples=[{"additional_attribute_name": "additional_attribute_value"}]
+        ..., description="additional properties", examples=[{"additional_attribute_name": "additional_attribute_value"}]
     )
 
 
 class LivingBuildingsDataPatch(BaseModel):
+    """Living building schema for PATCH requests."""
+
     physical_object_id: int | None = Field(None, examples=[1])
-    residents_number: int | None = Field(None, examples=[200])
     living_area: float | None = Field(None, examples=[300.0])
-    properties: Optional[dict[str, Any]] = Field(
+    properties: dict[str, Any] | None = Field(
         None,
-        description="Additional properties",
+        description="additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 

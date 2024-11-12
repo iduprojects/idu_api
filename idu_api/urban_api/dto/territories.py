@@ -1,8 +1,8 @@
-"""Territories DTO are defined here."""
+"""Territories DTOs are defined here."""
 
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import shapely.geometry as geom
 
@@ -32,7 +32,7 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
     name: str
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     level: int
-    properties: Optional[dict[str, Any]]
+    properties: dict[str, Any] | None
     centre_point: geom.Point
     admin_center: int | None
     okato_code: str | None

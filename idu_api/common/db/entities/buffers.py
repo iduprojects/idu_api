@@ -1,3 +1,5 @@
+"""Buffers data tables are defined here."""
+
 from sqlalchemy import Column, ForeignKey, Integer, PrimaryKeyConstraint, Sequence, String, Table
 
 from idu_api.common.db import metadata

@@ -1,4 +1,4 @@
-"""Territories handlers logic is defined here."""
+"""Territories handlers logic of getting entities from the database is defined here."""
 
 from datetime import date, datetime
 from typing import Callable, Literal

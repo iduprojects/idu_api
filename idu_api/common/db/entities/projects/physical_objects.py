@@ -1,10 +1,13 @@
+"""Projects physical objects data table is defined here."""
+
 from typing import Callable
 
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
-from idu_api.common.db.entities.urban_types_dicts import physical_object_types_dict
+from idu_api.common.db.entities.physical_object_types import physical_object_types_dict
+from idu_api.common.db.entities.physical_objects import physical_objects_data
 
 func: Callable
 
@@ -14,6 +17,12 @@ projects_physical_objects_data = Table(
     "physical_objects_data",
     metadata,
     Column("physical_object_id", Integer, primary_key=True, server_default=physical_objects_id_seq.next_value()),
+    Column(
+        "public_physical_object_id",
+        Integer,
+        ForeignKey(physical_objects_data.c.physical_object_id, ondelete="SET NULL"),
+        nullable=True,
+    ),
     Column(
         "physical_object_type_id",
         Integer,
@@ -30,6 +39,7 @@ projects_physical_objects_data = Table(
 """
 Physical objects data:
 - physical_object_id int 
+- public_physical_object_id foreign key int
 - physical_object_type_id foreign key int
 - name str
 - properties jsonb

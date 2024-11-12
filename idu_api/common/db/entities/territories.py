@@ -10,13 +10,28 @@ from idu_api.common.db import metadata
 
 func: Callable
 
+territory_types_dict_id_seq = Sequence("territory_types_dict_id_seq")
+
+territory_types_dict = Table(
+    "territory_types_dict",
+    metadata,
+    Column("territory_type_id", Integer, primary_key=True, server_default=territory_types_dict_id_seq.next_value()),
+    Column("name", String(200), nullable=False, unique=True),
+)
+
+"""
+Territory types:
+- territory_type_id int 
+- name string(200)
+"""
+
 territories_data_id_seq = Sequence("territories_data_id_seq")
 
 territories_data = Table(
     "territories_data",
     metadata,
     Column("territory_id", Integer, primary_key=True, server_default=territories_data_id_seq.next_value()),
-    Column("territory_type_id", ForeignKey("territory_types_dict.territory_type_id"), nullable=False),
+    Column("territory_type_id", ForeignKey(territory_types_dict.c.territory_type_id), nullable=False),
     Column("parent_id", ForeignKey("territories_data.territory_id"), nullable=True),
     Column("name", String(200), nullable=False),
     Column(

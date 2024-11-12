@@ -1,4 +1,4 @@
-"""Territories indicators handlers are defined here."""
+"""Indicators territories-related handlers are defined here."""
 
 from datetime import datetime
 

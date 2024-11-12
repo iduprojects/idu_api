@@ -2,14 +2,7 @@
 Response and request schemas are defined here.
 """
 
-from .functional_zones import (
-    FunctionalZoneData,
-    FunctionalZoneDataPatch,
-    FunctionalZoneDataPost,
-    FunctionalZoneDataPut,
-    FunctionalZoneType,
-    FunctionalZoneTypePost,
-)
+from .functional_zones import FunctionalZoneData, FunctionalZoneType, FunctionalZoneTypePost
 from .health_check import PingResponse
 from .indicators import (
     Indicator,
@@ -22,6 +15,10 @@ from .indicators import (
     IndicatorValuePost,
     MeasurementUnit,
     MeasurementUnitPost,
+    ProjectsIndicatorValue,
+    ProjectsIndicatorValuePatch,
+    ProjectsIndicatorValuePost,
+    ProjectsIndicatorValuePut,
 )
 from .living_buildings import (
     LivingBuildingsData,
@@ -30,8 +27,16 @@ from .living_buildings import (
     LivingBuildingsDataPut,
     LivingBuildingsWithGeometry,
 )
+from .minio import MinioImagesURL, MinioImageURL
 from .normatives import Normative, NormativeDelete, NormativePatch, NormativePost
-from .object_geometries import ObjectGeometries, ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
+from .object_geometries import (
+    ObjectGeometries,
+    ObjectGeometriesPatch,
+    ObjectGeometriesPost,
+    ObjectGeometriesPut,
+    ScenarioAllObjects,
+    ScenarioGeometry,
+)
 from .pages import Page
 from .physical_object_types import (
     PhysicalObjectFunction,
@@ -51,6 +56,7 @@ from .physical_objects import (
     PhysicalObjectsWithTerritory,
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
+    ScenarioPhysicalObject
 )
 from .profiles_reclamation import (
     ProfilesReclamationData,
@@ -64,22 +70,9 @@ from .projects import (
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
-    ProjectTerritoryPatch,
     ProjectTerritoryPost,
-    ProjectTerritoryPut,
-)
-from .projects_functional_zones import (
-    ProjectsFunctionalZone,
-    ProjectsFunctionalZonePatch,
-    ProjectsFunctionalZonePost,
-    ProjectsFunctionalZonePut,
-)
-from .projects_indicators import (
-    ProjectsIndicator,
-    ProjectsIndicatorPost,
 )
 from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPut
-from .scenarios_urban_objects import ScenariosUrbanObject
 from .service_types import (
     ServiceTypes,
     ServiceTypesHierarchy,
@@ -99,6 +92,7 @@ from .services import (
     ServicesDataPut,
     ServicesDataWithGeometry,
     ServiceWithTerritories,
+    ScenarioService
 )
 from .territories import (
     TerritoryData,
@@ -112,6 +106,7 @@ from .territories import (
     TerritoryWithNormatives,
     TerritoryWithoutGeometry,
 )
+from .urban_objects import ScenariosUrbanObject
 
 __all__ = [
     "PingResponse",
@@ -181,9 +176,6 @@ __all__ = [
     "LivingBuildingsDataPut",
     "LivingBuildingsWithGeometry",
     "FunctionalZoneData",
-    "FunctionalZoneDataPost",
-    "FunctionalZoneDataPut",
-    "FunctionalZoneDataPatch",
     "FunctionalZoneType",
     "FunctionalZoneTypePost",
     "UrbanFunction",
@@ -197,16 +189,18 @@ __all__ = [
     "ProjectPatch",
     "ProjectTerritory",
     "ProjectTerritoryPost",
-    "ProjectTerritoryPut",
-    "ProjectTerritoryPatch",
     "ProfilesReclamationData",
     "ProfilesReclamationDataPost",
     "ProfilesReclamationDataPut",
     "ProfilesReclamationDataMatrix",
-    "ProjectsIndicator",
-    "ProjectsIndicatorPost",
-    "ProjectsFunctionalZone",
-    "ProjectsFunctionalZonePost",
-    "ProjectsFunctionalZonePut",
-    "ProjectsFunctionalZonePatch",
+    "ProjectsIndicatorValue",
+    "ProjectsIndicatorValuePatch",
+    "ProjectsIndicatorValuePost",
+    "ProjectsIndicatorValuePut",
+    "MinioImageURL",
+    "MinioImagesURL",
+    "ScenarioGeometry",
+    "ScenarioAllObjects",
+    "ScenarioPhysicalObject",
+    "ScenarioService",
 ]

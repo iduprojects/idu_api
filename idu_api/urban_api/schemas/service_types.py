@@ -1,4 +1,4 @@
-"""Service types and urban function models are defined here."""
+"""Service types and urban function schemas are defined here."""
 
 from enum import Enum
 from typing import Any, Literal, Self
@@ -6,34 +6,21 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from idu_api.urban_api.dto import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
-
-
-class ServiceTypeBasic(BaseModel):
-    """Basic service type model to encapsulate in other models."""
-
-    id: int
-    name: str
-
-
-class UrbanFunctionBasic(BaseModel):
-    """Basic urban function model to encapsulate in other models."""
-
-    id: int
-    name: str
+from idu_api.urban_api.schemas.short_models import UrbanFunctionBasic
 
 
 class ServiceTypes(BaseModel):
     service_type_id: int = Field(..., examples=[1])
     urban_function: UrbanFunctionBasic
-    name: str = Field(..., description="Service type unit name", examples=["Школа"])
+    name: str = Field(..., description="service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
-    code: str = Field(..., description="Service type code", examples=["1"])
+    code: str = Field(..., description="service type code", examples=["1"])
     infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
         ..., description="infrastructure type", examples=["basic"]
     )
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Service type additional properties",
+        description="service type additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
@@ -64,46 +51,46 @@ class ServiceTypes(BaseModel):
 
 
 class ServiceTypesPost(BaseModel):
-    urban_function_id: int = Field(..., description="Urban function id, if set", examples=[1])
-    name: str = Field(..., description="Service type unit name", examples=["Школа"])
+    urban_function_id: int = Field(..., description="urban function id, if set", examples=[1])
+    name: str = Field(..., description="service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
-    code: str = Field(..., description="Service type code", examples=["1"])
+    code: str = Field(..., description="service type code", examples=["1"])
     infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
         ..., description="infrastructure type", examples=["basic"]
     )
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="Service type additional properties",
+        description="service type additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
 
 class ServiceTypesPut(BaseModel):
-    urban_function_id: int = Field(..., description="Urban function id, if set", examples=[1])
-    name: str = Field(..., description="Service type unit name", examples=["Школа"])
+    urban_function_id: int = Field(..., description="urban function id, if set", examples=[1])
+    name: str = Field(..., description="service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(..., description="default capacity", examples=[1])
-    code: str = Field(..., description="Service type code", examples=["1"])
+    code: str = Field(..., description="service type code", examples=["1"])
     infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
         ..., description="infrastructure type", examples=["basic"]
     )
     properties: dict[str, Any] = Field(
         ...,
-        description="Service type additional properties",
+        description="service type additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
 
 class ServiceTypesPatch(BaseModel):
-    urban_function_id: int | None = Field(None, description="Urban function id, if set", examples=[1])
-    name: str | None = Field(None, description="Service type unit name", examples=["Школа"])
+    urban_function_id: int | None = Field(None, description="urban function id, if set", examples=[1])
+    name: str | None = Field(None, description="service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
-    code: str | None = Field(None, description="Service type code", examples=["1"])
+    code: str | None = Field(None, description="service type code", examples=["1"])
     infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
         None, description="infrastructure type", examples=["basic"]
     )
     properties: dict[str, Any] = Field(
         None,
-        description="Service type additional properties",
+        description="service type additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
@@ -120,10 +107,10 @@ class ServiceTypesPatch(BaseModel):
 class UrbanFunction(BaseModel):
     urban_function_id: int = Field(..., examples=[1])
     parent_urban_function: UrbanFunctionBasic | None
-    name: str = Field(..., description="Urban function unit name", examples=["Образование"])
-    level: int = Field(..., description="Number of urban functions above in a tree + [1]", examples=[1])
-    list_label: str = Field(..., description="Urban function list label", examples=["1.1.1"])
-    code: str = Field(..., description="Urban function code", examples=["1"])
+    name: str = Field(..., description="urban function unit name", examples=["Образование"])
+    level: int = Field(..., description="number of urban functions above in a tree + [1]", examples=[1])
+    list_label: str = Field(..., description="urban function list label", examples=["1.1.1"])
+    code: str = Field(..., description="urban function code", examples=["1"])
 
     @classmethod
     def from_dto(cls, dto: UrbanFunctionDTO) -> "UrbanFunction":
@@ -148,21 +135,21 @@ class UrbanFunction(BaseModel):
 
 
 class UrbanFunctionPost(BaseModel):
-    name: str = Field(..., description="Urban function unit name", examples=["Образование"])
+    name: str = Field(..., description="urban function unit name", examples=["Образование"])
     parent_id: int | None = Field(None, description="Urban function parent id, if set", examples=[1])
-    code: str = Field(..., description="Urban function code", examples=["1"])
+    code: str = Field(..., description="urban function code", examples=["1"])
 
 
 class UrbanFunctionPut(BaseModel):
-    name: str = Field(..., description="Urban function unit name", examples=["Образование"])
+    name: str = Field(..., description="urban function unit name", examples=["Образование"])
     parent_id: int | None = Field(..., description="Urban function parent id, if set", examples=[1])
-    code: str = Field(..., description="Urban function code", examples=["1"])
+    code: str = Field(..., description="urban function code", examples=["1"])
 
 
 class UrbanFunctionPatch(BaseModel):
-    name: str | None = Field(None, description="Urban function unit name", examples=["Образование"])
+    name: str | None = Field(None, description="urban function unit name", examples=["Образование"])
     parent_id: int | None = Field(None, description="Urban function parent id, if set", examples=[1])
-    code: str | None = Field(None, description="Urban function code", examples=["1"])
+    code: str | None = Field(None, description="urban function code", examples=["1"])
 
     @model_validator(mode="before")
     @classmethod
@@ -177,12 +164,12 @@ class UrbanFunctionPatch(BaseModel):
 class ServiceTypesHierarchy(BaseModel):
     urban_function_id: int = Field(..., examples=[1])
     parent_urban_function_id: int | None = Field(
-        ..., description="Parent urban function identifier (null if it is top-level urban function", examples=[1]
+        ..., description="parent urban function identifier (null if it is top-level urban function)", examples=[1]
     )
-    name: str = Field(..., description="Urban function unit name", examples=["Образование"])
-    level: int = Field(..., description="Number of urban functions above in a tree + [1]", examples=[1])
-    list_label: str = Field(..., description="Urban function list label", examples=["1.1.1"])
-    code: str = Field(..., description="Urban function code", examples=["1"])
+    name: str = Field(..., description="urban function unit name", examples=["Образование"])
+    level: int = Field(..., description="number of urban functions above in a tree + [1]", examples=[1])
+    list_label: str = Field(..., description="urban function list label", examples=["1.1.1"])
+    code: str = Field(..., description="urban function code", examples=["1"])
     children: list[Self | ServiceTypes]
 
     @classmethod

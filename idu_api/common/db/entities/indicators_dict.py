@@ -1,5 +1,5 @@
 """
-Table which represent indicators dict is defined here.
+Tables which represent indicators dict are defined here.
 
 Current list is:
 - measurement_units_dict
@@ -35,12 +35,12 @@ indicators_dict = Table(
     "indicators_dict",
     metadata,
     Column("indicator_id", Integer, primary_key=True, server_default=indicators_dict_id_seq.next_value()),
+    Column("parent_id", ForeignKey("indicators_dict.indicator_id", ondelete="CASCADE")),
     Column("name_full", String(200), nullable=False, unique=True),
     Column("name_short", String(200), nullable=False),
-    Column("measurement_unit_id", ForeignKey("measurement_units_dict.measurement_unit_id")),
+    Column("measurement_unit_id", ForeignKey(measurement_units_dict.c.measurement_unit_id)),
     Column("level", Integer),
     Column("list_label", String(20), nullable=False),
-    Column("parent_id", ForeignKey("indicators_dict.indicator_id")),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
 )
@@ -48,12 +48,12 @@ indicators_dict = Table(
 """
 Indicators dict:
 - indicator_id int
+- parent_id foreign key int
 - name_full string(200)
 - name_short string(200)
 - measurement_unit_id foreign key int
 - level int
 - list_label string(20)
-- parent_id foreign key int
 - created_at timestamp
 - updated_at timestamp
 """
