@@ -95,8 +95,9 @@ async def get_services_by_territory_id_from_db(
         .cte(recursive=True)
     )
     territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id, territories_data.c.is_city)
-        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
+        select(territories_data.c.territory_id, territories_data.c.is_city).where(
+            territories_data.c.parent_id == territories_cte.c.territory_id
+        )
     )
 
     if cities_only:
@@ -177,8 +178,9 @@ async def get_services_with_geometry_by_territory_id_from_db(
         .cte(recursive=True)
     )
     territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id, territories_data.c.is_city)
-        .where(territories_data.c.parent_id == territories_cte.c.territory_id)
+        select(territories_data.c.territory_id, territories_data.c.is_city).where(
+            territories_data.c.parent_id == territories_cte.c.territory_id
+        )
     )
 
     if cities_only:

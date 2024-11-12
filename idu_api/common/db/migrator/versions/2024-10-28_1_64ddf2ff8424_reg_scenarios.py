@@ -55,6 +55,7 @@ def upgrade() -> None:
             )
         )
     )
+    op.execute(sa.text("""DELETE FROM user_projects.projects_territory_data WHERE project_id IS NULL"""))
     op.alter_column("projects_territory_data", "project_id", nullable=False, schema="user_projects")
     op.create_foreign_key(
         "projects_territory_data_fk_project_id__projects_data",
