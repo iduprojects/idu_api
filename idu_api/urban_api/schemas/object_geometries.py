@@ -6,8 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import ObjectGeometryDTO
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
-from idu_api.urban_api.schemas.short_models import ShortScenarioService, ShortScenarioPhysicalObject
-from idu_api.urban_api.schemas.short_models import ShortTerritory
+from idu_api.urban_api.schemas.short_models import ShortScenarioPhysicalObject, ShortScenarioService, ShortTerritory
 
 
 class ObjectGeometries(BaseModel):

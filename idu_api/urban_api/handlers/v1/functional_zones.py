@@ -5,6 +5,10 @@ from starlette import status
 
 from idu_api.urban_api.logic.functional_zones import FunctionalZonesService
 from idu_api.urban_api.schemas import (
+    FunctionalZoneData,
+    FunctionalZoneDataPatch,
+    FunctionalZoneDataPost,
+    FunctionalZoneDataPut,
     FunctionalZoneType,
     FunctionalZoneTypePost,
     ProfilesReclamationData,
@@ -134,3 +138,71 @@ async def put_profiles_reclamation_data(
     )
 
     return ProfilesReclamationData.from_dto(changed_profiles_reclamation)
+
+
+@functional_zones_router.post(
+    "/functional_zones",
+    response_model=FunctionalZoneData,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_functional_zone(
+    request: Request,
+    functional_zone: FunctionalZoneDataPost,
+) -> FunctionalZoneData:
+    """Add functional zone."""
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    functional_zone_dto = await functional_zones_service.add_functional_zone(functional_zone)
+
+    return FunctionalZoneData.from_dto(functional_zone_dto)
+
+
+@functional_zones_router.put(
+    "/functional_zones/{functional_zone_id}",
+    response_model=FunctionalZoneData,
+    status_code=status.HTTP_200_OK,
+)
+async def put_functional_zone(
+    request: Request,
+    functional_zone: FunctionalZoneDataPut,
+    functional_zone_id: int = Path(..., description="functional zone id", gt=0),
+) -> FunctionalZoneData:
+    """Update functional zone by all its attributes."""
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    functional_zone_dto = await functional_zones_service.put_functional_zone(functional_zone_id, functional_zone)
+
+    return FunctionalZoneData.from_dto(functional_zone_dto)
+
+
+@functional_zones_router.patch(
+    "/functional_zones/{functional_zone_id}",
+    response_model=FunctionalZoneData,
+    status_code=status.HTTP_200_OK,
+)
+async def patch_functional_zone_for_territory(
+    request: Request,
+    functional_zone: FunctionalZoneDataPatch,
+    functional_zone_id: int = Path(..., description="functional zone id", gt=0),
+) -> FunctionalZoneData:
+    """Update functional zone by only given attributes."""
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    functional_zone_dto = await functional_zones_service.patch_functional_zone(functional_zone_id, functional_zone)
+
+    return FunctionalZoneData.from_dto(functional_zone_dto)
+
+
+@functional_zones_router.delete(
+    "/functional_zones/{functional_zone_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+)
+async def delete_functional_zone(
+    request: Request,
+    functional_zone_id: int = Path(..., description="functional zone id", gt=0),
+) -> dict:
+    """Delete specific functional zone by identifier."""
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    return await functional_zones_service.delete_functional_zone(functional_zone_id)

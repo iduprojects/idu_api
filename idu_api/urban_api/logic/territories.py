@@ -80,6 +80,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         service_type_id: int | None,
         name: str | None,
+        cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
@@ -92,6 +93,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         service_type_id: int | None,
         name: str | None,
+        cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
@@ -106,7 +108,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:
-        """Get indicators by territory id."""
+        """Get indicators for a given territory."""
 
     @abc.abstractmethod
     async def get_indicator_values_by_territory_id(
@@ -188,11 +190,12 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         physical_object_type: int | None,
         name: str | None,
+        cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
     ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
-        """Get physical objects by territory id, optional physical object type."""
+        """Get physical objects by territory id, optional physical object type and is_city."""
 
     @abc.abstractmethod
     async def get_physical_objects_with_geometry_by_territory_id(
@@ -200,6 +203,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int,
         physical_object_type: int | None,
         name: str | None,
+        cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
@@ -215,13 +219,25 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def get_functional_zones_by_territory_id(
-        self, territory_id: int, functional_zone_type_id: int | None
+        self,
+        territory_id: int,
+        functional_zone_type_id: int | None,
+        include_child_territories: bool,
     ) -> list[FunctionalZoneDataDTO]:
         """Get functional zones with geometry by territory id."""
 
     @abc.abstractmethod
+    async def delete_all_functional_zones_for_territory(self, territory_id) -> dict:
+        """Delete all functional zones for territory."""
+
+    @abc.abstractmethod
     async def get_territories_by_parent_id(
-        self, parent_id: int | None, get_all_levels: bool, territory_type_id: int | None, paginate: bool = False
+        self,
+        parent_id: int | None,
+        get_all_levels: bool,
+        territory_type_id: int | None,
+        cities_only: bool | None,
+        paginate: bool = False,
     ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
         """Get a territory or list of territories by parent, territory type could be specified in parameters."""
 
@@ -233,6 +249,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         order_by: Optional[Literal["created_at", "updated_at"]],
         created_at: datetime | None,
         name: str | None,
+        cities_only: bool | None,
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
     ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:

@@ -16,7 +16,7 @@ from .routers import urban_objects_router
 )
 async def get_urban_object_by_id(
     request: Request,
-    urban_object_id: int = Path(..., description="Urban object id"),
+    urban_object_id: int = Path(..., description="urban object identifier"),
 ) -> UrbanObject:
     """Get an urban object by id."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
@@ -33,7 +33,7 @@ async def get_urban_object_by_id(
 )
 async def get_urban_objects_by_physical_object_id(
     request: Request,
-    physical_object_id: int = Query(..., description="Physical object id"),
+    physical_object_id: int = Query(..., description="physical object identifier"),
 ) -> list[UrbanObject]:
     """Get a list of urban objects by physical object id."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
@@ -50,7 +50,7 @@ async def get_urban_objects_by_physical_object_id(
 )
 async def get_urban_objects_by_object_geometry_id(
     request: Request,
-    object_geometry_id: int = Query(..., description="Object geometry id"),
+    object_geometry_id: int = Query(..., description="object geometry identifier"),
 ) -> list[UrbanObject]:
     """Get a list of urban objects by object geometry id."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
@@ -67,7 +67,7 @@ async def get_urban_objects_by_object_geometry_id(
 )
 async def get_urban_objects_by_service_id(
     request: Request,
-    service_id: int = Query(..., description="Service id"),
+    service_id: int = Query(..., description="service identifier"),
 ) -> list[UrbanObject]:
     """Get a list of urban objects by service id."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
@@ -83,9 +83,32 @@ async def get_urban_objects_by_service_id(
     status_code=status.HTTP_200_OK,
 )
 async def delete_urban_object_by_id(
-    request: Request, urban_object_id: int = Path(..., description="Urban object id", gt=0)
+    request: Request, urban_object_id: int = Path(..., description="urban object identifier", gt=0)
 ) -> dict:
     """Delete urban object by given identifier."""
     urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
 
     return await urban_objects_service.delete_urban_object_by_id(urban_object_id)
+
+
+@urban_objects_router.get(
+    "/urban_objects_by_territory_id",
+    response_model=list[UrbanObject],
+    status_code=status.HTTP_200_OK,
+)
+async def get_urban_objects_by_territory_id(
+    request: Request,
+    territory_id: int = Query(..., description="parent territory identifier"),
+    service_type_id: int | None = Query(None, description="service type identifier"),
+    physical_object_type_id: int | None = Query(None, description="physical object type identifier"),
+) -> list[UrbanObject]:
+    """Get a list of urban objects by territory identifier
+
+    It could be specified by service type and physical object type."""
+    urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
+
+    urban_objects = await urban_objects_service.get_urban_objects_by_territory_id(
+        territory_id, service_type_id, physical_object_type_id
+    )
+
+    return [UrbanObject.from_dto(urban_object) for urban_object in urban_objects]

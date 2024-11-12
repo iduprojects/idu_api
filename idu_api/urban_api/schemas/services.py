@@ -7,11 +7,11 @@ from typing import Any
 from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import (
-    ShortScenarioServiceDTO,
+    ScenarioServiceDTO,
     ServiceDTO,
     ServicesCountCapacityDTO,
     ServiceWithGeometryDTO,
-    ServiceWithTerritoriesDTO, ScenarioServiceDTO,
+    ServiceWithTerritoriesDTO,
 )
 from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
@@ -265,4 +265,3 @@ class ScenarioService(ServicesData):
             updated_at=dto.updated_at,
             is_scenario_object=dto.is_scenario_object,
         )
-

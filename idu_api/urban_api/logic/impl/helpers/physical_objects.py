@@ -188,7 +188,7 @@ async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_obje
             physical_objects_data.join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
-            ).outerjoin(
+            ).join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
@@ -370,7 +370,7 @@ async def get_living_building_by_id_from_db(conn: AsyncConnection, living_buildi
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
-            .outerjoin(
+            .join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
@@ -544,7 +544,7 @@ async def get_living_buildings_by_physical_object_id_from_db(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
-            .outerjoin(
+            .join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,

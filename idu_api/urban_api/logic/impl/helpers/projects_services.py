@@ -18,7 +18,9 @@ from idu_api.common.db.entities import (
     scenarios_data,
     service_types_dict,
     services_data,
-    urban_objects_data, territory_types_dict, urban_functions_dict,
+    territory_types_dict,
+    urban_functions_dict,
+    urban_objects_data,
 )
 from idu_api.urban_api.dto import (
     ScenarioServiceDTO,

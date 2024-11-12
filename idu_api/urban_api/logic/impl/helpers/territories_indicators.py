@@ -26,7 +26,7 @@ async def get_indicators_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
 ) -> list[IndicatorDTO]:
-    """Get indicators by territory id."""
+    """Get indicators for a given territory."""
 
     statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
     territory = (await conn.execute(statement)).one_or_none()

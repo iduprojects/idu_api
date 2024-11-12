@@ -19,6 +19,18 @@ func: Callable
 Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
 
 
+async def check_territory_existence(conn: AsyncConnection, territory_id: int) -> bool:
+    """Territory existence checker function."""
+
+    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
+    territory = (await conn.execute(statement)).mappings().one_or_none()
+
+    if territory is None:
+        return False
+
+    return True
+
+
 async def get_territories_by_ids(conn: AsyncConnection, territory_ids: list[int]) -> list[TerritoryDTO]:
     """Get territory objects by ids list."""
 
@@ -216,6 +228,7 @@ async def get_territories_by_parent_id_from_db(
     parent_id: int | None,
     get_all_levels: bool | None,
     territory_type_id: int | None,
+    cities_only: bool,
     paginate: bool = False,
 ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
     """Get a territory or list of territories by parent, territory type could be specified in parameters."""
@@ -241,6 +254,7 @@ async def get_territories_by_parent_id_from_db(
         territories_data.c.admin_center,
         territories_data.c.okato_code,
         territories_data.c.oktmo_code,
+        territories_data.c.is_city,
         territories_data.c.created_at,
         territories_data.c.updated_at,
     ).select_from(
@@ -291,6 +305,9 @@ async def get_territories_by_parent_id_from_db(
     requested_territories = statement.cte("requested_territories")
     statement = select(requested_territories).order_by(requested_territories.c.territory_id)
 
+    if cities_only:
+        statement = statement.where(requested_territories.c.is_city.is_(cities_only))
+
     if paginate:
         return await paginate_dto(conn, statement, transformer=lambda x: [TerritoryDTO(**item) for item in x])
 
@@ -305,6 +322,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     order_by: Optional[Literal["created_at", "updated_at"]],
     created_at: date | None,
     name: str | None,
+    cities_only: bool,
     ordering: Optional[Literal["asc", "desc"]] = "asc",
     paginate: bool = False,
 ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
@@ -329,6 +347,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         territories_data.c.admin_center,
         territories_data.c.okato_code,
         territories_data.c.oktmo_code,
+        territories_data.c.is_city,
         territories_data.c.created_at,
         territories_data.c.updated_at,
     ).select_from(
@@ -360,6 +379,8 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     requested_territories = statement.cte("requested_territories")
     statement = select(requested_territories)
 
+    if cities_only:
+        statement = statement.where(requested_territories.c.is_city.is_(cities_only))
     if name is not None:
         statement = statement.where(requested_territories.c.name.ilike(f"%{name}%"))
     if created_at is not None:

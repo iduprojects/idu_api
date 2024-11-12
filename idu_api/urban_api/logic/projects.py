@@ -1,6 +1,6 @@
 import abc
 import io
-from typing import Any, Protocol
+from typing import Protocol
 
 from idu_api.urban_api.dto import (
     ProjectDTO,
@@ -8,7 +8,9 @@ from idu_api.urban_api.dto import (
     ProjectTerritoryDTO,
     ScenarioDTO,
     ScenarioGeometryDTO,
-    ScenarioGeometryWithAllObjectsDTO, ScenarioPhysicalObjectDTO, ScenarioServiceDTO,
+    ScenarioGeometryWithAllObjectsDTO,
+    ScenarioPhysicalObjectDTO,
+    ScenarioServiceDTO,
 )
 from idu_api.urban_api.schemas import (
     ProjectPatch,

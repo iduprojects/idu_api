@@ -1,12 +1,60 @@
 """Functional zones internal logic is defined here."""
 
-from sqlalchemy import and_, insert, select, update
+from datetime import datetime, timezone
+
+from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
+from sqlalchemy import and_, cast, delete, insert, select, text, update
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from idu_api.common.db.entities import functional_zone_types_dict, profiles_reclamation_data, territories_data
-from idu_api.urban_api.dto import FunctionalZoneTypeDTO, ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO
+from idu_api.common.db.entities import (
+    functional_zone_types_dict,
+    functional_zones_data,
+    profiles_reclamation_data,
+    territories_data,
+)
+from idu_api.urban_api.dto import (
+    FunctionalZoneDataDTO,
+    FunctionalZoneTypeDTO,
+    ProfilesReclamationDataDTO,
+    ProfilesReclamationDataMatrixDTO,
+)
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
-from idu_api.urban_api.schemas import FunctionalZoneTypePost, ProfilesReclamationDataPost, ProfilesReclamationDataPut
+from idu_api.urban_api.logic.impl.helpers.territory_objects import check_territory_existence
+from idu_api.urban_api.schemas import (
+    FunctionalZoneDataPatch,
+    FunctionalZoneDataPost,
+    FunctionalZoneDataPut,
+    FunctionalZoneTypePost,
+    ProfilesReclamationDataPost,
+    ProfilesReclamationDataPut,
+)
+
+
+async def check_functional_zone_existence(conn: AsyncConnection, functional_zone_id: int) -> bool:
+    """Functional zone (and relevant functional zone type) existence checker function."""
+
+    statement = select(functional_zones_data).where(functional_zones_data.c.functional_zone_id == functional_zone_id)
+    functional_zone = (await conn.execute(statement)).mappings().one_or_none()
+
+    if functional_zone is None:
+        return False
+
+    return True
+
+
+async def check_functional_zone_type_existence(conn: AsyncConnection, functional_zone_type_id: int) -> bool:
+    """Functional zone type existence checker function."""
+
+    statement = select(functional_zone_types_dict).where(
+        functional_zone_types_dict.c.functional_zone_type_id == functional_zone_type_id
+    )
+    functional_zone_type = (await conn.execute(statement)).mappings().one_or_none()
+
+    if functional_zone_type is None:
+        return False
+
+    return True
 
 
 async def get_functional_zone_types_from_db(conn: AsyncConnection) -> list[FunctionalZoneTypeDTO]:
@@ -295,3 +343,146 @@ async def get_profiles_reclamation_data_by_source_id_from_db(
     profiles_reclamations = (await conn.execute(statement)).mappings().all()
 
     return [ProfilesReclamationDataDTO(**profile_reclamation) for profile_reclamation in profiles_reclamations]
+
+
+async def get_functional_zone_by_id(conn: AsyncConnection, functional_zone_id: int) -> FunctionalZoneDataDTO:
+    """Get functional zone by id."""
+
+    statement = select(
+        functional_zones_data.c.functional_zone_id,
+        functional_zones_data.c.territory_id,
+        functional_zones_data.c.functional_zone_type_id,
+        cast(ST_AsGeoJSON(functional_zones_data.c.geometry), JSONB).label("geometry"),
+        functional_zones_data.c.properties,
+        functional_zones_data.c.created_at,
+        functional_zones_data.c.updated_at,
+    ).where(functional_zones_data.c.functional_zone_id == functional_zone_id)
+
+    result = (await conn.execute(statement)).mappings().one_or_none()
+    if result is None:
+        raise EntityNotFoundById(functional_zone_id, "functional zone")
+
+    return FunctionalZoneDataDTO(**result)
+
+
+async def add_functional_zone_to_db(
+    conn: AsyncConnection, functional_zone: FunctionalZoneDataPost
+) -> FunctionalZoneDataDTO:
+    """Add functional zone."""
+
+    territory_exists = await check_territory_existence(conn, functional_zone.territory_id)
+    if not territory_exists:
+        raise EntityNotFoundById(functional_zone.territory_id, "territory")
+
+    type_exists = await check_functional_zone_type_existence(conn, functional_zone.functional_zone_type_id)
+    if not type_exists:
+        raise EntityNotFoundById(functional_zone.functional_zone_type_id, "functional zone type")
+
+    statement = (
+        insert(functional_zones_data)
+        .values(
+            territory_id=functional_zone.territory_id,
+            functional_zone_type_id=functional_zone.functional_zone_type_id,
+            geometry=ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326")),
+            properties=functional_zone.properties,
+        )
+        .returning(functional_zones_data.c.functional_zone_id)
+    )
+    functional_zone_id = (await conn.execute(statement)).scalar_one()
+
+    await conn.commit()
+
+    return await get_functional_zone_by_id(conn, functional_zone_id)
+
+
+async def put_functional_zone_to_db(
+    conn: AsyncConnection, functional_zone_id: int, functional_zone: FunctionalZoneDataPut
+) -> FunctionalZoneDataDTO:
+    """Update functional zone by all its attributes."""
+
+    territory_exists = await check_territory_existence(conn, functional_zone.territory_id)
+    if not territory_exists:
+        raise EntityNotFoundById(functional_zone.territory_id, "territory")
+
+    zone_exists = await check_functional_zone_existence(conn, functional_zone_id)
+    if not zone_exists:
+        raise EntityNotFoundById(functional_zone_id, "functional zone")
+
+    type_exists = await check_functional_zone_type_existence(conn, functional_zone.functional_zone_type_id)
+    if not type_exists:
+        raise EntityNotFoundById(functional_zone.functional_zone_type_id, "functional zone type")
+
+    statement = (
+        update(functional_zones_data)
+        .where(functional_zones_data.c.functional_zone_id == functional_zone_id)
+        .values(
+            territory_id=functional_zone.territory_id,
+            functional_zone_type_id=functional_zone.functional_zone_type_id,
+            geometry=ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326")),
+            properties=functional_zone.properties,
+            updated_at=datetime.now(timezone.utc),
+        )
+        .returning(functional_zones_data.c.functional_zone_id)
+    )
+
+    result_id = (await conn.execute(statement)).scalar_one()
+
+    await conn.commit()
+
+    return await get_functional_zone_by_id(conn, result_id)
+
+
+async def patch_functional_zone_to_db(
+    conn: AsyncConnection, functional_zone_id: int, functional_zone: FunctionalZoneDataPatch
+) -> FunctionalZoneDataDTO:
+    """Update functional zone by only given attributes."""
+
+    if functional_zone.territory_id is not None:
+        territory_exists = await check_territory_existence(conn, functional_zone.territory_id)
+        if not territory_exists:
+            raise EntityNotFoundById(functional_zone.territory_id, "territory")
+
+    zone_exists = await check_functional_zone_existence(conn, functional_zone_id)
+    if not zone_exists:
+        raise EntityNotFoundById(functional_zone_id, "functional zone")
+
+    if functional_zone.functional_zone_type_id is not None:
+        type_exists = await check_functional_zone_type_existence(conn, functional_zone.functional_zone_type_id)
+        if not type_exists:
+            raise EntityNotFoundById(functional_zone.functional_zone_type_id, "functional zone type")
+
+    statement = (
+        update(functional_zones_data)
+        .where(functional_zones_data.c.functional_zone_id == functional_zone_id)
+        .returning(functional_zones_data.c.functional_zone_id)
+    )
+
+    values_to_update = {}
+    for k, v in functional_zone.model_dump(exclude={"geometry"}, exclude_unset=True).items():
+        values_to_update.update({k: v})
+
+    if functional_zone.geometry is not None:
+        values_to_update.update(
+            {"geometry": ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326"))}
+        )
+
+    statement = statement.values(updated_at=datetime.now(timezone.utc), **values_to_update)
+    result_id = (await conn.execute(statement)).scalar_one()
+
+    await conn.commit()
+
+    return await get_functional_zone_by_id(conn, result_id)
+
+
+async def delete_functional_zone_from_db(conn: AsyncConnection, functional_zone_id: int) -> dict:
+    """Delete functional zone by identifier."""
+
+    zone_exists = await check_functional_zone_existence(conn, functional_zone_id)
+    if not zone_exists:
+        raise EntityNotFoundById(functional_zone_id, "functional zone")
+
+    statement = delete(functional_zones_data).where(functional_zones_data.c.functional_zone_id == functional_zone_id)
+    await conn.execute(statement)
+    await conn.commit()
+
+    return {"result": "ok"}

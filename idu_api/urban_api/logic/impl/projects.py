@@ -14,7 +14,6 @@ from idu_api.urban_api.dto import (
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
 )
-from idu_api.urban_api.logic.impl.helpers.physical_objects import get_physical_object_geometries_from_db
 from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
     get_geometries_by_scenario_id,
     get_geometries_with_all_objects_by_scenario_id,

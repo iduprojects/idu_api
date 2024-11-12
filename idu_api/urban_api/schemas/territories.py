@@ -52,6 +52,7 @@ class TerritoryData(BaseModel):
     admin_center: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
+    is_city: bool = Field(..., description="boolean parameter to determine cities")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the territory was created")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="the time when the territory was last updated"
@@ -73,6 +74,7 @@ class TerritoryData(BaseModel):
             admin_center=dto.admin_center,
             okato_code=dto.okato_code,
             oktmo_code=dto.oktmo_code,
+            is_city=dto.is_city,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
@@ -94,6 +96,7 @@ class TerritoryDataPost(GeometryValidationModel):
     admin_center: int | None = Field(None, examples=[1])
     okato_code: str | None = Field(None, examples=["1"])
     oktmo_code: str | None = Field(None, examples=["1"])
+    is_city: bool = Field(..., description="boolean parameter to determine cities")
 
 
 class TerritoryDataPut(GeometryValidationModel):
@@ -112,6 +115,7 @@ class TerritoryDataPut(GeometryValidationModel):
     admin_center: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
+    is_city: bool = Field(..., description="boolean parameter to determine cities")
 
 
 class TerritoryDataPatch(GeometryValidationModel):
@@ -130,6 +134,7 @@ class TerritoryDataPatch(GeometryValidationModel):
     admin_center: int | None = Field(None, examples=[1])
     okato_code: str | None = Field(None, examples=["1"])
     oktmo_code: str | None = Field(None, examples=["1"])
+    is_city: bool = Field(..., description="boolean parameter to determine cities")
 
     @model_validator(mode="before")
     @classmethod
@@ -158,6 +163,7 @@ class TerritoryWithoutGeometry(BaseModel):
     admin_center: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
+    is_city: bool = Field(..., description="boolean parameter to determine cities")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the territory was created")
     updated_at: datetime = Field(
         default_factory=datetime.utcnow, description="the time when the territory was last updated"
@@ -176,6 +182,7 @@ class TerritoryWithoutGeometry(BaseModel):
             admin_center=dto.admin_center,
             okato_code=dto.okato_code,
             oktmo_code=dto.oktmo_code,
+            is_city=dto.is_city,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )

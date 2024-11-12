@@ -29,12 +29,12 @@ from .projects import ProjectDTO, ProjectTerritoryDTO
 from .scenarios import ScenarioDTO
 from .service_types import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from .services import (
-    ShortScenarioServiceDTO,
+    ScenarioServiceDTO,
     ServiceDTO,
     ServicesCountCapacityDTO,
     ServiceWithGeometryDTO,
     ServiceWithTerritoriesDTO,
-    ScenarioServiceDTO,
+    ShortScenarioServiceDTO,
 )
 from .territories import (
     TerritoryDTO,
