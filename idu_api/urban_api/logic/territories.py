@@ -264,7 +264,12 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def get_territories_by_parent_id(
-        self, parent_id: int | None, get_all_levels: bool, territory_type_id: int | None, paginate: bool = False
+        self,
+        parent_id: int | None,
+        get_all_levels: bool,
+        territory_type_id: int | None,
+        centers_only: bool | None,
+        paginate: bool = False,
     ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
         """Get a territory or list of territories by parent, territory type could be specified in parameters."""
 
@@ -276,6 +281,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         order_by: Optional[Literal["created_at", "updated_at"]],
         created_at: datetime | None,
         name: str | None,
+        centers_only: bool | None,
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
     ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:

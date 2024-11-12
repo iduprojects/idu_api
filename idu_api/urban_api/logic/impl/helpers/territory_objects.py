@@ -216,6 +216,7 @@ async def get_territories_by_parent_id_from_db(
     parent_id: int | None,
     get_all_levels: bool | None,
     territory_type_id: int | None,
+    centers_only: bool | None,
     paginate: bool = False,
 ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
     """Get a territory or list of territories by parent, territory type could be specified in parameters."""
@@ -241,6 +242,7 @@ async def get_territories_by_parent_id_from_db(
         territories_data.c.admin_center,
         territories_data.c.okato_code,
         territories_data.c.oktmo_code,
+        territories_data.c.is_city,
         territories_data.c.created_at,
         territories_data.c.updated_at,
     ).select_from(
@@ -288,6 +290,9 @@ async def get_territories_by_parent_id_from_db(
                 raise EntityNotFoundById(territory_type_id, "territory type")
             statement = statement.where(territories_data.c.territory_type_id == territory_type_id)
 
+    if centers_only is not None:
+        statement = statement.where(territories_data.c.is_city.is_(centers_only))
+
     requested_territories = statement.cte("requested_territories")
     statement = select(requested_territories).order_by(requested_territories.c.territory_id)
 
@@ -305,6 +310,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     order_by: Optional[Literal["created_at", "updated_at"]],
     created_at: date | None,
     name: str | None,
+    centers_only: bool | None,
     ordering: Optional[Literal["asc", "desc"]] = "asc",
     paginate: bool = False,
 ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
@@ -329,6 +335,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         territories_data.c.admin_center,
         territories_data.c.okato_code,
         territories_data.c.oktmo_code,
+        territories_data.c.is_city,
         territories_data.c.created_at,
         territories_data.c.updated_at,
     ).select_from(
@@ -356,6 +363,9 @@ async def get_territories_without_geometry_by_parent_id_from_db(
             if parent_id is not None
             else territories_data.c.parent_id.is_(None)
         )
+
+    if centers_only is not None:
+        statement = statement.where(territories_data.c.is_city.is_(centers_only))
 
     requested_territories = statement.cte("requested_territories")
     statement = select(requested_territories)

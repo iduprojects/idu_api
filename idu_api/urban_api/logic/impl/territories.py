@@ -310,10 +310,15 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         return await delete_all_functional_zones_for_territory_from_db(self._conn, territory_id)
 
     async def get_territories_by_parent_id(
-        self, parent_id: int | None, get_all_levels: bool | None, territory_type_id: int | None, paginate: bool = False
+        self,
+        parent_id: int | None,
+        get_all_levels: bool | None,
+        territory_type_id: int | None,
+        centers_only: bool | None,
+        paginate: bool = False,
     ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
         return await get_territories_by_parent_id_from_db(
-            self._conn, parent_id, get_all_levels, territory_type_id, paginate
+            self._conn, parent_id, get_all_levels, territory_type_id, centers_only, paginate
         )
 
     async def get_territories_without_geometry_by_parent_id(
@@ -323,11 +328,12 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         order_by: Literal["created_at", "updated_at"] | None,
         created_at: date | None,
         name: str | None,
+        centers_only: bool | None,
         ordering: Literal["asc", "desc"] | None = "asc",
         paginate: bool = False,
     ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
         return await get_territories_without_geometry_by_parent_id_from_db(
-            self._conn, parent_id, get_all_levels, order_by, created_at, name, ordering, paginate
+            self._conn, parent_id, get_all_levels, order_by, created_at, name, centers_only, ordering, paginate
         )
 
     async def get_common_territory_for_geometry(self, geometry: Geom) -> TerritoryDTO | None:
