@@ -1,6 +1,4 @@
-"""
-Enumerations converted to database datatypes are defined here
-"""
+"""Enumerations converted to database datatypes are defined here."""
 
 from enum import Enum
 

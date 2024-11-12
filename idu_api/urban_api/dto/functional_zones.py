@@ -1,4 +1,4 @@
-"""Functional zones DTO are defined here."""
+"""Functional zones DTOs are defined here."""
 
 from dataclasses import dataclass
 from datetime import datetime

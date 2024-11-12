@@ -64,7 +64,7 @@ class Page(AbstractPage[T], Generic[T]):  # pylint: disable=too-few-public-metho
 
 class CursorParams(BaseModel, AbstractParams):
     cursor: Optional[str] = Query(None, description="Cursor for the next page")
-    size: int = Query(10, ge=1, description="Page size")
+    size: int = Query(10, ge=1, description="Page size", alias="page_size")
 
     str_cursor: ClassVar[bool] = True
 

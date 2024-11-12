@@ -1,6 +1,4 @@
-"""
-Urban objects data table is defined here
-"""
+"""Urban objects data table is defined here."""
 
 from sqlalchemy import Column, ForeignKey, Integer, Sequence, Table, UniqueConstraint
 
@@ -12,9 +10,15 @@ urban_objects_data = Table(
     "urban_objects_data",
     metadata,
     Column("urban_object_id", Integer, primary_key=True, server_default=urban_objects_data_id_seq.next_value()),
-    Column("physical_object_id", ForeignKey("physical_objects_data.physical_object_id"), nullable=False),
-    Column("object_geometry_id", ForeignKey("object_geometries_data.object_geometry_id"), nullable=False),
-    Column("service_id", ForeignKey("services_data.service_id")),
+    Column(
+        "physical_object_id", ForeignKey("physical_objects_data.physical_object_id", ondelete="CASCADE"), nullable=False
+    ),
+    Column(
+        "object_geometry_id",
+        ForeignKey("object_geometries_data.object_geometry_id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("service_id", ForeignKey("services_data.service_id", ondelete="SET NULL")),
     UniqueConstraint("physical_object_id", "object_geometry_id", "service_id"),
 )
 

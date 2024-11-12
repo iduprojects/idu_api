@@ -1,6 +1,8 @@
+"""Projects DTOs are defined here."""
+
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 import shapely.geometry as geom
 
@@ -26,8 +28,8 @@ class ProjectTerritoryDTO:
     project_id: int
     project_name: str
     project_user_id: str
-    project_territory_id: int
-    project_territory_name: str
+    territory_id: int
+    territory_name: str
     geometry: geom.Polygon | geom.MultiPolygon
     centre_point: geom.Point
     properties: dict[str, Any] | None

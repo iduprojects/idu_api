@@ -10,6 +10,7 @@ from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
+    ShortScenarioPhysicalObjectDTO, ScenarioPhysicalObjectDTO,
 )
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
 from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic, PhysicalObjectsTypes
@@ -223,3 +224,34 @@ class PhysicalObjectsDataPatch(BaseModel):
         if not values:
             raise ValueError("request body cannot be empty")
         return values
+
+
+class ScenarioPhysicalObject(PhysicalObjectsData):
+    """Scenario physical object with all its attributes."""
+
+    is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
+
+    @classmethod
+    def from_dto(cls, dto: ScenarioPhysicalObjectDTO) -> "ScenarioPhysicalObject":
+        """
+        Construct from DTO.
+        """
+        return cls(
+            physical_object_id=dto.physical_object_id,
+            physical_object_type=PhysicalObjectsTypes(
+                physical_object_type_id=dto.physical_object_type_id,
+                name=dto.physical_object_type_name,
+                physical_object_function=(
+                    PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    )
+                    if dto.physical_object_function_id is not None
+                    else None
+                ),
+            ),
+            name=dto.name,
+            properties=dto.properties,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+            is_scenario_object=dto.is_scenario_object,
+        )

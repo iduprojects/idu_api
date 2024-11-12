@@ -101,9 +101,15 @@ class AsyncMinioClient:
         ) as client:
             try:
                 # Generate a presigned URL
-                return await client.generate_presigned_url(
-                    "get_object", Params={"Bucket": self._bucket_name, "Key": object_name}, ExpiresIn=expires_in
-                )
+                try:
+                    return await client.generate_presigned_url(
+                        "get_object", Params={"Bucket": self._bucket_name, "Key": object_name}, ExpiresIn=expires_in
+                    )
+                except ClientError:
+                    default_name = "defaultImg.png" if "preview" in object_name else "defaultImg.jpg"
+                    return await client.generate_presigned_url(
+                        "get_object", Params={"Bucket": self._bucket_name, "Key": default_name}, ExpiresIn=expires_in
+                    )
             except ClientError as exc:
                 raise GetPresignedURLError(str(exc)) from exc
 

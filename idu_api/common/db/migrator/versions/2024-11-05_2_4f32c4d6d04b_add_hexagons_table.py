@@ -6,6 +6,7 @@ Revises: d8568eb83f18
 Create Date: 2024-11-05 18:25:26.195570
 
 """
+from textwrap import dedent
 from typing import Sequence, Union
 
 import geoalchemy2
@@ -57,6 +58,30 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("hexagon_id", name=op.f("hexagons_data_pk")),
         schema="user_projects",
     )
+    for trigger_name, table_name, procedure_name in [
+        (
+            "check_geometry_correctness_trigger",
+            "user_projects.hexagons_data",
+            "public.trigger_validate_geometry_not_point",
+        ),
+        (
+            "set_center_point_trigger",
+            "user_projects.hexagons_data",
+            "public.trigger_set_centre_point",
+        ),
+    ]:
+        op.execute(
+            sa.text(
+                dedent(
+                    f"""
+                    CREATE TRIGGER {trigger_name}
+                    BEFORE INSERT OR UPDATE ON {table_name}
+                    FOR EACH ROW
+                    EXECUTE PROCEDURE {procedure_name}();
+                    """
+                )
+            )
+        )
 
     # fix `indicators_data`
     op.drop_constraint("indicators_data_fk_project_territory_id__ptd", "indicators_data", schema="user_projects")
@@ -97,5 +122,16 @@ def downgrade() -> None:
     )
 
     # drop table `hexagons_data`
+    for trigger_name, table_name in [
+        ("check_geometry_correctness_trigger", "user_projects.hexagons_data"),
+        ("set_center_point_trigger", "user_projects.hexagons_data"),
+    ]:
+        op.execute(
+            sa.text(
+                f"""
+                DROP TRIGGER IF EXISTS {trigger_name} ON {table_name};
+                """
+            )
+        )
     op.drop_table("hexagons_data", schema="user_projects")
     op.execute(sa.schema.DropSequence(sa.Sequence("hexagons_data_id_seq", schema="user_projects")))

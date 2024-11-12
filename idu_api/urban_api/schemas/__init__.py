@@ -27,8 +27,16 @@ from .living_buildings import (
     LivingBuildingsDataPut,
     LivingBuildingsWithGeometry,
 )
+from .minio import MinioImagesURL, MinioImageURL
 from .normatives import Normative, NormativeDelete, NormativePatch, NormativePost
-from .object_geometries import ObjectGeometries, ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
+from .object_geometries import (
+    ObjectGeometries,
+    ObjectGeometriesPatch,
+    ObjectGeometriesPost,
+    ObjectGeometriesPut,
+    ScenarioAllObjects,
+    ScenarioGeometry,
+)
 from .pages import Page
 from .physical_object_types import (
     PhysicalObjectFunction,
@@ -48,6 +56,7 @@ from .physical_objects import (
     PhysicalObjectsWithTerritory,
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
+    ScenarioPhysicalObject
 )
 from .profiles_reclamation import (
     ProfilesReclamationData,
@@ -61,9 +70,7 @@ from .projects import (
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
-    ProjectTerritoryPatch,
     ProjectTerritoryPost,
-    ProjectTerritoryPut,
 )
 from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPut
 from .service_types import (
@@ -85,6 +92,7 @@ from .services import (
     ServicesDataPut,
     ServicesDataWithGeometry,
     ServiceWithTerritories,
+    ScenarioService
 )
 from .territories import (
     TerritoryData,
@@ -181,8 +189,6 @@ __all__ = [
     "ProjectPatch",
     "ProjectTerritory",
     "ProjectTerritoryPost",
-    "ProjectTerritoryPut",
-    "ProjectTerritoryPatch",
     "ProfilesReclamationData",
     "ProfilesReclamationDataPost",
     "ProfilesReclamationDataPut",
@@ -191,4 +197,10 @@ __all__ = [
     "ProjectsIndicatorValuePatch",
     "ProjectsIndicatorValuePost",
     "ProjectsIndicatorValuePut",
+    "MinioImageURL",
+    "MinioImagesURL",
+    "ScenarioGeometry",
+    "ScenarioAllObjects",
+    "ScenarioPhysicalObject",
+    "ScenarioService",
 ]

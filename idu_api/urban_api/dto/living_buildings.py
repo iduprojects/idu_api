@@ -1,4 +1,4 @@
-"""Living buildings DTO are defined here."""
+"""Living buildings DTOs are defined here."""
 
 from dataclasses import dataclass
 from datetime import datetime

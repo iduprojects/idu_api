@@ -7,10 +7,11 @@ from typing import Any
 from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import (
+    ShortScenarioServiceDTO,
     ServiceDTO,
     ServicesCountCapacityDTO,
     ServiceWithGeometryDTO,
-    ServiceWithTerritoriesDTO,
+    ServiceWithTerritoriesDTO, ScenarioServiceDTO,
 )
 from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
@@ -94,7 +95,7 @@ class ServiceWithTerritories(BaseModel):
         """
         Construct from DTO.
         """
-        service = cls(
+        return cls(
             service_id=dto.service_id,
             service_type=ServiceTypes(
                 service_type_id=dto.service_type_id,
@@ -119,7 +120,6 @@ class ServiceWithTerritories(BaseModel):
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
-        return service
 
 
 class ServicesDataPost(BaseModel):
@@ -230,3 +230,39 @@ class ServicesCountCapacity(BaseModel):
     @classmethod
     def from_dto(cls, dto: ServicesCountCapacityDTO) -> "ServicesCountCapacity":
         return cls(territory_id=dto.territory_id, count=dto.count, capacity=dto.capacity)
+
+
+class ScenarioService(ServicesData):
+    """Service with all its attributes."""
+
+    is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
+
+    @classmethod
+    def from_dto(cls, dto: ScenarioServiceDTO) -> "ScenarioService":
+        """
+        Construct from DTO.
+        """
+        return cls(
+            service_id=dto.service_id,
+            service_type=ServiceTypes(
+                service_type_id=dto.service_type_id,
+                urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
+                name=dto.service_type_name,
+                capacity_modeled=dto.service_type_capacity_modeled,
+                code=dto.service_type_code,
+                infrastructure_type=dto.infrastructure_type,
+                properties=dto.service_type_properties,
+            ),
+            territory_type=(
+                TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
+                if dto.territory_type_id is not None
+                else None
+            ),
+            name=dto.name,
+            capacity_real=dto.capacity_real,
+            properties=dto.properties,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+            is_scenario_object=dto.is_scenario_object,
+        )
+

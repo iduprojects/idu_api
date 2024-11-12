@@ -39,6 +39,7 @@ def upgrade() -> None:
         "functional_zones_data",
         sa.Column("updated_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
     )
+    op.add_column("functional_zones_data", sa.Column("name", sa.String(200), nullable=True))
 
     # fix `profiles_data`
     op.add_column(
@@ -58,6 +59,18 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
         schema="user_projects",
     )
+    op.drop_constraint("profiles_data_fk_scenario_id__scenarios_data", "profiles_data", schema="user_projects")
+    op.create_foreign_key(
+        "profiles_data_fk_scenario_id__scenarios_data",
+        "profiles_data",
+        "scenarios_data",
+        ["scenario_id"],
+        ["scenario_id"],
+        source_schema="user_projects",
+        referent_schema="user_projects",
+        ondelete="CASCADE",
+    )
+    op.alter_column("profiles_data", "name", nullable=True, schema="user_projects")
 
 
 def downgrade() -> None:
@@ -76,8 +89,21 @@ def downgrade() -> None:
     op.drop_column("functional_zones_data", "properties")
     op.drop_column("functional_zones_data", "created_at")
     op.drop_column("functional_zones_data", "updated_at")
+    op.drop_column("functional_zones_data", "name")
 
     # revert changes to `profiles_data`
     op.drop_column("profiles_data", "properties", schema="user_projects")
     op.drop_column("profiles_data", "created_at", schema="user_projects")
     op.drop_column("profiles_data", "updated_at", schema="user_projects")
+    op.drop_constraint("profiles_data_fk_scenario_id__scenarios_data", "profiles_data", schema="user_projects")
+    op.create_foreign_key(
+        "profiles_data_fk_scenario_id__scenarios_data",
+        "profiles_data",
+        "scenarios_data",
+        ["scenario_id"],
+        ["scenario_id"],
+        source_schema="user_projects",
+        referent_schema="user_projects",
+    )
+    op.execute(sa.text("""DELETE FROM user_projects.profiles_data WHERE name IS NULL"""))
+    op.alter_column("profiles_data", "name", nullable=False, schema="user_projects")

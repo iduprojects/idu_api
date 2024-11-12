@@ -1,6 +1,4 @@
-"""
-Services data table is defined here
-"""
+"""Services data table is defined here."""
 
 from typing import Callable
 
@@ -8,7 +6,8 @@ from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String,
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
-from idu_api.common.db.entities.urban_types_dicts import service_types_dict, territory_types_dict
+from idu_api.common.db.entities.service_types import service_types_dict
+from idu_api.common.db.entities.territories import territory_types_dict
 
 func: Callable
 
@@ -18,7 +17,7 @@ services_data = Table(
     "services_data",
     metadata,
     Column("service_id", Integer, primary_key=True, server_default=services_data_id_seq.next_value()),
-    Column("service_type_id", ForeignKey(service_types_dict.c.service_type_id, ondelete="CASCADE"), nullable=False),
+    Column("service_type_id", ForeignKey(service_types_dict.c.service_type_id), nullable=False),
     Column("territory_type_id", ForeignKey(territory_types_dict.c.territory_type_id)),
     Column("name", String(200)),
     Column("capacity_real", Integer),

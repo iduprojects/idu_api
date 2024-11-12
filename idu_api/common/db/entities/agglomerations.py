@@ -1,4 +1,9 @@
-"""Aglomeration data table is defined here."""
+"""Tables which represent agglomerations are defined here.
+
+Current list is:
+- aglomeration_types_dict
+- aglomeration_data
+"""
 
 from typing import Callable
 
@@ -41,7 +46,7 @@ aglomeration_types_dict = Table(
 )
 
 """
-Aglomeration type:
+Agglomeration type:
 - aglomeration_type_id int
 - name string(200)
 """
@@ -85,7 +90,7 @@ aglomeration_data = Table(
 )
 
 """
-Aglomeration:
+Agglomeration:
 - aglomeration_id int 
 - aglomeration_type_id foreign key int
 - parent_id foreign key int

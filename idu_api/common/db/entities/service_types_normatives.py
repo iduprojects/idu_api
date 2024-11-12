@@ -1,6 +1,4 @@
-"""
-Service types normatives data table is defined here
-"""
+"""Service types normatives data table is defined here."""
 
 from typing import Callable
 

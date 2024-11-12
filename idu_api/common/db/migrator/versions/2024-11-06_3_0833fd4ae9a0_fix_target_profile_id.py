@@ -1,5 +1,5 @@
 # pylint: disable=no-member,invalid-name,missing-function-docstring,too-many-statements
-"""fix region id target profile
+"""fix target profile id
 
 Revision ID: 0833fd4ae9a0
 Revises: 5ae105651257
@@ -11,8 +11,6 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
-from idu_api.common.db import metadata
-
 # revision identifiers, used by Alembic.
 revision: str = "0833fd4ae9a0"
 down_revision: Union[str, None] = "5ae105651257"
@@ -21,25 +19,6 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # fix `territory_id` to `territory_id`
-    op.drop_constraint("projects_data_fk_region_id__territories_data", "projects_data", schema="user_projects")
-    op.drop_column("projects_data", "territory_id", schema="user_projects")
-    op.add_column(
-        "projects_data",
-        sa.Column("territory_id", sa.Integer(), nullable=True),
-        schema="user_projects",
-    )
-    op.create_foreign_key(
-        "projects_data_fk_region_id__territories_data",
-        "projects_data",
-        "territories_data",
-        ["territory_id"],
-        ["territory_id"],
-        source_schema="user_projects",
-        referent_schema="public",
-        ondelete="CASCADE",
-    )
-
     # fix `target_profile_id` to `functional_zone_type_id`
     op.drop_constraint(
         "profiles_data_fk_func_zone_type_id__func_zone_type_dict", "profiles_data", schema="user_projects"
@@ -80,25 +59,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # revert `territory_id` back to `territory_id` in `projects_data`
-    op.drop_constraint("projects_data_fk_region_id__territories_data", "projects_data", schema="user_projects")
-    op.drop_column("projects_data", "territory_id", schema="user_projects")
-    op.add_column(
-        "projects_data",
-        sa.Column("territory_id", sa.Integer(), nullable=True),
-        schema="user_projects",
-    )
-    op.create_foreign_key(
-        "projects_data_fk_region_id__territories_data",
-        "projects_data",
-        "territories_data",
-        ["territory_id"],
-        ["territory_id"],
-        source_schema="user_projects",
-        referent_schema="public",
-        ondelete="CASCADE",
-    )
-
     # revert `functional_zone_type_id` back to `target_profile_id` in `profiles_data`
     op.drop_constraint(
         "profiles_data_fk_func_zone_type_id__func_zone_type_dict", "profiles_data", schema="user_projects"

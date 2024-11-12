@@ -1,22 +1,22 @@
-"""Projects territories data table is defined here."""
+"""Hexagons data table is defined here."""
 
 from geoalchemy2.types import Geometry
 from sqlalchemy import Column, ForeignKey, Integer, Sequence, Table, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
-from idu_api.common.db.entities.projects.projects import projects_data
+from idu_api.common.db.entities.territories import territories_data
 
-project_territory_id_seq = Sequence("project_territory_id_seq", schema="user_projects")
+hexagons_data_id_seq = Sequence("hexagons_data_id_seq")
 
-projects_territory_data = Table(
-    "projects_territory_data",
+hexagons_data = Table(
+    "hexagons_data",
     metadata,
-    Column("project_territory_id", Integer, primary_key=True, server_default=project_territory_id_seq.next_value()),
+    Column("hexagon_id", Integer, primary_key=True, server_default=hexagons_data_id_seq.next_value()),
     Column(
-        "project_id",
+        "territory_id",
         Integer,
-        ForeignKey(projects_data.c.project_id, ondelete="CASCADE"),
+        ForeignKey(territories_data.c.territory_id, ondelete="CASCADE"),
         nullable=False,
     ),
     Column(
@@ -34,10 +34,10 @@ projects_territory_data = Table(
 )
 
 """
-Project territory data:
-- project_territory_id int 
-- project_id foreign key int
+Hexagons data:
+- hexagon_id int
+- territory_id foreign key int
 - geometry geometry
-- centre_point geometry point
+- centre_point geometry
 - properties jsonb
 """

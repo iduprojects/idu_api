@@ -30,10 +30,10 @@ class ProjectTerritory(BaseModel):
         return cls(
             project_territory_id=dto.project_territory_id,
             project=ShortProject(
-                id=dto.project_id,
+                project_id=dto.project_id,
                 name=dto.project_name,
                 user_id=dto.project_user_id,
-                region=ShortTerritory(id=dto.project_territory_id, name=dto.project_territory_name),
+                region=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
             ),
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
@@ -44,7 +44,6 @@ class ProjectTerritory(BaseModel):
 class ProjectTerritoryPost(GeometryValidationModel):
     """Project territory schema for POST requests."""
 
-    project_id: int = Field(..., description="project identifier", examples=[1])
     geometry: Geometry
     centre_point: Geometry | None = None
     properties: dict[str, Any] = Field(
@@ -52,40 +51,6 @@ class ProjectTerritoryPost(GeometryValidationModel):
         description="project territory additional properties",
         examples=[{"attribute_name": "attribute_value"}],
     )
-
-
-class ProjectTerritoryPut(GeometryValidationModel):
-    """Project territory schema for PUT request."""
-
-    project_id: int = Field(..., description="project identifier", examples=[1])
-    geometry: Geometry
-    centre_point: Geometry
-    properties: dict[str, Any] = Field(
-        ...,
-        description="project territory additional properties",
-        examples=[{"attribute_name": "attribute_value"}],
-    )
-
-
-class ProjectTerritoryPatch(GeometryValidationModel):
-    """Project territory schema for PATCH request."""
-
-    project_id: int | None = Field(None, description="project identifier", examples=[1])
-    geometry: Geometry | None = None
-    centre_point: Geometry | None = None
-    properties: dict[str, Any] | None = Field(
-        None,
-        description="project territory additional properties",
-        examples=[{"attribute_name": "attribute_value"}],
-    )
-
-    @model_validator(mode="before")
-    @classmethod
-    def check_empty_request(cls, values):
-        """Ensure the request body is not empty."""
-        if not values:
-            raise ValueError("request body cannot be empty")
-        return values
 
 
 class Project(BaseModel):
@@ -135,16 +100,18 @@ class ProjectPost(BaseModel):
         description="project's additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
+    # regional_scenario_id: int = Field(
+    #     ..., description="identifier of parent regional scenario for base project scenario", examples=[1]
+    # )
+    territory: ProjectTerritoryPost
 
 
 class ProjectPut(BaseModel):
     """Project schema for PUT request."""
 
     name: str = Field(..., description="project name", examples=["--"])
-    territory_id: int = Field(..., description="project region identifier", examples=[1])
     description: str | None = Field(None, description="project description", examples=["--"])
     public: bool = Field(..., description="project publicity", examples=[True])
-    is_regional: bool = Field(..., description="boolean parameter for regional projects", examples=[False])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="project's additional properties",
@@ -156,10 +123,8 @@ class ProjectPatch(BaseModel):
     """Project schema for PATCH request."""
 
     name: str | None = Field(None, description="project name", examples=["--"])
-    territory_id: int | None = Field(None, description="project region identifier", examples=[1])
     description: str | None = Field(None, description="project description", examples=["--"])
     public: bool | None = Field(None, description="project publicity", examples=[True])
-    is_regional: bool | None = Field(None, description="boolean parameter for regional projects", examples=[False])
     properties: dict[str, Any] | None = Field(
         default_factory=dict,
         description="project's additional properties",

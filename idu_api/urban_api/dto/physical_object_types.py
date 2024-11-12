@@ -1,3 +1,5 @@
+"""Physical object types DTOs are defined here."""
+
 from dataclasses import dataclass
 from typing import Self
 

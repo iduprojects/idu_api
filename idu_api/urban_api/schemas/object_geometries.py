@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import ObjectGeometryDTO
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
+from idu_api.urban_api.schemas.short_models import ShortScenarioService, ShortScenarioPhysicalObject
+from idu_api.urban_api.schemas.short_models import ShortTerritory
 
 
 class ObjectGeometries(BaseModel):
@@ -77,3 +79,25 @@ class ObjectGeometriesPatch(GeometryValidationModel):
         if not values:
             raise ValueError("request body cannot be empty")
         return values
+
+
+class ScenarioGeometry(BaseModel):
+    """Scenario object geometry schema (but without geometry columns)."""
+
+    object_geometry_id: int = Field(..., examples=[1])
+    territory: ShortTerritory
+    address: str | None = Field(..., description="physical object address", examples=["--"])
+    osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
+    is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
+
+
+class ScenarioAllObjects(BaseModel):
+    """Scenario object geometry with all its physical objects and services (but without geometry columns...)."""
+
+    object_geometry_id: int = Field(..., examples=[1])
+    territory_id: int = Field(..., examples=[1])
+    address: str | None = Field(..., description="physical object address", examples=["--"])
+    osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
+    is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
+    physical_objects: list[ShortScenarioPhysicalObject]
+    services: list[ShortScenarioService]

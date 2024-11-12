@@ -1,3 +1,5 @@
+"""Indicator values projects-related endpoints are defined here."""
+
 from fastapi import Depends, Path, Request, Security
 from fastapi.security import HTTPBearer
 from starlette import status

@@ -1,4 +1,4 @@
-"""Projects indicators internal logic is defined here."""
+"""Projects indicators values internal logic is defined here."""
 
 from sqlalchemy import and_, delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncConnection

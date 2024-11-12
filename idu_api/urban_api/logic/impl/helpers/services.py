@@ -1,4 +1,4 @@
-"""Service handlers logic of getting entities from the database is defined here."""
+"""Services internal logic is defined here."""
 
 from datetime import datetime, timezone
 from typing import Callable

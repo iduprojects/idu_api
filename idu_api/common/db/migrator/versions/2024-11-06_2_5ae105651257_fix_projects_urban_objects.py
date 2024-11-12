@@ -63,7 +63,20 @@ def upgrade() -> None:
         ["service_id"],
         source_schema="user_projects",
         referent_schema="public",
-        ondelete="CASCADE",
+        ondelete="SET NULL",
+    )
+
+    # fix delete rules
+    op.drop_constraint("urban_objects_data_fk_service_id__services_data", "urban_objects_data", schema="user_projects")
+    op.create_foreign_key(
+        "urban_objects_data_fk_service_id__services_data",
+        "urban_objects_data",
+        "services_data",
+        ["service_id"],
+        ["service_id"],
+        source_schema="user_projects",
+        referent_schema="user_projects",
+        ondelete="SET NULL",
     )
 
 
@@ -78,3 +91,14 @@ def downgrade() -> None:
     op.drop_column("urban_objects_data", "public_service_id", schema="user_projects")
     op.drop_column("urban_objects_data", "public_object_geometry_id", schema="user_projects")
     op.drop_column("urban_objects_data", "public_physical_object_id", schema="user_projects")
+    op.drop_constraint("urban_objects_data_fk_service_id__services_data", "urban_objects_data", schema="user_projects")
+    op.create_foreign_key(
+        "urban_objects_data_fk_service_id__services_data",
+        "urban_objects_data",
+        "services_data",
+        ["service_id"],
+        ["service_id"],
+        source_schema="user_projects",
+        referent_schema="user_projects",
+        ondelete="CASCADE",
+    )
