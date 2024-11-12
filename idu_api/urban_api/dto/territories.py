@@ -37,6 +37,7 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
     admin_center: int | None
     okato_code: str | None
     oktmo_code: str | None
+    is_city: bool
     created_at: datetime
     updated_at: datetime
 
@@ -69,6 +70,7 @@ class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attribut
     admin_center: int | None
     okato_code: str | None
     oktmo_code: str | None
+    is_city: bool
     created_at: datetime
     updated_at: datetime
 
