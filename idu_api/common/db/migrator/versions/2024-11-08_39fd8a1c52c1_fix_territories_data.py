@@ -55,6 +55,8 @@ def upgrade() -> None:
         ondelete="SET NULL",
     )
 
+    op.execute(sa.text("UPDATE territories_data SET admin_center = NULL"))
+
 
 def downgrade() -> None:
     op.drop_constraint("territories_data_fk_admin_center__territories_data", "territories_data", "foreignkey")
