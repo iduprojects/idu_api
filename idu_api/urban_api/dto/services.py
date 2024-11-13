@@ -6,6 +6,8 @@ from typing import Any
 
 import shapely.geometry as geom
 
+Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
+
 
 @dataclass(frozen=True)
 class ServiceDTO:  # pylint: disable=too-many-instance-attributes
@@ -45,7 +47,7 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     properties: dict[str, Any]
     address: str | None
     osm_id: str | None
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    geometry: Geom
     centre_point: geom.Point
     created_at: datetime
     updated_at: datetime
@@ -112,12 +114,16 @@ class ServicesCountCapacityDTO:
 
 
 @dataclass(frozen=True)
-class ShortScenarioServiceDTO:
+class ShortServiceDTO:
     service_id: int
     service_type_id: int
     territory_type_id: int | None
     name: str | None
     capacity_real: int | None
+
+
+@dataclass(frozen=True)
+class ShortScenarioServiceDTO(ShortServiceDTO):
     is_scenario_object: bool
 
 

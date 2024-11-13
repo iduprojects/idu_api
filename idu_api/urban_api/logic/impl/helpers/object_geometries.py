@@ -56,7 +56,7 @@ async def get_physical_objects_by_object_geometry_id_from_db(
                 physical_object_types_dict,
                 physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
             )
-            .outerjoin(
+            .join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
@@ -81,16 +81,27 @@ async def get_object_geometry_by_ids_from_db(
 ) -> list[ObjectGeometryDTO]:
     """Get list of object geometries by list of identifiers."""
 
-    statement = select(
-        object_geometries_data.c.object_geometry_id,
-        object_geometries_data.c.territory_id,
-        cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-        cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
-        object_geometries_data.c.address,
-        object_geometries_data.c.osm_id,
-        object_geometries_data.c.created_at,
-        object_geometries_data.c.updated_at,
-    ).where(object_geometries_data.c.object_geometry_id.in_(object_geometry_ids))
+    statement = (
+        select(
+            object_geometries_data.c.object_geometry_id,
+            object_geometries_data.c.territory_id,
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
+            object_geometries_data.c.created_at,
+            object_geometries_data.c.updated_at,
+            territories_data.c.name.label("territory_name"),
+        )
+        .select_from(
+            object_geometries_data
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
+        )
+
+    .where(object_geometries_data.c.object_geometry_id.in_(object_geometry_ids)))
 
     result = (await conn.execute(statement)).mappings().all()
 

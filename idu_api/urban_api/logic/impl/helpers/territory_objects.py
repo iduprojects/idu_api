@@ -117,11 +117,9 @@ async def add_territory_to_db(
         .returning(territories_data.c.territory_id)
     )
     result_id = (await conn.execute(statement)).scalar_one()
-    result = await get_territory_by_id(conn, result_id)
-
     await conn.commit()
 
-    return result
+    return await get_territory_by_id(conn, result_id)
 
 
 async def put_territory_to_db(
