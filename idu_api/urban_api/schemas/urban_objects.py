@@ -5,7 +5,6 @@ from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.object_geometries import ObjectGeometries
 from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, PhysicalObjectsTypes
-from idu_api.urban_api.schemas.scenarios import ShortScenario
 from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
 from idu_api.urban_api.schemas.services import ServicesData
 from idu_api.urban_api.schemas.territories import TerritoryType

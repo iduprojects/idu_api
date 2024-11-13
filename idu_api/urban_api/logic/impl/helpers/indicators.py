@@ -505,14 +505,12 @@ async def get_indicator_value_by_id_from_db(
             territory_indicators_data.join(
                 indicators_dict,
                 indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
-            ).outerjoin(
+            )
+            .outerjoin(
                 measurement_units_dict,
                 measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
             )
-            .join(
-                territories_data,
-                territories_data.c.territory_id == territory_indicators_data.c.territory_id
-            )
+            .join(territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id)
         )
         .where(
             territory_indicators_data.c.indicator_id == indicator_id,
@@ -627,14 +625,12 @@ async def get_indicator_values_by_id_from_db(
             territory_indicators_data.join(
                 indicators_dict,
                 indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
-            ).outerjoin(
+            )
+            .outerjoin(
                 measurement_units_dict,
                 measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
             )
-            .join(
-                territories_data,
-                territories_data.c.territory_id == territory_indicators_data.c.territory_id
-            )
+            .join(territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id)
         )
         .where(territory_indicators_data.c.indicator_id == indicator_id)
     )

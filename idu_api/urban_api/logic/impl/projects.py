@@ -5,6 +5,7 @@ import io
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
+    ObjectGeometryDTO,
     ProjectDTO,
     ProjectsIndicatorValueDTO,
     ProjectTerritoryDTO,
@@ -14,9 +15,12 @@ from idu_api.urban_api.dto import (
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
 )
+from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
-    get_geometries_by_scenario_id,
-    get_geometries_with_all_objects_by_scenario_id,
+    get_context_geometries_by_scenario_id_from_db,
+    get_context_geometries_with_all_objects_by_scenario_id_from_db,
+    get_geometries_by_scenario_id_from_db,
+    get_geometries_with_all_objects_by_scenario_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
     add_projects_indicator_value_to_db,
@@ -161,7 +165,6 @@ class UserProjectServiceImpl(UserProjectService):
         user_id: str,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioPhysicalObjectDTO]:
         return await get_physical_objects_by_scenario_id(
             self._conn,
@@ -169,7 +172,6 @@ class UserProjectServiceImpl(UserProjectService):
             user_id,
             physical_object_type_id,
             physical_object_function_id,
-            for_context,
         )
 
     async def get_services_by_scenario_id(
@@ -178,7 +180,6 @@ class UserProjectServiceImpl(UserProjectService):
         user_id: str,
         service_type_id: int | None,
         urban_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioServiceDTO]:
         return await get_services_by_scenario_id(
             self._conn,
@@ -186,7 +187,6 @@ class UserProjectServiceImpl(UserProjectService):
             user_id,
             service_type_id,
             urban_function_id,
-            for_context,
         )
 
     async def get_geometries_by_scenario_id(
@@ -195,15 +195,13 @@ class UserProjectServiceImpl(UserProjectService):
         user_id: str,
         physical_object_id: int | None,
         service_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioGeometryDTO]:
-        return await get_geometries_by_scenario_id(
+        return await get_geometries_by_scenario_id_from_db(
             self._conn,
             scenario_id,
             user_id,
             physical_object_id,
             service_id,
-            for_context,
         )
 
     async def get_geometries_with_all_objects_by_scenario_id(
@@ -214,9 +212,8 @@ class UserProjectServiceImpl(UserProjectService):
         service_type_id: int | None,
         physical_object_function_id: int | None,
         urban_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioGeometryWithAllObjectsDTO]:
-        return await get_geometries_with_all_objects_by_scenario_id(
+        return await get_geometries_with_all_objects_by_scenario_id_from_db(
             self._conn,
             scenario_id,
             user_id,
@@ -224,7 +221,40 @@ class UserProjectServiceImpl(UserProjectService):
             service_type_id,
             physical_object_function_id,
             urban_function_id,
-            for_context,
+        )
+
+    async def get_context_geometries_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_id: int | None,
+        service_id: int | None,
+    ) -> list[ObjectGeometryDTO]:
+        return await get_context_geometries_by_scenario_id_from_db(
+            self._conn,
+            scenario_id,
+            user_id,
+            physical_object_id,
+            service_id,
+        )
+
+    async def get_context_geometries_with_all_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+        physical_object_function_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[GeometryWithAllObjectsDTO]:
+        return await get_context_geometries_with_all_objects_by_scenario_id_from_db(
+            self._conn,
+            scenario_id,
+            user_id,
+            physical_object_type_id,
+            service_type_id,
+            physical_object_function_id,
+            urban_function_id,
         )
 
     async def get_all_projects_indicators_values(

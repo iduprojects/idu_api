@@ -6,7 +6,13 @@ from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import ObjectGeometryDTO
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
-from idu_api.urban_api.schemas.short_models import ShortScenarioPhysicalObject, ShortScenarioService, ShortTerritory
+from idu_api.urban_api.schemas.short_models import (
+    ShortPhysicalObject,
+    ShortScenarioPhysicalObject,
+    ShortScenarioService,
+    ShortService,
+    ShortTerritory,
+)
 
 
 class ObjectGeometries(BaseModel):
@@ -80,17 +86,37 @@ class ObjectGeometriesPatch(GeometryValidationModel):
         return values
 
 
-class ScenarioGeometry(BaseModel):
-    """Scenario object geometry schema (but without geometry columns)."""
+class GeometryAttributes(BaseModel):
+    """Object geometry schema (but without geometry columns)."""
 
     object_geometry_id: int = Field(..., examples=[1])
     territory: ShortTerritory
     address: str | None = Field(..., description="physical object address", examples=["--"])
     osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the geometry was created")
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="the time when the geometry was last updated"
+    )
+
+
+class ScenarioGeometryAttributes(GeometryAttributes):
+    """Scenario object geometry schema (but without geometry columns)."""
+
     is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
 
 
-class ScenarioAllObjects(BaseModel):
+class AllObjects(BaseModel):
+    """Object geometry with all its physical objects and services (but without geometry columns...)."""
+
+    object_geometry_id: int = Field(..., examples=[1])
+    territory_id: int = Field(..., examples=[1])
+    address: str | None = Field(..., description="physical object address", examples=["--"])
+    osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
+    physical_objects: list[ShortPhysicalObject]
+    services: list[ShortService]
+
+
+class ScenarioAllObjects(AllObjects):
     """Scenario object geometry with all its physical objects and services (but without geometry columns...)."""
 
     object_geometry_id: int = Field(..., examples=[1])

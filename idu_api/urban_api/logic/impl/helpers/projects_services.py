@@ -2,9 +2,8 @@
 
 from collections import defaultdict
 
-from geoalchemy2 import Geography, Geometry
-from geoalchemy2.functions import ST_Buffer, ST_Within
-from sqlalchemy import cast, or_, select
+from geoalchemy2.functions import ST_Within
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (

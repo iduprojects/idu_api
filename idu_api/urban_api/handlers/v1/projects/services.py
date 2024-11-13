@@ -22,7 +22,6 @@ async def get_services_by_scenario_id(
     scenario_id: int = Path(..., description="scenario identifier"),
     service_type_id: int | None = Query(None, description="to filter by service type"),
     urban_function_id: int | None = Query(None, description="to filter by urban function"),
-    for_context: bool = Query(False, description="to get objects for context of project territory"),
     user: UserDTO = Depends(get_user),
 ) -> list[ScenarioService]:
     """Get list of services for given scenario.
@@ -35,7 +34,6 @@ async def get_services_by_scenario_id(
         user.id,
         service_type_id,
         urban_function_id,
-        for_context,
     )
 
     return [ScenarioService.from_dto(service) for service in services]

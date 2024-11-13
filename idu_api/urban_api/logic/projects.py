@@ -12,6 +12,7 @@ from idu_api.urban_api.dto import (
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
 )
+from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO, ObjectGeometryDTO
 from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
@@ -134,7 +135,6 @@ class UserProjectService(Protocol):
         user_id: str,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioPhysicalObjectDTO]:
         """Get list of physical objects by scenario identifier."""
 
@@ -145,7 +145,6 @@ class UserProjectService(Protocol):
         user_id: str,
         service_type_id: int | None,
         urban_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioServiceDTO]:
         """Get list of services by scenario identifier."""
 
@@ -156,7 +155,6 @@ class UserProjectService(Protocol):
         user_id: str,
         physical_object_id: int | None,
         service_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioGeometryDTO]:
         """Get all geometries for given scenario."""
 
@@ -169,9 +167,30 @@ class UserProjectService(Protocol):
         service_type_id: int | None,
         physical_object_function_id: int | None,
         urban_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioGeometryWithAllObjectsDTO]:
-        """Get geometries with list of physical objects and services by scenario identifier."""
+        """Get geometries with lists of physical objects and services by scenario identifier."""
+
+    @abc.abstractmethod
+    async def get_context_geometries_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_id: int | None,
+        service_id: int | None,
+    ) -> list[ObjectGeometryDTO]:
+        """Get list of geometries for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def get_context_geometries_with_all_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+        physical_object_function_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[GeometryWithAllObjectsDTO]:
+        """Get geometries with lists of physical objects and services for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def get_all_projects_indicators_values(
