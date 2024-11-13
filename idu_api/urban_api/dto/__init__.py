@@ -24,6 +24,7 @@ from .physical_objects import (
     ScenarioPhysicalObjectDTO,
     ShortPhysicalObjectDTO,
     ShortScenarioPhysicalObjectDTO,
+    ShortPhysicalObjectDTO,
 )
 from .profiles_reclamation import ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO
 from .projects import ProjectDTO, ProjectTerritoryDTO
