@@ -348,7 +348,6 @@ async def get_living_building_by_id_from_db(conn: AsyncConnection, living_buildi
     statement = (
         select(
             living_buildings_data.c.living_building_id,
-            living_buildings_data.c.residents_number,
             living_buildings_data.c.living_area,
             living_buildings_data.c.properties,
             physical_objects_data.c.physical_object_id,
@@ -374,14 +373,6 @@ async def get_living_building_by_id_from_db(conn: AsyncConnection, living_buildi
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
-            )
-            .join(
-                urban_objects_data,
-                urban_objects_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
-            )
-            .join(
-                object_geometries_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
         )
         .where(living_buildings_data.c.living_building_id == living_building_id)
@@ -410,7 +401,6 @@ async def add_living_building_to_db(
         insert(living_buildings_data)
         .values(
             physical_object_id=living_building.physical_object_id,
-            residents_number=living_building.residents_number,
             living_area=living_building.living_area,
             properties=living_building.properties,
         )
@@ -446,7 +436,6 @@ async def put_living_building_to_db(
         .where(living_buildings_data.c.living_building_id == living_building_id)
         .values(
             physical_object_id=living_building.physical_object_id,
-            residents_number=living_building.residents_number,
             living_area=living_building.living_area,
             properties=living_building.properties,
         )
@@ -522,7 +511,6 @@ async def get_living_buildings_by_physical_object_id_from_db(
     statement = (
         select(
             living_buildings_data.c.living_building_id,
-            living_buildings_data.c.residents_number,
             living_buildings_data.c.living_area,
             living_buildings_data.c.properties,
             physical_objects_data.c.physical_object_id,
@@ -548,14 +536,6 @@ async def get_living_buildings_by_physical_object_id_from_db(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
-            )
-            .join(
-                urban_objects_data,
-                urban_objects_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
-            )
-            .join(
-                object_geometries_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
         )
         .where(living_buildings_data.c.physical_object_id == physical_object_id)
