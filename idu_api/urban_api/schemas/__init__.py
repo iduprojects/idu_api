@@ -37,12 +37,14 @@ from .living_buildings import (
 from .minio import MinioImagesURL, MinioImageURL
 from .normatives import Normative, NormativeDelete, NormativePatch, NormativePost
 from .object_geometries import (
+    AllObjects,
+    GeometryAttributes,
     ObjectGeometries,
     ObjectGeometriesPatch,
     ObjectGeometriesPost,
     ObjectGeometriesPut,
     ScenarioAllObjects,
-    ScenarioGeometry,
+    ScenarioGeometryAttributes,
 )
 from .pages import Page
 from .physical_object_types import (
@@ -207,7 +209,9 @@ __all__ = [
     "ProjectsIndicatorValuePut",
     "MinioImageURL",
     "MinioImagesURL",
-    "ScenarioGeometry",
+    "GeometryAttributes",
+    "ScenarioGeometryAttributes",
+    "AllObjects",
     "ScenarioAllObjects",
     "ScenarioPhysicalObject",
     "ScenarioService",

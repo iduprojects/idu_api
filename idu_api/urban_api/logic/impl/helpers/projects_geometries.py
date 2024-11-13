@@ -3,7 +3,7 @@
 from collections import defaultdict
 
 from geoalchemy2 import Geography, Geometry
-from geoalchemy2.functions import ST_AsGeoJSON, ST_Buffer, ST_Within, ST_Intersects
+from geoalchemy2.functions import ST_AsGeoJSON, ST_Buffer, ST_Intersects, ST_Within
 from sqlalchemy import cast, or_, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -25,17 +25,20 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import (
+    ObjectGeometryDTO,
     ScenarioGeometryDTO,
     ScenarioGeometryWithAllObjectsDTO,
+    ShortPhysicalObjectDTO,
     ShortScenarioPhysicalObjectDTO,
-    ShortScenarioServiceDTO, ObjectGeometryDTO, ShortPhysicalObjectDTO, ShortServiceDTO,
+    ShortScenarioServiceDTO,
+    ShortServiceDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 
 
-async def get_geometries_by_scenario_id(
+async def get_geometries_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
     user_id: str,
@@ -75,6 +78,8 @@ async def get_geometries_by_scenario_id(
             object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            object_geometries_data.c.created_at,
+            object_geometries_data.c.updated_at,
         )
         .select_from(
             urban_objects_data.join(
@@ -118,6 +123,8 @@ async def get_geometries_by_scenario_id(
                 "centre_point": row.centre_point,
                 "address": row.address,
                 "osm_id": row.osm_id,
+                "created_at": row.created_at,
+                "updated_at": row.updated_at,
                 "is_scenario_object": False,
             }
         )
@@ -195,6 +202,8 @@ async def get_geometries_by_scenario_id(
                 "centre_point": row.centre_point if is_scenario_geometry else row.public_centre_point,
                 "address": row.address if is_scenario_geometry else row.public_address,
                 "osm_id": row.osm_id if is_scenario_geometry else row.public_osm_id,
+                "created_at": row.created_at,
+                "updated_at": row.updated_at,
                 "is_scenario_object": is_scenario_geometry,
             }
         )
@@ -215,6 +224,8 @@ async def get_geometries_by_scenario_id(
                 "centre_point": obj.get("centre_point"),
                 "address": obj.get("address"),
                 "osm_id": obj.get("osm_id"),
+                "created_at": obj.get("created_at"),
+                "updated_at": obj.get("updated_at"),
                 "is_scenario_object": is_scenario_geometry,
             }
         elif existing_entry.get("is_scenario_object") != is_scenario_geometry:
@@ -226,13 +237,15 @@ async def get_geometries_by_scenario_id(
                 "centre_point": obj.get("centre_point"),
                 "address": obj.get("address"),
                 "osm_id": obj.get("osm_id"),
+                "created_at": obj.get("created_at"),
+                "updated_at": obj.get("updated_at"),
                 "is_scenario_object": is_scenario_geometry,
             }
 
     return [ScenarioGeometryDTO(**row) for row in list(grouped_objects.values())]
 
 
-async def get_geometries_with_all_objects_by_scenario_id(
+async def get_geometries_with_all_objects_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
     user_id: str,
@@ -430,10 +443,12 @@ async def get_geometries_with_all_objects_by_scenario_id(
                     service_types_dict.c.service_type_id == services_data.c.service_type_id,
                 ),
             )
-            .distinct()
         )
-        .where(projects_urban_objects_data.c.scenario_id == scenario_id)
-        .where(projects_urban_objects_data.c.public_urban_object_id.is_(None))
+        .where(
+            projects_urban_objects_data.c.scenario_id == scenario_id,
+            projects_urban_objects_data.c.public_urban_object_id.is_(None),
+        )
+        .distinct()
     )
 
     # Условия фильтрации для объектов user_projects
@@ -549,7 +564,7 @@ async def get_geometries_with_all_objects_by_scenario_id(
     return [ScenarioGeometryWithAllObjectsDTO(**row) for row in list(grouped_objects.values())]
 
 
-async def get_context_geometries_by_scenario_id(
+async def get_context_geometries_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
     user_id: str,
@@ -617,10 +632,31 @@ async def get_context_geometries_by_scenario_id(
         .limit(1)
         .cte(name="cities_level")
     )
-    intersecting_territories = select(territories_cte.c.territory_id).where(
-        territories_cte.c.level == (cities_level.c.level - 1),
-        ST_Intersects(territories_cte.c.geometry, select(project_geometry).scalar_subquery()),
-    ).cte(name="intersecting_territories")
+    intersecting_territories = (
+        select(territories_cte.c.territory_id)
+        .where(
+            territories_cte.c.level == (cities_level.c.level - 1),
+            ST_Intersects(territories_cte.c.geometry, select(project_geometry).scalar_subquery()),
+        )
+        .cte(name="intersecting_territories")
+    )
+    all_intersecting_descendants = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        )
+        .where(territories_data.c.territory_id.in_(select(intersecting_territories.c.territory_id)))
+        .cte(name="all_intersecting_descendants", recursive=True)
+    )
+    all_intersecting_descendants = all_intersecting_descendants.union_all(
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        ).join(
+            all_intersecting_descendants,
+            territories_data.c.parent_id == all_intersecting_descendants.c.territory_id,
+        )
+    )
 
     # Step 2. Find all the geometries in `public` schema for `intersecting_territories`
     statement = (
@@ -632,6 +668,8 @@ async def get_context_geometries_by_scenario_id(
             object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            object_geometries_data.c.created_at,
+            object_geometries_data.c.updated_at,
         )
         .select_from(
             urban_objects_data.join(
@@ -648,7 +686,7 @@ async def get_context_geometries_by_scenario_id(
             )
             .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
         )
-        .where(object_geometries_data.c.territory_id.in_(select(intersecting_territories)))
+        .where(object_geometries_data.c.territory_id.in_(select(all_intersecting_descendants.c.territory_id)))
         .distinct()
     )
 
@@ -663,7 +701,7 @@ async def get_context_geometries_by_scenario_id(
     return [ObjectGeometryDTO(**row) for row in result]
 
 
-async def get_context_geometries_with_all_objects_by_scenario_id(
+async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
     user_id: str,
@@ -733,10 +771,31 @@ async def get_context_geometries_with_all_objects_by_scenario_id(
         .limit(1)
         .cte(name="cities_level")
     )
-    intersecting_territories = select(territories_cte.c.territory_id).where(
-        territories_cte.c.level == (cities_level.c.level - 1),
-        ST_Intersects(territories_cte.c.geometry, select(project_geometry).scalar_subquery()),
-    ).cte(name="intersecting_territories")
+    intersecting_territories = (
+        select(territories_cte.c.territory_id)
+        .where(
+            territories_cte.c.level == (cities_level.c.level - 1),
+            ST_Intersects(territories_cte.c.geometry, select(project_geometry).scalar_subquery()),
+        )
+        .cte(name="intersecting_territories")
+    )
+    all_intersecting_descendants = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        )
+        .where(territories_data.c.territory_id.in_(select(intersecting_territories.c.territory_id)))
+        .cte(name="all_intersecting_descendants", recursive=True)
+    )
+    all_intersecting_descendants = all_intersecting_descendants.union_all(
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        ).join(
+            all_intersecting_descendants,
+            territories_data.c.parent_id == all_intersecting_descendants.c.territory_id,
+        )
+    )
 
     # Шаг 2: Собрать все записи из public.urban_objects_data по собранным public_urban_object_id
     statement = (
@@ -775,7 +834,7 @@ async def get_context_geometries_with_all_objects_by_scenario_id(
                 service_types_dict.c.service_type_id == services_data.c.service_type_id,
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(intersecting_territories)))
+        .where(object_geometries_data.c.territory_id.in_(select(all_intersecting_descendants.c.territory_id)))
         .distinct()
     )
 
@@ -791,13 +850,39 @@ async def get_context_geometries_with_all_objects_by_scenario_id(
     if urban_function_id is not None:
         statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
 
-    # Получаем все объекты из public.urban_objects_data
-    urban_objects = (await conn.execute(statement)).mappings().all()
+    urban_objects = []
+    for row in (await conn.execute(statement)).mappings().all():
+        urban_objects.append(
+            {
+                "object_geometry_id": row.object_geometry_id,
+                "territory_id": row.territory_id,
+                "geometry": row.geometry,
+                "centre_point": row.centre_point,
+                "address": row.address,
+                "osm_id": row.osm_id,
+                "physical_object": {
+                    "physical_object_id": row.physical_object_id,
+                    "physical_object_type_id": row.physical_object_type_id,
+                    "name": row.physical_object_name,
+                },
+                "service": (
+                    {
+                        "service_id": row.service_id,
+                        "service_type_id": row.service_type_id,
+                        "territory_type_id": row.territory_type_id,
+                        "name": row.service_name,
+                        "capacity_real": row.capacity_real,
+                    }
+                    if row.service_id
+                    else None
+                ),
+            }
+        )
 
     # Объединение и группировка по object_geometry_id
     grouped_objects = defaultdict(lambda: {"physical_objects": set(), "services": set()})
     for obj in urban_objects:
-        geometry_id = obj.object_geometry_id
+        geometry_id = obj["object_geometry_id"]
 
         # Проверка и добавление геометрии
         existing_entry = grouped_objects.get(geometry_id)

@@ -1,6 +1,6 @@
 """Scenarios endpoints are defined here."""
 
-from fastapi import Depends, Path, Query, Request, Security
+from fastapi import Depends, Path, Request, Security
 from fastapi.security import HTTPBearer
 from starlette import status
 
@@ -14,6 +14,7 @@ from idu_api.urban_api.schemas import (
     ScenariosPut,
 )
 from idu_api.urban_api.utils.auth_client import get_user
+
 
 @projects_router.get(
     "/scenarios/{scenario_id}",

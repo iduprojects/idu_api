@@ -22,7 +22,6 @@ async def get_physical_objects_by_scenario_id(
     scenario_id: int = Path(..., description="scenario identifier"),
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type"),
     physical_object_function_id: int | None = Query(None, description="to filter by physical object function"),
-    for_context: bool = Query(False, description="to get objects for context of project territory"),
     user: UserDTO = Depends(get_user),
 ) -> list[ScenarioPhysicalObject]:
     """Get list of physical objects for given scenario.
@@ -35,7 +34,6 @@ async def get_physical_objects_by_scenario_id(
         user.id,
         physical_object_type_id,
         physical_object_function_id,
-        for_context,
     )
 
     return [ScenarioPhysicalObject.from_dto(phys_obj) for phys_obj in physical_objects]

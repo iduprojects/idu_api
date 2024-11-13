@@ -15,7 +15,8 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectTerritory, ScenariosData,
+    ProjectTerritory,
+    ScenariosData,
 )
 from idu_api.urban_api.utils.auth_client import get_user
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client
@@ -76,7 +77,6 @@ async def get_scenarios_by_project_id(
     scenarios = await user_project_service.get_scenarios_by_project_id(project_id, user.id)
 
     return [ScenariosData.from_dto(scenario) for scenario in scenarios]
-
 
 
 @projects_router.get(
