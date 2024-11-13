@@ -6,7 +6,12 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from idu_api.urban_api.dto import ShortScenarioPhysicalObjectDTO, ShortScenarioServiceDTO
+from idu_api.urban_api.dto import (
+    ShortPhysicalObjectDTO,
+    ShortScenarioPhysicalObjectDTO,
+    ShortScenarioServiceDTO,
+    ShortServiceDTO,
+)
 
 
 class FunctionalZoneTypeBasic(BaseModel):
@@ -135,12 +140,28 @@ class UrbanFunctionBasic(BaseModel):
     name: str
 
 
-class ShortScenarioPhysicalObject(BaseModel):
-    """Basic scenario physical object model to encapsulate in other models."""
+class ShortPhysicalObject(BaseModel):
+    """Basic physical object model to encapsulate in other models."""
 
     physical_object_id: int = Field(..., examples=[1])
     physical_object_type_id: int = Field(..., description="physical object type identifier", examples=[1])
     name: str | None = Field(None, description="physical object name", examples=["--"])
+
+    @classmethod
+    def from_dto(cls, dto: ShortPhysicalObjectDTO) -> "ShortPhysicalObject":
+        """
+        Construct from DTO.
+        """
+        return cls(
+            physical_object_id=dto.physical_object_id,
+            physical_object_type_id=dto.physical_object_type_id,
+            name=dto.name,
+        )
+
+
+class ShortScenarioPhysicalObject(ShortPhysicalObject):
+    """Basic scenario physical object model to encapsulate in other models."""
+
     is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
 
     @classmethod
@@ -156,14 +177,32 @@ class ShortScenarioPhysicalObject(BaseModel):
         )
 
 
-class ShortScenarioService(BaseModel):
-    """Basic scenario service model to encapsulate in other models."""
+class ShortService(BaseModel):
+    """Basic service model to encapsulate in other models."""
 
     service_id: int = Field(..., examples=[1])
     service_type_id: int = Field(..., description="service type identifier", examples=[1])
     territory_type_id: int | None = Field(..., description="territory type identifier", examples=[1])
     name: str | None = Field(None, description="service name", examples=["--"])
     capacity_real: int | None = Field(None, examples=[1])
+
+    @classmethod
+    def from_dto(cls, dto: ShortServiceDTO) -> "ShortService":
+        """
+        Construct from DTO.
+        """
+        return cls(
+            service_id=dto.service_id,
+            service_type_id=dto.service_type_id,
+            territory_type_id=dto.territory_type_id if dto.territory_type_id else None,
+            name=dto.name,
+            capacity_real=dto.capacity_real,
+        )
+
+
+class ShortScenarioService(BaseModel):
+    """Basic scenario service model to encapsulate in other models."""
+
     is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
 
     @classmethod

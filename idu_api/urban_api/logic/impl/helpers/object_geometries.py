@@ -94,14 +94,13 @@ async def get_object_geometry_by_ids_from_db(
             territories_data.c.name.label("territory_name"),
         )
         .select_from(
-            object_geometries_data
-            .join(
+            object_geometries_data.join(
                 territories_data,
                 territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
         )
-
-    .where(object_geometries_data.c.object_geometry_id.in_(object_geometry_ids)))
+        .where(object_geometries_data.c.object_geometry_id.in_(object_geometry_ids))
+    )
 
     result = (await conn.execute(statement)).mappings().all()
 
