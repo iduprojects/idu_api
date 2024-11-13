@@ -50,6 +50,7 @@ async def get_territories_by_ids(conn: AsyncConnection, territory_ids: list[int]
             territories_data.c.admin_center,
             territories_data.c.okato_code,
             territories_data.c.oktmo_code,
+            territories_data.c.is_city,
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
@@ -109,6 +110,7 @@ async def add_territory_to_db(
             properties=territory.properties,
             centre_point=ST_GeomFromText(str(territory.centre_point.as_shapely_geometry()), text("4326")),
             admin_center=territory.admin_center,
+            is_city=territory.is_city,
             okato_code=territory.okato_code,
             oktmo_code=territory.oktmo_code,
         )
@@ -161,6 +163,7 @@ async def put_territory_to_db(
             admin_center=territory.admin_center,
             okato_code=territory.okato_code,
             oktmo_code=territory.oktmo_code,
+            is_city=territory.is_city,
             updated_at=datetime.now(timezone.utc),
         )
         .returning(territories_data.c.territory_id)

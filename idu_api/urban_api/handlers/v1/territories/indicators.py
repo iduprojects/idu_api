@@ -23,7 +23,6 @@ from .routers import territories_router
 async def get_indicators_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
-    cities_only: bool | None = Query(None, description="true, false or none to adjust query"),
 ) -> list[Indicator]:
     """Get indicators for a given territory.
 
@@ -31,7 +30,7 @@ async def get_indicators_by_territory_id(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    indicators = await territories_service.get_indicators_by_territory_id(territory_id, cities_only)
+    indicators = await territories_service.get_indicators_by_territory_id(territory_id)
 
     return [Indicator.from_dto(indicator) for indicator in indicators]
 
@@ -51,7 +50,6 @@ async def get_indicator_values_by_territory_id(
     value_type: ValueType = Query(None, description="to filter by value type"),
     information_source: str | None = Query(None, description="to filter by source"),
     last_only: bool = Query(False, description="to get last indicators"),
-    cities_only: bool | None = Query(None, description="true, false or none to adjust query"),
 ) -> list[IndicatorValue]:
     """Get indicator values for a given territory, value type, source and time period.
 
@@ -70,7 +68,6 @@ async def get_indicator_values_by_territory_id(
         value_type_field,
         information_source,
         last_only,
-        cities_only,
     )
 
     return [IndicatorValue.from_dto(value) for value in indicator_values]
@@ -91,7 +88,6 @@ async def get_indicator_values_by_parent_id(
     value_type: ValueType = Query(None, description="to filter by value type"),
     information_source: str | None = Query(None, description="to filter by source"),
     last_only: bool = Query(False, description="to get last indicators"),
-    cities_only: bool | None = Query(None, description="true, false or none to adjust query"),
 ) -> GeoJSONResponse[Feature[Geometry, TerritoryWithIndicators]]:
     """Get FeatureCollection with child territories and indicator values in properties.
 
@@ -111,7 +107,6 @@ async def get_indicator_values_by_parent_id(
         value_type_field,
         information_source,
         last_only,
-        cities_only,
     )
 
     return await GeoJSONResponse.from_list([territory.to_geojson_dict() for territory in territories])
