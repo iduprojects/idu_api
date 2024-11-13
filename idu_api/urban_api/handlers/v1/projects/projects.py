@@ -15,7 +15,7 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectTerritory,
+    ProjectTerritory, ScenariosData,
 )
 from idu_api.urban_api.utils.auth_client import get_user
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client
@@ -57,6 +57,26 @@ async def get_project_territory_by_project_id(
     project_territory_dto = await user_project_service.get_project_territory_by_id(project_id, user.id)
 
     return ProjectTerritory.from_dto(project_territory_dto)
+
+
+@projects_router.get(
+    "/projects/{project_id}/scenarios",
+    response_model=list[ScenariosData],
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def get_scenarios_by_project_id(
+    request: Request,
+    project_id: int = Path(..., description="project identifier"),
+    user: UserDTO = Depends(get_user),
+) -> list[ScenariosData]:
+    """Get list of scenarios for given project if project is public or if you're the project owner."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    scenarios = await user_project_service.get_scenarios_by_project_id(project_id, user.id)
+
+    return [ScenariosData.from_dto(scenario) for scenario in scenarios]
+
 
 
 @projects_router.get(
