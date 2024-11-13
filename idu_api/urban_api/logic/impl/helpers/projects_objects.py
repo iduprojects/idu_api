@@ -302,7 +302,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
     cities_level = (
         select(territories_cte.c.level)
         .where(territories_cte.c.is_city.is_(True))
-        .order_by(territories_cte.c.level)
+        .order_by(territories_cte.c.level.desc())
         .limit(1)
         .cte(name="cities_level")
     )
