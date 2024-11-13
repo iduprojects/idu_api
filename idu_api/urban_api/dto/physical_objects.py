@@ -6,6 +6,8 @@ from typing import Any
 
 import shapely.geometry as geom
 
+Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
+
 
 @dataclass(frozen=True)
 class PhysicalObjectDataDTO:
@@ -31,7 +33,7 @@ class PhysicalObjectWithGeometryDTO:
     address: str | None
     osm_id: str | None
     properties: dict[str, Any]
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    geometry: Geom
     centre_point: geom.Point
     created_at: datetime
     updated_at: datetime
@@ -77,10 +79,14 @@ class PhysicalObjectWithTerritoryDTO:
 
 
 @dataclass(frozen=True)
-class ShortScenarioPhysicalObjectDTO:
+class ShortPhysicalObjectDTO:
     physical_object_id: int
     physical_object_type_id: int
     name: str | None
+
+
+@dataclass(frozen=True)
+class ShortScenarioPhysicalObjectDTO(ShortPhysicalObjectDTO):
     is_scenario_object: bool
 
 

@@ -22,11 +22,11 @@ from idu_api.urban_api.utils.auth_client import get_user
 )
 async def get_geometries_by_scenario_id(
     request: Request,
-    scenario_id: int = Path(..., description="project identifier"),
+    scenario_id: int = Path(..., description="scenario identifier"),
     physical_object_id: int | None = Query(None, description="to filter by physical object"),
     service_id: int | None = Query(None, description="to filter by service"),
     centers_only: bool = Query(False, description="to get only center points"),
-    for_context: bool = Query(False, description="to get object for context of territory"),
+    for_context: bool = Query(False, description="to get object for context of project territory"),
     user: UserDTO = Depends(get_user),
 ) -> GeoJSONResponse[Feature[Geometry, ScenarioGeometry]]:
     """Get all geometries for given scenario in geojson format.
@@ -53,13 +53,13 @@ async def get_geometries_by_scenario_id(
 )
 async def get_geometries_with_all_objects_by_scenario_id(
     request: Request,
-    scenario_id: int = Path(..., description="project identifier"),
+    scenario_id: int = Path(..., description="scenario identifier"),
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type"),
     service_type_id: int | None = Query(None, description="to filter by service type"),
     physical_object_function_id: int | None = Query(None, description="to filter by physical object type"),
     urban_function_id: int | None = Query(None, description="to filter by service type"),
     centers_only: bool = Query(False, description="to get only center points"),
-    for_context: bool = Query(False, description="to get object for context of territory"),
+    for_context: bool = Query(False, description="to get object for context of project territory"),
     user: UserDTO = Depends(get_user),
 ) -> GeoJSONResponse[Feature[Geometry, ScenarioAllObjects]]:
     """Get all geometries with list of services and physical objects for given scenario in geojson format.

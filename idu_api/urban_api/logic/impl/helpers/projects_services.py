@@ -36,7 +36,6 @@ async def get_services_by_scenario_id(
     user_id: str,
     service_type_id: int | None,
     urban_function_id: int | None,
-    for_context: bool,
 ) -> list[ScenarioServiceDTO]:
     """Get services by scenario identifier."""
 
@@ -50,29 +49,9 @@ async def get_services_by_scenario_id(
     if project.user_id != user_id:
         raise AccessDeniedError(scenario.project_id, "project")
 
-    buffer_meters = 3000
-
-    if for_context:
-        project_geometry = (
-            select(
-                cast(
-                    ST_Buffer(
-                        cast(
-                            projects_territory_data.c.geometry,
-                            Geography(srid=4326),
-                        ),
-                        buffer_meters,
-                    ),
-                    Geometry(srid=4326),
-                ).label("geometry")
-            )
-            .where(projects_territory_data.c.project_id == project.project_id)
-            .alias("project_geometry")
-        )
-    else:
-        project_geometry = (
-            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-        ).alias("project_geometry")
+    project_geometry = (
+        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+    ).alias("project_geometry")
 
     # Шаг 1: Получить все public_urban_object_id для данного scenario_id
     public_urban_object_ids = (

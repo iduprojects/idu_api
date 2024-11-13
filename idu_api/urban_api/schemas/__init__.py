@@ -113,7 +113,6 @@ from .territories import (
     TerritoryWithNormatives,
     TerritoryWithoutGeometry,
 )
-from .urban_objects import ScenariosUrbanObject
 
 __all__ = [
     "PingResponse",
@@ -131,7 +130,6 @@ __all__ = [
     "ScenariosPatch",
     "ScenariosPost",
     "ScenariosPut",
-    "ScenariosUrbanObject",
     "ServicesCountCapacity",
     "ServicesData",
     "ServicesDataPatch",

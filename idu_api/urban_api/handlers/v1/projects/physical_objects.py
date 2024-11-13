@@ -19,10 +19,10 @@ from idu_api.urban_api.utils.auth_client import get_user
 )
 async def get_physical_objects_by_scenario_id(
     request: Request,
-    scenario_id: int = Path(..., description="project identifier"),
+    scenario_id: int = Path(..., description="scenario identifier"),
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type"),
     physical_object_function_id: int | None = Query(None, description="to filter by physical object function"),
-    for_context: bool = Query(False, description="to get objects for context of territory"),
+    for_context: bool = Query(False, description="to get objects for context of project territory"),
     user: UserDTO = Depends(get_user),
 ) -> list[ScenarioPhysicalObject]:
     """Get list of physical objects for given scenario.
