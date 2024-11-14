@@ -500,7 +500,7 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
                 },
                 "service": (
                     {
-                        "service_id": row.user_projects_service_id or row.public_service_id,
+                        "service_id": row.service_id or row.public_service_id,
                         "service_type_id": (row.service_type_id if is_scenario_service else row.public_service_type_id),
                         "territory_type_id": (
                             row.territory_type_id if is_scenario_service else row.public_territory_type_id
