@@ -257,10 +257,9 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         )
 
     async def get_living_buildings_with_geometry_by_territory_id(
-        self,
-        territory_id: int,
+        self, territory_id: int, cities_only: bool
     ) -> PageDTO[LivingBuildingsWithGeometryDTO]:
-        return await get_living_buildings_with_geometry_by_territory_id_from_db(self._conn, territory_id)
+        return await get_living_buildings_with_geometry_by_territory_id_from_db(self._conn, territory_id, cities_only)
 
     async def get_functional_zones_by_territory_id(
         self,

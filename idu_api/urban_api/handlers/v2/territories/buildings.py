@@ -1,6 +1,6 @@
 """Buildings territories-related handlers (v2) are defined here."""
 
-from fastapi import Path, Request
+from fastapi import Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
@@ -19,11 +19,12 @@ from .routers import territories_router
 async def get_living_buildings_with_geometry_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
+    cities_only: bool = Query(False, description="to get only cities or not"),
 ) -> CursorPage[LivingBuildingsWithGeometry]:
     """Get living buildings with geometry for territory."""
     territories_service: TerritoriesService = request.state.territories_service
 
-    buildings = await territories_service.get_living_buildings_with_geometry_by_territory_id(territory_id)
+    buildings = await territories_service.get_living_buildings_with_geometry_by_territory_id(territory_id, cities_only)
 
     return paginate(
         buildings.items,
