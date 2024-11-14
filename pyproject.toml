@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "idu-api"
-version = "1.15.9"
+version = "1.15.10"
 description = "This is a Digital Territories Platform API in two versions to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
