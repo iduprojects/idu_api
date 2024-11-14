@@ -55,8 +55,8 @@ async def get_geometries_with_all_objects_by_scenario_id(
     scenario_id: int = Path(..., description="scenario identifier"),
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type"),
     service_type_id: int | None = Query(None, description="to filter by service type"),
-    physical_object_function_id: int | None = Query(None, description="to filter by physical object type"),
-    urban_function_id: int | None = Query(None, description="to filter by service type"),
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function"),
+    urban_function_id: int | None = Query(None, description="to filter by urban function"),
     centers_only: bool = Query(False, description="to get only center points"),
     user: UserDTO = Depends(get_user),
 ) -> GeoJSONResponse[Feature[Geometry, ScenarioAllObjects]]:
@@ -117,8 +117,8 @@ async def get_context_geometries_with_all_objects_by_scenario_id(
     scenario_id: int = Path(..., description="scenario identifier"),
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type"),
     service_type_id: int | None = Query(None, description="to filter by service type"),
-    physical_object_function_id: int | None = Query(None, description="to filter by physical object type"),
-    urban_function_id: int | None = Query(None, description="to filter by service type"),
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function"),
+    urban_function_id: int | None = Query(None, description="to filter by urban function"),
     centers_only: bool = Query(False, description="to get only center points"),
     user: UserDTO = Depends(get_user),
 ) -> GeoJSONResponse[Feature[Geometry, AllObjects]]:
