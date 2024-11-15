@@ -135,6 +135,7 @@ async def get_indicator_values_by_territory_id_from_db(
                 indicators_dict.c.list_label,
                 measurement_units_dict.c.measurement_unit_id,
                 measurement_units_dict.c.name.label("measurement_unit_name"),
+                territories_data.c.name.label("territory_name"),
             )
             .select_from(
                 territory_indicators_data.join(
@@ -148,6 +149,10 @@ async def get_indicator_values_by_territory_id_from_db(
                 .outerjoin(
                     indicators_groups_data,
                     indicators_groups_data.c.indicator_id == indicators_dict.c.indicator_id,
+                )
+                .join(
+                    territories_data,
+                    territories_data.c.territory_id == territory_indicators_data.c.territory_id,
                 )
             )
             .where(
