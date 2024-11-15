@@ -212,8 +212,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def get_living_buildings_with_geometry_by_territory_id(
-        self,
-        territory_id: int,
+        self, territory_id: int, cities_only: bool
     ) -> list[LivingBuildingsWithGeometryDTO] | PageDTO[LivingBuildingsWithGeometryDTO]:
         """Get living buildings with geometry by territory id."""
 

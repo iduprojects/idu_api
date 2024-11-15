@@ -20,8 +20,7 @@ from idu_api.urban_api.utils.pagination import paginate_dto
 
 
 async def get_living_buildings_with_geometry_by_territory_id_from_db(
-    conn: AsyncConnection,
-    territory_id: int,
+    conn: AsyncConnection, territory_id: int, cities_only: bool
 ) -> PageDTO[LivingBuildingsWithGeometryDTO]:
     """Get living buildings with geometry by territory id."""
 
@@ -31,14 +30,18 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
         raise EntityNotFoundById(territory_id, "territory")
 
     territories_cte = (
-        select(territories_data.c.territory_id)
+        select(territories_data.c.territory_id, territories_data.c.is_city)
         .where(territories_data.c.territory_id == territory_id)
         .cte(recursive=True)
     )
-
     territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
+        select(territories_data.c.territory_id, territories_data.c.is_city).where(
+            territories_data.c.parent_id == territories_cte.c.territory_id
+        )
     )
+
+    if cities_only:
+        territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
 
     statement = (
         select(

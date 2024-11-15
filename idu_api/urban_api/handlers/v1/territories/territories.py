@@ -98,7 +98,7 @@ async def patch_territory(
     response_model=Page[TerritoryData],
     status_code=status.HTTP_200_OK,
 )
-async def get_territory_by_parent_id(
+async def get_territories_by_parent_id(
     request: Request,
     parent_id: int = Query(
         None,
