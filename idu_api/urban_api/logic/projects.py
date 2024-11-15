@@ -3,6 +3,7 @@ import io
 from typing import Protocol
 
 from idu_api.urban_api.dto import (
+    PhysicalObjectDataDTO,
     ProjectDTO,
     ProjectsIndicatorValueDTO,
     ProjectTerritoryDTO,
@@ -11,6 +12,7 @@ from idu_api.urban_api.dto import (
     ScenarioGeometryWithAllObjectsDTO,
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
+    ServiceDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO, ObjectGeometryDTO
 from idu_api.urban_api.schemas import (
@@ -139,6 +141,16 @@ class UserProjectService(Protocol):
         """Get list of physical objects by scenario identifier."""
 
     @abc.abstractmethod
+    async def get_context_physical_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
+    ) -> list[PhysicalObjectDataDTO]:
+        """Get list of physical objects for 'context' of the project territory."""
+
+    @abc.abstractmethod
     async def get_services_by_scenario_id(
         self,
         scenario_id: int,
@@ -147,6 +159,16 @@ class UserProjectService(Protocol):
         urban_function_id: int | None,
     ) -> list[ScenarioServiceDTO]:
         """Get list of services by scenario identifier."""
+
+    @abc.abstractmethod
+    async def get_context_services_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        service_type_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[ServiceDTO]:
+        """Get list of services for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def get_geometries_by_scenario_id(
