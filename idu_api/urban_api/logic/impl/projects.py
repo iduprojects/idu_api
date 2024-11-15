@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
     ObjectGeometryDTO,
+    PhysicalObjectDataDTO,
     ProjectDTO,
     ProjectsIndicatorValueDTO,
     ProjectTerritoryDTO,
@@ -14,6 +15,7 @@ from idu_api.urban_api.dto import (
     ScenarioGeometryWithAllObjectsDTO,
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
+    ServiceDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
@@ -48,6 +50,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     upload_project_image_to_minio,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
+    get_context_physical_objects_by_scenario_id_from_db,
     get_physical_objects_by_scenario_id,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
@@ -58,7 +61,10 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     patch_scenario_to_db,
     put_scenario_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.projects_services import get_services_by_scenario_id
+from idu_api.urban_api.logic.impl.helpers.projects_services import (
+    get_context_services_by_scenario_id_from_db,
+    get_services_by_scenario_id,
+)
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
     ProjectPatch,
@@ -174,6 +180,21 @@ class UserProjectServiceImpl(UserProjectService):
             physical_object_function_id,
         )
 
+    async def get_context_physical_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
+    ) -> list[PhysicalObjectDataDTO]:
+        return await get_context_physical_objects_by_scenario_id_from_db(
+            self._conn,
+            scenario_id,
+            user_id,
+            physical_object_type_id,
+            physical_object_function_id,
+        )
+
     async def get_services_by_scenario_id(
         self,
         scenario_id: int,
@@ -182,6 +203,21 @@ class UserProjectServiceImpl(UserProjectService):
         urban_function_id: int | None,
     ) -> list[ScenarioServiceDTO]:
         return await get_services_by_scenario_id(
+            self._conn,
+            scenario_id,
+            user_id,
+            service_type_id,
+            urban_function_id,
+        )
+
+    async def get_context_services_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        service_type_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[ServiceDTO]:
+        return await get_context_services_by_scenario_id_from_db(
             self._conn,
             scenario_id,
             user_id,

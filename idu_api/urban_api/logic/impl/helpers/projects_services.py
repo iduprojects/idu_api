@@ -2,8 +2,9 @@
 
 from collections import defaultdict
 
-from geoalchemy2.functions import ST_Within
-from sqlalchemy import or_, select
+from geoalchemy2 import Geography, Geometry
+from geoalchemy2.functions import ST_Buffer, ST_Intersects, ST_Within
+from sqlalchemy import cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -18,12 +19,14 @@ from idu_api.common.db.entities import (
     scenarios_data,
     service_types_dict,
     services_data,
+    territories_data,
     territory_types_dict,
     urban_functions_dict,
     urban_objects_data,
 )
 from idu_api.urban_api.dto import (
     ScenarioServiceDTO,
+    ServiceDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
@@ -74,10 +77,6 @@ async def get_services_by_scenario_id(
         )
         .select_from(
             urban_objects_data.join(
-                physical_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            )
-            .join(
                 object_geometries_data,
                 object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
             )
@@ -165,20 +164,12 @@ async def get_services_by_scenario_id(
         )
         .select_from(
             projects_urban_objects_data.outerjoin(
-                projects_physical_objects_data,
-                projects_physical_objects_data.c.physical_object_id == projects_urban_objects_data.c.physical_object_id,
-            )
-            .outerjoin(
                 projects_object_geometries_data,
                 projects_object_geometries_data.c.object_geometry_id
                 == projects_urban_objects_data.c.object_geometry_id,
             )
             .outerjoin(
                 projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id
-            )
-            .outerjoin(
-                physical_objects_data,
-                physical_objects_data.c.physical_object_id == projects_urban_objects_data.c.public_physical_object_id,
             )
             .outerjoin(
                 object_geometries_data,
@@ -260,3 +251,144 @@ async def get_services_by_scenario_id(
             grouped_objects[-service_id].update(obj)
 
     return [ScenarioServiceDTO(**row) for row in list(grouped_objects.values())]
+
+
+async def get_context_services_by_scenario_id_from_db(
+    conn: AsyncConnection,
+    scenario_id: int,
+    user_id: str,
+    service_type_id: int | None,
+    urban_function_id: int | None,
+) -> list[ServiceDTO]:
+    """Get list of services for 'context' of the project territory."""
+
+    statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
+    scenario = (await conn.execute(statement)).mappings().one_or_none()
+    if scenario is None:
+        raise EntityNotFoundById(scenario_id, "scenario")
+
+    statement = select(projects_data).where(projects_data.c.project_id == scenario.project_id)
+    project = (await conn.execute(statement)).mappings().one_or_none()
+    if project.user_id != user_id:
+        raise AccessDeniedError(scenario.project_id, "project")
+
+    buffer_meters = 3000
+    project_geometry = (
+        select(
+            cast(
+                ST_Buffer(
+                    cast(
+                        projects_territory_data.c.geometry,
+                        Geography(srid=4326),
+                    ),
+                    buffer_meters,
+                ),
+                Geometry(srid=4326),
+            ).label("geometry")
+        )
+        .where(projects_territory_data.c.project_id == project.project_id)
+        .alias("project_geometry")
+    )
+
+    # Step 1. Find all the territories at the `cities_level` - 1 that intersect with the buffered project geometry.
+    territories_cte = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+            territories_data.c.level,
+            territories_data.c.geometry,
+            territories_data.c.is_city,
+        )
+        .where(territories_data.c.territory_id == project.territory_id)
+        .cte(recursive=True)
+    )
+    territories_cte = territories_cte.union_all(
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+            territories_data.c.level,
+            territories_data.c.geometry,
+            territories_data.c.is_city,
+        ).join(
+            territories_cte,
+            territories_data.c.parent_id == territories_cte.c.territory_id,
+        )
+    )
+    cities_level = (
+        select(territories_cte.c.level)
+        .where(territories_cte.c.is_city.is_(True))
+        .order_by(territories_cte.c.level.desc())
+        .limit(1)
+        .cte(name="cities_level")
+    )
+    intersecting_territories = (
+        select(territories_cte.c.territory_id)
+        .where(
+            territories_cte.c.level == (cities_level.c.level - 1),
+            ST_Intersects(territories_cte.c.geometry, select(project_geometry).scalar_subquery()),
+        )
+        .cte(name="intersecting_territories")
+    )
+    all_intersecting_descendants = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        )
+        .where(territories_data.c.territory_id.in_(select(intersecting_territories.c.territory_id)))
+        .cte(name="all_intersecting_descendants", recursive=True)
+    )
+    all_intersecting_descendants = all_intersecting_descendants.union_all(
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        ).join(
+            all_intersecting_descendants,
+            territories_data.c.parent_id == all_intersecting_descendants.c.territory_id,
+        )
+    )
+
+    # Step 2. Find all the services in `public` schema for `intersecting_territories`
+    statement = (
+        select(
+            services_data,
+            service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
+            service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties.label("service_type_properties"),
+            territory_types_dict.c.name.label("territory_type_name"),
+        )
+        .select_from(
+            urban_objects_data.join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
+                service_types_dict,
+                service_types_dict.c.service_type_id == services_data.c.service_type_id,
+            )
+            .outerjoin(
+                territory_types_dict,
+                territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
+            )
+            .join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+        )
+        .where(object_geometries_data.c.territory_id.in_(select(all_intersecting_descendants.c.territory_id)))
+        .distinct()
+    )
+
+    # Условия фильтрации для public объектов
+    if service_type_id is not None:
+        statement = statement.where(services_data.c.service_type_id == service_type_id)
+    if urban_function_id is not None:
+        statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
+
+    result = (await conn.execute(statement)).mappings().all()
+
+    return [ServiceDTO(**row) for row in result]
