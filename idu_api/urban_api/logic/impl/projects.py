@@ -30,6 +30,8 @@ from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
     delete_specific_projects_indicator_values_from_db,
     get_all_projects_indicators_values_from_db,
     get_specific_projects_indicator_values_from_db,
+    patch_projects_indicator_value_to_db,
+    put_projects_indicator_value_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
@@ -70,7 +72,9 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
+    ProjectsIndicatorValuePatch,
     ProjectsIndicatorValuePost,
+    ProjectsIndicatorValuePut,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -307,6 +311,16 @@ class UserProjectServiceImpl(UserProjectService):
         self, projects_indicator: ProjectsIndicatorValuePost, user_id: str
     ) -> ProjectsIndicatorValueDTO:
         return await add_projects_indicator_value_to_db(self._conn, projects_indicator, user_id)
+
+    async def put_projects_indicator_value(
+        self, projects_indicator: ProjectsIndicatorValuePut, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
+        return await put_projects_indicator_value_to_db(self._conn, projects_indicator, user_id)
+
+    async def patch_projects_indicator_value(
+        self, projects_indicator: ProjectsIndicatorValuePatch, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
+        return await patch_projects_indicator_value_to_db(self._conn, projects_indicator, user_id)
 
     async def delete_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> dict:
         return await delete_all_projects_indicators_values_from_db(self._conn, scenario_id, user_id)

@@ -307,7 +307,7 @@ class ProjectsIndicatorValue(BaseModel):
     territory: ShortTerritory | None
     hexagon_id: int | None
     value: float = Field(..., description="indicator value for scenario at time", examples=[23.5])
-    comment: str = Field(..., description="comment for indicator value", examples=["--"])
+    comment: str | None = Field(None, description="comment for indicator value", examples=["--"])
     information_source: str | None = Field(
         ...,
         description="information source",
@@ -373,7 +373,7 @@ class ProjectsIndicatorValuePost(BaseModel):
         ..., description="hexagon identifier for which indicator value was saved", examples=[1]
     )
     value: float = Field(..., description="indicator value for territory at time", examples=[23.5])
-    comment: str = Field(..., description="comment for indicator value", examples=["--"])
+    comment: str | None = Field(None, description="comment for indicator value", examples=["--"])
     information_source: str | None = Field(
         ...,
         description="information source",
@@ -396,7 +396,7 @@ class ProjectsIndicatorValuePut(BaseModel):
         ..., description="hexagon identifier for which indicator value was saved", examples=[1]
     )
     value: float = Field(..., description="indicator value for territory at time", examples=[23.5])
-    comment: str = Field(..., description="comment for indicator value", examples=["--"])
+    comment: str | None = Field(None, description="comment for indicator value", examples=["--"])
     information_source: str | None = Field(
         ...,
         description="information source",

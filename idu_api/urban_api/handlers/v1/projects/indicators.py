@@ -9,7 +9,9 @@ from idu_api.urban_api.handlers.v1.projects.routers import projects_router
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
     ProjectsIndicatorValue,
+    ProjectsIndicatorValuePatch,
     ProjectsIndicatorValuePost,
+    ProjectsIndicatorValuePut,
 )
 from idu_api.urban_api.utils.auth_client import get_user
 
@@ -70,6 +72,40 @@ async def post_projects_indicator(
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator = await user_project_service.add_projects_indicator_value(projects_indicator, user.id)
+
+    return ProjectsIndicatorValue.from_dto(indicator)
+
+
+@projects_router.put(
+    "/scenarios/{scenario_id}/indicators_values",
+    response_model=ProjectsIndicatorValue,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def put_projects_indicator(
+    request: Request, projects_indicator: ProjectsIndicatorValuePut, user: UserDTO = Depends(get_user)
+) -> ProjectsIndicatorValue:
+    """Put project's indicator value."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    indicator = await user_project_service.put_projects_indicator_value(projects_indicator, user.id)
+
+    return ProjectsIndicatorValue.from_dto(indicator)
+
+
+@projects_router.patch(
+    "/scenarios/{scenario_id}/indicators_values",
+    response_model=ProjectsIndicatorValue,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def patch_projects_indicator(
+    request: Request, projects_indicator: ProjectsIndicatorValuePatch, user: UserDTO = Depends(get_user)
+) -> ProjectsIndicatorValue:
+    """Patch project's indicator value."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    indicator = await user_project_service.patch_projects_indicator_value(projects_indicator, user.id)
 
     return ProjectsIndicatorValue.from_dto(indicator)
 

@@ -19,7 +19,9 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
+    ProjectsIndicatorValuePatch,
     ProjectsIndicatorValuePost,
+    ProjectsIndicatorValuePut,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -233,6 +235,18 @@ class UserProjectService(Protocol):
         self, projects_indicator: ProjectsIndicatorValuePost, user_id: str
     ) -> ProjectsIndicatorValueDTO:
         """Add a new project's indicator value."""
+
+    @abc.abstractmethod
+    async def put_projects_indicator_value(
+        self, projects_indicator: ProjectsIndicatorValuePut, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
+        """Put project's indicator value."""
+
+    @abc.abstractmethod
+    async def patch_projects_indicator_value(
+        self, projects_indicator: ProjectsIndicatorValuePatch, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
+        """Patch project's indicator value."""
 
     @abc.abstractmethod
     async def delete_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> dict:

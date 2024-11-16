@@ -45,7 +45,7 @@ projects_indicators_data = Table(
         nullable=True,
     ),
     Column("value", Float(53), nullable=False),
-    Column("comment", String(2048), nullable=False),
+    Column("comment", String(2048), nullable=True),
     Column("information_source", String(300), nullable=True),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),

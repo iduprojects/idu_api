@@ -66,7 +66,7 @@ class ProjectsIndicatorValueDTO:
     territory_name: str | None
     hexagon_id: int | None
     value: int
-    comment: str
+    comment: str | None
     information_source: str | None
     created_at: datetime
     updated_at: datetime
