@@ -6,8 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import ScenarioDTO
-from idu_api.urban_api.schemas.functional_zones import FunctionalZoneType
-from idu_api.urban_api.schemas.short_models import ShortProject, ShortScenario, ShortTerritory
+from idu_api.urban_api.schemas.short_models import FunctionalZoneTypeBasic, ShortProject, ShortScenario, ShortTerritory
 
 
 class ScenariosData(BaseModel):
@@ -16,7 +15,7 @@ class ScenariosData(BaseModel):
     scenario_id: int = Field(..., description="scenario identifier", examples=[1])
     parent_scenario: ShortScenario | None
     project: ShortProject
-    functional_zone_type: FunctionalZoneType | None
+    functional_zone_type: FunctionalZoneTypeBasic | None
     name: str = Field(..., description="name of the scenario", examples=["--"])
     is_based: bool = Field(..., description="boolean parameter to determine base scenario")
     properties: dict[str, Any] = Field(
@@ -43,8 +42,8 @@ class ScenariosData(BaseModel):
                 region=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
             ),
             functional_zone_type=(
-                FunctionalZoneType(
-                    functional_zone_type_id=dto.functional_zone_type_id,
+                FunctionalZoneTypeBasic(
+                    id=dto.functional_zone_type_id,
                     name=dto.functional_zone_type_name,
                 )
                 if dto.functional_zone_type_id is not None

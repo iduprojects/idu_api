@@ -82,6 +82,21 @@ class AsyncMinioClient:
             except ClientError as exc:
                 raise DownloadFileError(str(exc)) from exc
 
+    async def object_exists(self, bucket_name, object_name):
+        async with aioboto3.Session().client(
+            "s3",
+            endpoint_url=self._endpoint_url,
+            aws_access_key_id=self._access_key,
+            aws_secret_access_key=self._secret_key,
+            region_name=self._region_name,
+            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
+        ) as client:
+            try:
+                await client.head_object(Bucket=bucket_name, Key=object_name)
+                return True
+            except ClientError:
+                return False
+
     @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ClientError))
     async def get_presigned_url(self, object_name: str, expires_in: int = 3600) -> str:
         """
@@ -99,17 +114,17 @@ class AsyncMinioClient:
             region_name=self._region_name,
             config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
+            default_name = "defaultImg.png" if "preview" in object_name else "defaultImg.jpg"
+
+            # Check project object
+            if not await self.object_exists(self._bucket_name, object_name):
+                object_name = default_name
+
+            # Generate presigned url
             try:
-                # Generate a presigned URL
-                try:
-                    return await client.generate_presigned_url(
-                        "get_object", Params={"Bucket": self._bucket_name, "Key": object_name}, ExpiresIn=expires_in
-                    )
-                except ClientError:
-                    default_name = "defaultImg.png" if "preview" in object_name else "defaultImg.jpg"
-                    return await client.generate_presigned_url(
-                        "get_object", Params={"Bucket": self._bucket_name, "Key": default_name}, ExpiresIn=expires_in
-                    )
+                return await client.generate_presigned_url(
+                    "get_object", Params={"Bucket": self._bucket_name, "Key": default_name}, ExpiresIn=expires_in
+                )
             except ClientError as exc:
                 raise GetPresignedURLError(str(exc)) from exc
 

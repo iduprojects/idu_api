@@ -216,7 +216,6 @@ async def create_scenario_from_other_to_db(
                 "public_urban_object_id": None,
             }
         new_objects.append(new_obj)
-    print(new_objects)
     if new_objects:
         await conn.execute(insert(projects_urban_objects_data).values(new_objects))
 
@@ -282,7 +281,10 @@ async def add_new_scenario_to_db(conn: AsyncConnection, scenario: ScenariosPost,
             )
             .limit(1)
         )
-    ).scalar_one()
+    ).scalar_one_or_none()
+
+    if base_scenario_id is None:
+        raise EntityNotFoundById(scenario.project_id, "project")
 
     return await create_scenario_from_other_to_db(conn, scenario, base_scenario_id, user_id)
 
