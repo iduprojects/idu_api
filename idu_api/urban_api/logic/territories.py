@@ -189,6 +189,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         self,
         territory_id: int,
         physical_object_type: int | None,
+        physical_object_function: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
@@ -202,13 +203,15 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         self,
         territory_id: int,
         physical_object_type: int | None,
+        physical_object_function: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
     ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
-        """Get physical objects with geometry by territory id, optional physical object type."""
+        """Get physical objects with geometry by territory id,
+        optional physical object type and physical_object_function."""
 
     @abc.abstractmethod
     async def get_living_buildings_with_geometry_by_territory_id(
