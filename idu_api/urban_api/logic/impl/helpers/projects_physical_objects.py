@@ -15,7 +15,6 @@ from idu_api.common.db.entities import (
     projects_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
-    projects_services_data,
     projects_territory_data,
     projects_urban_objects_data,
     scenarios_data,

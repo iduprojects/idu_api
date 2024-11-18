@@ -217,16 +217,22 @@ class UserProjectService(Protocol):
         """Get geometries with lists of physical objects and services for 'context' of the project territory."""
 
     @abc.abstractmethod
-    async def get_all_projects_indicators_values(
-        self, scenario_id: int, user_id: str
+    async def get_projects_indicators_values_by_scenario_id(
+        self,
+        scenario_id: int,
+        indicator_ids: str | None,
+        indicator_group_id: int | None,
+        territory_id: int | None,
+        hexagon_id: int | None,
+        user_id: str,
     ) -> list[ProjectsIndicatorValueDTO]:
         """Get project's indicators values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
-    async def get_specific_projects_indicator_values(
-        self, scenario_id: int, indicator_id: int, user_id: str
-    ) -> list[ProjectsIndicatorValueDTO]:
+    async def get_project_indicator_value_by_id(
+        self, indicator_value_id: int, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
         """Get project's specific indicator values for given scenario
         if relevant project is public or if you're the project owner."""
 
@@ -238,22 +244,20 @@ class UserProjectService(Protocol):
 
     @abc.abstractmethod
     async def put_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorValuePut, user_id: str
+        self, projects_indicator: ProjectsIndicatorValuePut, indicator_value_id: int, user_id: str
     ) -> ProjectsIndicatorValueDTO:
         """Put project's indicator value."""
 
     @abc.abstractmethod
     async def patch_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorValuePatch, user_id: str
+        self, projects_indicator: ProjectsIndicatorValuePatch, indicator_value_id: int, user_id: str
     ) -> ProjectsIndicatorValueDTO:
         """Patch project's indicator value."""
 
     @abc.abstractmethod
-    async def delete_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> dict:
+    async def delete_projects_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
         """Delete all project's indicators values for given scenario if you're the project owner."""
 
     @abc.abstractmethod
-    async def delete_specific_projects_indicator_values(
-        self, scenario_id: int, indicator_id: int, user_id: str
-    ) -> dict:
-        """Delete specific project's indicator values for given scenario if you're the project owner."""
+    async def delete_project_indicator_value_by_id(self, indicator_value_id: int, user_id: str) -> dict:
+        """Delete specific project's indicator values by indicator value identifier if you're the project owner."""

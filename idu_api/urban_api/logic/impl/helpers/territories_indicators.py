@@ -174,7 +174,7 @@ async def get_indicator_values_by_territory_id_from_db(
         ids = [int(indicator.strip()) for indicator in indicator_ids.split(",")]
         query = select(indicators_dict.c.indicator_id).where(indicators_dict.c.indicator_id.in_(ids))
         indicators = (await conn.execute(query)).scalars()
-        if not list(indicators):
+        if len(ids) > len(list(indicators)):
             raise EntitiesNotFoundByIds("indicator")
 
         statement = statement.where(territory_indicators_data.c.indicator_id.in_(ids))
