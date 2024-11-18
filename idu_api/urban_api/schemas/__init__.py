@@ -37,12 +37,14 @@ from .living_buildings import (
 from .minio import MinioImagesURL, MinioImageURL
 from .normatives import Normative, NormativeDelete, NormativePatch, NormativePost
 from .object_geometries import (
+    AllObjects,
+    GeometryAttributes,
     ObjectGeometries,
     ObjectGeometriesPatch,
     ObjectGeometriesPost,
     ObjectGeometriesPut,
     ScenarioAllObjects,
-    ScenarioGeometry,
+    ScenarioGeometryAttributes,
 )
 from .pages import Page
 from .physical_object_types import (
@@ -113,7 +115,6 @@ from .territories import (
     TerritoryWithNormatives,
     TerritoryWithoutGeometry,
 )
-from .urban_objects import ScenariosUrbanObject
 
 __all__ = [
     "PingResponse",
@@ -131,7 +132,6 @@ __all__ = [
     "ScenariosPatch",
     "ScenariosPost",
     "ScenariosPut",
-    "ScenariosUrbanObject",
     "ServicesCountCapacity",
     "ServicesData",
     "ServicesDataPatch",
@@ -209,7 +209,9 @@ __all__ = [
     "ProjectsIndicatorValuePut",
     "MinioImageURL",
     "MinioImagesURL",
-    "ScenarioGeometry",
+    "GeometryAttributes",
+    "ScenarioGeometryAttributes",
+    "AllObjects",
     "ScenarioAllObjects",
     "ScenarioPhysicalObject",
     "ScenarioService",

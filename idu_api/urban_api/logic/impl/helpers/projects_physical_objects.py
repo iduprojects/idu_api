@@ -3,7 +3,7 @@
 from collections import defaultdict
 
 from geoalchemy2 import Geography, Geometry
-from geoalchemy2.functions import ST_Buffer, ST_Within
+from geoalchemy2.functions import ST_Buffer, ST_Intersects, ST_Within
 from sqlalchemy import cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -15,15 +15,13 @@ from idu_api.common.db.entities import (
     projects_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
-    projects_services_data,
     projects_territory_data,
     projects_urban_objects_data,
     scenarios_data,
+    territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import (
-    ScenarioPhysicalObjectDTO,
-)
+from idu_api.urban_api.dto import PhysicalObjectDataDTO, ScenarioPhysicalObjectDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 
@@ -34,7 +32,6 @@ async def get_physical_objects_by_scenario_id(
     user_id: str,
     physical_object_type_id: int | None,
     physical_object_function_id: int | None,
-    for_context: bool,
 ) -> list[ScenarioPhysicalObjectDTO]:
     """Get physical objects by scenario identifier."""
 
@@ -48,29 +45,9 @@ async def get_physical_objects_by_scenario_id(
     if project.user_id != user_id:
         raise AccessDeniedError(scenario.project_id, "project")
 
-    buffer_meters = 3000
-
-    if for_context:
-        project_geometry = (
-            select(
-                cast(
-                    ST_Buffer(
-                        cast(
-                            projects_territory_data.c.geometry,
-                            Geography(srid=4326),
-                        ),
-                        buffer_meters,
-                    ),
-                    Geometry(srid=4326),
-                ).label("geometry")
-            )
-            .where(projects_territory_data.c.project_id == project.project_id)
-            .alias("project_geometry")
-        )
-    else:
-        project_geometry = (
-            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-        ).alias("project_geometry")
+    project_geometry = (
+        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+    ).alias("project_geometry")
 
     # Шаг 1: Получить все public_urban_object_id для данного scenario_id
     public_urban_object_ids = (
@@ -176,9 +153,6 @@ async def get_physical_objects_by_scenario_id(
                 == projects_urban_objects_data.c.object_geometry_id,
             )
             .outerjoin(
-                projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id
-            )
-            .outerjoin(
                 physical_objects_data,
                 physical_objects_data.c.physical_object_id == projects_urban_objects_data.c.public_physical_object_id,
             )
@@ -251,3 +225,146 @@ async def get_physical_objects_by_scenario_id(
             grouped_objects[-physical_object_id].update(obj)
 
     return [ScenarioPhysicalObjectDTO(**row) for row in list(grouped_objects.values())]
+
+
+async def get_context_physical_objects_by_scenario_id_from_db(
+    conn: AsyncConnection,
+    scenario_id: int,
+    user_id: str,
+    physical_object_type_id: int | None,
+    physical_object_function_id: int | None,
+) -> list[PhysicalObjectDataDTO]:
+    """Get list of physical objects for 'context' of the project territory."""
+
+    statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
+    scenario = (await conn.execute(statement)).mappings().one_or_none()
+    if scenario is None:
+        raise EntityNotFoundById(scenario_id, "scenario")
+
+    statement = select(projects_data).where(projects_data.c.project_id == scenario.project_id)
+    project = (await conn.execute(statement)).mappings().one_or_none()
+    if project.user_id != user_id:
+        raise AccessDeniedError(scenario.project_id, "project")
+
+    buffer_meters = 3000
+    project_geometry = (
+        select(
+            cast(
+                ST_Buffer(
+                    cast(
+                        projects_territory_data.c.geometry,
+                        Geography(srid=4326),
+                    ),
+                    buffer_meters,
+                ),
+                Geometry(srid=4326),
+            ).label("geometry")
+        )
+        .where(projects_territory_data.c.project_id == project.project_id)
+        .alias("project_geometry")
+    )
+
+    # Step 1. Find all the territories at the `cities_level` - 1 that intersect with the buffered project geometry.
+    territories_cte = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+            territories_data.c.level,
+            territories_data.c.geometry,
+            territories_data.c.is_city,
+        )
+        .where(territories_data.c.territory_id == project.territory_id)
+        .cte(recursive=True)
+    )
+    territories_cte = territories_cte.union_all(
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+            territories_data.c.level,
+            territories_data.c.geometry,
+            territories_data.c.is_city,
+        ).join(
+            territories_cte,
+            territories_data.c.parent_id == territories_cte.c.territory_id,
+        )
+    )
+    cities_level = (
+        select(territories_cte.c.level)
+        .where(territories_cte.c.is_city.is_(True))
+        .order_by(territories_cte.c.level.desc())
+        .limit(1)
+        .cte(name="cities_level")
+    )
+    intersecting_territories = (
+        select(territories_cte.c.territory_id)
+        .where(
+            territories_cte.c.level == (cities_level.c.level - 1),
+            ST_Intersects(territories_cte.c.geometry, select(project_geometry).scalar_subquery()),
+        )
+        .cte(name="intersecting_territories")
+    )
+    all_intersecting_descendants = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        )
+        .where(territories_data.c.territory_id.in_(select(intersecting_territories.c.territory_id)))
+        .cte(name="all_intersecting_descendants", recursive=True)
+    )
+    all_intersecting_descendants = all_intersecting_descendants.union_all(
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        ).join(
+            all_intersecting_descendants,
+            territories_data.c.parent_id == all_intersecting_descendants.c.territory_id,
+        )
+    )
+
+    # Step 2. Find all the physical objects in `public` schema for `intersecting_territories`
+    statement = (
+        select(
+            physical_objects_data.c.physical_object_id,
+            physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_functions_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
+            physical_objects_data.c.name,
+            physical_objects_data.c.properties,
+            physical_objects_data.c.created_at,
+            physical_objects_data.c.updated_at,
+        )
+        .select_from(
+            urban_objects_data.join(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+            )
+            .join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
+            )
+            .join(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
+            )
+        )
+        .where(object_geometries_data.c.territory_id.in_(select(all_intersecting_descendants.c.territory_id)))
+        .distinct()
+    )
+
+    # Условия фильтрации для public объектов
+    if physical_object_type_id is not None:
+        statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
+    if physical_object_function_id is not None:
+        statement = statement.where(
+            physical_object_types_dict.c.physical_object_function_id == physical_object_function_id
+        )
+
+    result = (await conn.execute(statement)).mappings().all()
+
+    return [PhysicalObjectDataDTO(**row) for row in result]

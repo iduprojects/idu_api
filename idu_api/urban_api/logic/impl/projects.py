@@ -5,6 +5,8 @@ import io
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
+    ObjectGeometryDTO,
+    PhysicalObjectDataDTO,
     ProjectDTO,
     ProjectsIndicatorValueDTO,
     ProjectTerritoryDTO,
@@ -13,17 +15,23 @@ from idu_api.urban_api.dto import (
     ScenarioGeometryWithAllObjectsDTO,
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
+    ServiceDTO,
 )
+from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
-    get_geometries_by_scenario_id,
-    get_geometries_with_all_objects_by_scenario_id,
+    get_context_geometries_by_scenario_id_from_db,
+    get_context_geometries_with_all_objects_by_scenario_id_from_db,
+    get_geometries_by_scenario_id_from_db,
+    get_geometries_with_all_objects_by_scenario_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
-    add_projects_indicator_value_to_db,
-    delete_all_projects_indicators_values_from_db,
-    delete_specific_projects_indicator_values_from_db,
-    get_all_projects_indicators_values_from_db,
-    get_specific_projects_indicator_values_from_db,
+    add_project_indicator_value_to_db,
+    delete_project_indicator_value_by_id_from_db,
+    delete_projects_indicators_values_by_scenario_id_from_db,
+    get_project_indicator_value_by_id_from_db,
+    get_projects_indicators_values_by_scenario_id_from_db,
+    patch_project_indicator_value_to_db,
+    put_project_indicator_value_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
@@ -44,6 +52,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     upload_project_image_to_minio,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
+    get_context_physical_objects_by_scenario_id_from_db,
     get_physical_objects_by_scenario_id,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
@@ -54,13 +63,18 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     patch_scenario_to_db,
     put_scenario_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.projects_services import get_services_by_scenario_id
+from idu_api.urban_api.logic.impl.helpers.projects_services import (
+    get_context_services_by_scenario_id_from_db,
+    get_services_by_scenario_id,
+)
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
+    ProjectsIndicatorValuePatch,
     ProjectsIndicatorValuePost,
+    ProjectsIndicatorValuePut,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -161,7 +175,6 @@ class UserProjectServiceImpl(UserProjectService):
         user_id: str,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioPhysicalObjectDTO]:
         return await get_physical_objects_by_scenario_id(
             self._conn,
@@ -169,7 +182,21 @@ class UserProjectServiceImpl(UserProjectService):
             user_id,
             physical_object_type_id,
             physical_object_function_id,
-            for_context,
+        )
+
+    async def get_context_physical_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
+    ) -> list[PhysicalObjectDataDTO]:
+        return await get_context_physical_objects_by_scenario_id_from_db(
+            self._conn,
+            scenario_id,
+            user_id,
+            physical_object_type_id,
+            physical_object_function_id,
         )
 
     async def get_services_by_scenario_id(
@@ -178,7 +205,6 @@ class UserProjectServiceImpl(UserProjectService):
         user_id: str,
         service_type_id: int | None,
         urban_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioServiceDTO]:
         return await get_services_by_scenario_id(
             self._conn,
@@ -186,7 +212,21 @@ class UserProjectServiceImpl(UserProjectService):
             user_id,
             service_type_id,
             urban_function_id,
-            for_context,
+        )
+
+    async def get_context_services_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        service_type_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[ServiceDTO]:
+        return await get_context_services_by_scenario_id_from_db(
+            self._conn,
+            scenario_id,
+            user_id,
+            service_type_id,
+            urban_function_id,
         )
 
     async def get_geometries_by_scenario_id(
@@ -195,15 +235,13 @@ class UserProjectServiceImpl(UserProjectService):
         user_id: str,
         physical_object_id: int | None,
         service_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioGeometryDTO]:
-        return await get_geometries_by_scenario_id(
+        return await get_geometries_by_scenario_id_from_db(
             self._conn,
             scenario_id,
             user_id,
             physical_object_id,
             service_id,
-            for_context,
         )
 
     async def get_geometries_with_all_objects_by_scenario_id(
@@ -214,9 +252,8 @@ class UserProjectServiceImpl(UserProjectService):
         service_type_id: int | None,
         physical_object_function_id: int | None,
         urban_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioGeometryWithAllObjectsDTO]:
-        return await get_geometries_with_all_objects_by_scenario_id(
+        return await get_geometries_with_all_objects_by_scenario_id_from_db(
             self._conn,
             scenario_id,
             user_id,
@@ -224,28 +261,83 @@ class UserProjectServiceImpl(UserProjectService):
             service_type_id,
             physical_object_function_id,
             urban_function_id,
-            for_context,
         )
 
-    async def get_all_projects_indicators_values(
-        self, scenario_id: int, user_id: str
-    ) -> list[ProjectsIndicatorValueDTO]:
-        return await get_all_projects_indicators_values_from_db(self._conn, scenario_id, user_id)
+    async def get_context_geometries_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_id: int | None,
+        service_id: int | None,
+    ) -> list[ObjectGeometryDTO]:
+        return await get_context_geometries_by_scenario_id_from_db(
+            self._conn,
+            scenario_id,
+            user_id,
+            physical_object_id,
+            service_id,
+        )
 
-    async def get_specific_projects_indicator_values(
-        self, scenario_id: int, indicator_id: int, user_id: str
+    async def get_context_geometries_with_all_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+        physical_object_function_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[GeometryWithAllObjectsDTO]:
+        return await get_context_geometries_with_all_objects_by_scenario_id_from_db(
+            self._conn,
+            scenario_id,
+            user_id,
+            physical_object_type_id,
+            service_type_id,
+            physical_object_function_id,
+            urban_function_id,
+        )
+
+    async def get_projects_indicators_values_by_scenario_id(
+        self,
+        scenario_id: int,
+        indicator_ids: str | None,
+        indicator_group_id: int | None,
+        territory_id: int | None,
+        hexagon_id: int | None,
+        user_id: str,
     ) -> list[ProjectsIndicatorValueDTO]:
-        return await get_specific_projects_indicator_values_from_db(self._conn, scenario_id, indicator_id, user_id)
+        return await get_projects_indicators_values_by_scenario_id_from_db(
+            self._conn,
+            scenario_id,
+            indicator_ids,
+            indicator_group_id,
+            territory_id,
+            hexagon_id,
+            user_id,
+        )
+
+    async def get_project_indicator_value_by_id(
+        self, indicator_value_id: int, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
+        return await get_project_indicator_value_by_id_from_db(self._conn, indicator_value_id, user_id)
 
     async def add_projects_indicator_value(
         self, projects_indicator: ProjectsIndicatorValuePost, user_id: str
     ) -> ProjectsIndicatorValueDTO:
-        return await add_projects_indicator_value_to_db(self._conn, projects_indicator, user_id)
+        return await add_project_indicator_value_to_db(self._conn, projects_indicator, user_id)
 
-    async def delete_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> dict:
-        return await delete_all_projects_indicators_values_from_db(self._conn, scenario_id, user_id)
+    async def put_projects_indicator_value(
+        self, projects_indicator: ProjectsIndicatorValuePut, indicator_value_id: int, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
+        return await put_project_indicator_value_to_db(self._conn, projects_indicator, indicator_value_id, user_id)
 
-    async def delete_specific_projects_indicator_values(
-        self, scenario_id: int, indicator_id: int, user_id: str
-    ) -> dict:
-        return await delete_specific_projects_indicator_values_from_db(self._conn, scenario_id, indicator_id, user_id)
+    async def patch_projects_indicator_value(
+        self, projects_indicator: ProjectsIndicatorValuePatch, indicator_value_id: int, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
+        return await patch_project_indicator_value_to_db(self._conn, projects_indicator, indicator_value_id, user_id)
+
+    async def delete_projects_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
+        return await delete_projects_indicators_values_by_scenario_id_from_db(self._conn, scenario_id, user_id)
+
+    async def delete_project_indicator_value_by_id(self, indicator_value_id: int, user_id: str) -> dict:
+        return await delete_project_indicator_value_by_id_from_db(self._conn, indicator_value_id, user_id)

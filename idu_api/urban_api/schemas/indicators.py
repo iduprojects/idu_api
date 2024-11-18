@@ -307,7 +307,7 @@ class ProjectsIndicatorValue(BaseModel):
     territory: ShortTerritory | None
     hexagon_id: int | None
     value: float = Field(..., description="indicator value for scenario at time", examples=[23.5])
-    comment: str = Field(..., description="comment for indicator value", examples=["--"])
+    comment: str | None = Field(None, description="comment for indicator value", examples=["--"])
     information_source: str | None = Field(
         ...,
         description="information source",
@@ -373,7 +373,7 @@ class ProjectsIndicatorValuePost(BaseModel):
         ..., description="hexagon identifier for which indicator value was saved", examples=[1]
     )
     value: float = Field(..., description="indicator value for territory at time", examples=[23.5])
-    comment: str = Field(..., description="comment for indicator value", examples=["--"])
+    comment: str | None = Field(..., description="comment for indicator value", examples=["--"])
     information_source: str | None = Field(
         ...,
         description="information source",
@@ -387,16 +387,8 @@ class ProjectsIndicatorValuePost(BaseModel):
 class ProjectsIndicatorValuePut(BaseModel):
     """Project indicator value schema for PUT requests."""
 
-    indicator_id: int = Field(..., description="indicator identifier", examples=[1])
-    scenario_id: int = Field(..., description="scenario identifier for which indicator value was saved", examples=[1])
-    territory_id: int | None = Field(
-        ..., description="real territory identifier for which indicator value was saved", examples=[1]
-    )
-    hexagon_id: int | None = Field(
-        ..., description="hexagon identifier for which indicator value was saved", examples=[1]
-    )
     value: float = Field(..., description="indicator value for territory at time", examples=[23.5])
-    comment: str = Field(..., description="comment for indicator value", examples=["--"])
+    comment: str | None = Field(..., description="comment for indicator value", examples=["--"])
     information_source: str | None = Field(
         ...,
         description="information source",
@@ -410,16 +402,6 @@ class ProjectsIndicatorValuePut(BaseModel):
 class ProjectsIndicatorValuePatch(BaseModel):
     """Project indicator value schema for PATCH requests."""
 
-    indicator_id: int | None = Field(None, description="indicator identifier", examples=[1])
-    scenario_id: int | None = Field(
-        None, description="scenario identifier for which indicator value was saved", examples=[1]
-    )
-    territory_id: int | None = Field(
-        None, description="real territory identifier for which indicator value was saved", examples=[1]
-    )
-    hexagon_id: int | None = Field(
-        None, description="hexagon identifier for which indicator value was saved", examples=[1]
-    )
     value: float | None = Field(None, description="indicator value for territory at time", examples=[23.5])
     comment: str | None = Field(None, description="comment for indicator value", examples=["--"])
     information_source: str | None = Field(

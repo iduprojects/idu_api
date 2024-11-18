@@ -6,40 +6,23 @@ from typing import Any
 
 import shapely.geometry as geom
 
-from idu_api.urban_api.dto.physical_objects import ShortScenarioPhysicalObjectDTO
-from idu_api.urban_api.dto.services import ShortScenarioServiceDTO
+from idu_api.urban_api.dto.physical_objects import ShortPhysicalObjectDTO, ShortScenarioPhysicalObjectDTO
+from idu_api.urban_api.dto.services import ShortScenarioServiceDTO, ShortServiceDTO
+
+Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
 
 
 @dataclass
 class ObjectGeometryDTO:
     object_geometry_id: int
     territory_id: int
-    address: str | None
-    osm_id: str | None
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
-    centre_point: geom.Point
-    created_at: datetime
-    updated_at: datetime
-
-    def __post_init__(self) -> None:
-        if isinstance(self.centre_point, dict):
-            self.centre_point = geom.shape(self.centre_point)
-        if self.geometry is None:
-            self.geometry = self.centre_point
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
-
-
-@dataclass
-class ScenarioGeometryDTO:
-    object_geometry_id: int
-    territory_id: int
     territory_name: str
     address: str | None
     osm_id: str | None
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    geometry: Geom
     centre_point: geom.Point
-    is_scenario_object: bool
+    created_at: datetime
+    updated_at: datetime
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
@@ -60,16 +43,20 @@ class ScenarioGeometryDTO:
 
 
 @dataclass
-class ScenarioGeometryWithAllObjectsDTO:
+class ScenarioGeometryDTO(ObjectGeometryDTO):
+    is_scenario_object: bool
+
+
+@dataclass
+class GeometryWithAllObjectsDTO:
     object_geometry_id: int
     territory_id: int
     address: str | None
     osm_id: str | None
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    geometry: Geom
     centre_point: geom.Point
-    is_scenario_object: bool
-    physical_objects: list[ShortScenarioPhysicalObjectDTO]
-    services: list[ShortScenarioServiceDTO]
+    physical_objects: list[ShortPhysicalObjectDTO]
+    services: list[ShortServiceDTO]
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
@@ -81,3 +68,10 @@ class ScenarioGeometryWithAllObjectsDTO:
 
     def to_geojson_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+@dataclass
+class ScenarioGeometryWithAllObjectsDTO(GeometryWithAllObjectsDTO):
+    is_scenario_object: bool
+    physical_objects: list[ShortScenarioPhysicalObjectDTO]
+    services: list[ShortScenarioServiceDTO]

@@ -3,6 +3,7 @@ import io
 from typing import Protocol
 
 from idu_api.urban_api.dto import (
+    PhysicalObjectDataDTO,
     ProjectDTO,
     ProjectsIndicatorValueDTO,
     ProjectTerritoryDTO,
@@ -11,12 +12,16 @@ from idu_api.urban_api.dto import (
     ScenarioGeometryWithAllObjectsDTO,
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
+    ServiceDTO,
 )
+from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO, ObjectGeometryDTO
 from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
+    ProjectsIndicatorValuePatch,
     ProjectsIndicatorValuePost,
+    ProjectsIndicatorValuePut,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -134,9 +139,18 @@ class UserProjectService(Protocol):
         user_id: str,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioPhysicalObjectDTO]:
         """Get list of physical objects by scenario identifier."""
+
+    @abc.abstractmethod
+    async def get_context_physical_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
+    ) -> list[PhysicalObjectDataDTO]:
+        """Get list of physical objects for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def get_services_by_scenario_id(
@@ -145,9 +159,18 @@ class UserProjectService(Protocol):
         user_id: str,
         service_type_id: int | None,
         urban_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioServiceDTO]:
         """Get list of services by scenario identifier."""
+
+    @abc.abstractmethod
+    async def get_context_services_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        service_type_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[ServiceDTO]:
+        """Get list of services for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def get_geometries_by_scenario_id(
@@ -156,7 +179,6 @@ class UserProjectService(Protocol):
         user_id: str,
         physical_object_id: int | None,
         service_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioGeometryDTO]:
         """Get all geometries for given scenario."""
 
@@ -169,21 +191,48 @@ class UserProjectService(Protocol):
         service_type_id: int | None,
         physical_object_function_id: int | None,
         urban_function_id: int | None,
-        for_context: bool,
     ) -> list[ScenarioGeometryWithAllObjectsDTO]:
-        """Get geometries with list of physical objects and services by scenario identifier."""
+        """Get geometries with lists of physical objects and services by scenario identifier."""
 
     @abc.abstractmethod
-    async def get_all_projects_indicators_values(
-        self, scenario_id: int, user_id: str
+    async def get_context_geometries_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_id: int | None,
+        service_id: int | None,
+    ) -> list[ObjectGeometryDTO]:
+        """Get list of geometries for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def get_context_geometries_with_all_objects_by_scenario_id(
+        self,
+        scenario_id: int,
+        user_id: str,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+        physical_object_function_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[GeometryWithAllObjectsDTO]:
+        """Get geometries with lists of physical objects and services for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def get_projects_indicators_values_by_scenario_id(
+        self,
+        scenario_id: int,
+        indicator_ids: str | None,
+        indicator_group_id: int | None,
+        territory_id: int | None,
+        hexagon_id: int | None,
+        user_id: str,
     ) -> list[ProjectsIndicatorValueDTO]:
         """Get project's indicators values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
-    async def get_specific_projects_indicator_values(
-        self, scenario_id: int, indicator_id: int, user_id: str
-    ) -> list[ProjectsIndicatorValueDTO]:
+    async def get_project_indicator_value_by_id(
+        self, indicator_value_id: int, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
         """Get project's specific indicator values for given scenario
         if relevant project is public or if you're the project owner."""
 
@@ -194,11 +243,21 @@ class UserProjectService(Protocol):
         """Add a new project's indicator value."""
 
     @abc.abstractmethod
-    async def delete_all_projects_indicators_values(self, scenario_id: int, user_id: str) -> dict:
+    async def put_projects_indicator_value(
+        self, projects_indicator: ProjectsIndicatorValuePut, indicator_value_id: int, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
+        """Put project's indicator value."""
+
+    @abc.abstractmethod
+    async def patch_projects_indicator_value(
+        self, projects_indicator: ProjectsIndicatorValuePatch, indicator_value_id: int, user_id: str
+    ) -> ProjectsIndicatorValueDTO:
+        """Patch project's indicator value."""
+
+    @abc.abstractmethod
+    async def delete_projects_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
         """Delete all project's indicators values for given scenario if you're the project owner."""
 
     @abc.abstractmethod
-    async def delete_specific_projects_indicator_values(
-        self, scenario_id: int, indicator_id: int, user_id: str
-    ) -> dict:
-        """Delete specific project's indicator values for given scenario if you're the project owner."""
+    async def delete_project_indicator_value_by_id(self, indicator_value_id: int, user_id: str) -> dict:
+        """Delete specific project's indicator values by indicator value identifier if you're the project owner."""

@@ -22,6 +22,7 @@ from .physical_objects import (
     PhysicalObjectWithGeometryDTO,
     PhysicalObjectWithTerritoryDTO,
     ScenarioPhysicalObjectDTO,
+    ShortPhysicalObjectDTO,
     ShortScenarioPhysicalObjectDTO,
 )
 from .profiles_reclamation import ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO
@@ -35,6 +36,7 @@ from .services import (
     ServiceWithGeometryDTO,
     ServiceWithTerritoriesDTO,
     ShortScenarioServiceDTO,
+    ShortServiceDTO,
 )
 from .territories import (
     TerritoryDTO,
@@ -44,7 +46,7 @@ from .territories import (
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
 )
-from .urban_objects import ScenariosUrbanObjectDTO, UrbanObjectDTO
+from .urban_objects import UrbanObjectDTO
 from .users import TokensTuple, UserDTO
 
 __all__ = [
@@ -82,7 +84,6 @@ __all__ = [
     "TerritoryWithoutGeometryDTO",
     "UrbanFunctionDTO",
     "UrbanObjectDTO",
-    "ScenariosUrbanObjectDTO",
     "ProjectDTO",
     "ProjectTerritoryDTO",
     "ProfilesReclamationDataDTO",
@@ -95,4 +96,6 @@ __all__ = [
     "ScenarioServiceDTO",
     "ScenarioGeometryWithAllObjectsDTO",
     "ScenarioGeometryDTO",
+    "ShortServiceDTO",
+    "ShortPhysicalObjectDTO",
 ]
