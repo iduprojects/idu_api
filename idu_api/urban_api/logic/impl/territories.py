@@ -237,6 +237,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         self,
         territory_id: int,
         physical_object_type: int | None,
+        physical_object_function: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Literal["created_at", "updated_at"] | None,
@@ -244,13 +245,22 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         paginate: bool = False,
     ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
         return await get_physical_objects_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name, cities_only, order_by, ordering, paginate
+            self._conn,
+            territory_id,
+            physical_object_type,
+            physical_object_function,
+            name,
+            cities_only,
+            order_by,
+            ordering,
+            paginate,
         )
 
     async def get_physical_objects_with_geometry_by_territory_id(
         self,
         territory_id: int,
         physical_object_type: int | None,
+        physical_object_function: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Literal["created_at", "updated_at"] | None,
@@ -258,7 +268,15 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         paginate: bool = False,
     ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_with_geometry_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name, cities_only, order_by, ordering, paginate
+            self._conn,
+            territory_id,
+            physical_object_type,
+            physical_object_function,
+            name,
+            cities_only,
+            order_by,
+            ordering,
+            paginate,
         )
 
     async def get_living_buildings_with_geometry_by_territory_id(
