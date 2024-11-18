@@ -23,6 +23,7 @@ class UrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     physical_object_updated_at: datetime
     object_geometry_id: int
     territory_id: int
+    territory_name: str
     address: str | None
     osm_id: str | None
     geometry: Geom

@@ -7,6 +7,7 @@ from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFuncti
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, PhysicalObjectsTypes
 from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
 from idu_api.urban_api.schemas.services import ServicesData
+from idu_api.urban_api.schemas.short_models import ShortTerritory
 from idu_api.urban_api.schemas.territories import TerritoryType
 
 
@@ -42,7 +43,7 @@ class UrbanObject(BaseModel):
             ),
             object_geometry=ObjectGeometries(
                 object_geometry_id=dto.object_geometry_id,
-                territory_id=dto.territory_id,
+                territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
                 address=dto.address,
                 osm_id=dto.osm_id,
                 geometry=Geometry.from_shapely_geometry(dto.geometry),

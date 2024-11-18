@@ -36,6 +36,7 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             physical_objects_data.c.created_at.label("physical_object_created_at"),
             physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             object_geometries_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
             object_geometries_data.c.created_at.label("object_geometry_created_at"),
@@ -66,6 +67,10 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             .join(
                 object_geometries_data,
                 object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
             .join(
                 physical_object_types_dict,
