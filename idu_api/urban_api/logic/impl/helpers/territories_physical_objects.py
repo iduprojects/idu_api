@@ -138,9 +138,9 @@ async def get_physical_objects_by_territory_id_from_db(
 
     if physical_object_type is not None and physical_object_function is not None:
         raise EntityNotFoundByParams("phys_obj_type and phys_obj_func", physical_object_type, physical_object_function)
-    if physical_object_type is not None:
+    elif physical_object_type is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type)
-    if physical_object_function is not None:
+    elif physical_object_function is not None:
         statement = statement.where(
             physical_object_types_dict.c.physical_object_function_id == physical_object_function
         )
@@ -233,9 +233,9 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
 
     if physical_object_type is not None and physical_object_function is not None:
         raise EntityNotFoundByParams("phys_obj_type and phys_obj_func", physical_object_type, physical_object_function)
-    if physical_object_type is not None:
+    elif physical_object_type is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type)
-    if physical_object_function is not None:
+    elif physical_object_function is not None:
         statement = statement.where(
             physical_object_types_dict.c.physical_object_function_id == physical_object_function
         )
