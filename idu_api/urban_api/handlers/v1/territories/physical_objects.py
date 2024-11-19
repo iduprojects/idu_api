@@ -52,9 +52,9 @@ async def get_physical_objects_by_territory_id(
         Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
     ),
 ) -> Page[PhysicalObjectsData]:
-    """Get physical_objects for territory.
+    """Get physical objects for territory.
 
-    physical_object_type, is_city and physical_object_function could be specified in parameters.
+    physical object type, cities only and physical object function could be specified in parameters.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
@@ -97,9 +97,9 @@ async def get_physical_objects_with_geometry_by_territory_id(
         Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
     ),
 ) -> Page[PhysicalObjectWithGeometry]:
-    """Get physical_objects for territory.
+    """Get physical objects with geometry for territory.
 
-    physical_object_type and physical_object_function could be specified in parameters.
+    physical object type, cities only and physical object function could be specified in parameters.
     """
     territories_service: TerritoriesService = request.state.territories_service
 

@@ -18,7 +18,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import PageDTO, ServiceDTO, ServicesCountCapacityDTO, ServiceTypesDTO, ServiceWithGeometryDTO
-from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
@@ -76,6 +76,7 @@ async def get_services_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
     service_type_id: int | None,
+    urban_function_id: int | None,
     name: str | None,
     cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
@@ -133,8 +134,12 @@ async def get_services_by_territory_id_from_db(
         .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
     ).distinct()
 
-    if service_type_id is not None:
+    if service_type_id is not None and urban_function_id is not None:
+        raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)
+    elif service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
+    elif urban_function_id is not None:
+        statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
     if name is not None:
         statement = statement.where(services_data.c.name.ilike(f"%{name}%"))
     if order_by is not None:
@@ -159,6 +164,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
     service_type_id: int | None,
+    urban_function_id: int | None,
     name: str | None,
     cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
@@ -220,8 +226,12 @@ async def get_services_with_geometry_by_territory_id_from_db(
         .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
     ).distinct()
 
-    if service_type_id is not None:
+    if service_type_id is not None and urban_function_id is not None:
+        raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)
+    elif service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
+    elif urban_function_id is not None:
+        statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
     if name is not None:
         statement = statement.where(services_data.c.name.ilike(f"%{name}%"))
     if order_by is not None:

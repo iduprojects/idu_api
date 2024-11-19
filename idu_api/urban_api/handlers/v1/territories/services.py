@@ -41,14 +41,15 @@ async def get_service_types_by_territory_id(
 async def get_services_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
-    service_type_id: int | None = Query(None, description="Service type id", gt=0),
-    name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
+    service_type_id: int | None = Query(None, description="service type identifier", gt=0),
+    urban_function_id: int | None = Query(None, description="urban function identifier", gt=0),
+    name: str | None = Query(None, description="filter services by name substring (case-insensitive)"),
     cities_only: bool = Query(False, description="to get only cities or not"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
-        None, description="Attribute to set ordering (created_at or updated_at)"
+        None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
-        Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
     ),
 ) -> Page[ServicesData]:
     """Get services for territory by id.
@@ -60,7 +61,14 @@ async def get_services_by_territory_id(
     order_by_value = order_by.value if order_by is not None else None
 
     services = await territories_service.get_services_by_territory_id(
-        territory_id, service_type_id, name, cities_only, order_by_value, ordering.value, paginate=True
+        territory_id,
+        service_type_id,
+        urban_function_id,
+        name,
+        cities_only,
+        order_by_value,
+        ordering.value,
+        paginate=True,
     )
 
     return paginate(
@@ -79,6 +87,7 @@ async def get_services_with_geometry_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
     service_type_id: int | None = Query(None, description="Service type id", gt=0),
+    urban_function_id: int | None = Query(None, description="urban function identifier", gt=0),
     name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
     cities_only: bool = Query(False, description="to get only cities or not"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
@@ -97,7 +106,14 @@ async def get_services_with_geometry_by_territory_id(
     order_by_value = order_by.value if order_by is not None else None
 
     services = await territories_service.get_services_with_geometry_by_territory_id(
-        territory_id, service_type_id, name, cities_only, order_by_value, ordering.value, paginate=True
+        territory_id,
+        service_type_id,
+        urban_function_id,
+        name,
+        cities_only,
+        order_by_value,
+        ordering.value,
+        paginate=True,
     )
 
     return paginate(
@@ -116,6 +132,7 @@ async def get_services_geojson_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
     service_type_id: int | None = Query(None, description="Service type id", gt=0),
+    urban_function_id: int | None = Query(None, description="urban function identifier", gt=0),
     name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
     cities_only: bool = Query(False, description="to get only cities or not"),
     centers_only: bool = Query(False, description="to get only center points of geometries"),
@@ -128,7 +145,7 @@ async def get_services_geojson_by_territory_id(
     territories_service: TerritoriesService = request.state.territories_service
 
     services = await territories_service.get_services_with_geometry_by_territory_id(
-        territory_id, service_type_id, name, cities_only, None, None
+        territory_id, service_type_id, urban_function_id, name, cities_only, None, None
     )
 
     return await GeoJSONResponse.from_list([service.to_geojson_dict() for service in services], centers_only)
