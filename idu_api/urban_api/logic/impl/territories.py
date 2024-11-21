@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
+    HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
@@ -52,8 +53,11 @@ from idu_api.urban_api.logic.impl.helpers.territories_physical_objects import (
     get_physical_objects_with_geometry_by_territory_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territory_objects import (
+    add_hexagons_to_db,
     add_territory_to_db,
+    delete_hexagons_by_territory_id_from_db,
     get_common_territory_for_geometry,
+    get_hexagons_by_territory_id_from_db,
     get_intersecting_territories_for_geometry,
     get_territories_by_ids,
     get_territories_by_parent_id_from_db,
@@ -71,6 +75,7 @@ from idu_api.urban_api.logic.impl.helpers.territory_services import (
 from idu_api.urban_api.logic.impl.helpers.territory_types import add_territory_type_to_db, get_territory_types_from_db
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import (
+    HexagonPost,
     NormativeDelete,
     NormativePatch,
     NormativePost,
@@ -310,3 +315,12 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         geometry: Geom,
     ) -> list[TerritoryDTO]:
         return await get_intersecting_territories_for_geometry(self._conn, parent_territory, geometry)
+
+    async def get_hexagons_by_territory_id(self, territory_id: int) -> list[HexagonDTO]:
+        return await get_hexagons_by_territory_id_from_db(self._conn, territory_id)
+
+    async def add_hexagons(self, territory_id: int, hexagons: list[HexagonPost]) -> list[HexagonDTO]:
+        return await add_hexagons_to_db(self._conn, territory_id, hexagons)
+
+    async def delete_hexagons_by_territory_id(self, territory_id: int) -> dict:
+        return await delete_hexagons_by_territory_id_from_db(self._conn, territory_id)

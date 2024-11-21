@@ -1,6 +1,7 @@
 """Data Transfer Objects (much like entities from database) are defined in this module."""
 
 from .functional_zones import FunctionalZoneDataDTO, FunctionalZoneTypeDTO, ProjectsProfileDTO
+from .hexagons import HexagonDTO
 from .indicators import (
     IndicatorDTO,
     IndicatorsGroupDTO,
@@ -98,4 +99,5 @@ __all__ = [
     "ScenarioGeometryDTO",
     "ShortServiceDTO",
     "ShortPhysicalObjectDTO",
+    "HexagonDTO",
 ]

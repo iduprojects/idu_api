@@ -11,6 +11,7 @@ from .functional_zones import (
     FunctionalZoneTypePost,
 )
 from .health_check import PingResponse
+from .hexagons import Hexagon, HexagonPost
 from .indicators import (
     Indicator,
     IndicatorsGroup,
@@ -215,4 +216,6 @@ __all__ = [
     "ScenarioAllObjects",
     "ScenarioPhysicalObject",
     "ScenarioService",
+    "Hexagon",
+    "HexagonPost",
 ]
