@@ -3,9 +3,10 @@ import io
 from typing import Protocol
 
 from idu_api.urban_api.dto import (
+    HexagonWithIndicatorsDTO,
     PhysicalObjectDataDTO,
     ProjectDTO,
-    ProjectsIndicatorValueDTO,
+    ProjectIndicatorValueDTO,
     ProjectTerritoryDTO,
     ScenarioDTO,
     ScenarioGeometryDTO,
@@ -25,9 +26,9 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectsIndicatorValuePatch,
-    ProjectsIndicatorValuePost,
-    ProjectsIndicatorValuePut,
+    ProjectIndicatorValuePatch,
+    ProjectIndicatorValuePost,
+    ProjectIndicatorValuePut,
     ScenarioServicePost,
     ScenariosPatch,
     ScenariosPost,
@@ -343,33 +344,33 @@ class UserProjectService(Protocol):
         territory_id: int | None,
         hexagon_id: int | None,
         user_id: str,
-    ) -> list[ProjectsIndicatorValueDTO]:
+    ) -> list[ProjectIndicatorValueDTO]:
         """Get project's indicators values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
     async def get_project_indicator_value_by_id(
         self, indicator_value_id: int, user_id: str
-    ) -> ProjectsIndicatorValueDTO:
+    ) -> ProjectIndicatorValueDTO:
         """Get project's specific indicator values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
     async def add_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorValuePost, user_id: str
-    ) -> ProjectsIndicatorValueDTO:
+        self, projects_indicator: ProjectIndicatorValuePost, user_id: str
+    ) -> ProjectIndicatorValueDTO:
         """Add a new project's indicator value."""
 
     @abc.abstractmethod
     async def put_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorValuePut, indicator_value_id: int, user_id: str
-    ) -> ProjectsIndicatorValueDTO:
+        self, projects_indicator: ProjectIndicatorValuePut, indicator_value_id: int, user_id: str
+    ) -> ProjectIndicatorValueDTO:
         """Put project's indicator value."""
 
     @abc.abstractmethod
     async def patch_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorValuePatch, indicator_value_id: int, user_id: str
-    ) -> ProjectsIndicatorValueDTO:
+        self, projects_indicator: ProjectIndicatorValuePatch, indicator_value_id: int, user_id: str
+    ) -> ProjectIndicatorValueDTO:
         """Patch project's indicator value."""
 
     @abc.abstractmethod
@@ -379,3 +380,13 @@ class UserProjectService(Protocol):
     @abc.abstractmethod
     async def delete_project_indicator_value_by_id(self, indicator_value_id: int, user_id: str) -> dict:
         """Delete specific project's indicator values by indicator value identifier if you're the project owner."""
+
+    @abc.abstractmethod
+    async def get_hexagons_with_indicators_by_scenario_id(
+        self,
+        scenario_id: int,
+        indicator_ids: str | None,
+        indicators_group_id: int | None,
+        user_id: str,
+    ) -> list[HexagonWithIndicatorsDTO]:
+        """Get project's indicators values for given regional scenario with hexagons."""

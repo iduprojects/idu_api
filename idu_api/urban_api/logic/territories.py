@@ -8,6 +8,7 @@ from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, P
 
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
+    HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
@@ -27,6 +28,7 @@ from idu_api.urban_api.dto import (
     TerritoryWithoutGeometryDTO,
 )
 from idu_api.urban_api.schemas import (
+    HexagonPost,
     NormativeDelete,
     NormativePatch,
     NormativePost,
@@ -79,10 +81,11 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         self,
         territory_id: int,
         service_type_id: int | None,
+        urban_function_id: int | None,
         name: str | None,
         cities_only: bool | None,
-        order_by: Optional[Literal["created_at", "updated_at"]],
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None = "asc",
         paginate: bool = False,
     ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
         """Get service objects by territory id."""
@@ -92,10 +95,11 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         self,
         territory_id: int,
         service_type_id: int | None,
+        urban_function_id: int | None,
         name: str | None,
         cities_only: bool | None,
-        order_by: Optional[Literal["created_at", "updated_at"]],
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None = "asc",
         paginate: bool = False,
     ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
         """Get service objects with geometry by territory id."""
@@ -188,27 +192,30 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
     async def get_physical_objects_by_territory_id(
         self,
         territory_id: int,
-        physical_object_type: int | None,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
     ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
-        """Get physical objects by territory id, optional physical object type and is_city."""
+        """Get physical objects by territory id, optional physical object type, function and for cities only."""
 
     @abc.abstractmethod
     async def get_physical_objects_with_geometry_by_territory_id(
         self,
         territory_id: int,
-        physical_object_type: int | None,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Optional[Literal["created_at", "updated_at"]],
         ordering: Optional[Literal["asc", "desc"]] = "asc",
         paginate: bool = False,
     ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
-        """Get physical objects with geometry by territory id, optional physical object type."""
+        """Get physical objects with geometry by territory id,
+        optional physical object type and physical object function and for cities only."""
 
     @abc.abstractmethod
     async def get_living_buildings_with_geometry_by_territory_id(
@@ -266,3 +273,15 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         geometry: Geom,
     ) -> list[TerritoryDTO]:
         """Get all territories of the (level of given parent + 1) which intersect with given geometry."""
+
+    @abc.abstractmethod
+    async def get_hexagons_by_territory_id(self, territory_id: int) -> list[HexagonDTO]:
+        """Get hexagons for a given territory."""
+
+    @abc.abstractmethod
+    async def add_hexagons_by_territory_id(self, territory_id: int, hexagons: list[HexagonPost]) -> list[HexagonDTO]:
+        """Create hexagons for a given territory."""
+
+    @abc.abstractmethod
+    async def delete_hexagons_by_territory_id(self, territory_id: int) -> dict:
+        """Delete hexagons for a given territory."""

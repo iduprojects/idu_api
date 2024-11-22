@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
+    HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
@@ -51,6 +52,11 @@ from idu_api.urban_api.logic.impl.helpers.territories_physical_objects import (
     get_physical_objects_by_territory_id_from_db,
     get_physical_objects_with_geometry_by_territory_id_from_db,
 )
+from idu_api.urban_api.logic.impl.helpers.territory_hexagons import (
+    add_hexagons_by_territory_id_to_db,
+    delete_hexagons_by_territory_id_from_db,
+    get_hexagons_by_territory_id_from_db,
+)
 from idu_api.urban_api.logic.impl.helpers.territory_objects import (
     add_territory_to_db,
     get_common_territory_for_geometry,
@@ -71,6 +77,7 @@ from idu_api.urban_api.logic.impl.helpers.territory_services import (
 from idu_api.urban_api.logic.impl.helpers.territory_types import add_territory_type_to_db, get_territory_types_from_db
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import (
+    HexagonPost,
     NormativeDelete,
     NormativePatch,
     NormativePost,
@@ -121,6 +128,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         self,
         territory_id: int,
         service_type_id: int | None,
+        urban_function_id: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Literal["created_at", "updated_at"] | None,
@@ -128,13 +136,22 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         paginate: bool = False,
     ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
         return await get_services_by_territory_id_from_db(
-            self._conn, territory_id, service_type_id, name, cities_only, order_by, ordering, paginate
+            self._conn,
+            territory_id,
+            service_type_id,
+            urban_function_id,
+            name,
+            cities_only,
+            order_by,
+            ordering,
+            paginate,
         )
 
     async def get_services_with_geometry_by_territory_id(
         self,
         territory_id: int,
         service_type_id: int | None,
+        urban_function_id: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Literal["created_at", "updated_at"] | None,
@@ -142,7 +159,15 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         paginate: bool = False,
     ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
         return await get_services_with_geometry_by_territory_id_from_db(
-            self._conn, territory_id, service_type_id, name, cities_only, order_by, ordering, paginate
+            self._conn,
+            territory_id,
+            service_type_id,
+            urban_function_id,
+            name,
+            cities_only,
+            order_by,
+            ordering,
+            paginate,
         )
 
     async def get_services_capacity_by_territory_id(
@@ -231,7 +256,8 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def get_physical_objects_by_territory_id(
         self,
         territory_id: int,
-        physical_object_type: int | None,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Literal["created_at", "updated_at"] | None,
@@ -239,13 +265,22 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         paginate: bool = False,
     ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
         return await get_physical_objects_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name, cities_only, order_by, ordering, paginate
+            self._conn,
+            territory_id,
+            physical_object_type_id,
+            physical_object_function_id,
+            name,
+            cities_only,
+            order_by,
+            ordering,
+            paginate,
         )
 
     async def get_physical_objects_with_geometry_by_territory_id(
         self,
         territory_id: int,
-        physical_object_type: int | None,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
         name: str | None,
         cities_only: bool | None,
         order_by: Literal["created_at", "updated_at"] | None,
@@ -253,7 +288,15 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         paginate: bool = False,
     ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_with_geometry_by_territory_id_from_db(
-            self._conn, territory_id, physical_object_type, name, cities_only, order_by, ordering, paginate
+            self._conn,
+            territory_id,
+            physical_object_type_id,
+            physical_object_function_id,
+            name,
+            cities_only,
+            order_by,
+            ordering,
+            paginate,
         )
 
     async def get_living_buildings_with_geometry_by_territory_id(
@@ -310,3 +353,12 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         geometry: Geom,
     ) -> list[TerritoryDTO]:
         return await get_intersecting_territories_for_geometry(self._conn, parent_territory, geometry)
+
+    async def get_hexagons_by_territory_id(self, territory_id: int) -> list[HexagonDTO]:
+        return await get_hexagons_by_territory_id_from_db(self._conn, territory_id)
+
+    async def add_hexagons_by_territory_id(self, territory_id: int, hexagons: list[HexagonPost]) -> list[HexagonDTO]:
+        return await add_hexagons_by_territory_id_to_db(self._conn, territory_id, hexagons)
+
+    async def delete_hexagons_by_territory_id(self, territory_id: int) -> dict:
+        return await delete_hexagons_by_territory_id_from_db(self._conn, territory_id)
