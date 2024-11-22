@@ -19,7 +19,7 @@ from .routers import territories_router
 async def get_hexagons_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory identifier", gt=0),
-    centers_only: bool | None = Query(None, description="display only centers"),
+    centers_only: bool = Query(False, description="display only centers"),
 ) -> GeoJSONResponse[Feature[Geometry, HexagonAttributes]]:
     """Get list of hexagons for a given territory in geojson format."""
     territories_service: TerritoriesService = request.state.territories_service
