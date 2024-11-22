@@ -48,7 +48,7 @@ from .territories import (
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
 )
-from .urban_objects import UrbanObjectDTO
+from .urban_objects import ScenarioUrbanObjectDTO, UrbanObjectDTO
 from .users import TokensTuple, UserDTO
 
 __all__ = [
@@ -103,4 +103,5 @@ __all__ = [
     "HexagonDTO",
     "HexagonWithIndicatorsDTO",
     "ShortProjectIndicatorValueDTO",
+    "ScenarioUrbanObjectDTO",
 ]

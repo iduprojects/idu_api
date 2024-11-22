@@ -9,7 +9,14 @@ from starlette import status
 from idu_api.urban_api.dto.users import UserDTO
 from idu_api.urban_api.handlers.v1.projects.routers import projects_router
 from idu_api.urban_api.logic.projects import UserProjectService
-from idu_api.urban_api.schemas import GeometryAttributes, ScenarioAllObjects, ScenarioGeometryAttributes
+from idu_api.urban_api.schemas import (
+    GeometryAttributes,
+    ObjectGeometriesPatch,
+    ObjectGeometriesPut,
+    ScenarioAllObjects,
+    ScenarioGeometryAttributes,
+    ScenarioObjectGeometry,
+)
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.schemas.object_geometries import AllObjects
 from idu_api.urban_api.utils.auth_client import get_user
@@ -138,3 +145,80 @@ async def get_context_geometries_with_all_objects_by_scenario_id(
     )
 
     return await GeoJSONResponse.from_list([obj.to_geojson_dict() for obj in geometries], centers_only)
+
+
+@projects_router.put(
+    "/scenarios/{scenario_id}/geometries/{object_geometry_id}",
+    response_model=ScenarioObjectGeometry,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def put_object_geometry(
+    request: Request,
+    object_geometry: ObjectGeometriesPut,
+    scenario_id: int = Path(..., description="scenario identifier"),
+    object_geometry_id: int = Path(..., description="object geometry identifier"),
+    is_scenario_object: bool = Query(..., description="to determine scenario object"),
+    user: UserDTO = Depends(get_user),
+) -> ScenarioObjectGeometry:
+    """Update scenario object geometry - all attributes."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    object_geometry_dto = await user_project_service.put_object_geometry(
+        object_geometry,
+        scenario_id,
+        object_geometry_id,
+        is_scenario_object,
+        user.id,
+    )
+
+    return ScenarioObjectGeometry.from_dto(object_geometry_dto)
+
+
+@projects_router.patch(
+    "/scenarios/{scenario_id}/geometries/{object_geometry_id}",
+    response_model=ScenarioObjectGeometry,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def patch_object_geometry(
+    request: Request,
+    object_geometry: ObjectGeometriesPatch,
+    scenario_id: int = Path(..., description="scenario identifier"),
+    object_geometry_id: int = Path(..., description="object geometry identifier"),
+    is_scenario_object: bool = Query(..., description="to determine scenario object"),
+    user: UserDTO = Depends(get_user),
+) -> ScenarioObjectGeometry:
+    """Update scenario object geometry - only given fields."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    object_geometry_dto = await user_project_service.patch_object_geometry(
+        object_geometry,
+        scenario_id,
+        object_geometry_id,
+        is_scenario_object,
+        user.id,
+    )
+
+    return ScenarioObjectGeometry.from_dto(object_geometry_dto)
+
+
+@projects_router.delete(
+    "/scenarios/{scenario_id}/geometries/{object_geometry_id}",
+    response_model=dict,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def delete_object_geometry(
+    request: Request,
+    scenario_id: int = Path(..., description="scenario identifier"),
+    object_geometry_id: int = Path(..., description="object geometry identifier"),
+    is_scenario_object: bool = Query(..., description="to determine scenario object"),
+    user: UserDTO = Depends(get_user),
+) -> dict:
+    """Delete scenario object geometry by given id."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    return await user_project_service.delete_object_geometry(
+        scenario_id, object_geometry_id, is_scenario_object, user.id
+    )

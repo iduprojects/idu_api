@@ -13,19 +13,28 @@ from idu_api.urban_api.dto import (
     ScenarioGeometryWithAllObjectsDTO,
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
+    ScenarioUrbanObjectDTO,
     ServiceDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO, ObjectGeometryDTO
 from idu_api.urban_api.schemas import (
+    ObjectGeometriesPatch,
+    ObjectGeometriesPut,
+    PhysicalObjectsDataPatch,
+    PhysicalObjectsDataPut,
+    PhysicalObjectWithGeometryPost,
     ProjectIndicatorValuePatch,
     ProjectIndicatorValuePost,
     ProjectIndicatorValuePut,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
+    ScenarioServicePost,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
+    ServicesDataPatch,
+    ServicesDataPut,
 )
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
@@ -154,6 +163,47 @@ class UserProjectService(Protocol):
         """Get list of physical objects for 'context' of the project territory."""
 
     @abc.abstractmethod
+    async def add_physical_object_with_geometry(
+        self,
+        physical_object: PhysicalObjectWithGeometryPost,
+        scenario_id: int,
+        user_id: str,
+    ) -> ScenarioUrbanObjectDTO:
+        """Create scenario physical object with geometry."""
+
+    @abc.abstractmethod
+    async def put_physical_object(
+        self,
+        physical_object: PhysicalObjectsDataPut,
+        scenario_id: int,
+        physical_object_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioPhysicalObjectDTO:
+        """Update scenario physical object by all its attributes."""
+
+    @abc.abstractmethod
+    async def patch_physical_object(
+        self,
+        physical_object: PhysicalObjectsDataPatch,
+        scenario_id: int,
+        physical_object_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioPhysicalObjectDTO:
+        """Update scenario physical object by only given attributes."""
+
+    @abc.abstractmethod
+    async def delete_physical_object(
+        self,
+        scenario_id: int,
+        physical_object_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> dict:
+        """Delete scenario physical object."""
+
+    @abc.abstractmethod
     async def get_services_by_scenario_id(
         self,
         scenario_id: int,
@@ -172,6 +222,42 @@ class UserProjectService(Protocol):
         urban_function_id: int | None,
     ) -> list[ServiceDTO]:
         """Get list of services for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def add_service(self, service: ScenarioServicePost, scenario_id: int, user_id: str) -> ScenarioUrbanObjectDTO:
+        """Create scenario service object."""
+
+    @abc.abstractmethod
+    async def put_service(
+        self,
+        service: ServicesDataPut,
+        scenario_id: int,
+        service_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioServiceDTO:
+        """Update scenario service by all its attributes."""
+
+    @abc.abstractmethod
+    async def patch_service(
+        self,
+        service: ServicesDataPatch,
+        scenario_id: int,
+        service_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioServiceDTO:
+        """Update scenario service by only given attributes."""
+
+    @abc.abstractmethod
+    async def delete_service(
+        self,
+        scenario_id: int,
+        service_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> dict:
+        """Delete scenario service."""
 
     @abc.abstractmethod
     async def get_geometries_by_scenario_id(
@@ -216,6 +302,38 @@ class UserProjectService(Protocol):
         urban_function_id: int | None,
     ) -> list[GeometryWithAllObjectsDTO]:
         """Get geometries with lists of physical objects and services for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def put_object_geometry(
+        self,
+        object_geometry: ObjectGeometriesPut,
+        scenario_id: int,
+        object_geometry_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioGeometryDTO:
+        """Update scenario object geometry by all its attributes."""
+
+    @abc.abstractmethod
+    async def patch_object_geometry(
+        self,
+        object_geometry: ObjectGeometriesPatch,
+        scenario_id: int,
+        object_geometry_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioGeometryDTO:
+        """Update scenario object geometry by only given attributes."""
+
+    @abc.abstractmethod
+    async def delete_object_geometry(
+        self,
+        scenario_id: int,
+        object_geometry_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> dict:
+        """Delete scenario physical object."""
 
     @abc.abstractmethod
     async def get_projects_indicators_values_by_scenario_id(

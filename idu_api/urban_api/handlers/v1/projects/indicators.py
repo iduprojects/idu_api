@@ -53,7 +53,7 @@ async def get_project_indicators_values_by_scenario_id(
 
 
 @projects_router.get(
-    "/scenarios/indicator_values/{indicator_value_id}",
+    "/scenarios/indicators_values/{indicator_value_id}",
     response_model=ProjectIndicatorValue,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
@@ -148,7 +148,7 @@ async def delete_project_indicators_values_by_scenario_id(
 
 
 @projects_router.delete(
-    "/scenarios/indicator_values/{indicator_value_id}",
+    "/scenarios/indicators_values/{indicator_value_id}",
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
@@ -164,7 +164,7 @@ async def delete_project_indicator_by_id(
 
 
 @projects_router.get(
-    "/scenarios/{scenario_id}/indicator_values/hexagons",
+    "/scenarios/{scenario_id}/indicators_values/hexagons",
     response_model=GeoJSONResponse[Feature[Geometry, HexagonWithIndicators]],
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
