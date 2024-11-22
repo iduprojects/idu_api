@@ -143,9 +143,19 @@ async def get_physical_objects_by_territory_id_from_db(
     elif physical_object_type_id is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
     elif physical_object_function_id is not None:
-        statement = statement.where(
-            physical_object_types_dict.c.physical_object_function_id == physical_object_function_id
+        functions_cte = (
+            select(physical_object_functions_dict.c.physical_object_function_id)
+            .where(physical_object_functions_dict.c.physical_object_function_id == physical_object_function_id)
+            .cte(recursive=True)
         )
+        functions_cte = functions_cte.union_all(
+            select(physical_object_functions_dict.c.physical_object_function_id).where(
+                physical_object_functions_dict.c.parent_id == functions_cte.c.physical_object_function_id
+            )
+        )
+        statement = statement.where(
+            physical_object_types_dict.c.physical_object_function_id.in_(select(functions_cte))
+        ).distinct()
     if name is not None:
         statement = statement.where(physical_objects_data.c.name.ilike(f"%{name}%"))
     if order_by is not None:
@@ -240,9 +250,19 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     elif physical_object_type_id is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
     elif physical_object_function_id is not None:
-        statement = statement.where(
-            physical_object_types_dict.c.physical_object_function_id == physical_object_function_id
+        functions_cte = (
+            select(physical_object_functions_dict.c.physical_object_function_id)
+            .where(physical_object_functions_dict.c.physical_object_function_id == physical_object_function_id)
+            .cte(recursive=True)
         )
+        functions_cte = functions_cte.union_all(
+            select(physical_object_functions_dict.c.physical_object_function_id).where(
+                physical_object_functions_dict.c.parent_id == functions_cte.c.physical_object_function_id
+            )
+        )
+        statement = statement.where(
+            physical_object_types_dict.c.physical_object_function_id.in_(select(functions_cte))
+        ).distinct()
     if name is not None:
         statement = statement.where(physical_objects_data.c.name.ilike(f"%{name}%"))
     if order_by is not None:
