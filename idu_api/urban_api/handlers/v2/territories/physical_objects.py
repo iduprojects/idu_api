@@ -22,6 +22,7 @@ async def get_physical_objects_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
     physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
+    physical_object_function_id: int | None = Query(None, description="Physical object function id", gt=0),
     name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
@@ -31,16 +32,23 @@ async def get_physical_objects_by_territory_id(
         Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
     ),
 ) -> CursorPage[PhysicalObjectsData]:
-    """Get physical_objects for territory.
+    """Get physical objects for territory.
 
-    physical_object_type could be specified in parameters.
+    physical object type, cities only and physical object function could be specified in parameters.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
     order_by_value = order_by.value if order_by is not None else None
 
     physical_objects = await territories_service.get_physical_objects_by_territory_id(
-        territory_id, physical_object_type_id, name, cities_only, order_by_value, ordering.value, paginate=True
+        territory_id,
+        physical_object_type_id,
+        physical_object_function_id,
+        name,
+        cities_only,
+        order_by_value,
+        ordering.value,
+        paginate=True,
     )
 
     return paginate(
@@ -60,6 +68,7 @@ async def get_physical_objects_with_geometry_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
     physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
+    physical_object_function_id: int | None = Query(None, description="Physical object function id", gt=0),
     name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
     cities_only: bool = Query(False, description="to get only cities or not"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
@@ -69,16 +78,23 @@ async def get_physical_objects_with_geometry_by_territory_id(
         Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
     ),
 ) -> CursorPage[PhysicalObjectWithGeometry]:
-    """Get physical_objects for territory.
+    """Get physical objects with geometry for territory.
 
-    physical_object_type could be specified in parameters.
+    physical object type, cities only and physical object function could be specified in parameters.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
     order_by_value = order_by.value if order_by is not None else None
 
     physical_objects = await territories_service.get_physical_objects_with_geometry_by_territory_id(
-        territory_id, physical_object_type_id, name, cities_only, order_by_value, ordering.value, paginate=True
+        territory_id,
+        physical_object_type_id,
+        physical_object_function_id,
+        name,
+        cities_only,
+        order_by_value,
+        ordering.value,
+        paginate=True,
     )
 
     return paginate(
