@@ -8,6 +8,7 @@ from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, P
 
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
+    HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
     LivingBuildingsWithGeometryDTO,
@@ -27,6 +28,7 @@ from idu_api.urban_api.dto import (
     TerritoryWithoutGeometryDTO,
 )
 from idu_api.urban_api.schemas import (
+    HexagonPost,
     NormativeDelete,
     NormativePatch,
     NormativePost,
@@ -271,3 +273,15 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         geometry: Geom,
     ) -> list[TerritoryDTO]:
         """Get all territories of the (level of given parent + 1) which intersect with given geometry."""
+
+    @abc.abstractmethod
+    async def get_hexagons_by_territory_id(self, territory_id: int) -> list[HexagonDTO]:
+        """Get hexagons for a given territory."""
+
+    @abc.abstractmethod
+    async def add_hexagons_by_territory_id(self, territory_id: int, hexagons: list[HexagonPost]) -> list[HexagonDTO]:
+        """Create hexagons for a given territory."""
+
+    @abc.abstractmethod
+    async def delete_hexagons_by_territory_id(self, territory_id: int) -> dict:
+        """Delete hexagons for a given territory."""

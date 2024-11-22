@@ -218,3 +218,17 @@ class ShortScenarioService(BaseModel):
             capacity_real=dto.capacity_real,
             is_scenario_object=dto.is_scenario_object,
         )
+
+
+class ShortProjectIndicatorValue(BaseModel):
+    """Project indicator value with all its attributes."""
+
+    indicator_id: int = Field(..., description="indicator identifier", examples=[1])
+    name_full: str = Field(
+        ...,
+        description="indicator unit full name",
+        examples=["Общее количество людей, постоянно проживающих на территории"],
+    )
+    measurement_unit_name: str | None = Field(..., description="measurement unit name", examples=["Количество людей"])
+    value: float = Field(..., description="indicator value for scenario at time", examples=[23.5])
+    comment: str | None = Field(None, description="comment for indicator value", examples=["--"])

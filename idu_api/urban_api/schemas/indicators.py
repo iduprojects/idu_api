@@ -11,7 +11,7 @@ from idu_api.urban_api.dto import (
     IndicatorsGroupDTO,
     IndicatorValueDTO,
     MeasurementUnitDTO,
-    ProjectsIndicatorValueDTO,
+    ProjectIndicatorValueDTO,
 )
 from idu_api.urban_api.schemas.short_models import ShortScenario, ShortTerritory
 
@@ -299,7 +299,7 @@ class IndicatorValuePost(BaseModel):
         return value_type
 
 
-class ProjectsIndicatorValue(BaseModel):
+class ProjectIndicatorValue(BaseModel):
     """Project indicator value with all its attributes."""
 
     indicator: ShortIndicatorInfo
@@ -324,7 +324,7 @@ class ProjectsIndicatorValue(BaseModel):
     )
 
     @classmethod
-    def from_dto(cls, dto: ProjectsIndicatorValueDTO) -> "ProjectsIndicatorValue":
+    def from_dto(cls, dto: ProjectIndicatorValueDTO) -> "ProjectIndicatorValue":
         """
         Construct from DTO.
         """
@@ -361,7 +361,7 @@ class ProjectsIndicatorValue(BaseModel):
         )
 
 
-class ProjectsIndicatorValuePost(BaseModel):
+class ProjectIndicatorValuePost(BaseModel):
     """Project indicator value schema for POST requests."""
 
     indicator_id: int = Field(..., description="indicator identifier", examples=[1])
@@ -384,7 +384,7 @@ class ProjectsIndicatorValuePost(BaseModel):
     )
 
 
-class ProjectsIndicatorValuePut(BaseModel):
+class ProjectIndicatorValuePut(BaseModel):
     """Project indicator value schema for PUT requests."""
 
     value: float = Field(..., description="indicator value for territory at time", examples=[23.5])
@@ -399,7 +399,7 @@ class ProjectsIndicatorValuePut(BaseModel):
     )
 
 
-class ProjectsIndicatorValuePatch(BaseModel):
+class ProjectIndicatorValuePatch(BaseModel):
     """Project indicator value schema for PATCH requests."""
 
     value: float | None = Field(None, description="indicator value for territory at time", examples=[23.5])

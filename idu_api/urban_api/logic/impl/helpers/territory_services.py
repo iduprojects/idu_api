@@ -136,7 +136,7 @@ async def get_services_by_territory_id_from_db(
 
     if service_type_id is not None and urban_function_id is not None:
         raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)
-    elif service_type_id is not None:
+    if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
     elif urban_function_id is not None:
         functions_cte = (
@@ -238,7 +238,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
 
     if service_type_id is not None and urban_function_id is not None:
         raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)
-    elif service_type_id is not None:
+    if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
     elif urban_function_id is not None:
         functions_cte = (
