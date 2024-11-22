@@ -260,7 +260,7 @@ async def add_physical_object_with_geometry_to_db(
 async def put_physical_object_to_db(
     conn: AsyncConnection, physical_object: PhysicalObjectsDataPut, physical_object_id: int
 ) -> PhysicalObjectDataDTO:
-    """Put physical object."""
+    """Update physical object by given all its attributes."""
 
     statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
     requested_physical_object = (await conn.execute(statement)).one_or_none()
@@ -281,7 +281,7 @@ async def put_physical_object_to_db(
             physical_object_type_id=physical_object.physical_object_type_id,
             name=physical_object.name,
             properties=physical_object.properties,
-            updated_at=datetime.utcnow(),
+            updated_at=datetime.now(timezone.utc),
         )
         .returning(physical_objects_data)
     )
@@ -295,7 +295,7 @@ async def put_physical_object_to_db(
 async def patch_physical_object_to_db(
     conn: AsyncConnection, physical_object: PhysicalObjectsDataPatch, physical_object_id: int
 ) -> PhysicalObjectDataDTO:
-    """Patch physical object."""
+    """Update scenario physical object by only given attributes."""
 
     statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
     requested_physical_object = (await conn.execute(statement)).one_or_none()

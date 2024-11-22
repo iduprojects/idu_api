@@ -5,7 +5,15 @@ import io
 import zipfile
 from datetime import datetime, timezone
 
-from geoalchemy2.functions import ST_AsGeoJSON, ST_Centroid, ST_GeomFromText, ST_Intersection, ST_Intersects, ST_Within
+from geoalchemy2.functions import (
+    ST_Area,
+    ST_AsGeoJSON,
+    ST_Centroid,
+    ST_GeomFromText,
+    ST_Intersection,
+    ST_Intersects,
+    ST_Within,
+)
 from PIL import Image
 from sqlalchemy import cast, delete, insert, or_, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
@@ -386,8 +394,9 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
 
     # TODO: get geometries and urban objects from regional scenario
 
-    # 2. Find all objects for territories from the first step (partially included)
+    # 2. Find all objects for territories from the first step (partially included at given percent)
     # where the geometry is not completely included in the passed
+    area_percent = 0.10
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .select_from(
@@ -408,6 +417,8 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
             object_geometries_data.c.territory_id.in_(select(territories_intersecting_only)),
             ST_Intersects(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery()),
             ~ST_Within(select(given_geometry).scalar_subquery(), object_geometries_data.c.geometry),
+            ST_Area(ST_Intersection(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery()))
+            >= area_percent * ST_Area(object_geometries_data.c.geometry),
             physical_object_types_dict.c.physical_object_function_id != 1,  # TODO: remove hardcode to skip buildings
         )
         .distinct()

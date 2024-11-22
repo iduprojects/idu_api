@@ -4,7 +4,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
-from idu_api.urban_api.dto import ObjectGeometryDTO
+from idu_api.urban_api.dto import ObjectGeometryDTO, ScenarioGeometryDTO
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
 from idu_api.urban_api.schemas.short_models import (
     ShortPhysicalObject,
@@ -43,6 +43,29 @@ class ObjectGeometries(BaseModel):
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
             created_at=dto.created_at,
             updated_at=dto.updated_at,
+        )
+
+
+class ScenarioObjectGeometry(ObjectGeometries):
+    """Object geometry with all its attributes."""
+
+    is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
+
+    @classmethod
+    def from_dto(cls, dto: ScenarioGeometryDTO) -> "ScenarioObjectGeometry":
+        """
+        Construct from DTO.
+        """
+        return cls(
+            object_geometry_id=dto.object_geometry_id,
+            territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
+            address=dto.address,
+            osm_id=dto.osm_id,
+            geometry=Geometry.from_shapely_geometry(dto.geometry),
+            centre_point=Geometry.from_shapely_geometry(dto.centre_point),
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+            is_scenario_object=dto.is_scenario_object,
         )
 
 

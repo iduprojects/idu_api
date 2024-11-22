@@ -136,6 +136,22 @@ class ServicesDataPost(BaseModel):
     )
 
 
+class ScenarioServicePost(BaseModel):
+    physical_object_id: int = Field(..., examples=[1])
+    is_scenario_physical_object: bool = Field(..., description="to determine scenario object")
+    object_geometry_id: int = Field(..., examples=[1])
+    is_scenario_geometry: bool = Field(..., description="to determine scenario object")
+    service_type_id: int = Field(..., examples=[1])
+    territory_type_id: int | None = Field(None, examples=[1])
+    name: str | None = Field(None, description="service name", examples=["--"])
+    capacity_real: int | None = Field(None, examples=[1])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="service additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
+
+
 class ServicesDataPut(BaseModel):
     service_type_id: int = Field(..., examples=[1])
     territory_type_id: int | None = Field(..., examples=[1])

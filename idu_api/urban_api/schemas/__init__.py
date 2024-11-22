@@ -45,6 +45,7 @@ from .object_geometries import (
     ObjectGeometriesPut,
     ScenarioAllObjects,
     ScenarioGeometryAttributes,
+    ScenarioObjectGeometry,
 )
 from .pages import Page
 from .physical_object_types import (
@@ -95,6 +96,7 @@ from .service_types import (
 )
 from .services import (
     ScenarioService,
+    ScenarioServicePost,
     ServicesCountCapacity,
     ServicesData,
     ServicesDataPatch,
@@ -136,6 +138,7 @@ __all__ = [
     "ServicesData",
     "ServicesDataPatch",
     "ServicesDataPost",
+    "ScenarioServicePost",
     "ServicesDataPut",
     "ServicesDataWithGeometry",
     "ServiceWithTerritories",
@@ -215,4 +218,5 @@ __all__ = [
     "ScenarioAllObjects",
     "ScenarioPhysicalObject",
     "ScenarioService",
+    "ScenarioObjectGeometry",
 ]

@@ -15,14 +15,18 @@ from idu_api.urban_api.dto import (
     ScenarioGeometryWithAllObjectsDTO,
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
+    ScenarioUrbanObjectDTO,
     ServiceDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
+    delete_object_geometry_in_db,
     get_context_geometries_by_scenario_id_from_db,
     get_context_geometries_with_all_objects_by_scenario_id_from_db,
     get_geometries_by_scenario_id_from_db,
     get_geometries_with_all_objects_by_scenario_id_from_db,
+    patch_object_geometry_to_db,
+    put_object_geometry_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
     add_project_indicator_value_to_db,
@@ -52,8 +56,12 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     upload_project_image_to_minio,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
+    add_physical_object_with_geometry_to_db,
+    delete_physical_object_in_db,
     get_context_physical_objects_by_scenario_id_from_db,
     get_physical_objects_by_scenario_id,
+    patch_physical_object_to_db,
+    put_physical_object_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     add_new_scenario_to_db,
@@ -64,20 +72,32 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     put_scenario_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_services import (
+    add_service_to_db,
+    delete_service_in_db,
     get_context_services_by_scenario_id_from_db,
     get_services_by_scenario_id,
+    patch_service_to_db,
+    put_service_to_db,
 )
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
+    ObjectGeometriesPatch,
+    ObjectGeometriesPut,
+    PhysicalObjectsDataPatch,
+    PhysicalObjectsDataPut,
+    PhysicalObjectWithGeometryPost,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
     ProjectsIndicatorValuePatch,
     ProjectsIndicatorValuePost,
     ProjectsIndicatorValuePut,
+    ScenarioServicePost,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
+    ServicesDataPatch,
+    ServicesDataPut,
 )
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
@@ -199,6 +219,49 @@ class UserProjectServiceImpl(UserProjectService):
             physical_object_function_id,
         )
 
+    async def add_physical_object_with_geometry(
+        self,
+        physical_object: PhysicalObjectWithGeometryPost,
+        scenario_id: int,
+        user_id: str,
+    ) -> ScenarioUrbanObjectDTO:
+        return await add_physical_object_with_geometry_to_db(self._conn, physical_object, scenario_id, user_id)
+
+    async def put_physical_object(
+        self,
+        physical_object: PhysicalObjectsDataPut,
+        scenario_id: int,
+        physical_object_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioPhysicalObjectDTO:
+        return await put_physical_object_to_db(
+            self._conn, physical_object, scenario_id, physical_object_id, is_scenario_object, user_id
+        )
+
+    async def patch_physical_object(
+        self,
+        physical_object: PhysicalObjectsDataPatch,
+        scenario_id: int,
+        physical_object_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioPhysicalObjectDTO:
+        return await patch_physical_object_to_db(
+            self._conn, physical_object, scenario_id, physical_object_id, is_scenario_object, user_id
+        )
+
+    async def delete_physical_object(
+        self,
+        scenario_id: int,
+        physical_object_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> dict:
+        return await delete_physical_object_in_db(
+            self._conn, scenario_id, physical_object_id, is_scenario_object, user_id
+        )
+
     async def get_services_by_scenario_id(
         self,
         scenario_id: int,
@@ -228,6 +291,38 @@ class UserProjectServiceImpl(UserProjectService):
             service_type_id,
             urban_function_id,
         )
+
+    async def add_service(self, service: ScenarioServicePost, scenario_id: int, user_id: str) -> ScenarioUrbanObjectDTO:
+        return await add_service_to_db(self._conn, service, scenario_id, user_id)
+
+    async def put_service(
+        self,
+        service: ServicesDataPut,
+        scenario_id: int,
+        service_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioServiceDTO:
+        return await put_service_to_db(self._conn, service, scenario_id, service_id, is_scenario_object, user_id)
+
+    async def patch_service(
+        self,
+        service: ServicesDataPatch,
+        scenario_id: int,
+        service_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioServiceDTO:
+        return await patch_service_to_db(self._conn, service, scenario_id, service_id, is_scenario_object, user_id)
+
+    async def delete_service(
+        self,
+        scenario_id: int,
+        service_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> dict:
+        return await delete_service_in_db(self._conn, scenario_id, service_id, is_scenario_object, user_id)
 
     async def get_geometries_by_scenario_id(
         self,
@@ -295,6 +390,41 @@ class UserProjectServiceImpl(UserProjectService):
             service_type_id,
             physical_object_function_id,
             urban_function_id,
+        )
+
+    async def put_object_geometry(
+        self,
+        object_geometry: ObjectGeometriesPut,
+        scenario_id: int,
+        object_geometry_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioGeometryDTO:
+        return await put_object_geometry_to_db(
+            self._conn, object_geometry, scenario_id, object_geometry_id, is_scenario_object, user_id
+        )
+
+    async def patch_object_geometry(
+        self,
+        object_geometry: ObjectGeometriesPatch,
+        scenario_id: int,
+        object_geometry_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> ScenarioGeometryDTO:
+        return await patch_object_geometry_to_db(
+            self._conn, object_geometry, scenario_id, object_geometry_id, is_scenario_object, user_id
+        )
+
+    async def delete_object_geometry(
+        self,
+        scenario_id: int,
+        object_geometry_id: int,
+        is_scenario_object: bool,
+        user_id: str,
+    ) -> dict:
+        return await delete_object_geometry_in_db(
+            self._conn, scenario_id, object_geometry_id, is_scenario_object, user_id
         )
 
     async def get_projects_indicators_values_by_scenario_id(

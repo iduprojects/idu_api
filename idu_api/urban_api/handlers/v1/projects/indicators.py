@@ -50,7 +50,7 @@ async def get_project_indicators_values_by_scenario_id(
 
 
 @projects_router.get(
-    "/scenarios/indicator_values/{indicator_value_id}",
+    "/scenarios/indicator_values/{indicators_value_id}",
     response_model=ProjectsIndicatorValue,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
@@ -87,7 +87,7 @@ async def add_project_indicator(
 
 
 @projects_router.put(
-    "/scenarios/indicators_values/{indicator_value_id}",
+    "/scenarios/indicators_values/{indicators_value_id}",
     response_model=ProjectsIndicatorValue,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
@@ -145,7 +145,7 @@ async def delete_projects_indicators_values_by_scenario_id(
 
 
 @projects_router.delete(
-    "/scenarios/indicator_values/{indicator_value_id}",
+    "/scenarios/indicators_values/{indicator_value_id}",
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )

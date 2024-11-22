@@ -17,7 +17,7 @@ from idu_api.common.db.entities import (
     territories_data,
 )
 from idu_api.urban_api.dto import ProjectsIndicatorValueDTO
-from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.schemas import ProjectsIndicatorValuePatch, ProjectsIndicatorValuePost, ProjectsIndicatorValuePut
 
