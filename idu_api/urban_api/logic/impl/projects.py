@@ -5,10 +5,11 @@ import io
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
+    HexagonWithIndicatorsDTO,
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
     ProjectDTO,
-    ProjectsIndicatorValueDTO,
+    ProjectIndicatorValueDTO,
     ProjectTerritoryDTO,
     ScenarioDTO,
     ScenarioGeometryDTO,
@@ -28,6 +29,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
     add_project_indicator_value_to_db,
     delete_project_indicator_value_by_id_from_db,
     delete_projects_indicators_values_by_scenario_id_from_db,
+    get_hexagons_with_indicators_by_scenario_id_from_db,
     get_project_indicator_value_by_id_from_db,
     get_projects_indicators_values_by_scenario_id_from_db,
     patch_project_indicator_value_to_db,
@@ -69,12 +71,12 @@ from idu_api.urban_api.logic.impl.helpers.projects_services import (
 )
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
+    ProjectIndicatorValuePatch,
+    ProjectIndicatorValuePost,
+    ProjectIndicatorValuePut,
     ProjectPatch,
     ProjectPost,
     ProjectPut,
-    ProjectsIndicatorValuePatch,
-    ProjectsIndicatorValuePost,
-    ProjectsIndicatorValuePut,
     ScenariosPatch,
     ScenariosPost,
     ScenariosPut,
@@ -305,7 +307,7 @@ class UserProjectServiceImpl(UserProjectService):
         territory_id: int | None,
         hexagon_id: int | None,
         user_id: str,
-    ) -> list[ProjectsIndicatorValueDTO]:
+    ) -> list[ProjectIndicatorValueDTO]:
         return await get_projects_indicators_values_by_scenario_id_from_db(
             self._conn,
             scenario_id,
@@ -318,22 +320,22 @@ class UserProjectServiceImpl(UserProjectService):
 
     async def get_project_indicator_value_by_id(
         self, indicator_value_id: int, user_id: str
-    ) -> ProjectsIndicatorValueDTO:
+    ) -> ProjectIndicatorValueDTO:
         return await get_project_indicator_value_by_id_from_db(self._conn, indicator_value_id, user_id)
 
     async def add_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorValuePost, user_id: str
-    ) -> ProjectsIndicatorValueDTO:
+        self, projects_indicator: ProjectIndicatorValuePost, user_id: str
+    ) -> ProjectIndicatorValueDTO:
         return await add_project_indicator_value_to_db(self._conn, projects_indicator, user_id)
 
     async def put_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorValuePut, indicator_value_id: int, user_id: str
-    ) -> ProjectsIndicatorValueDTO:
+        self, projects_indicator: ProjectIndicatorValuePut, indicator_value_id: int, user_id: str
+    ) -> ProjectIndicatorValueDTO:
         return await put_project_indicator_value_to_db(self._conn, projects_indicator, indicator_value_id, user_id)
 
     async def patch_projects_indicator_value(
-        self, projects_indicator: ProjectsIndicatorValuePatch, indicator_value_id: int, user_id: str
-    ) -> ProjectsIndicatorValueDTO:
+        self, projects_indicator: ProjectIndicatorValuePatch, indicator_value_id: int, user_id: str
+    ) -> ProjectIndicatorValueDTO:
         return await patch_project_indicator_value_to_db(self._conn, projects_indicator, indicator_value_id, user_id)
 
     async def delete_projects_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
@@ -341,3 +343,14 @@ class UserProjectServiceImpl(UserProjectService):
 
     async def delete_project_indicator_value_by_id(self, indicator_value_id: int, user_id: str) -> dict:
         return await delete_project_indicator_value_by_id_from_db(self._conn, indicator_value_id, user_id)
+
+    async def get_hexagons_with_indicators_by_scenario_id(
+        self,
+        scenario_id: int,
+        indicator_ids: str | None,
+        indicators_group_id: int | None,
+        user_id: str,
+    ) -> list[HexagonWithIndicatorsDTO]:
+        return await get_hexagons_with_indicators_by_scenario_id_from_db(
+            self._conn, scenario_id, indicator_ids, indicators_group_id, user_id
+        )

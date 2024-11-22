@@ -11,7 +11,7 @@ from .functional_zones import (
     FunctionalZoneTypePost,
 )
 from .health_check import PingResponse
-from .hexagons import Hexagon, HexagonPost
+from .hexagons import Hexagon, HexagonAttributes, HexagonPost, HexagonWithIndicators
 from .indicators import (
     Indicator,
     IndicatorsGroup,
@@ -23,10 +23,10 @@ from .indicators import (
     IndicatorValuePost,
     MeasurementUnit,
     MeasurementUnitPost,
-    ProjectsIndicatorValue,
-    ProjectsIndicatorValuePatch,
-    ProjectsIndicatorValuePost,
-    ProjectsIndicatorValuePut,
+    ProjectIndicatorValue,
+    ProjectIndicatorValuePatch,
+    ProjectIndicatorValuePost,
+    ProjectIndicatorValuePut,
 )
 from .living_buildings import (
     LivingBuildingsData,
@@ -204,10 +204,10 @@ __all__ = [
     "ProfilesReclamationDataPost",
     "ProfilesReclamationDataPut",
     "ProfilesReclamationDataMatrix",
-    "ProjectsIndicatorValue",
-    "ProjectsIndicatorValuePatch",
-    "ProjectsIndicatorValuePost",
-    "ProjectsIndicatorValuePut",
+    "ProjectIndicatorValue",
+    "ProjectIndicatorValuePatch",
+    "ProjectIndicatorValuePost",
+    "ProjectIndicatorValuePut",
     "MinioImageURL",
     "MinioImagesURL",
     "GeometryAttributes",
@@ -218,4 +218,6 @@ __all__ = [
     "ScenarioService",
     "Hexagon",
     "HexagonPost",
+    "HexagonAttributes",
+    "HexagonWithIndicators",
 ]

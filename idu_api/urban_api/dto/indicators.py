@@ -52,7 +52,16 @@ class IndicatorsGroupDTO:
 
 
 @dataclass(frozen=True)
-class ProjectsIndicatorValueDTO:
+class ShortProjectIndicatorValueDTO:
+    indicator_id: int
+    name_full: str
+    measurement_unit_name: str | None
+    value: int
+    comment: str | None
+
+
+@dataclass(frozen=True)
+class ProjectIndicatorValueDTO:
     indicator_value_id: int
     indicator_id: int
     name_full: str

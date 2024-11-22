@@ -279,7 +279,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         """Get hexagons for a given territory."""
 
     @abc.abstractmethod
-    async def add_hexagons(self, territory_id: int, hexagons: list[HexagonPost]) -> list[HexagonDTO]:
+    async def add_hexagons_by_territory_id(self, territory_id: int, hexagons: list[HexagonPost]) -> list[HexagonDTO]:
         """Create hexagons for a given territory."""
 
     @abc.abstractmethod
