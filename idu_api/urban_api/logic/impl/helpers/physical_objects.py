@@ -676,6 +676,7 @@ async def get_physical_object_geometries_from_db(
         select(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
@@ -687,6 +688,9 @@ async def get_physical_object_geometries_from_db(
             urban_objects_data.join(
                 object_geometries_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            ).join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
         )
         .where(urban_objects_data.c.physical_object_id == physical_object_id)
