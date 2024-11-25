@@ -79,10 +79,6 @@ def get_app(prefix: str = "/api") -> FastAPI:
     auth_client = AuthenticationClient(0, 0, False, "")
 
     application.add_middleware(
-        ExceptionHandlerMiddleware,
-        debug=[False],  # reinitialized on startup
-    )
-    application.add_middleware(
         PassServicesDependencies,
         connection_manager=connection_manager,  # reinitialized on startup
         functional_zones_service=FunctionalZonesServiceImpl,
@@ -99,6 +95,10 @@ def get_app(prefix: str = "/api") -> FastAPI:
     application.add_middleware(
         AuthenticationMiddleware,
         auth_client=auth_client,  # reinitialized on startup
+    )
+    application.add_middleware(
+        ExceptionHandlerMiddleware,
+        debug=[False],  # reinitialized on startup
     )
 
     return application

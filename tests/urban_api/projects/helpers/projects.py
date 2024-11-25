@@ -5,9 +5,7 @@ import pytest
 
 
 @pytest.fixture
-def user_project(
-    urban_api_host, expired_auth_token, project_post_req
-) -> dict[str, Any]:  # pylint: disable=redefined-outer-name
+def user_project(urban_api_host, expired_auth_token, project_post_req) -> dict[str, Any]:
     headers = {"Authorization": f"Bearer {expired_auth_token}"}
 
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
@@ -23,11 +21,11 @@ def expired_auth_token() -> str:
 
     return (
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-        "eyJzdWIiOiJhZG1pbkB0ZXN0LnJ1IiwiaWF0IjoxNzI1MzU0MDAwLCJleHAiOjE3MjUzNTUwMDAsImNpdGllc19pZCI6WzEsMiw1LDEwLDEzLD"
-        "E0LDE3LDE5LDIwLDIxLDIyLDIzLDI0LDE4LDI1LDI2LDI4LDI5XSwic2NvcGVzIjpbInNlcnZpY2VzLmhpZXJhcmNoeV9vYmplY3RzOmRhdGFf"
-        "ZWRpdCIsImRhdGEuY2l0eV9vYmplY3RzOmRhdGFfZWRpdCIsInBvcHVsYXRpb24ubGl2aW5nX21vZGVsOmRhdGFfZWRpdCJdLCJpc19zdXBlcn"
-        "VzZXIiOnRydWV9."
-        "djlrYQ8mG3r_FH9k6NTJL2swAovePPj9ZzvMlDxDH-g"
+        "eyJzdWIiOiJhZG1pbkB0ZXN0LnJ1IiwiaWF0IjoxNzI5OTIyMTA1LCJleHAiOjE3Mjk5MjM5MDUsImNpdGllc19pZCI6WzEsMiw1LDEwL"
+        "DEzLDE0LDE3LDE5LDIwLDIxLDIyLDIzLDI0LDE4LDI1LDI2LDI4LDI5XSwic2NvcGVzIjpbInNlcnZpY2VzLmhpZXJhcmNoeV9vYmplY3"
+        "RzOmRhdGFfZWRpdCIsImRhdGEuY2l0eV9vYmplY3RzOmRhdGFfZWRpdCIsInBvcHVsYXRpb24ubGl2aW5nX21vZGVsOmRhdGFfZWRpdCJ"
+        "dLCJpc19zdXBlcnVzZXIiOnRydWV9."
+        "bpIr04RCQFOLu283dYR6kAGe8eKT1YCaAS-UQtD25Gk"
     )
 
 
@@ -37,44 +35,14 @@ def project_post_req() -> dict[str, Any]:
 
     return {
         "name": "Test Project Name",
-        "project_territory_info": {
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [[[30.22, 59.86], [30.22, 59.85], [30.25, 59.85], [30.25, 59.86], [30.22, 59.86]]],
-            },
-            "centre_point": {"type": "Point", "coordinates": [30.22, 59.86]},
-            "properties": {"attribute_name": "attribute_value"},
-        },
+        "territory_id": 1,
         "description": "Test Project Description",
         "public": True,
-        "image_url": "url",
-    }
-
-
-@pytest.fixture
-def project_put_req() -> dict[str, Any]:
-    """PUT request template for user projects data."""
-
-    return {
-        "name": "New Project Name",
-        "project_territory_info": {
+        "is_regional": False,
+        "territory": {
             "geometry": {
                 "type": "Polygon",
                 "coordinates": [[[30.22, 59.86], [30.22, 59.85], [30.25, 59.85], [30.25, 59.86], [30.22, 59.86]]],
             },
-            "centre_point": {"type": "Point", "coordinates": [30.22, 59.86]},
-            "properties": {"new_attribute_name": "new_attribute_value"},
         },
-        "description": "New Project Description",
-        "public": False,
-        "image_url": "new_url",
-    }
-
-
-@pytest.fixture
-def project_patch_req() -> dict[str, str]:
-    """PATCH request template for user projects data."""
-
-    return {
-        "name": "New Patched Project Name",
     }

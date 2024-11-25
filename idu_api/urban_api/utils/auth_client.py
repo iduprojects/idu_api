@@ -9,6 +9,12 @@ from cachetools import TTLCache
 from fastapi import Request
 
 from idu_api.urban_api.dto.users import UserDTO
+from idu_api.urban_api.exceptions.utils.auth import (
+    AuthServiceUnavailable,
+    ExpiredToken,
+    InvalidTokenSignature,
+    JWTDecodeError,
+)
 
 
 class AuthenticationClient:
@@ -22,10 +28,9 @@ class AuthenticationClient:
     def decode_token(token: str) -> dict:
         """Decode the JWT token without verification to extract payload."""
         try:
-            payload = json.loads(b64decode(token.split(".")[1]))
-            return payload
+            return json.loads(b64decode(token.split(".")[1]))
         except Exception as exc:
-            raise ValueError("Invalid JWT token") from exc
+            raise JWTDecodeError(token) from exc
 
     @staticmethod
     def is_token_expired(payload: dict) -> bool:
@@ -56,9 +61,9 @@ class AuthenticationClient:
             async with httpx.AsyncClient() as client:
                 response = await client.get(self._auth_url, headers={"Authorization": f"Bearer {token}"})
             if response.status_code != 200:
-                raise ValueError("Invalid token signature")
+                raise InvalidTokenSignature(token)
         except Exception as exc:
-            raise ValueError("Error verifying token signature") from exc
+            raise AuthServiceUnavailable() from exc
 
     async def get_user_from_token(self, token: str) -> UserDTO:
         """Main method that processes the token and returns UserDTO."""
@@ -72,7 +77,7 @@ class AuthenticationClient:
         # Optionally validate the token online
         if self._validate_token:
             if self.is_token_expired(payload):
-                raise ValueError("Token has expired")
+                raise ExpiredToken(token)
             await self.validate_token_online(token)
 
         user_dto = UserDTO(id=payload.get("sub"), is_active=payload.get("active"))
