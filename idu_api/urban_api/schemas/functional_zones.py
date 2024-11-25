@@ -42,6 +42,7 @@ class FunctionalZoneData(BaseModel):
     functional_zone_id: int = Field(..., description="functional zone identifier", examples=[1])
     territory: ShortTerritory
     functional_zone_type: FunctionalZoneTypeBasic
+    name: str | None = Field(..., description="functional zone name", examples=[1])
     geometry: Geometry
     properties: dict[str, Any] = Field(
         default_factory=dict,
@@ -64,6 +65,7 @@ class FunctionalZoneData(BaseModel):
                 id=dto.functional_zone_type_id,
                 name=dto.functional_zone_type_name,
             ),
+            name=dto.name,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             properties=dto.properties,
             created_at=dto.created_at,
@@ -76,6 +78,7 @@ class FunctionalZoneDataPost(NotPointGeometryValidationModel):
 
     territory_id: int = Field(..., description="territory identifier where functional zone is", examples=[1])
     functional_zone_type_id: int = Field(..., description="functional zone type identifier", examples=[1])
+    name: str | None = Field(None, description="functional zone name", examples=[1])
     geometry: Geometry
     properties: dict[str, Any] = Field(
         default_factory=dict,
@@ -89,6 +92,7 @@ class FunctionalZoneDataPut(NotPointGeometryValidationModel):
 
     territory_id: int = Field(..., description="territory identifier where functional zone is", examples=[1])
     functional_zone_type_id: int = Field(..., description="functional zone type identifier", examples=[1])
+    name: str = Field(..., description="functional zone name", examples=[1])
     geometry: Geometry
     properties: dict[str, Any] = Field(
         ...,
@@ -102,6 +106,7 @@ class FunctionalZoneDataPatch(NotPointGeometryValidationModel):
 
     territory_id: int | None = Field(None, description="territory identifier where functional zone is", examples=[1])
     functional_zone_type_id: int | None = Field(None, description="functional zone type identifier", examples=[1])
+    name: str | None = Field(None, description="functional zone name", examples=[1])
     geometry: Geometry | None = None
     properties: dict[str, Any] | None = Field(
         default_factory=None,
@@ -124,6 +129,7 @@ class ProjectsProfile(BaseModel):
     profile_id: int = Field(..., description="profile identifier", examples=[1])
     scenario: ShortScenario
     functional_zone_type: FunctionalZoneTypeBasic
+    name: str | None = Field(..., description="functional zone name", examples=[1])
     geometry: Geometry
     properties: dict[str, Any] = Field(
         default_factory=dict,
@@ -144,6 +150,7 @@ class ProjectsProfile(BaseModel):
                 id=dto.functional_zone_type_id,
                 name=dto.functional_zone_type_name,
             ),
+            name=dto.name,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             properties=dto.properties,
             created_at=dto.created_at,
@@ -159,6 +166,7 @@ class ProjectsProfilePost(NotPointGeometryValidationModel):
     functional_zone_type_id: int = Field(
         ..., description="functional zone type identifier for the profile", examples=[1]
     )
+    name: str | None = Field(None, description="functional zone name", examples=[1])
     geometry: Geometry
     properties: dict[str, Any] = Field(
         default_factory=dict,
@@ -175,6 +183,7 @@ class ProjectsProfilePut(NotPointGeometryValidationModel):
     functional_zone_type_id: int = Field(
         ..., description="functional zone type identifier for the profile", examples=[1]
     )
+    name: str = Field(..., description="functional zone name", examples=[1])
     geometry: Geometry
     properties: dict[str, Any] = Field(
         ...,
@@ -191,6 +200,7 @@ class ProjectsProfilePatch(NotPointGeometryValidationModel):
     functional_zone_type_id: int | None = Field(
         None, description="functional zone type identifier for the profile", examples=[1]
     )
+    name: str | None = Field(None, description="functional zone name", examples=[1])
     geometry: Geometry | None = None
     properties: dict[str, Any] | None = Field(
         default_factory=None,

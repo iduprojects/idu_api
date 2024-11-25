@@ -22,6 +22,7 @@ class FunctionalZoneDataDTO:
     territory_name: str
     functional_zone_type_id: int
     functional_zone_type_name: str
+    name: str | None
     geometry: geom.Polygon | geom.MultiPolygon
     properties: dict[str, Any]
     created_at: datetime
@@ -39,6 +40,7 @@ class ProjectsProfileDTO:
     scenario_name: str
     functional_zone_type_id: int
     functional_zone_type_name: str
+    name: str | None
     geometry: geom.Polygon | geom.MultiPolygon
     properties: dict[str, Any]
     created_at: datetime

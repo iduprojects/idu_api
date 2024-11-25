@@ -7,7 +7,7 @@ from sqlalchemy import cast, delete, select
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from idu_api.common.db.entities import functional_zones_data, territories_data
+from idu_api.common.db.entities import functional_zone_types_dict, functional_zones_data, territories_data
 from idu_api.urban_api.dto import FunctionalZoneDataDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.territory_objects import check_territory_existence
@@ -27,11 +27,22 @@ async def get_functional_zones_by_territory_id_from_db(
     statement = select(
         functional_zones_data.c.functional_zone_id,
         functional_zones_data.c.territory_id,
+        territories_data.c.name.label("territory_name"),
         functional_zones_data.c.functional_zone_type_id,
+        functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+        functional_zones_data.c.name,
         cast(ST_AsGeoJSON(functional_zones_data.c.geometry), JSONB).label("geometry"),
         functional_zones_data.c.properties,
         functional_zones_data.c.created_at,
         functional_zones_data.c.updated_at,
+    ).select_from(
+        functional_zones_data.join(
+            territories_data,
+            territories_data.c.territory_id == functional_zones_data.c.territory_id,
+        ).join(
+            functional_zone_types_dict,
+            functional_zone_types_dict.c.functional_zone_type_id == functional_zones_data.c.functional_zone_type_id,
+        )
     )
 
     if functional_zone_type_id is not None:

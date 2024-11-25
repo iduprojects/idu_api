@@ -105,8 +105,7 @@ class PhysicalObjectsWithTerritory(BaseModel):
             name=dto.name,
             properties=dto.properties,
             territories=[
-                ShortTerritory(territory_id=territory["territory_id"], name=territory["name"])
-                for territory in dto.territories
+                ShortTerritory(id=territory["territory_id"], name=territory["name"]) for territory in dto.territories
             ],
             created_at=dto.created_at,
             updated_at=dto.updated_at,

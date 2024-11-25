@@ -346,17 +346,32 @@ async def get_profiles_reclamation_data_by_source_id_from_db(
 
 
 async def get_functional_zone_by_id(conn: AsyncConnection, functional_zone_id: int) -> FunctionalZoneDataDTO:
-    """Get functional zone by id."""
+    """Get functional zone by identifier."""
 
-    statement = select(
-        functional_zones_data.c.functional_zone_id,
-        functional_zones_data.c.territory_id,
-        functional_zones_data.c.functional_zone_type_id,
-        cast(ST_AsGeoJSON(functional_zones_data.c.geometry), JSONB).label("geometry"),
-        functional_zones_data.c.properties,
-        functional_zones_data.c.created_at,
-        functional_zones_data.c.updated_at,
-    ).where(functional_zones_data.c.functional_zone_id == functional_zone_id)
+    statement = (
+        select(
+            functional_zones_data.c.functional_zone_id,
+            functional_zones_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+            functional_zones_data.c.functional_zone_type_id,
+            functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+            functional_zones_data.c.name,
+            cast(ST_AsGeoJSON(functional_zones_data.c.geometry), JSONB).label("geometry"),
+            functional_zones_data.c.properties,
+            functional_zones_data.c.created_at,
+            functional_zones_data.c.updated_at,
+        )
+        .select_from(
+            functional_zones_data.join(
+                territories_data,
+                territories_data.c.territory_id == functional_zones_data.c.territory_id,
+            ).join(
+                functional_zone_types_dict,
+                functional_zone_types_dict.c.functional_zone_type_id == functional_zones_data.c.functional_zone_type_id,
+            )
+        )
+        .where(functional_zones_data.c.functional_zone_id == functional_zone_id)
+    )
 
     result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
@@ -382,6 +397,7 @@ async def add_functional_zone_to_db(
         insert(functional_zones_data)
         .values(
             territory_id=functional_zone.territory_id,
+            name=functional_zone.name,
             functional_zone_type_id=functional_zone.functional_zone_type_id,
             geometry=ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326")),
             properties=functional_zone.properties,
@@ -418,6 +434,7 @@ async def put_functional_zone_to_db(
         .values(
             territory_id=functional_zone.territory_id,
             functional_zone_type_id=functional_zone.functional_zone_type_id,
+            name=functional_zone.name,
             geometry=ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326")),
             properties=functional_zone.properties,
             updated_at=datetime.now(timezone.utc),
