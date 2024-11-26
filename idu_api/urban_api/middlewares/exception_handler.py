@@ -39,7 +39,8 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                 error_message,
             )
 
-            error_status = exc.status_code if isinstance(exc, IduApiError) else 500
+            if isinstance(exc, IduApiError):
+                error_status = getattr(exc, "status_code", 500)
 
             logger.debug("{} Traceback:\n{}", error_message, exc, "".join(traceback.format_tb(exc.__traceback__)))
             if self._debug[0]:
