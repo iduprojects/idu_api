@@ -5,9 +5,11 @@ import io
 import zipfile
 from datetime import datetime, timezone
 
+from geoalchemy2 import Geography, Geometry
 from geoalchemy2.functions import (
     ST_Area,
     ST_AsGeoJSON,
+    ST_Buffer,
     ST_Centroid,
     ST_GeomFromText,
     ST_Intersection,
@@ -282,6 +284,20 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
         "given_geometry"
     )
 
+    buffer_meters = 3000
+    buffered_project_geometry = select(
+        cast(
+            ST_Buffer(
+                cast(
+                    select(given_geometry).scalar_subquery(),
+                    Geography(srid=4326),
+                ),
+                buffer_meters,
+            ),
+            Geometry(srid=4326),
+        ).label("geometry")
+    ).alias("buffered_project_geometry")
+
     territories_cte = (
         select(
             territories_data.c.territory_id,
@@ -322,10 +338,15 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
         territories_cte.c.level == (cities_level.c.level - 2),
         ST_Intersects(territories_cte.c.geometry, select(given_geometry).scalar_subquery()),
     )
+    context_territories = select(territories_cte.c.territory_id).where(
+        territories_cte.c.level == (cities_level.c.level - 1),
+        ST_Intersects(territories_cte.c.geometry, select(buffered_project_geometry).scalar_subquery()),
+    )
     project.properties.update(
         {
             "territories": list((await conn.execute(intersecting_territories)).scalars().all()),
             "districts": list((await conn.execute(intersecting_district)).scalars().all()),
+            "context": list((await conn.execute(context_territories)).scalars().all()),
         }
     )
 

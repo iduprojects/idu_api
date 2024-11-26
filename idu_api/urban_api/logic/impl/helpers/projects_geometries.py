@@ -3,10 +3,8 @@
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from geoalchemy2 import Geography, Geometry
 from geoalchemy2.functions import (
     ST_AsGeoJSON,
-    ST_Buffer,
     ST_Centroid,
     ST_GeomFromText,
     ST_Intersection,
@@ -638,80 +636,27 @@ async def get_context_geometries_by_scenario_id_from_db(
     if project.user_id != user_id:
         raise AccessDeniedError(project_id, "project")
 
-    buffer_meters = 3000
-    project_geometry = (
-        select(
-            cast(
-                ST_Buffer(
-                    cast(
-                        projects_territory_data.c.geometry,
-                        Geography(srid=4326),
-                    ),
-                    buffer_meters,
-                ),
-                Geometry(srid=4326),
-            ).label("geometry")
-        )
-        .where(projects_territory_data.c.project_id == project.project_id)
-        .alias("project_geometry")
-    )
-
-    # Step 1. Find all the territories at the `cities_level` - 1 that intersect with the buffered project geometry.
-    territories_cte = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-            territories_data.c.level,
-            territories_data.c.geometry,
-            territories_data.c.is_city,
-        )
-        .where(territories_data.c.territory_id == project.territory_id)
-        .cte(recursive=True)
-    )
-    territories_cte = territories_cte.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-            territories_data.c.level,
-            territories_data.c.geometry,
-            territories_data.c.is_city,
-        ).join(
-            territories_cte,
-            territories_data.c.parent_id == territories_cte.c.territory_id,
-        )
-    )
-    cities_level = (
-        select(territories_cte.c.level)
-        .where(territories_cte.c.is_city.is_(True))
-        .order_by(territories_cte.c.level.desc())
-        .limit(1)
-        .cte(name="cities_level")
-    )
-    intersecting_territories = (
-        select(territories_cte.c.territory_id, territories_cte.c.geometry)
-        .where(
-            territories_cte.c.level == (cities_level.c.level - 1),
-            ST_Intersects(territories_cte.c.geometry, select(project_geometry).scalar_subquery()),
-        )
-        .cte(name="intersecting_territories")
-    )
-    unified_geometry = select(ST_Union(intersecting_territories.c.geometry)).scalar_subquery()
-    all_intersecting_descendants = (
+    context_territories = select(
+        territories_data.c.territory_id,
+        territories_data.c.geometry,
+    ).where(territories_data.c.territory_id.in_(project.properties["context"]))
+    unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
+    all_context_descendants = (
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
         )
-        .where(territories_data.c.territory_id.in_(select(intersecting_territories.c.territory_id)))
+        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
         .cte(name="all_intersecting_descendants", recursive=True)
     )
-    all_intersecting_descendants = all_intersecting_descendants.union_all(
+    all_context_descendants = all_context_descendants.union_all(
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
         ).select_from(
             territories_data.join(
-                all_intersecting_descendants,
-                territories_data.c.parent_id == all_intersecting_descendants.c.territory_id,
+                all_context_descendants,
+                territories_data.c.parent_id == all_context_descendants.c.territory_id,
             )
         )
     )
@@ -748,23 +693,23 @@ async def get_context_geometries_by_scenario_id_from_db(
             object_geometries_data.c.updated_at,
         )
         .select_from(
-            urban_objects_data.join(
-                physical_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            )
-            .join(
-                object_geometries_data,
-                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
-            )
-            .join(
+            object_geometries_data.join(
                 territories_data,
                 territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
+            .join(
+                urban_objects_data,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
             )
             .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
         )
         .where(
             or_(
-                object_geometries_data.c.territory_id.in_(select(all_intersecting_descendants.c.territory_id)),
+                object_geometries_data.c.territory_id.in_(select(all_context_descendants.c.territory_id)),
                 ST_Intersects(object_geometries_data.c.geometry, unified_geometry),
             )
         )
@@ -803,79 +748,28 @@ async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
     if project.user_id != user_id:
         raise AccessDeniedError(project_id, "project")
 
-    buffer_meters = 3000
-    project_geometry = (
-        select(
-            cast(
-                ST_Buffer(
-                    cast(
-                        projects_territory_data.c.geometry,
-                        Geography(srid=4326),
-                    ),
-                    buffer_meters,
-                ),
-                Geometry(srid=4326),
-            ).label("geometry")
-        )
-        .where(projects_territory_data.c.project_id == project.project_id)
-        .alias("project_geometry")
-    )
-
-    # Step 1. Find all the territories at the `cities_level` - 1 that intersect with the buffered project geometry.
-    territories_cte = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-            territories_data.c.level,
-            territories_data.c.geometry,
-            territories_data.c.is_city,
-        )
-        .where(territories_data.c.territory_id == project.territory_id)
-        .cte(recursive=True)
-    )
-    territories_cte = territories_cte.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-            territories_data.c.level,
-            territories_data.c.geometry,
-            territories_data.c.is_city,
-        ).join(
-            territories_cte,
-            territories_data.c.parent_id == territories_cte.c.territory_id,
-        )
-    )
-    cities_level = (
-        select(territories_cte.c.level)
-        .where(territories_cte.c.is_city.is_(True))
-        .order_by(territories_cte.c.level.desc())
-        .limit(1)
-        .cte(name="cities_level")
-    )
-    intersecting_territories = (
-        select(territories_cte.c.territory_id, territories_cte.c.geometry)
-        .where(
-            territories_cte.c.level == (cities_level.c.level - 1),
-            ST_Intersects(territories_cte.c.geometry, select(project_geometry).scalar_subquery()),
-        )
-        .cte(name="intersecting_territories")
-    )
-    unified_geometry = select(ST_Union(intersecting_territories.c.geometry)).scalar_subquery()
-    all_intersecting_descendants = (
+    context_territories = select(
+        territories_data.c.territory_id,
+        territories_data.c.geometry,
+    ).where(territories_data.c.territory_id.in_(project.properties["context"]))
+    unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
+    all_context_descendants = (
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
         )
-        .where(territories_data.c.territory_id.in_(select(intersecting_territories.c.territory_id)))
+        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
         .cte(name="all_intersecting_descendants", recursive=True)
     )
-    all_intersecting_descendants = all_intersecting_descendants.union_all(
+    all_context_descendants = all_context_descendants.union_all(
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
-        ).join(
-            all_intersecting_descendants,
-            territories_data.c.parent_id == all_intersecting_descendants.c.territory_id,
+        ).select_from(
+            territories_data.join(
+                all_context_descendants,
+                territories_data.c.parent_id == all_context_descendants.c.territory_id,
+            )
         )
     )
 
@@ -936,7 +830,7 @@ async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
         )
         .where(
             or_(
-                object_geometries_data.c.territory_id.in_(select(all_intersecting_descendants.c.territory_id)),
+                object_geometries_data.c.territory_id.in_(select(all_context_descendants.c.territory_id)),
                 ST_Intersects(object_geometries_data.c.geometry, unified_geometry),
             )
         )
