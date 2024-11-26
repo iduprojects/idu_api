@@ -30,7 +30,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
             return await call_next(request)
         except Exception as exc:  # pylint: disable=broad-except
             if len(error_message := repr(exc)) > 300:
-                error_message = f"{error_message[:300]}...({len(error_message) - 300} committed)"
+                error_message = f"{error_message[:300]}...({len(error_message) - 300} ommitted)"
             logger.opt(colors=True).error(
                 "<cyan>{} {}</cyan> - '<red>{}</red>': {}",
                 (f"{request.client.host}:{request.client.port}" if request.client is not None else "<unknown user>"),
@@ -39,6 +39,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                 error_message,
             )
 
+            error_status = 500
             if isinstance(exc, IduApiError):
                 error_status = getattr(exc, "status_code", 500)
 

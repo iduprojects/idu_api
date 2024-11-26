@@ -59,9 +59,6 @@ class InvalidTokenSignature(IduApiError):
 class AuthServiceUnavailable(IduApiError):
     """Exception to raise when auth service is unavailable."""
 
-    def __init__(self):
-        super().__init__()
-
     def __str__(self) -> str:
         return "Error verifying token signature"
 
