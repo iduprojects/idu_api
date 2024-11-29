@@ -60,8 +60,8 @@ class FunctionalZoneData(BaseModel):
     functional_zone_type: FunctionalZoneTypeBasic
     name: str | None = Field(..., description="functional zone name", examples=["--"])
     geometry: Geometry
-    year: int | None = Field(..., description="year when functional zone was loaded", examples=[2024])
-    source: str | None = Field(..., description="source from which functional zone was loaded", examples=["--"])
+    year: int = Field(..., description="year when functional zone was loaded", examples=[2024])
+    source: str = Field(..., description="source from which functional zone was loaded", examples=["--"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="functional zone additional properties",
@@ -100,8 +100,8 @@ class FunctionalZoneWithoutGeometry(BaseModel):
     territory: ShortTerritory
     functional_zone_type: FunctionalZoneTypeBasic
     name: str | None = Field(..., description="functional zone name", examples=["--"])
-    year: int | None = Field(..., description="year when functional zone was loaded", examples=[2024])
-    source: str | None = Field(..., description="source from which functional zone was loaded", examples=["--"])
+    year: int = Field(..., description="year when functional zone was loaded", examples=[2024])
+    source: str = Field(..., description="source from which functional zone was loaded", examples=["--"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="functional zone additional properties",
@@ -179,8 +179,8 @@ class ProjectProfile(BaseModel):
     functional_zone_type: FunctionalZoneTypeBasic
     name: str | None = Field(..., description="functional zone name", examples=["--"])
     geometry: Geometry
-    year: int | None = Field(..., description="year when functional zone was loaded", examples=[2024])
-    source: str | None = Field(..., description="source from which functional zone was loaded", examples=["--"])
+    year: int = Field(..., description="year when functional zone was loaded", examples=[2024])
+    source: str = Field(..., description="source from which functional zone was loaded", examples=["--"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="profile additional properties",
@@ -216,8 +216,8 @@ class ProjectProfileWithoutGeometry(BaseModel):
     profile_id: int = Field(..., description="profile identifier", examples=[1])
     functional_zone_type: FunctionalZoneTypeBasic
     name: str | None = Field(..., description="functional zone name", examples=["--"])
-    year: int | None = Field(..., description="year when functional zone was loaded", examples=[2024])
-    source: str | None = Field(..., description="source from which functional zone was loaded", examples=["--"])
+    year: int = Field(..., description="year when functional zone was loaded", examples=[2024])
+    source: str = Field(..., description="source from which functional zone was loaded", examples=["--"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="profile additional properties",

@@ -24,8 +24,8 @@ class FunctionalZoneDataDTO:
     functional_zone_type_name: str
     name: str | None
     geometry: geom.Polygon | geom.MultiPolygon
-    year: int | None
-    source: str | None
+    year: int
+    source: str
     properties: dict[str, Any]
     created_at: datetime
     updated_at: datetime
@@ -53,8 +53,8 @@ class ProjectProfileDTO:
     functional_zone_type_name: str
     name: str | None
     geometry: geom.Polygon | geom.MultiPolygon
-    year: int | None
-    source: str | None
+    year: int
+    source: str
     properties: dict[str, Any]
     created_at: datetime
     updated_at: datetime
