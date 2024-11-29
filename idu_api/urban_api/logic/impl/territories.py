@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
+    FunctionalZoneSourceDTO,
     HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
@@ -33,6 +34,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_buildings import (
 from idu_api.urban_api.logic.impl.helpers.territories_functional_zones import (
     delete_all_functional_zones_for_territory_from_db,
     get_functional_zones_by_territory_id_from_db,
+    get_functional_zones_sources_by_territory_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_indicators import (
     get_indicator_values_by_parent_id_from_db,
@@ -304,14 +306,18 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     ) -> PageDTO[LivingBuildingsWithGeometryDTO]:
         return await get_living_buildings_with_geometry_by_territory_id_from_db(self._conn, territory_id, cities_only)
 
+    async def get_functional_zones_sources_by_territory_id(self, territory_id: int) -> list[FunctionalZoneSourceDTO]:
+        return await get_functional_zones_sources_by_territory_id_from_db(self._conn, territory_id)
+
     async def get_functional_zones_by_territory_id(
         self,
         territory_id: int,
+        year: int,
+        source: str,
         functional_zone_type_id: int | None,
-        include_child_territories: bool,
     ) -> list[FunctionalZoneDataDTO]:
         return await get_functional_zones_by_territory_id_from_db(
-            self._conn, territory_id, functional_zone_type_id, include_child_territories
+            self._conn, territory_id, year, source, functional_zone_type_id
         )
 
     async def delete_all_functional_zones_for_territory(self, territory_id: int) -> dict:

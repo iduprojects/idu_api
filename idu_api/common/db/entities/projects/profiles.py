@@ -36,6 +36,8 @@ profiles_data = Table(
         Geometry(spatial_index=False, from_text="ST_GeomFromEWKT", name="geometry"),
         nullable=False,
     ),
+    Column("year", Integer, nullable=True),
+    Column("source", String(200), nullable=True),
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
@@ -48,6 +50,8 @@ Profiles data:
 - scenario_id foreign key int
 - functional_zone_type_id foreign key int
 - geometry geometry
+- year int 
+- source str
 - properties jsonb
 - created_at timestamp
 - updated_at timestamp

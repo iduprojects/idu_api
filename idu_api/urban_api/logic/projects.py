@@ -3,10 +3,13 @@ import io
 from typing import Protocol
 
 from idu_api.urban_api.dto import (
+    FunctionalZoneDataDTO,
+    FunctionalZoneSourceDTO,
     HexagonWithIndicatorsDTO,
     PhysicalObjectDataDTO,
     ProjectDTO,
     ProjectIndicatorValueDTO,
+    ProjectProfileDTO,
     ProjectTerritoryDTO,
     ScenarioDTO,
     ScenarioGeometryDTO,
@@ -28,6 +31,9 @@ from idu_api.urban_api.schemas import (
     ProjectIndicatorValuePut,
     ProjectPatch,
     ProjectPost,
+    ProjectProfilePatch,
+    ProjectProfilePost,
+    ProjectProfilePut,
     ProjectPut,
     ScenarioServicePost,
     ScenariosPatch,
@@ -390,3 +396,67 @@ class UserProjectService(Protocol):
         user_id: str,
     ) -> list[HexagonWithIndicatorsDTO]:
         """Get project's indicators values for given regional scenario with hexagons."""
+
+    @abc.abstractmethod
+    async def get_functional_zones_sources_by_scenario_id(
+        self, scenario_id: int, user_id: str
+    ) -> list[FunctionalZoneSourceDTO]:
+        """Get list of pairs year + source for functional zones for given scenario."""
+
+    @abc.abstractmethod
+    async def get_functional_zones_by_scenario_id(
+        self,
+        scenario_id: int,
+        year: int,
+        source: str,
+        functional_zone_type_id: int | None,
+        user_id: str,
+    ) -> list[ProjectProfileDTO]:
+        """Get list of functional zone objects by scenario identifier."""
+
+    @abc.abstractmethod
+    async def get_context_functional_zones_sources_by_scenario_id(
+        self, scenario_id: int, user_id: str
+    ) -> list[FunctionalZoneSourceDTO]:
+        """Get list of pairs year + source for functional zones for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def get_context_functional_zones_by_scenario_id(
+        self,
+        scenario_id: int,
+        year: int,
+        source: str,
+        functional_zone_type_id: int | None,
+        user_id: str,
+    ) -> list[FunctionalZoneDataDTO]:
+        """Get list of functional zone objects for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def add_scenario_functional_zones(
+        self, profiles: list[ProjectProfilePost], scenario_id: int, user_id: str
+    ) -> list[ProjectProfileDTO]:
+        """Add list of scenario functional zone objects."""
+
+    @abc.abstractmethod
+    async def put_scenario_functional_zone(
+        self,
+        profile: ProjectProfilePut,
+        scenario_id: int,
+        functional_zone_id: int,
+        user_id: str,
+    ) -> ProjectProfileDTO:
+        """Update scenario functional zone object by all its attributes."""
+
+    @abc.abstractmethod
+    async def patch_scenario_functional_zone(
+        self,
+        profile: ProjectProfilePatch,
+        scenario_id: int,
+        functional_zone_id: int,
+        user_id: str,
+    ) -> ProjectProfileDTO:
+        """Update scenario functional zone object by only given attributes."""
+
+    @abc.abstractmethod
+    async def delete_functional_zones_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
+        """Delete functional zones by scenario identifier."""

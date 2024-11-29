@@ -7,8 +7,15 @@ from .functional_zones import (
     FunctionalZoneDataPatch,
     FunctionalZoneDataPost,
     FunctionalZoneDataPut,
+    FunctionalZoneSource,
     FunctionalZoneType,
     FunctionalZoneTypePost,
+    FunctionalZoneWithoutGeometry,
+    ProjectProfile,
+    ProjectProfilePatch,
+    ProjectProfilePost,
+    ProjectProfilePut,
+    ProjectProfileWithoutGeometry,
 )
 from .health_check import PingResponse
 from .hexagons import Hexagon, HexagonAttributes, HexagonPost, HexagonWithIndicators
@@ -223,4 +230,11 @@ __all__ = [
     "HexagonPost",
     "HexagonAttributes",
     "HexagonWithIndicators",
+    "ProjectProfile",
+    "ProjectProfilePatch",
+    "ProjectProfilePost",
+    "ProjectProfilePut",
+    "ProjectProfileWithoutGeometry",
+    "FunctionalZoneWithoutGeometry",
+    "FunctionalZoneSource",
 ]
