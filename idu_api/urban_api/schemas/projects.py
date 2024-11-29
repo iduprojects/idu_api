@@ -110,10 +110,10 @@ class ProjectPut(BaseModel):
     """Project schema for PUT request."""
 
     name: str = Field(..., description="project name", examples=["--"])
-    description: str | None = Field(None, description="project description", examples=["--"])
+    description: str = Field(..., description="project description", examples=["--"])
     public: bool = Field(..., description="project publicity", examples=[True])
     properties: dict[str, Any] = Field(
-        default_factory=dict,
+        ...,
         description="project's additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
@@ -126,7 +126,7 @@ class ProjectPatch(BaseModel):
     description: str | None = Field(None, description="project description", examples=["--"])
     public: bool | None = Field(None, description="project publicity", examples=[True])
     properties: dict[str, Any] | None = Field(
-        default_factory=dict,
+        None,
         description="project's additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )

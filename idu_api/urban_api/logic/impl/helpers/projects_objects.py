@@ -17,7 +17,7 @@ from geoalchemy2.functions import (
     ST_Within,
 )
 from PIL import Image
-from sqlalchemy import cast, delete, insert, or_, select, text, update
+from sqlalchemy import Integer, cast, delete, insert, literal, or_, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -539,26 +539,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                     profiles_data.c.properties,
                 ],
                 select(
-                    scenario_id.label("scenario_id"),
-                    functional_zones_data.c.functional_zone_type_id,
-                    functional_zones_data.c.geometry,
-                    functional_zones_data.c.properties,
-                ).where(
-                    functional_zones_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
-                    ST_Within(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()),
-                ),
-            )
-        )
-        await conn.execute(
-            insert(profiles_data).from_select(
-                [
-                    profiles_data.c.scenario_id,
-                    profiles_data.c.functional_zone_type_id,
-                    profiles_data.c.geometry,
-                    profiles_data.c.properties,
-                ],
-                select(
-                    scenario_id.label("scenario_id"),
+                    cast(literal(scenario_id), Integer).label("scenario_id"),
                     functional_zones_data.c.functional_zone_type_id,
                     ST_Intersection(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()).label(
                         "geometry"
@@ -567,7 +548,6 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                 ).where(
                     functional_zones_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
                     ST_Intersects(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()),
-                    ~ST_Within(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()),
                 ),
             )
         )

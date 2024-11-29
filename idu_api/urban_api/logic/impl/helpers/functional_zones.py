@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import and_, cast, delete, insert, select, text, update
+from sqlalchemy import cast, delete, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -215,15 +215,13 @@ async def add_profiles_reclamation_data_to_db(
     """Add a new profiles reclamation data."""
 
     statement = select(profiles_reclamation_data).where(
-        and_(
-            profiles_reclamation_data.c.source_profile_id == profiles_reclamation.source_profile_id,
-            profiles_reclamation_data.c.target_profile_id == profiles_reclamation.target_profile_id,
-            (
-                profiles_reclamation_data.c.territory_id == profiles_reclamation.territory_id
-                if profiles_reclamation.territory_id is not None
-                else profiles_reclamation_data.c.territory_id.is_(None)
-            ),
-        )
+        profiles_reclamation_data.c.source_profile_id == profiles_reclamation.source_profile_id,
+        profiles_reclamation_data.c.target_profile_id == profiles_reclamation.target_profile_id,
+        (
+            profiles_reclamation_data.c.territory_id == profiles_reclamation.territory_id
+            if profiles_reclamation.territory_id is not None
+            else profiles_reclamation_data.c.territory_id.is_(None)
+        ),
     )
     result = (await conn.execute(statement)).scalar_one_or_none()
     if result is not None:
@@ -275,15 +273,13 @@ async def put_profiles_reclamation_data_to_db(
         raise EntityNotFoundById(profile_reclamation_id, "profile reclamation")
 
     statement = select(profiles_reclamation_data).where(
-        and_(
-            profiles_reclamation_data.c.source_profile_id == profiles_reclamation.source_profile_id,
-            profiles_reclamation_data.c.target_profile_id == profiles_reclamation.target_profile_id,
-            (
-                profiles_reclamation_data.c.territory_id == profiles_reclamation.territory_id
-                if profiles_reclamation.territory_id is not None
-                else profiles_reclamation_data.c.territory_id.is_(None)
-            ),
-        )
+        profiles_reclamation_data.c.source_profile_id == profiles_reclamation.source_profile_id,
+        profiles_reclamation_data.c.target_profile_id == profiles_reclamation.target_profile_id,
+        (
+            profiles_reclamation_data.c.territory_id == profiles_reclamation.territory_id
+            if profiles_reclamation.territory_id is not None
+            else profiles_reclamation_data.c.territory_id.is_(None)
+        ),
     )
     result = (await conn.execute(statement)).scalar_one_or_none()
     if result is not None:
@@ -357,6 +353,8 @@ async def get_functional_zone_by_id(conn: AsyncConnection, functional_zone_id: i
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zones_data.c.name,
             cast(ST_AsGeoJSON(functional_zones_data.c.geometry), JSONB).label("geometry"),
+            functional_zones_data.c.year,
+            functional_zones_data.c.source,
             functional_zones_data.c.properties,
             functional_zones_data.c.created_at,
             functional_zones_data.c.updated_at,
@@ -400,6 +398,8 @@ async def add_functional_zone_to_db(
             name=functional_zone.name,
             functional_zone_type_id=functional_zone.functional_zone_type_id,
             geometry=ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326")),
+            year=functional_zone.year,
+            source=functional_zone.source,
             properties=functional_zone.properties,
         )
         .returning(functional_zones_data.c.functional_zone_id)
@@ -436,6 +436,8 @@ async def put_functional_zone_to_db(
             functional_zone_type_id=functional_zone.functional_zone_type_id,
             name=functional_zone.name,
             geometry=ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326")),
+            year=functional_zone.year,
+            source=functional_zone.source,
             properties=functional_zone.properties,
             updated_at=datetime.now(timezone.utc),
         )

@@ -8,6 +8,7 @@ from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, P
 
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
+    FunctionalZoneSourceDTO,
     HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
@@ -224,11 +225,16 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         """Get living buildings with geometry by territory id."""
 
     @abc.abstractmethod
+    async def get_functional_zones_sources_by_territory_id(self, territory_id: int) -> list[FunctionalZoneSourceDTO]:
+        """Get list of pairs year + source for functional zones for given territory and its children."""
+
+    @abc.abstractmethod
     async def get_functional_zones_by_territory_id(
         self,
         territory_id: int,
+        year: int,
+        source: str,
         functional_zone_type_id: int | None,
-        include_child_territories: bool,
     ) -> list[FunctionalZoneDataDTO]:
         """Get functional zones with geometry by territory id."""
 

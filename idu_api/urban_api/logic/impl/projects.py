@@ -5,11 +5,14 @@ import io
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
+    FunctionalZoneDataDTO,
+    FunctionalZoneSourceDTO,
     HexagonWithIndicatorsDTO,
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
     ProjectDTO,
     ProjectIndicatorValueDTO,
+    ProjectProfileDTO,
     ProjectTerritoryDTO,
     ScenarioDTO,
     ScenarioGeometryDTO,
@@ -20,6 +23,16 @@ from idu_api.urban_api.dto import (
     ServiceDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
+from idu_api.urban_api.logic.impl.helpers.projects_functional_zones import (
+    add_scenario_functional_zones_to_db,
+    delete_functional_zone_by_scenario_id_from_db,
+    get_context_functional_zones_by_scenario_id_from_db,
+    get_context_functional_zones_sources_by_scenario_id_from_db,
+    get_functional_zones_by_scenario_id_from_db,
+    get_functional_zones_sources_by_scenario_id_from_db,
+    patch_scenario_functional_zone_to_db,
+    put_scenario_functional_zone_to_db,
+)
 from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
     delete_object_geometry_in_db,
     get_context_geometries_by_scenario_id_from_db,
@@ -93,6 +106,9 @@ from idu_api.urban_api.schemas import (
     ProjectIndicatorValuePut,
     ProjectPatch,
     ProjectPost,
+    ProjectProfilePatch,
+    ProjectProfilePost,
+    ProjectProfilePut,
     ProjectPut,
     ScenarioServicePost,
     ScenariosPatch,
@@ -484,3 +500,63 @@ class UserProjectServiceImpl(UserProjectService):
         return await get_hexagons_with_indicators_by_scenario_id_from_db(
             self._conn, scenario_id, indicator_ids, indicators_group_id, user_id
         )
+
+    async def get_functional_zones_sources_by_scenario_id(
+        self, scenario_id: int, user_id: str
+    ) -> list[FunctionalZoneSourceDTO]:
+        return await get_functional_zones_sources_by_scenario_id_from_db(self._conn, scenario_id, user_id)
+
+    async def get_functional_zones_by_scenario_id(
+        self,
+        scenario_id: int,
+        year: int,
+        source: str,
+        functional_zone_type_id: int | None,
+        user_id: str,
+    ) -> list[ProjectProfileDTO]:
+        return await get_functional_zones_by_scenario_id_from_db(
+            self._conn, scenario_id, year, source, functional_zone_type_id, user_id
+        )
+
+    async def get_context_functional_zones_sources_by_scenario_id(
+        self, scenario_id: int, user_id: str
+    ) -> list[FunctionalZoneSourceDTO]:
+        return await get_context_functional_zones_sources_by_scenario_id_from_db(self._conn, scenario_id, user_id)
+
+    async def get_context_functional_zones_by_scenario_id(
+        self,
+        scenario_id: int,
+        year: int,
+        source: str,
+        functional_zone_type_id: int | None,
+        user_id: str,
+    ) -> list[FunctionalZoneDataDTO]:
+        return await get_context_functional_zones_by_scenario_id_from_db(
+            self._conn, scenario_id, year, source, functional_zone_type_id, user_id
+        )
+
+    async def add_scenario_functional_zones(
+        self, profiles: list[ProjectProfilePost], scenario_id: int, user_id: str
+    ) -> list[ProjectProfileDTO]:
+        return await add_scenario_functional_zones_to_db(self._conn, profiles, scenario_id, user_id)
+
+    async def put_scenario_functional_zone(
+        self,
+        profile: ProjectProfilePut,
+        scenario_id: int,
+        functional_zone_id: int,
+        user_id: str,
+    ) -> ProjectProfileDTO:
+        return await put_scenario_functional_zone_to_db(self._conn, profile, scenario_id, functional_zone_id, user_id)
+
+    async def patch_scenario_functional_zone(
+        self,
+        profile: ProjectProfilePatch,
+        scenario_id: int,
+        functional_zone_id: int,
+        user_id: str,
+    ) -> ProjectProfileDTO:
+        return await patch_scenario_functional_zone_to_db(self._conn, profile, scenario_id, functional_zone_id, user_id)
+
+    async def delete_functional_zones_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
+        return await delete_functional_zone_by_scenario_id_from_db(self._conn, scenario_id, user_id)

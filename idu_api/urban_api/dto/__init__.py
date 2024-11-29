@@ -1,6 +1,6 @@
 """Data Transfer Objects (much like entities from database) are defined in this module."""
 
-from .functional_zones import FunctionalZoneDataDTO, FunctionalZoneTypeDTO, ProjectsProfileDTO
+from .functional_zones import FunctionalZoneDataDTO, FunctionalZoneSourceDTO, FunctionalZoneTypeDTO, ProjectProfileDTO
 from .hexagons import HexagonDTO, HexagonWithIndicatorsDTO
 from .indicators import (
     IndicatorDTO,
@@ -91,7 +91,7 @@ __all__ = [
     "ProfilesReclamationDataDTO",
     "ProfilesReclamationDataMatrixDTO",
     "ProjectIndicatorValueDTO",
-    "ProjectsProfileDTO",
+    "ProjectProfileDTO",
     "ShortScenarioPhysicalObjectDTO",
     "ScenarioPhysicalObjectDTO",
     "ShortScenarioServiceDTO",
@@ -104,4 +104,5 @@ __all__ = [
     "HexagonWithIndicatorsDTO",
     "ShortProjectIndicatorValueDTO",
     "ScenarioUrbanObjectDTO",
+    "FunctionalZoneSourceDTO",
 ]
