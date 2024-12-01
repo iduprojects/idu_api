@@ -73,6 +73,8 @@ class PhysicalObjectWithGeometryDTO:
         }
         if living_building["id"] is not None:
             physical_object["living_building"] = living_building
+        else:
+            physical_object["living_building"] = None
 
         return physical_object
 
