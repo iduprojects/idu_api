@@ -1,10 +1,13 @@
 """Functional zones territories-related handlers are defined here."""
 
 from fastapi import Path, Query, Request
+from geojson_pydantic import Feature
+from geojson_pydantic.geometries import Geometry
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
-from idu_api.urban_api.schemas import FunctionalZoneData, FunctionalZoneSource
+from idu_api.urban_api.schemas import FunctionalZoneData, FunctionalZoneSource, FunctionalZoneWithoutGeometry
+from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 
 from .routers import territories_router
 
@@ -33,17 +36,16 @@ async def get_functional_zone_sources_by_scenario_id(
     response_model=list[FunctionalZoneData],
     status_code=status.HTTP_200_OK,
 )
-async def get_functional_zones_for_territory(
+async def get_functional_zones_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
     year: int = Query(..., description="to filter by year when zones were uploaded"),
     source: str = Query(..., description="to filter by source from which zones were uploaded"),
     functional_zone_type_id: int | None = Query(None, description="functional_zone_type_id", gt=0),
 ) -> list[FunctionalZoneData]:
-    """Get functional zones for territory.
+    """Get list of  functional zones by given territory identifier, year and source.
 
-    functional_zone_type and include_child_territories could be specified in parameters.
-    """
+    It could be specified by functional zone type in parameters."""
     territories_service: TerritoriesService = request.state.territories_service
 
     zones = await territories_service.get_functional_zones_by_territory_id(
@@ -53,12 +55,36 @@ async def get_functional_zones_for_territory(
     return [FunctionalZoneData.from_dto(zone) for zone in zones]
 
 
+@territories_router.get(
+    "/territory/{territory_id}/functional_zones_geojson",
+    response_model=GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]],
+    status_code=status.HTTP_200_OK,
+)
+async def get_functional_zones_geojson_by_territory_id(
+    request: Request,
+    territory_id: int = Path(..., description="territory id", gt=0),
+    year: int = Query(..., description="to filter by year when zones were uploaded"),
+    source: str = Query(..., description="to filter by source from which zones were uploaded"),
+    functional_zone_type_id: int | None = Query(None, description="functional_zone_type_id", gt=0),
+) -> GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]]:
+    """Get functional zones by given territory identifier, year and source in geojson format.
+
+    It could be specified by functional zone type in parameters."""
+    territories_service: TerritoriesService = request.state.territories_service
+
+    zones = await territories_service.get_functional_zones_by_territory_id(
+        territory_id, year, source, functional_zone_type_id
+    )
+
+    return await GeoJSONResponse.from_list([zone.to_geojson_dict() for zone in zones])
+
+
 @territories_router.delete(
     "/territory/{territory_id}/functional_zones",
     response_model=dict,
     status_code=status.HTTP_200_OK,
 )
-async def delete_all_functional_zones_for_territory(
+async def delete_all_functional_zones_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
 ) -> dict:

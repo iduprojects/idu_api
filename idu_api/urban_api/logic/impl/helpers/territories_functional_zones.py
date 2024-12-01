@@ -1,7 +1,5 @@
 """Territories functional zones internal logic is defined here."""
 
-from typing import Callable
-
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import cast, delete, select
 from sqlalchemy.dialects.postgresql import JSONB

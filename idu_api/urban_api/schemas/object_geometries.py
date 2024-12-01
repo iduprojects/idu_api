@@ -132,7 +132,7 @@ class AllObjects(BaseModel):
     """Object geometry with all its physical objects and services (but without geometry columns...)."""
 
     object_geometry_id: int = Field(..., examples=[1])
-    territory_id: int = Field(..., examples=[1])
+    territory: ShortTerritory
     address: str | None = Field(..., description="physical object address", examples=["--"])
     osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
     physical_objects: list[ShortPhysicalObject]
@@ -142,10 +142,6 @@ class AllObjects(BaseModel):
 class ScenarioAllObjects(AllObjects):
     """Scenario object geometry with all its physical objects and services (but without geometry columns...)."""
 
-    object_geometry_id: int = Field(..., examples=[1])
-    territory_id: int = Field(..., examples=[1])
-    address: str | None = Field(..., description="physical object address", examples=["--"])
-    osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
     is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
     physical_objects: list[ShortScenarioPhysicalObject]
     services: list[ShortScenarioService]

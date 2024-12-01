@@ -18,6 +18,9 @@ class UrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     physical_object_function_id: int | None
     physical_object_function_name: str | None
     physical_object_name: str | None
+    living_building_id: int | None
+    living_area: float | None
+    living_building_properties: dict[str, Any] | None
     physical_object_properties: dict[str, Any]
     physical_object_created_at: datetime
     physical_object_updated_at: datetime

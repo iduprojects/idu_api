@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    living_buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
@@ -112,6 +113,9 @@ async def get_physical_objects_by_territory_id_from_db(
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_object_types_dict.c.physical_object_function_id,
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
+            living_buildings_data.c.living_building_id,
+            living_buildings_data.c.living_area,
+            living_buildings_data.c.properties.label("living_building_properties"),
         )
         .select_from(
             physical_objects_data.join(
@@ -131,6 +135,10 @@ async def get_physical_objects_by_territory_id_from_db(
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
             )
+            .outerjoin(
+                living_buildings_data,
+                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+            )
         )
         .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
         .distinct()
@@ -138,7 +146,7 @@ async def get_physical_objects_by_territory_id_from_db(
 
     if physical_object_type_id is not None and physical_object_function_id is not None:
         raise EntityNotFoundByParams(
-            "phys_obj_type and phys_obj_func", physical_object_type_id, physical_object_function_id
+            "physical object type and function", physical_object_type_id, physical_object_function_id
         )
     if physical_object_type_id is not None:
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
@@ -217,6 +225,9 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
             object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            living_buildings_data.c.living_building_id,
+            living_buildings_data.c.living_area,
+            living_buildings_data.c.properties.label("living_building_properties"),
         )
         .select_from(
             physical_objects_data.join(
@@ -235,6 +246,10 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
+            )
+            .outerjoin(
+                living_buildings_data,
+                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))

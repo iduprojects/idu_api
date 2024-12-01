@@ -8,7 +8,7 @@ from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFuncti
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, PhysicalObjectsTypes
 from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
 from idu_api.urban_api.schemas.services import ServicesData
-from idu_api.urban_api.schemas.short_models import ShortTerritory
+from idu_api.urban_api.schemas.short_models import ShortLivingBuilding, ShortTerritory
 from idu_api.urban_api.schemas.territories import TerritoryType
 
 
@@ -38,6 +38,15 @@ class UrbanObject(BaseModel):
                     ),
                 ),
                 name=dto.physical_object_name,
+                living_building=(
+                    ShortLivingBuilding(
+                        id=dto.living_building_id,
+                        living_area=dto.living_area,
+                        properties=dto.living_building_properties,
+                    )
+                    if dto.living_building_id is not None
+                    else None
+                ),
                 properties=dto.physical_object_properties,
                 created_at=dto.physical_object_created_at,
                 updated_at=dto.physical_object_updated_at,

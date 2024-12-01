@@ -14,10 +14,13 @@ class PhysicalObjectDataDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    physical_object_function_id: int
-    physical_object_function_name: str
+    physical_object_function_id: int | None
+    physical_object_function_name: str | None
     name: str | None
     properties: dict[str, Any]
+    living_building_id: int | None
+    living_area: float | None
+    living_building_properties: dict[str, Any] | None
     created_at: datetime
     updated_at: datetime
 
@@ -32,6 +35,9 @@ class PhysicalObjectWithGeometryDTO:
     name: str | None
     address: str | None
     osm_id: str | None
+    living_building_id: int | None
+    living_area: float | None
+    living_building_properties: dict[str, Any] | None
     properties: dict[str, Any]
     geometry: Geom
     centre_point: geom.Point
@@ -60,6 +66,13 @@ class PhysicalObjectWithGeometryDTO:
         physical_object["physical_object_type"] = physical_object_type
         if physical_object_function["id"] is not None:
             physical_object["physical_object_type"]["physical_object_function"] = physical_object_function
+        living_building = {
+            "id": physical_object.pop("living_building_id"),
+            "living_area": physical_object.pop("living_area"),
+            "properties": physical_object.pop("living_building_properties"),
+        }
+        if living_building["id"] is not None:
+            physical_object["living_building"] = living_building
 
         return physical_object
 
@@ -72,6 +85,9 @@ class PhysicalObjectWithTerritoryDTO:
     physical_object_function_id: int | None
     physical_object_function_name: str | None
     name: str | None
+    living_building_id: int | None
+    living_area: float | None
+    living_building_properties: dict[str, Any] | None
     properties: dict[str, Any]
     territories: list[dict[str, Any]]
     created_at: datetime
@@ -82,7 +98,12 @@ class PhysicalObjectWithTerritoryDTO:
 class ShortPhysicalObjectDTO:
     physical_object_id: int
     physical_object_type_id: int
+    physical_object_type_name: str
     name: str | None
+    properties: dict[str, Any]
+    living_building_id: int | None
+    living_area: float | None
+    living_building_properties: dict[str, Any] | None
 
 
 @dataclass(frozen=True)

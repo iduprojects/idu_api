@@ -19,7 +19,7 @@ class TerritoriesOrderByField(str, Enum):
 class TerritoryType(BaseModel):
     """Territory type with all its attributes."""
 
-    territory_type_id: int | None = Field(..., description="territory type identifier", examples=[1])
+    territory_type_id: int = Field(..., description="territory type identifier", examples=[1])
     name: str = Field(..., description="territory type unit name", examples=["Город"])
 
     @classmethod

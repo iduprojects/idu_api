@@ -1,6 +1,5 @@
 """Projects physical objects internal logic is defined here."""
 
-from collections import defaultdict
 from datetime import datetime, timezone
 
 from geoalchemy2.functions import ST_GeomFromText, ST_Intersects, ST_Union, ST_Within
@@ -8,11 +7,13 @@ from sqlalchemy import delete, insert, literal, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    living_buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
     projects_data,
+    projects_living_buildings_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
     projects_territory_data,
@@ -70,6 +71,9 @@ async def get_physical_objects_by_scenario_id(
             physical_objects_data.c.properties,
             physical_objects_data.c.created_at,
             physical_objects_data.c.updated_at,
+            living_buildings_data.c.living_building_id,
+            living_buildings_data.c.living_area,
+            living_buildings_data.c.properties.label("living_building_properties"),
         )
         .select_from(
             urban_objects_data.join(
@@ -88,6 +92,10 @@ async def get_physical_objects_by_scenario_id(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
+            )
+            .outerjoin(
+                living_buildings_data,
+                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(
@@ -117,6 +125,9 @@ async def get_physical_objects_by_scenario_id(
                 "physical_object_type_name": row.physical_object_type_name,
                 "physical_object_function_id": row.physical_object_function_id,
                 "physical_object_function_name": row.physical_object_function_name,
+                "living_building_id": row.living_building_id,
+                "living_area": row.living_area,
+                "living_building_properties": row.living_building_properties,
                 "name": row.name,
                 "properties": row.properties,
                 "created_at": row.created_at,
@@ -142,6 +153,12 @@ async def get_physical_objects_by_scenario_id(
             physical_objects_data.c.properties.label("public_properties"),
             physical_objects_data.c.created_at.label("public_created_at"),
             physical_objects_data.c.updated_at.label("public_updated_at"),
+            projects_living_buildings_data.c.living_building_id,
+            projects_living_buildings_data.c.living_area,
+            living_buildings_data.c.properties.label("living_building_properties"),
+            living_buildings_data.c.living_building_id.label("public_living_building_id"),
+            living_buildings_data.c.living_area.label("public_living_area"),
+            living_buildings_data.c.properties.label("public_living_building_properties"),
         )
         .select_from(
             projects_urban_objects_data.outerjoin(
@@ -175,6 +192,15 @@ async def get_physical_objects_by_scenario_id(
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
             )
+            .outerjoin(
+                living_buildings_data,
+                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+            )
+            .outerjoin(
+                projects_living_buildings_data,
+                projects_living_buildings_data.c.physical_object_id
+                == projects_physical_objects_data.c.physical_object_id,
+            )
         )
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
         .where(projects_urban_objects_data.c.public_urban_object_id.is_(None))
@@ -204,6 +230,15 @@ async def get_physical_objects_by_scenario_id(
                 "physical_object_function_id": row.physical_object_function_id,
                 "physical_object_function_name": row.physical_object_function_name,
                 "name": row.name if is_scenario_physical_object else row.public_name,
+                "living_building_id": (
+                    row.living_building_id if is_scenario_physical_object else row.public_living_building_id
+                ),
+                "living_area": row.living_area if is_scenario_physical_object else row.public_living_area,
+                "living_building_properties": (
+                    row.living_building_properties
+                    if is_scenario_physical_object
+                    else row.public_living_building_properties
+                ),
                 "properties": row.properties if is_scenario_physical_object else row.public_properties,
                 "created_at": row.created_at if is_scenario_physical_object else row.public_created_at,
                 "updated_at": row.updated_at if is_scenario_physical_object else row.public_updated_at,
@@ -211,7 +246,7 @@ async def get_physical_objects_by_scenario_id(
             }
         )
 
-    grouped_objects = defaultdict(dict)
+    grouped_objects = dict()
     for obj in public_objects + scenario_objects:
         physical_object_id = obj["physical_object_id"]
         is_scenario_geometry = obj["is_scenario_object"]
@@ -223,7 +258,7 @@ async def get_physical_objects_by_scenario_id(
         elif existing_entry.get("is_scenario_object") != is_scenario_geometry:
             grouped_objects[-physical_object_id].update(obj)
 
-    return [ScenarioPhysicalObjectDTO(**row) for row in list(grouped_objects.values())]
+    return [ScenarioPhysicalObjectDTO(**row) for row in grouped_objects.values()]
 
 
 async def get_context_physical_objects_by_scenario_id_from_db(

@@ -117,9 +117,12 @@ class ServicesCountCapacityDTO:
 class ShortServiceDTO:
     service_id: int
     service_type_id: int
+    service_type_name: str
     territory_type_id: int | None
+    territory_type_name: str | None
     name: str | None
     capacity_real: int | None
+    properties: dict[str, Any]
 
 
 @dataclass(frozen=True)

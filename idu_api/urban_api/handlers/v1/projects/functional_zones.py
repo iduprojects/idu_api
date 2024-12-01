@@ -57,7 +57,7 @@ async def get_functional_zones_by_scenario_id(
     functional_zone_type_id: int | None = Query(None, description="functional zone type identifier"),
     user: UserDTO = Depends(get_user),
 ) -> GeoJSONResponse[Feature[Geometry, ProjectProfileWithoutGeometry]]:
-    """Get list of functional zones by scenario identifier in geojson format.
+    """Get functional zones by scenario identifier, year and source in geojson format.
 
     You must be the owner of the relevant project."""
     user_project_service: UserProjectService = request.state.user_project_service
@@ -105,7 +105,8 @@ async def get_context_functional_zones_by_scenario_id(
     functional_zone_type_id: int | None = Query(None, description="functional zone type identifier"),
     user: UserDTO = Depends(get_user),
 ) -> GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]]:
-    """Get list of functional zones by scenario identifier for 'context' of the project territory in geojson format.
+    """Get functional zones by scenario identifier, year and source
+    for 'context' of the project territory in geojson format.
 
     You must be the owner of the relevant project."""
     user_project_service: UserProjectService = request.state.user_project_service
