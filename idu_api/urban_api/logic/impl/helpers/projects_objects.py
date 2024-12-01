@@ -536,6 +536,8 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                     profiles_data.c.scenario_id,
                     profiles_data.c.functional_zone_type_id,
                     profiles_data.c.geometry,
+                    profiles_data.c.year,
+                    profiles_data.c.source,
                     profiles_data.c.properties,
                 ],
                 select(
@@ -544,6 +546,8 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                     ST_Intersection(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()).label(
                         "geometry"
                     ),
+                    functional_zones_data.c.year,
+                    functional_zones_data.c.source,
                     functional_zones_data.c.properties,
                 ).where(
                     functional_zones_data.c.territory_id.in_(select(territories_cte.c.territory_id)),

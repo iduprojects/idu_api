@@ -146,31 +146,55 @@ async def get_context_functional_zones_sources_by_scenario_id_from_db(
         territories_data.c.geometry,
     ).where(territories_data.c.territory_id.in_(project.properties["context"]))
     unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-    all_context_descendants = (
+    all_descendants = (
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
         )
         .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_intersecting_descendants", recursive=True)
+        .cte(name="all_descendants", recursive=True)
     )
-    all_context_descendants = all_context_descendants.union_all(
+    all_descendants = all_descendants.union_all(
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
         ).select_from(
             territories_data.join(
-                all_context_descendants,
-                territories_data.c.parent_id == all_context_descendants.c.territory_id,
+                all_descendants,
+                territories_data.c.parent_id == all_descendants.c.territory_id,
             )
         )
     )
+    all_ancestors = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        )
+        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
+        .cte(name="all_ancestors", recursive=True)
+    )
+    all_ancestors = all_ancestors.union_all(
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        ).select_from(
+            territories_data.join(
+                all_ancestors,
+                territories_data.c.territory_id == all_ancestors.c.parent_id,
+            )
+        )
+    )
+    all_related_territories = (
+        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
+    )
 
-    statement = select(functional_zones_data.c.year, functional_zones_data.c.source).where(
-        or_(
-            functional_zones_data.c.territory_id.in_(select(all_context_descendants.c.territory_id)),
+    statement = (
+        select(functional_zones_data.c.year, functional_zones_data.c.source)
+        .where(
+            functional_zones_data.c.territory_id.in_(select(all_related_territories.c.territory_id)),
             ST_Intersects(functional_zones_data.c.geometry, unified_geometry),
         )
+        .distinct()
     )
     result = (await conn.execute(statement)).mappings().all()
 
