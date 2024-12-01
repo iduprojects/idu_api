@@ -102,7 +102,6 @@ async def get_physical_objects_by_scenario_id(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
             ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
         )
-        .distinct()
     )
 
     # Условия фильтрации для public объектов
@@ -204,7 +203,6 @@ async def get_physical_objects_by_scenario_id(
         )
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
         .where(projects_urban_objects_data.c.public_urban_object_id.is_(None))
-        .distinct()
     )
 
     # Условия фильтрации для объектов user_projects
@@ -254,9 +252,9 @@ async def get_physical_objects_by_scenario_id(
         # Проверка и добавление физ объекта
         existing_entry = grouped_objects.get(physical_object_id)
         if existing_entry is None:
-            grouped_objects[physical_object_id].update(obj)
+            grouped_objects[physical_object_id] = obj
         elif existing_entry.get("is_scenario_object") != is_scenario_geometry:
-            grouped_objects[-physical_object_id].update(obj)
+            grouped_objects[-physical_object_id] = obj
 
     return [ScenarioPhysicalObjectDTO(**row) for row in grouped_objects.values()]
 
@@ -285,24 +283,55 @@ async def get_context_physical_objects_by_scenario_id_from_db(
         territories_data.c.geometry,
     ).where(territories_data.c.territory_id.in_(project.properties["context"]))
     unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-    all_context_descendants = (
+    all_descendants = (
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
         )
         .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_intersecting_descendants", recursive=True)
+        .cte(name="all_descendants", recursive=True)
     )
-    all_context_descendants = all_context_descendants.union_all(
+    all_descendants = all_descendants.union_all(
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
         ).select_from(
             territories_data.join(
-                all_context_descendants,
-                territories_data.c.parent_id == all_context_descendants.c.territory_id,
+                all_descendants,
+                territories_data.c.parent_id == all_descendants.c.territory_id,
             )
         )
+    )
+    all_ancestors = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        )
+        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
+        .cte(name="all_ancestors", recursive=True)
+    )
+    all_ancestors = all_ancestors.union_all(
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        ).select_from(
+            territories_data.join(
+                all_ancestors,
+                territories_data.c.territory_id == all_ancestors.c.parent_id,
+            )
+        )
+    )
+    all_related_territories = (
+        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
+    )
+
+    objects_intersecting = (
+        select(object_geometries_data.c.object_geometry_id)
+        .where(
+            object_geometries_data.c.territory_id.in_(select(all_related_territories)),
+            ST_Intersects(object_geometries_data.c.geometry, unified_geometry),
+        )
+        .subquery()
     )
 
     # Step 2. Find all the physical objects in `public` schema for `intersecting_territories`
@@ -317,6 +346,9 @@ async def get_context_physical_objects_by_scenario_id_from_db(
             physical_objects_data.c.properties,
             physical_objects_data.c.created_at,
             physical_objects_data.c.updated_at,
+            living_buildings_data.c.living_building_id,
+            living_buildings_data.c.living_area,
+            living_buildings_data.c.properties.label("living_building_properties"),
         )
         .select_from(
             urban_objects_data.join(
@@ -336,13 +368,12 @@ async def get_context_physical_objects_by_scenario_id_from_db(
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
             )
-        )
-        .where(
-            or_(
-                object_geometries_data.c.territory_id.in_(select(all_context_descendants.c.territory_id)),
-                ST_Intersects(object_geometries_data.c.geometry, unified_geometry),
+            .outerjoin(
+                living_buildings_data,
+                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
+        .where(object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting)))
         .distinct()
     )
 
@@ -376,16 +407,25 @@ async def get_scenario_physical_object_by_id_from_db(
             projects_physical_objects_data.c.created_at,
             projects_physical_objects_data.c.updated_at,
             literal(True).label("is_scenario_object"),
+            projects_living_buildings_data.c.living_building_id,
+            projects_living_buildings_data.c.living_area,
+            projects_living_buildings_data.c.properties.label("living_building_properties"),
         )
         .select_from(
             projects_physical_objects_data.join(
                 physical_object_types_dict,
                 physical_object_types_dict.c.physical_object_type_id
                 == projects_physical_objects_data.c.physical_object_type_id,
-            ).join(
+            )
+            .join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
+            )
+            .outerjoin(
+                projects_living_buildings_data,
+                projects_living_buildings_data.c.physical_object_id
+                == projects_physical_objects_data.c.physical_object_id,
             )
         )
         .where(projects_physical_objects_data.c.physical_object_id == physical_object_id)

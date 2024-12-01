@@ -122,6 +122,15 @@ class ScenarioUrbanObject(BaseModel):
                         else None
                     ),
                 ),
+                living_building=(
+                    ShortLivingBuilding(
+                        id=dto.living_building_id,
+                        living_area=dto.living_area,
+                        properties=dto.living_building_properties,
+                    )
+                    if dto.living_building_id is not None
+                    else None
+                ),
                 name=dto.physical_object_name,
                 properties=dto.physical_object_properties,
                 created_at=dto.physical_object_created_at,

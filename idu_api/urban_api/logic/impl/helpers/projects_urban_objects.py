@@ -6,10 +6,12 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    living_buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
+    projects_living_buildings_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
     projects_services_data,
@@ -78,6 +80,12 @@ async def get_scenario_urban_object_by_id_from_db(
             services_data.c.updated_at.label("public_service_updated_at"),
             object_geometries_data.c.address.label("public_address"),
             object_geometries_data.c.osm_id.label("public_osm_id"),
+            projects_living_buildings_data.c.living_building_id,
+            projects_living_buildings_data.c.living_area,
+            projects_living_buildings_data.c.properties.label("living_building_properties"),
+            living_buildings_data.c.living_building_id.label("public_living_building_id"),
+            living_buildings_data.c.living_area.label("public_living_area"),
+            living_buildings_data.c.properties.label("public_living_building_properties"),
         )
         .select_from(
             projects_urban_objects_data.outerjoin(
@@ -140,6 +148,15 @@ async def get_scenario_urban_object_by_id_from_db(
                 urban_functions_dict,
                 urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
             )
+            .outerjoin(
+                living_buildings_data,
+                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+            )
+            .outerjoin(
+                projects_living_buildings_data,
+                projects_living_buildings_data.c.physical_object_id
+                == projects_physical_objects_data.c.physical_object_id,
+            )
         )
         .where(projects_urban_objects_data.c.urban_object_id == urban_object_id)
     )
@@ -171,6 +188,13 @@ async def get_scenario_urban_object_by_id_from_db(
         ),
         "physical_object_updated_at": (
             row.physical_object_updated_at if is_scenario_physical_object else row.public_physical_object_updated_at
+        ),
+        "living_building_id": (
+            row.living_building_id if is_scenario_physical_object else row.public_living_building_id
+        ),
+        "living_area": row.living_area if is_scenario_physical_object else row.public_living_area,
+        "living_building_properties": (
+            row.living_building_properties if is_scenario_physical_object else row.public_living_building_properties
         ),
         "is_scenario_physical_object": is_scenario_physical_object,
         "object_geometry_id": row.object_geometry_id or row.public_object_geometry_id,

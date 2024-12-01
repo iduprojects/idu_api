@@ -99,7 +99,6 @@ async def get_services_by_scenario_id(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
             ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
         )
-        .distinct()
     )
 
     # Условия фильтрации для public объектов
@@ -198,7 +197,6 @@ async def get_services_by_scenario_id(
         )
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
         .where(projects_urban_objects_data.c.public_urban_object_id.is_(None))
-        .distinct()
     )
 
     # Условия фильтрации для объектов user_projects
@@ -278,24 +276,55 @@ async def get_context_services_by_scenario_id_from_db(
         territories_data.c.geometry,
     ).where(territories_data.c.territory_id.in_(project.properties["context"]))
     unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-    all_context_descendants = (
+    all_descendants = (
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
         )
         .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_intersecting_descendants", recursive=True)
+        .cte(name="all_descendants", recursive=True)
     )
-    all_context_descendants = all_context_descendants.union_all(
+    all_descendants = all_descendants.union_all(
         select(
             territories_data.c.territory_id,
             territories_data.c.parent_id,
         ).select_from(
             territories_data.join(
-                all_context_descendants,
-                territories_data.c.parent_id == all_context_descendants.c.territory_id,
+                all_descendants,
+                territories_data.c.parent_id == all_descendants.c.territory_id,
             )
         )
+    )
+    all_ancestors = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        )
+        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
+        .cte(name="all_ancestors", recursive=True)
+    )
+    all_ancestors = all_ancestors.union_all(
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.parent_id,
+        ).select_from(
+            territories_data.join(
+                all_ancestors,
+                territories_data.c.territory_id == all_ancestors.c.parent_id,
+            )
+        )
+    )
+    all_related_territories = (
+        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
+    )
+
+    objects_intersecting = (
+        select(object_geometries_data.c.object_geometry_id)
+        .where(
+            object_geometries_data.c.territory_id.in_(select(all_related_territories)),
+            ST_Intersects(object_geometries_data.c.geometry, unified_geometry),
+        )
+        .subquery()
     )
 
     # Step 2. Find all the services in `public` schema for `intersecting_territories`
@@ -330,12 +359,7 @@ async def get_context_services_by_scenario_id_from_db(
                 urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
             )
         )
-        .where(
-            or_(
-                object_geometries_data.c.territory_id.in_(select(all_context_descendants.c.territory_id)),
-                ST_Intersects(object_geometries_data.c.geometry, unified_geometry),
-            )
-        )
+        .where(object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting)))
         .distinct()
     )
 

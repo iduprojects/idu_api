@@ -279,6 +279,15 @@ class ScenarioPhysicalObject(PhysicalObjectsData):
                     else None
                 ),
             ),
+            living_building=(
+                ShortLivingBuilding(
+                    id=dto.living_building_id,
+                    living_area=dto.living_area,
+                    properties=dto.living_building_properties,
+                )
+                if dto.living_building_id is not None
+                else None
+            ),
             name=dto.name,
             properties=dto.properties,
             created_at=dto.created_at,
