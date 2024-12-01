@@ -82,6 +82,7 @@ class AsyncMinioClient:
             except ClientError as exc:
                 raise DownloadFileError(str(exc)) from exc
 
+    @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ClientError))
     async def object_exists(self, bucket_name, object_name):
         async with aioboto3.Session().client(
             "s3",
@@ -123,7 +124,7 @@ class AsyncMinioClient:
             # Generate presigned url
             try:
                 return await client.generate_presigned_url(
-                    "get_object", Params={"Bucket": self._bucket_name, "Key": default_name}, ExpiresIn=expires_in
+                    "get_object", Params={"Bucket": self._bucket_name, "Key": object_name}, ExpiresIn=expires_in
                 )
             except ClientError as exc:
                 raise GetPresignedURLError(str(exc)) from exc
