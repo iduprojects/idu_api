@@ -28,6 +28,13 @@ class ShortScenario(BaseModel):
     name: str
 
 
+class TerritoryTypeBasic(BaseModel):
+    """Basic territory type model to encapsulate in other models."""
+
+    id: int
+    name: str
+
+
 class ShortIndicatorValueInfo(BaseModel):
     """Indicator value without territory."""
 
@@ -140,12 +147,30 @@ class UrbanFunctionBasic(BaseModel):
     name: str
 
 
+class ShortLivingBuilding(BaseModel):
+    """Living building without info about physical objects."""
+
+    id: int = Field(..., examples=[1])
+    living_area: float | None = Field(..., examples=[300.0])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
+
+
 class ShortPhysicalObject(BaseModel):
     """Basic physical object model to encapsulate in other models."""
 
     physical_object_id: int = Field(..., examples=[1])
-    physical_object_type_id: int = Field(..., description="physical object type identifier", examples=[1])
+    physical_object_type: PhysicalObjectTypeBasic
     name: str | None = Field(None, description="physical object name", examples=["--"])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="physical object additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
+    living_building: ShortLivingBuilding | None
 
     @classmethod
     def from_dto(cls, dto: ShortPhysicalObjectDTO) -> "ShortPhysicalObject":
@@ -154,8 +179,21 @@ class ShortPhysicalObject(BaseModel):
         """
         return cls(
             physical_object_id=dto.physical_object_id,
-            physical_object_type_id=dto.physical_object_type_id,
+            physical_object_type=PhysicalObjectTypeBasic(
+                id=dto.physical_object_type_id,
+                name=dto.physical_object_type_name,
+            ),
             name=dto.name,
+            properties=dto.properties,
+            living_building=(
+                ShortLivingBuilding(
+                    id=dto.living_building_id,
+                    living_area=dto.living_area,
+                    properties=dto.living_building_properties,
+                )
+                if dto.living_building_id is not None
+                else None
+            ),
         )
 
 
@@ -165,14 +203,27 @@ class ShortScenarioPhysicalObject(ShortPhysicalObject):
     is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
 
     @classmethod
-    def from_dto(cls, dto: ShortScenarioPhysicalObjectDTO) -> "ShortScenarioPhysicalObject":
+    def from_dto(cls, dto: ShortScenarioPhysicalObjectDTO) -> "ShortPhysicalObject":
         """
         Construct from DTO.
         """
         return cls(
             physical_object_id=dto.physical_object_id,
-            physical_object_type_id=dto.physical_object_type_id,
+            physical_object_type=PhysicalObjectTypeBasic(
+                id=dto.physical_object_type_id,
+                name=dto.physical_object_type_name,
+            ),
             name=dto.name,
+            properties=dto.properties,
+            living_building=(
+                ShortLivingBuilding(
+                    id=dto.living_building_id,
+                    living_area=dto.living_area,
+                    properties=dto.living_building_properties,
+                )
+                if dto.living_building_id is not None
+                else None
+            ),
             is_scenario_object=dto.is_scenario_object,
         )
 
@@ -181,10 +232,15 @@ class ShortService(BaseModel):
     """Basic service model to encapsulate in other models."""
 
     service_id: int = Field(..., examples=[1])
-    service_type_id: int = Field(..., description="service type identifier", examples=[1])
-    territory_type_id: int | None = Field(..., description="territory type identifier", examples=[1])
+    service_type: ServiceTypeBasic
+    territory_type: TerritoryTypeBasic | None
     name: str | None = Field(None, description="service name", examples=["--"])
     capacity_real: int | None = Field(None, examples=[1])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="service additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
 
     @classmethod
     def from_dto(cls, dto: ShortServiceDTO) -> "ShortService":
@@ -193,14 +249,22 @@ class ShortService(BaseModel):
         """
         return cls(
             service_id=dto.service_id,
-            service_type_id=dto.service_type_id,
-            territory_type_id=dto.territory_type_id if dto.territory_type_id else None,
+            service_type=ServiceTypeBasic(
+                id=dto.service_type_id,
+                name=dto.service_type_name,
+            ),
+            territory_type=(
+                TerritoryTypeBasic(id=dto.territory_type_id, name=dto.territory_type_name)
+                if dto.territory_type_id is not None
+                else None
+            ),
             name=dto.name,
             capacity_real=dto.capacity_real,
+            properties=dto.properties,
         )
 
 
-class ShortScenarioService(BaseModel):
+class ShortScenarioService(ShortService):
     """Basic scenario service model to encapsulate in other models."""
 
     is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
@@ -212,10 +276,18 @@ class ShortScenarioService(BaseModel):
         """
         return cls(
             service_id=dto.service_id,
-            service_type_id=dto.service_type_id,
-            territory_type_id=dto.territory_type_id if dto.territory_type_id else None,
+            service_type=ServiceTypeBasic(
+                id=dto.service_type_id,
+                name=dto.service_type_name,
+            ),
+            territory_type=(
+                TerritoryTypeBasic(id=dto.territory_type_id, name=dto.territory_type_name)
+                if dto.territory_type_id is not None
+                else None
+            ),
             name=dto.name,
             capacity_real=dto.capacity_real,
+            properties=dto.properties,
             is_scenario_object=dto.is_scenario_object,
         )
 

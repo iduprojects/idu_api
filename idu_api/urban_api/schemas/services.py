@@ -46,7 +46,7 @@ class ServicesData(BaseModel):
         """
         Construct from DTO.
         """
-        service = cls(
+        return cls(
             service_id=dto.service_id,
             service_type=ServiceTypes(
                 service_type_id=dto.service_type_id,
@@ -68,7 +68,6 @@ class ServicesData(BaseModel):
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
-        return service
 
 
 class ServiceWithTerritories(BaseModel):

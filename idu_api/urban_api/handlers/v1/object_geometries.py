@@ -110,11 +110,11 @@ async def add_object_geometry_to_physical_object(
     response_model=list[PhysicalObjectsData],
     status_code=status.HTTP_200_OK,
 )
-async def get_physical_object_by_geometry_id(
+async def get_physical_objects_by_geometry_id(
     request: Request,
     object_geometry_id: int = Path(..., description="Object geometry id"),
 ) -> list[PhysicalObjectsData]:
-    """Get physical objects for the given object geometry."""
+    """Get physical objects for the given object geometry identifier."""
     object_geometries_service: ObjectGeometriesService = request.state.object_geometries_service
 
     physical_objects = await object_geometries_service.get_physical_objects_by_object_geometry_id(object_geometry_id)

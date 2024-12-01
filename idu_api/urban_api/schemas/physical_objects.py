@@ -14,6 +14,7 @@ from idu_api.urban_api.dto import (
 )
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
 from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic, PhysicalObjectsTypes
+from idu_api.urban_api.schemas.short_models import ShortLivingBuilding
 from idu_api.urban_api.schemas.territories import ShortTerritory
 
 
@@ -33,6 +34,7 @@ class PhysicalObjectsData(BaseModel):
         description="physical object additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
+    living_building: ShortLivingBuilding | None
     created_at: datetime = Field(
         default_factory=datetime.utcnow, description="the time when the physical object was created"
     )
@@ -60,53 +62,15 @@ class PhysicalObjectsData(BaseModel):
             ),
             name=dto.name,
             properties=dto.properties,
-            created_at=dto.created_at,
-            updated_at=dto.updated_at,
-        )
-
-
-class PhysicalObjectsWithTerritory(BaseModel):
-    """Physical object with all its attributes and parent territory."""
-
-    physical_object_id: int = Field(..., examples=[1])
-    physical_object_type: PhysicalObjectsTypes
-    name: str | None = Field(None, description="physical object name", examples=["--"])
-    properties: dict[str, Any] = Field(
-        default_factory=dict,
-        description="physical object additional properties",
-        examples=[{"additional_attribute_name": "additional_attribute_value"}],
-    )
-    territories: list[ShortTerritory]
-    created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the physical object was created"
-    )
-    updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the physical object was last updated"
-    )
-
-    @classmethod
-    def from_dto(cls, dto: PhysicalObjectWithTerritoryDTO) -> "PhysicalObjectsWithTerritory":
-        """
-        Construct from DTO.
-        """
-        return cls(
-            physical_object_id=dto.physical_object_id,
-            physical_object_type=PhysicalObjectsTypes(
-                physical_object_type_id=dto.physical_object_type_id,
-                name=dto.physical_object_type_name,
-                physical_object_function=(
-                    PhysicalObjectFunctionBasic(
-                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
-                    )
-                    if dto.physical_object_function_id is not None
-                    else None
-                ),
+            living_building=(
+                ShortLivingBuilding(
+                    id=dto.living_building_id,
+                    living_area=dto.living_area,
+                    properties=dto.living_building_properties,
+                )
+                if dto.living_building_id is not None
+                else None
             ),
-            name=dto.name,
-            properties=dto.properties,
-            territories=[
-                ShortTerritory(id=territory["territory_id"], name=territory["name"]) for territory in dto.territories
-            ],
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
@@ -120,6 +84,7 @@ class PhysicalObjectWithGeometry(BaseModel):
     name: str | None = Field(None, description="physical object name", examples=["--"])
     address: str | None = Field(None, description="physical object address", examples=["--"])
     osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
+    living_building: ShortLivingBuilding | None
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="physical object additional properties",
@@ -154,9 +119,75 @@ class PhysicalObjectWithGeometry(BaseModel):
             ),
             name=dto.name,
             address=dto.address,
+            living_building=(
+                ShortLivingBuilding(
+                    id=dto.living_building_id,
+                    living_area=dto.living_area,
+                    properties=dto.living_building_properties,
+                )
+                if dto.living_building_id is not None
+                else None
+            ),
             properties=dto.properties,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+        )
+
+
+class PhysicalObjectsWithTerritory(BaseModel):
+    """Physical object with all its attributes and parent territory."""
+
+    physical_object_id: int = Field(..., examples=[1])
+    physical_object_type: PhysicalObjectsTypes
+    name: str | None = Field(None, description="physical object name", examples=["--"])
+    living_building: ShortLivingBuilding | None
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="physical object additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
+    territories: list[ShortTerritory]
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow, description="the time when the physical object was created"
+    )
+    updated_at: datetime = Field(
+        default_factory=datetime.utcnow, description="the time when the physical object was last updated"
+    )
+
+    @classmethod
+    def from_dto(cls, dto: PhysicalObjectWithTerritoryDTO) -> "PhysicalObjectsWithTerritory":
+        """
+        Construct from DTO.
+        """
+        return cls(
+            physical_object_id=dto.physical_object_id,
+            physical_object_type=PhysicalObjectsTypes(
+                physical_object_type_id=dto.physical_object_type_id,
+                name=dto.physical_object_type_name,
+                physical_object_function=(
+                    PhysicalObjectFunctionBasic(
+                        id=dto.physical_object_function_id, name=dto.physical_object_function_name
+                    )
+                    if dto.physical_object_function_id is not None
+                    else None
+                ),
+            ),
+            name=dto.name,
+            living_building=(
+                ShortLivingBuilding(
+                    id=dto.living_building_id,
+                    living_area=dto.living_area,
+                    properties=dto.living_building_properties,
+                )
+                if dto.living_building_id is not None
+                else None
+            ),
+            properties=dto.properties,
+            territories=[
+                ShortTerritory(id=territory["territory_id"], name=territory["name"]) for territory in dto.territories
+            ],
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )

@@ -251,7 +251,7 @@ async def get_services_by_scenario_id(
         elif existing_entry.get("is_scenario_object") != is_scenario_geometry:
             grouped_objects[-service_id].update(obj)
 
-    return [ScenarioServiceDTO(**row) for row in list(grouped_objects.values())]
+    return [ScenarioServiceDTO(**row) for row in grouped_objects.values()]
 
 
 async def get_context_services_by_scenario_id_from_db(

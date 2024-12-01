@@ -437,7 +437,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
         .where(
             object_geometries_data.c.territory_id.in_(select(territories_intersecting_only)),
             ST_Intersects(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery()),
-            ~ST_Within(select(given_geometry).scalar_subquery(), object_geometries_data.c.geometry),
+            ~ST_Within(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery()),
             ST_Area(ST_Intersection(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery()))
             >= area_percent * ST_Area(object_geometries_data.c.geometry),
             physical_object_types_dict.c.physical_object_function_id != 1,  # TODO: remove hardcode to skip buildings

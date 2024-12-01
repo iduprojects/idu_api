@@ -6,9 +6,6 @@ from typing import Any
 
 import shapely.geometry as geom
 
-from idu_api.urban_api.dto.physical_objects import ShortPhysicalObjectDTO, ShortScenarioPhysicalObjectDTO
-from idu_api.urban_api.dto.services import ShortScenarioServiceDTO, ShortServiceDTO
-
 Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
 
 
@@ -51,12 +48,13 @@ class ScenarioGeometryDTO(ObjectGeometryDTO):
 class GeometryWithAllObjectsDTO:
     object_geometry_id: int
     territory_id: int
+    territory_name: str
     address: str | None
     osm_id: str | None
     geometry: Geom
     centre_point: geom.Point
-    physical_objects: list[ShortPhysicalObjectDTO]
-    services: list[ShortServiceDTO]
+    physical_objects: list[dict[str, Any]]
+    services: list[dict[str, Any]]
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
@@ -67,11 +65,13 @@ class GeometryWithAllObjectsDTO:
             self.geometry = geom.shape(self.geometry)
 
     def to_geojson_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        object = asdict(self)
+        object["territory"] = {"id": object.pop("territory_id"), "name": object.pop("territory_name")}
+        return object
 
 
 @dataclass
 class ScenarioGeometryWithAllObjectsDTO(GeometryWithAllObjectsDTO):
     is_scenario_object: bool
-    physical_objects: list[ShortScenarioPhysicalObjectDTO]
-    services: list[ShortScenarioServiceDTO]
+    physical_objects: list[dict[str, Any]]
+    services: list[dict[str, Any]]

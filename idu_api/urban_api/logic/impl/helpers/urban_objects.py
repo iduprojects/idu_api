@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    living_buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
@@ -58,6 +59,9 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
+            living_buildings_data.c.living_building_id,
+            living_buildings_data.c.living_area,
+            living_buildings_data.c.properties.label("living_building_properties"),
         )
         .select_from(
             urban_objects_data.join(
@@ -89,6 +93,10 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             )
             .outerjoin(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
+            )
+            .outerjoin(
+                living_buildings_data,
+                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(urban_objects_data.c.urban_object_id == urban_object_id)
