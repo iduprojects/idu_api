@@ -10,7 +10,7 @@ from .indicators import (
     ProjectIndicatorValueDTO,
     ShortProjectIndicatorValueDTO,
 )
-from .living_buildings import LivingBuildingsDTO, LivingBuildingsWithGeometryDTO
+from .living_buildings import LivingBuildingDTO, LivingBuildingWithGeometryDTO
 from .normatives import NormativeDTO
 from .object_geometries import ObjectGeometryDTO, ScenarioGeometryDTO, ScenarioGeometryWithAllObjectsDTO
 from .pages import PageDTO
@@ -76,8 +76,8 @@ __all__ = [
     "PhysicalObjectTypesHierarchyDTO",
     "PhysicalObjectWithGeometryDTO",
     "PhysicalObjectWithTerritoryDTO",
-    "LivingBuildingsDTO",
-    "LivingBuildingsWithGeometryDTO",
+    "LivingBuildingDTO",
+    "LivingBuildingWithGeometryDTO",
     "FunctionalZoneDataDTO",
     "FunctionalZoneTypeDTO",
     "TerritoryWithIndicatorDTO",

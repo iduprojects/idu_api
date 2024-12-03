@@ -1,24 +1,19 @@
 """Living buildings DTOs are defined here."""
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 
 import shapely.geometry as geom
 
 
 @dataclass
-class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
+class LivingBuildingWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     living_building_id: int
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    physical_object_function_id: int | None
-    physical_object_function_name: str | None
     physical_object_name: str | None
-    physical_object_properties: dict[str, str]
-    physical_object_created_at: datetime
-    physical_object_updated_at: datetime
+    physical_object_properties: dict[str, Any]
     living_area: float | None
     properties: dict[str, Any]
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
@@ -36,16 +31,12 @@ class LivingBuildingsWithGeometryDTO:  # pylint: disable=too-many-instance-attri
 
 
 @dataclass(frozen=True)
-class LivingBuildingsDTO:  # pylint: disable=too-many-instance-attributes
+class LivingBuildingDTO:  # pylint: disable=too-many-instance-attributes
     living_building_id: int
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
-    physical_object_function_id: int
-    physical_object_function_name: str
     physical_object_name: str | None
     physical_object_properties: dict[str, Any]
-    physical_object_created_at: datetime
-    physical_object_updated_at: datetime
     living_area: float | None
     properties: dict[str, Any]

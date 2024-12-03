@@ -4,7 +4,7 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
-    LivingBuildingsDTO,
+    LivingBuildingDTO,
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
@@ -80,23 +80,23 @@ class PhysicalObjectsServiceImpl(PhysicalObjectsService):
     async def delete_physical_object(self, physical_object_id: int) -> dict:
         return await delete_physical_object_in_db(self._conn, physical_object_id)
 
-    async def add_living_building(self, living_building: LivingBuildingsDataPost) -> LivingBuildingsDTO:
+    async def add_living_building(self, living_building: LivingBuildingsDataPost) -> LivingBuildingDTO:
         return await add_living_building_to_db(self._conn, living_building)
 
     async def put_living_building(
         self, living_building: LivingBuildingsDataPut, living_building_id: int
-    ) -> LivingBuildingsDTO:
+    ) -> LivingBuildingDTO:
         return await put_living_building_to_db(self._conn, living_building, living_building_id)
 
     async def patch_living_building(
         self, living_building: LivingBuildingsDataPatch, living_building_id: int
-    ) -> LivingBuildingsDTO:
+    ) -> LivingBuildingDTO:
         return await patch_living_building_to_db(self._conn, living_building, living_building_id)
 
     async def delete_living_building(self, living_building_id: int) -> dict:
         return await delete_living_building_in_db(self._conn, living_building_id)
 
-    async def get_living_buildings_by_physical_object_id(self, physical_object_id: int) -> list[LivingBuildingsDTO]:
+    async def get_living_buildings_by_physical_object_id(self, physical_object_id: int) -> list[LivingBuildingDTO]:
         return await get_living_buildings_by_physical_object_id_from_db(self._conn, physical_object_id)
 
     async def get_services_by_physical_object_id(

@@ -12,7 +12,7 @@ from idu_api.urban_api.dto import (
     HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
-    LivingBuildingsWithGeometryDTO,
+    LivingBuildingWithGeometryDTO,
     NormativeDTO,
     PageDTO,
     PhysicalObjectDataDTO,
@@ -84,9 +84,10 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         service_type_id: int | None,
         urban_function_id: int | None,
         name: str | None,
-        cities_only: bool | None,
+        include_child_territories: bool,
+        cities_only: bool,
         order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None = "asc",
+        ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
         """Get service objects by territory id."""
@@ -98,9 +99,10 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         service_type_id: int | None,
         urban_function_id: int | None,
         name: str | None,
-        cities_only: bool | None,
+        include_child_territories: bool,
+        cities_only: bool,
         order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None = "asc",
+        ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
         """Get service objects with geometry by territory id."""
@@ -196,9 +198,10 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
         name: str | None,
-        cities_only: bool | None,
-        order_by: Optional[Literal["created_at", "updated_at"]],
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
+        include_child_territories: bool,
+        cities_only: bool,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
         """Get physical objects by territory id, optional physical object type, function and for cities only."""
@@ -210,9 +213,10 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
         name: str | None,
-        cities_only: bool | None,
-        order_by: Optional[Literal["created_at", "updated_at"]],
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
+        include_child_territories: bool,
+        cities_only: bool,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
         """Get physical objects with geometry by territory id,
@@ -220,8 +224,11 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def get_living_buildings_with_geometry_by_territory_id(
-        self, territory_id: int, cities_only: bool
-    ) -> list[LivingBuildingsWithGeometryDTO] | PageDTO[LivingBuildingsWithGeometryDTO]:
+        self,
+        territory_id: int,
+        include_child_territories: bool,
+        cities_only: bool,
+    ) -> PageDTO[LivingBuildingWithGeometryDTO]:
         """Get living buildings with geometry by territory id."""
 
     @abc.abstractmethod
@@ -235,6 +242,8 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         year: int,
         source: str,
         functional_zone_type_id: int | None,
+        include_child_territories: bool,
+        cities_only: bool,
     ) -> list[FunctionalZoneDataDTO]:
         """Get functional zones with geometry by territory id."""
 
@@ -248,8 +257,12 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         parent_id: int | None,
         get_all_levels: bool,
         territory_type_id: int | None,
-        cities_only: bool | None,
-        paginate: bool = False,
+        name: str | None,
+        cities_only: bool,
+        created_at: datetime | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"],
+        paginate: bool,
     ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
         """Get a territory or list of territories by parent, territory type could be specified in parameters."""
 
@@ -258,12 +271,13 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         self,
         parent_id: int | None,
         get_all_levels: bool,
-        order_by: Optional[Literal["created_at", "updated_at"]],
-        created_at: datetime | None,
+        territory_type_id: int | None,
         name: str | None,
-        cities_only: bool | None,
-        ordering: Optional[Literal["asc", "desc"]] = "asc",
-        paginate: bool = False,
+        cities_only: bool,
+        created_at: datetime | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"],
+        paginate: bool,
     ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
         """Get a territory or list of territories without geometry by parent,
         ordering and filters can be specified in parameters."""

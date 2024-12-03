@@ -19,6 +19,7 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.dto import PageDTO, ServiceDTO, ServicesCountCapacityDTO, ServiceTypesDTO, ServiceWithGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
+from idu_api.urban_api.logic.impl.helpers.territory_objects import check_territory_existence
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
@@ -27,9 +28,8 @@ func: Callable
 async def get_service_types_by_territory_id_from_db(conn: AsyncConnection, territory_id: int) -> list[ServiceTypesDTO]:
     """Get all service types that are located in given territory."""
 
-    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    territory = (await conn.execute(statement)).one_or_none()
-    if territory is None:
+    territory_exists = await check_territory_existence(conn, territory_id)
+    if not territory_exists:
         raise EntityNotFoundById(territory_id, "territory")
 
     territories_cte = (
@@ -78,6 +78,7 @@ async def get_services_by_territory_id_from_db(
     service_type_id: int | None,
     urban_function_id: int | None,
     name: str | None,
+    include_child_territories: bool,
     cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
@@ -85,24 +86,9 @@ async def get_services_by_territory_id_from_db(
 ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
     """Get list of services by territory id."""
 
-    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    territory = (await conn.execute(statement)).one_or_none()
-    if territory is None:
+    territory_exists = await check_territory_existence(conn, territory_id)
+    if not territory_exists:
         raise EntityNotFoundById(territory_id, "territory")
-
-    territories_cte = (
-        select(territories_data.c.territory_id, territories_data.c.is_city)
-        .where(territories_data.c.territory_id == territory_id)
-        .cte(recursive=True)
-    )
-    territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id, territories_data.c.is_city).where(
-            territories_data.c.parent_id == territories_cte.c.territory_id
-        )
-    )
-
-    if cities_only:
-        territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
 
     statement = (
         select(
@@ -131,8 +117,27 @@ async def get_services_by_territory_id_from_db(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
-    ).distinct()
+        .distinct()
+    )
+
+    if include_child_territories:
+        territories_cte = (
+            select(territories_data.c.territory_id, territories_data.c.is_city)
+            .where(territories_data.c.territory_id == territory_id)
+            .cte(recursive=True)
+        )
+        territories_cte = territories_cte.union_all(
+            select(territories_data.c.territory_id, territories_data.c.is_city).where(
+                territories_data.c.parent_id == territories_cte.c.territory_id
+            )
+        )
+
+        if cities_only:
+            territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
+
+        statement = statement.where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
+    else:
+        statement = statement.where(object_geometries_data.c.territory_id == territory_id)
 
     if service_type_id is not None and urban_function_id is not None:
         raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)
@@ -176,6 +181,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
     service_type_id: int | None,
     urban_function_id: int | None,
     name: str | None,
+    include_child_territories: bool,
     cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
@@ -183,24 +189,9 @@ async def get_services_with_geometry_by_territory_id_from_db(
 ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
     """Get list of services with objects geometries by territory id."""
 
-    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    territory = (await conn.execute(statement)).one_or_none()
-    if territory is None:
+    territory_exists = await check_territory_existence(conn, territory_id)
+    if not territory_exists:
         raise EntityNotFoundById(territory_id, "territory")
-
-    territories_cte = (
-        select(territories_data.c.territory_id, territories_data.c.is_city)
-        .where(territories_data.c.territory_id == territory_id)
-        .cte(recursive=True)
-    )
-    territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id, territories_data.c.is_city).where(
-            territories_data.c.parent_id == territories_cte.c.territory_id
-        )
-    )
-
-    if cities_only:
-        territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
 
     statement = (
         select(
@@ -233,8 +224,27 @@ async def get_services_with_geometry_by_territory_id_from_db(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
-    ).distinct()
+        .distinct()
+    )
+
+    if include_child_territories:
+        territories_cte = (
+            select(territories_data.c.territory_id, territories_data.c.is_city)
+            .where(territories_data.c.territory_id == territory_id)
+            .cte(recursive=True)
+        )
+        territories_cte = territories_cte.union_all(
+            select(territories_data.c.territory_id, territories_data.c.is_city).where(
+                territories_data.c.parent_id == territories_cte.c.territory_id
+            )
+        )
+
+        if cities_only:
+            territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
+
+        statement = statement.where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
+    else:
+        statement = statement.where(object_geometries_data.c.territory_id == territory_id)
 
     if service_type_id is not None and urban_function_id is not None:
         raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)

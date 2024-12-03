@@ -23,7 +23,7 @@ from .routers import territories_router
 )
 async def get_physical_object_types_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
 ) -> list[PhysicalObjectsTypes]:
     """Get physical object types for territory by territory identifier."""
     territories_service: TerritoriesService = request.state.territories_service
@@ -40,16 +40,17 @@ async def get_physical_object_types_by_territory_id(
 )
 async def get_physical_objects_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
-    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
-    physical_object_function_id: int | None = Query(None, description="Physical object function id", gt=0),
-    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
-    cities_only: bool = Query(False, description="to get only cities or not"),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
+    physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
+    name: str | None = Query(None, description="filter physical objects by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
+    cities_only: bool = Query(False, description="to get only for cities"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
-        None, description="Attribute to set ordering (created_at or updated_at)"
+        None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
-        Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
     ),
 ) -> Page[PhysicalObjectsData]:
     """Get physical objects for territory.
@@ -65,6 +66,7 @@ async def get_physical_objects_by_territory_id(
         physical_object_type_id,
         physical_object_function_id,
         name,
+        include_child_territories,
         cities_only,
         order_by_value,
         ordering.value,
@@ -85,16 +87,17 @@ async def get_physical_objects_by_territory_id(
 )
 async def get_physical_objects_with_geometry_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
-    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
-    physical_object_function_id: int | None = Query(None, description="Physical object function id", gt=0),
-    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
-    cities_only: bool = Query(False, description="to get only cities or not"),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
+    physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
+    name: str | None = Query(None, description="filter physical objects by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
+    cities_only: bool = Query(False, description="to get only for cities"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
-        None, description="Attribute to set ordering (created_at or updated_at)"
+        None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
-        Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
     ),
 ) -> Page[PhysicalObjectWithGeometry]:
     """Get physical objects with geometry for territory.
@@ -110,6 +113,7 @@ async def get_physical_objects_with_geometry_by_territory_id(
         physical_object_type_id,
         physical_object_function_id,
         name,
+        include_child_territories,
         cities_only,
         order_by_value,
         ordering.value,
@@ -130,11 +134,12 @@ async def get_physical_objects_with_geometry_by_territory_id(
 )
 async def get_physical_objects_geojson_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
-    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
-    physical_object_function_id: int | None = Query(None, description="Physical object function id", gt=0),
-    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
-    cities_only: bool = Query(False, description="to get only cities or not"),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
+    physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
+    name: str | None = Query(None, description="filter physical objects by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
+    cities_only: bool = Query(False, description="to get only for cities"),
     centers_only: bool = Query(False, description="to get only center points of geometries"),
 ) -> GeoJSONResponse[Feature[Geometry, PhysicalObjectsData]]:
     """Get FeatureCollection with geometries of physical objects for given territory.
@@ -145,7 +150,15 @@ async def get_physical_objects_geojson_by_territory_id(
     territories_service: TerritoriesService = request.state.territories_service
 
     physical_objects = await territories_service.get_physical_objects_with_geometry_by_territory_id(
-        territory_id, physical_object_type_id, physical_object_function_id, name, cities_only, None, None
+        territory_id,
+        physical_object_type_id,
+        physical_object_function_id,
+        name,
+        include_child_territories,
+        cities_only,
+        None,
+        "asc",
+        paginate=False,
     )
 
     return await GeoJSONResponse.from_list([obj.to_geojson_dict() for obj in physical_objects], centers_only)

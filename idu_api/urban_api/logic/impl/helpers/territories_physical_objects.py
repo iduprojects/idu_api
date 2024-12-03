@@ -18,6 +18,7 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.dto import PageDTO, PhysicalObjectDataDTO, PhysicalObjectTypeDTO, PhysicalObjectWithGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
+from idu_api.urban_api.logic.impl.helpers.territory_objects import check_territory_existence
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 
@@ -26,9 +27,8 @@ async def get_physical_object_types_by_territory_id_from_db(
 ) -> list[PhysicalObjectTypeDTO]:
     """Get all physical object types that are located in given territory."""
 
-    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    territory = (await conn.execute(statement)).one_or_none()
-    if territory is None:
+    territory_exists = await check_territory_existence(conn, territory_id)
+    if not territory_exists:
         raise EntityNotFoundById(territory_id, "territory")
 
     territories_cte = (
@@ -81,6 +81,7 @@ async def get_physical_objects_by_territory_id_from_db(
     physical_object_type_id: int | None,
     physical_object_function_id: int | None,
     name: str | None,
+    include_child_territories: bool,
     cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
@@ -88,24 +89,9 @@ async def get_physical_objects_by_territory_id_from_db(
 ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
     """Get physical objects by territory id, optional physical object type, is_city and physical object function."""
 
-    statement = select(territories_data).where(territories_data.c.territory_id == territory_id)
-    territory = (await conn.execute(statement)).one_or_none()
-    if territory is None:
+    territory_exists = await check_territory_existence(conn, territory_id)
+    if not territory_exists:
         raise EntityNotFoundById(territory_id, "territory")
-
-    territories_cte = (
-        select(territories_data.c.territory_id, territories_data.c.is_city)
-        .where(territories_data.c.territory_id == territory_id)
-        .cte(recursive=True)
-    )
-    territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id, territories_data.c.is_city).where(
-            territories_data.c.parent_id == territories_cte.c.territory_id
-        )
-    )
-
-    if cities_only:
-        territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
 
     statement = (
         select(
@@ -140,9 +126,27 @@ async def get_physical_objects_by_territory_id_from_db(
                 living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
         .distinct()
     )
+
+    if include_child_territories:
+        territories_cte = (
+            select(territories_data.c.territory_id, territories_data.c.is_city)
+            .where(territories_data.c.territory_id == territory_id)
+            .cte(recursive=True)
+        )
+        territories_cte = territories_cte.union_all(
+            select(territories_data.c.territory_id, territories_data.c.is_city).where(
+                territories_data.c.parent_id == territories_cte.c.territory_id
+            )
+        )
+
+        if cities_only:
+            territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
+
+        statement = statement.where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
+    else:
+        statement = statement.where(object_geometries_data.c.territory_id == territory_id)
 
     if physical_object_type_id is not None and physical_object_function_id is not None:
         raise EntityNotFoundByParams(
@@ -188,6 +192,7 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     physical_object_type_id: int | None,
     physical_object_function_id: int | None,
     name: str | None,
+    include_child_territories: bool,
     cities_only: bool,
     order_by: Optional[Literal["created_at", "updated_at"]],
     ordering: Optional[Literal["asc", "desc"]] = "asc",
@@ -196,24 +201,9 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     """Get physical objects with geometry by territory id,
     optional physical object type and physical_object_function_id."""
 
-    statement = select(territories_data.c.territory_id).where(territories_data.c.territory_id == territory_id)
-    territory = (await conn.execute(statement)).one_or_none()
-    if territory is None:
+    territory_exists = await check_territory_existence(conn, territory_id)
+    if not territory_exists:
         raise EntityNotFoundById(territory_id, "territory")
-
-    territories_cte = (
-        select(territories_data.c.territory_id, territories_data.c.is_city)
-        .where(territories_data.c.territory_id == territory_id)
-        .cte(recursive=True)
-    )
-    territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id, territories_data.c.is_city).where(
-            territories_data.c.parent_id == territories_cte.c.territory_id
-        )
-    )
-
-    if cities_only:
-        territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
 
     statement = (
         select(
@@ -252,9 +242,27 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
                 living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
         .distinct()
     )
+
+    if include_child_territories:
+        territories_cte = (
+            select(territories_data.c.territory_id, territories_data.c.is_city)
+            .where(territories_data.c.territory_id == territory_id)
+            .cte(recursive=True)
+        )
+        territories_cte = territories_cte.union_all(
+            select(territories_data.c.territory_id, territories_data.c.is_city).where(
+                territories_data.c.parent_id == territories_cte.c.territory_id
+            )
+        )
+
+        if cities_only:
+            territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
+
+        statement = statement.where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
+    else:
+        statement = statement.where(object_geometries_data.c.territory_id == territory_id)
 
     if physical_object_type_id is not None and physical_object_function_id is not None:
         raise EntityNotFoundByParams(

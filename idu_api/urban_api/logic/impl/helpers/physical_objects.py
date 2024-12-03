@@ -24,7 +24,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import (
-    LivingBuildingsDTO,
+    LivingBuildingDTO,
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
@@ -349,7 +349,7 @@ async def delete_physical_object_in_db(conn: AsyncConnection, physical_object_id
     return {"result": "ok"}
 
 
-async def get_living_building_by_id_from_db(conn: AsyncConnection, living_building_id: int) -> LivingBuildingsDTO:
+async def get_living_building_by_id_from_db(conn: AsyncConnection, living_building_id: int) -> LivingBuildingDTO:
     """Get living building object by id."""
 
     statement = (
@@ -360,26 +360,16 @@ async def get_living_building_by_id_from_db(conn: AsyncConnection, living_buildi
             physical_objects_data.c.physical_object_id,
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
-            physical_objects_data.c.created_at.label("physical_object_created_at"),
-            physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
-            physical_object_functions_dict.c.physical_object_function_id,
-            physical_object_functions_dict.c.name.label("physical_object_function_name"),
         )
         .select_from(
             living_buildings_data.join(
                 physical_objects_data,
                 physical_objects_data.c.physical_object_id == living_buildings_data.c.physical_object_id,
-            )
-            .join(
+            ).join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
-            )
-            .join(
-                physical_object_functions_dict,
-                physical_object_functions_dict.c.physical_object_function_id
-                == physical_object_types_dict.c.physical_object_function_id,
             )
         )
         .where(living_buildings_data.c.living_building_id == living_building_id)
@@ -388,13 +378,13 @@ async def get_living_building_by_id_from_db(conn: AsyncConnection, living_buildi
 
     result = (await conn.execute(statement)).mappings().one()
 
-    return LivingBuildingsDTO(**result)
+    return LivingBuildingDTO(**result)
 
 
 async def add_living_building_to_db(
     conn: AsyncConnection,
     living_building: LivingBuildingsDataPost,
-) -> LivingBuildingsDTO:
+) -> LivingBuildingDTO:
     """Create living building object."""
 
     statement = select(physical_objects_data).where(
@@ -423,7 +413,7 @@ async def add_living_building_to_db(
 
 async def put_living_building_to_db(
     conn: AsyncConnection, living_building: LivingBuildingsDataPut, living_building_id: int
-) -> LivingBuildingsDTO:
+) -> LivingBuildingDTO:
     """Put living building object."""
 
     statement = select(living_buildings_data).where(living_buildings_data.c.living_building_id == living_building_id)
@@ -457,7 +447,7 @@ async def put_living_building_to_db(
 
 async def patch_living_building_to_db(
     conn: AsyncConnection, living_building: LivingBuildingsDataPatch, living_building_id: int
-) -> LivingBuildingsDTO:
+) -> LivingBuildingDTO:
     """Patch living building object."""
 
     statement = select(living_buildings_data).where(living_buildings_data.c.living_building_id == living_building_id)
@@ -507,7 +497,7 @@ async def delete_living_building_in_db(conn: AsyncConnection, living_building_id
 async def get_living_buildings_by_physical_object_id_from_db(
     conn: AsyncConnection,
     physical_object_id: int,
-) -> list[LivingBuildingsDTO]:
+) -> list[LivingBuildingDTO]:
     """Get living building or list of living buildings by physical object id."""
 
     statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
@@ -523,26 +513,16 @@ async def get_living_buildings_by_physical_object_id_from_db(
             physical_objects_data.c.physical_object_id,
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
-            physical_objects_data.c.created_at.label("physical_object_created_at"),
-            physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
-            physical_object_functions_dict.c.physical_object_function_id,
-            physical_object_functions_dict.c.name.label("physical_object_function_name"),
         )
         .select_from(
             living_buildings_data.join(
                 physical_objects_data,
                 physical_objects_data.c.physical_object_id == living_buildings_data.c.physical_object_id,
-            )
-            .join(
+            ).join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
-            )
-            .join(
-                physical_object_functions_dict,
-                physical_object_functions_dict.c.physical_object_function_id
-                == physical_object_types_dict.c.physical_object_function_id,
             )
         )
         .where(living_buildings_data.c.physical_object_id == physical_object_id)
@@ -551,7 +531,7 @@ async def get_living_buildings_by_physical_object_id_from_db(
 
     result = (await conn.execute(statement)).mappings().all()
 
-    return [LivingBuildingsDTO(**building) for building in result]
+    return [LivingBuildingDTO(**building) for building in result]
 
 
 async def get_services_by_physical_object_id_from_db(

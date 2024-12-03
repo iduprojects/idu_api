@@ -20,16 +20,17 @@ from .routers import territories_router
 )
 async def get_physical_objects_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
-    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
-    physical_object_function_id: int | None = Query(None, description="Physical object function id", gt=0),
-    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
+    physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
+    name: str | None = Query(None, description="filter physical objects by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
+    cities_only: bool = Query(False, description="to get only for cities"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
-        None, description="Attribute to set ordering (created_at or updated_at)"
+        None, description="attribute to set ordering (created_at or updated_at)"
     ),
-    cities_only: bool = Query(False, description="to get only cities or not"),
     ordering: Ordering = Query(
-        Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
     ),
 ) -> CursorPage[PhysicalObjectsData]:
     """Get physical objects for territory.
@@ -45,6 +46,7 @@ async def get_physical_objects_by_territory_id(
         physical_object_type_id,
         physical_object_function_id,
         name,
+        include_child_territories,
         cities_only,
         order_by_value,
         ordering.value,
@@ -66,16 +68,17 @@ async def get_physical_objects_by_territory_id(
 )
 async def get_physical_objects_with_geometry_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
-    physical_object_type_id: int | None = Query(None, description="Physical object type id", gt=0),
-    physical_object_function_id: int | None = Query(None, description="Physical object function id", gt=0),
-    name: str | None = Query(None, description="Filter physical_objects by name substring (case-insensitive)"),
-    cities_only: bool = Query(False, description="to get only cities or not"),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
+    physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
+    name: str | None = Query(None, description="filter physical objects by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
+    cities_only: bool = Query(False, description="to get only for cities"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
-        None, description="Attribute to set ordering (created_at or updated_at)"
+        None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
-        Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
     ),
 ) -> CursorPage[PhysicalObjectWithGeometry]:
     """Get physical objects with geometry for territory.
@@ -91,6 +94,7 @@ async def get_physical_objects_with_geometry_by_territory_id(
         physical_object_type_id,
         physical_object_function_id,
         name,
+        include_child_territories,
         cities_only,
         order_by_value,
         ordering.value,

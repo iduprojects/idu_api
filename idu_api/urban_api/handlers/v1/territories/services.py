@@ -44,6 +44,7 @@ async def get_services_by_territory_id(
     service_type_id: int | None = Query(None, description="service type identifier", gt=0),
     urban_function_id: int | None = Query(None, description="urban function identifier", gt=0),
     name: str | None = Query(None, description="filter services by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only cities or not"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
@@ -65,6 +66,7 @@ async def get_services_by_territory_id(
         service_type_id,
         urban_function_id,
         name,
+        include_child_territories,
         cities_only,
         order_by_value,
         ordering.value,
@@ -85,11 +87,12 @@ async def get_services_by_territory_id(
 )
 async def get_services_with_geometry_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
-    service_type_id: int | None = Query(None, description="Service type id", gt=0),
-    urban_function_id: int | None = Query(None, description="urban function identifier", gt=0),
-    name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
-    cities_only: bool = Query(False, description="to get only cities or not"),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
+    service_type_id: int | None = Query(None, description="to filter by service type", gt=0),
+    urban_function_id: int | None = Query(None, description="to filter by urban function", gt=0),
+    name: str | None = Query(None, description="to filter services by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
+    cities_only: bool = Query(False, description="to get only for cities"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
@@ -110,6 +113,7 @@ async def get_services_with_geometry_by_territory_id(
         service_type_id,
         urban_function_id,
         name,
+        include_child_territories,
         cities_only,
         order_by_value,
         ordering.value,
@@ -130,11 +134,12 @@ async def get_services_with_geometry_by_territory_id(
 )
 async def get_services_geojson_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
-    service_type_id: int | None = Query(None, description="Service type id", gt=0),
-    urban_function_id: int | None = Query(None, description="urban function identifier", gt=0),
-    name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
-    cities_only: bool = Query(False, description="to get only cities or not"),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
+    service_type_id: int | None = Query(None, description="to filter by service type", gt=0),
+    urban_function_id: int | None = Query(None, description="to filter by urban function", gt=0),
+    name: str | None = Query(None, description="to filter services by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
+    cities_only: bool = Query(False, description="to get only for cities"),
     centers_only: bool = Query(False, description="to get only center points of geometries"),
 ) -> GeoJSONResponse[Feature[Geometry, ServicesData]]:
     """Get FeatureCollection with geometries of service objects for given territory.
@@ -145,7 +150,15 @@ async def get_services_geojson_by_territory_id(
     territories_service: TerritoriesService = request.state.territories_service
 
     services = await territories_service.get_services_with_geometry_by_territory_id(
-        territory_id, service_type_id, urban_function_id, name, cities_only, None, None
+        territory_id,
+        service_type_id,
+        urban_function_id,
+        name,
+        include_child_territories,
+        cities_only,
+        None,
+        "asc",
+        paginate=False,
     )
 
     return await GeoJSONResponse.from_list([service.to_geojson_dict() for service in services], centers_only)
@@ -158,7 +171,7 @@ async def get_services_geojson_by_territory_id(
 )
 async def get_total_services_capacity_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
     level: int = Query(..., description="territory level", gt=0),
     service_type_id: int | None = Query(None, description="service type identifier", gt=0),
 ) -> list[ServicesCountCapacity]:

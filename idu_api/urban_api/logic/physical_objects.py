@@ -6,7 +6,7 @@ from typing import Protocol
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
 from idu_api.urban_api.dto import (
-    LivingBuildingsDTO,
+    LivingBuildingDTO,
     ObjectGeometryDTO,
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
@@ -64,19 +64,19 @@ class PhysicalObjectsService(Protocol):
         """Delete physical object."""
 
     @abc.abstractmethod
-    async def add_living_building(self, living_building: LivingBuildingsDataPost) -> LivingBuildingsDTO:
+    async def add_living_building(self, living_building: LivingBuildingsDataPost) -> LivingBuildingDTO:
         """Create living building object."""
 
     @abc.abstractmethod
     async def put_living_building(
         self, living_building: LivingBuildingsDataPut, living_building_id: int
-    ) -> LivingBuildingsDTO:
+    ) -> LivingBuildingDTO:
         """Put living building object."""
 
     @abc.abstractmethod
     async def patch_living_building(
         self, living_building: LivingBuildingsDataPatch, living_building_id: int
-    ) -> LivingBuildingsDTO:
+    ) -> LivingBuildingDTO:
         """Patch living building object."""
 
     @abc.abstractmethod
@@ -84,7 +84,7 @@ class PhysicalObjectsService(Protocol):
         """Delete living building object."""
 
     @abc.abstractmethod
-    async def get_living_buildings_by_physical_object_id(self, physical_object_id: int) -> list[LivingBuildingsDTO]:
+    async def get_living_buildings_by_physical_object_id(self, physical_object_id: int) -> list[LivingBuildingDTO]:
         """Get living building or list of living buildings by physical object id."""
 
     @abc.abstractmethod

@@ -198,6 +198,19 @@ class ShortPhysicalObject(BaseModel):
         )
 
 
+class ShortPhysicalObjectWithoutLivingBuilding(BaseModel):
+    """Basic physical object model to encapsulate in other models."""
+
+    physical_object_id: int = Field(..., examples=[1])
+    physical_object_type: PhysicalObjectTypeBasic
+    name: str | None = Field(None, description="physical object name", examples=["--"])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="physical object additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
+
+
 class ShortScenarioPhysicalObject(ShortPhysicalObject):
     """Basic scenario physical object model to encapsulate in other models."""
 
