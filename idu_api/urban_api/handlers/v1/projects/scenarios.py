@@ -20,14 +20,16 @@ from idu_api.urban_api.utils.auth_client import get_user
     "/scenarios/{scenario_id}",
     response_model=ScenariosData,
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_scenario_by_id(
     request: Request,
     scenario_id: int = Path(..., description="scenario identifier"),
     user: UserDTO = Depends(get_user),
 ) -> ScenariosData:
-    """Get scenario by identifier if project is public or if you're the project owner."""
+    """Get scenario by identifier.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     scenario = await user_project_service.get_scenario_by_id(scenario_id, user.id)
@@ -42,13 +44,36 @@ async def get_scenario_by_id(
     dependencies=[Security(HTTPBearer())],
 )
 async def add_scenario(request: Request, scenario: ScenariosPost, user: UserDTO = Depends(get_user)) -> ScenariosData:
-    """Create a new scenario for given project.
+    """Create a new scenario from the base scenario for given project.
 
     You must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
     scenario = await user_project_service.add_scenario(scenario, user.id)
+
+    return ScenariosData.from_dto(scenario)
+
+
+@projects_router.post(
+    "/scenarios/{scenario_id}",
+    response_model=ScenariosData,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def copy_scenario(
+    request: Request,
+    scenario: ScenariosPost,
+    scenario_id: int = Path(..., description="another scenario identifier"),
+    user: UserDTO = Depends(get_user),
+) -> ScenariosData:
+    """Create a new scenario from another scenario (copy) by its identifier for given project.
+
+    You must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    scenario = await user_project_service.copy_scenario(scenario, scenario_id, user.id)
 
     return ScenariosData.from_dto(scenario)
 
@@ -65,7 +90,7 @@ async def put_scenario(
     scenario_id: int = Path(..., description="scenario identifier"),
     user: UserDTO = Depends(get_user),
 ) -> ScenariosData:
-    """Update a scenario by setting all of its attributes.
+    """Update a scenario object - all attributes.
 
     You must be the owner of the relevant project.
     """
@@ -88,7 +113,7 @@ async def patch_scenario(
     scenario_id: int = Path(..., description="scenario identifier"),
     user: UserDTO = Depends(get_user),
 ) -> ScenariosData:
-    """Update a scenario by setting given attributes.
+    """Update a scenario - only given fields.
 
     You must be the owner of the relevant project.
     """

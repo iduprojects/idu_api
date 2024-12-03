@@ -22,7 +22,6 @@ from idu_api.urban_api.utils.auth_client import get_user
     "/scenarios/{scenario_id}/physical_objects",
     response_model=list[ScenarioPhysicalObject],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_physical_objects_by_scenario_id(
     request: Request,
@@ -33,7 +32,10 @@ async def get_physical_objects_by_scenario_id(
 ) -> list[ScenarioPhysicalObject]:
     """Get list of physical objects for given scenario.
 
-    It could be specified by physical object type and physical object function."""
+    It could be specified by physical object type and physical object function.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     physical_objects = await user_project_service.get_physical_objects_by_scenario_id(
@@ -50,7 +52,6 @@ async def get_physical_objects_by_scenario_id(
     "/scenarios/{scenario_id}/context/physical_objects",
     response_model=list[PhysicalObjectsData],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_context_physical_objects_by_scenario_id(
     request: Request,
@@ -61,7 +62,10 @@ async def get_context_physical_objects_by_scenario_id(
 ) -> list[PhysicalObjectsData]:
     """Get list of physical objects for context of the project territory for given scenario.
 
-    It could be specified by physical object type and physical object function."""
+    It could be specified by physical object type and physical object function.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     physical_objects = await user_project_service.get_context_physical_objects_by_scenario_id(
@@ -86,7 +90,10 @@ async def add_physical_object_with_geometry(
     scenario_id: int = Path(..., description="scenario identifier"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioUrbanObject:
-    """Create new physical object and geometry for given scenario."""
+    """Create new physical object and geometry for given scenario.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     urban_object = await user_project_service.add_physical_object_with_geometry(
@@ -112,7 +119,10 @@ async def update_physical_objects_by_function_id(
     user: UserDTO = Depends(get_user),
 ) -> list[ScenarioUrbanObject]:
     """Delete all physical objects by physical object function identifier
-    and upload new objects with the same function for given scenario."""
+    and upload new objects with the same function for given scenario.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     urban_objects = await user_project_service.update_physical_objects_by_function_id(
@@ -139,7 +149,10 @@ async def put_physical_object(
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioPhysicalObject:
-    """Update scenario physical object - all attributes."""
+    """Update scenario physical object - all attributes.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     physical_object_dto = await user_project_service.put_physical_object(
@@ -167,7 +180,10 @@ async def patch_physical_object(
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioPhysicalObject:
-    """Update scenario physical object - only given fields."""
+    """Update scenario physical object - only given fields.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     physical_object_dto = await user_project_service.patch_physical_object(
@@ -194,7 +210,10 @@ async def delete_physical_object(
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> dict:
-    """Delete scenario physical object by given id."""
+    """Delete scenario physical object by given identifier.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.delete_physical_object(

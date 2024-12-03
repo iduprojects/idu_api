@@ -2,7 +2,20 @@
 
 from typing import Callable
 
-from sqlalchemy import TIMESTAMP, Column, Float, ForeignKey, Integer, Sequence, String, Table, Text, func, text
+from sqlalchemy import (
+    TIMESTAMP,
+    Column,
+    Float,
+    ForeignKey,
+    Integer,
+    Sequence,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
@@ -51,6 +64,7 @@ projects_indicators_data = Table(
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
+    UniqueConstraint("scenario_id", "indicator_id", "territory_id", "hexagon_id"),
     schema="user_projects",
 )
 
@@ -64,6 +78,7 @@ Indicators data:
 - value float
 - comment string(2048)
 - information_source string(300)
+- properties jsonb
 - created_at timestamp
 - updated_at timestamp
 """

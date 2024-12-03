@@ -49,7 +49,7 @@ async def get_services_by_scenario_id(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
     project_geometry = (
@@ -268,7 +268,7 @@ async def get_context_services_by_scenario_id_from_db(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
     context_territories = select(

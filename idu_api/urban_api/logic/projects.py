@@ -50,11 +50,11 @@ class UserProjectService(Protocol):
     """Service to manipulate projects objects."""
 
     @abc.abstractmethod
-    async def get_project_by_id(self, project_id: int, user_id: str) -> ProjectDTO:
+    async def get_project_by_id(self, project_id: int, user_id: str | None) -> ProjectDTO:
         """Get project object by id."""
 
     @abc.abstractmethod
-    async def get_project_territory_by_id(self, project_id: int, user_id: str) -> ProjectTerritoryDTO:
+    async def get_project_territory_by_id(self, project_id: int, user_id: str | None) -> ProjectTerritoryDTO:
         """Get project territory object by id."""
 
     @abc.abstractmethod
@@ -114,30 +114,38 @@ class UserProjectService(Protocol):
         """Create project image preview and upload it (full and preview) to minio bucket."""
 
     @abc.abstractmethod
-    async def get_full_project_image(self, minio_client: AsyncMinioClient, project_id: int, user_id: str) -> io.BytesIO:
+    async def get_full_project_image(
+        self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
+    ) -> io.BytesIO:
         """Get full image for given project."""
 
     @abc.abstractmethod
     async def get_preview_project_image(
-        self, minio_client: AsyncMinioClient, project_id: int, user_id: str
+        self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
     ) -> io.BytesIO:
         """Get preview image for given project."""
 
     @abc.abstractmethod
-    async def get_full_project_image_url(self, minio_client: AsyncMinioClient, project_id: int, user_id: str) -> str:
+    async def get_full_project_image_url(
+        self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
+    ) -> str:
         """Get full image url for given project."""
 
     @abc.abstractmethod
-    async def get_scenarios_by_project_id(self, project_id: int, user_id: str) -> list[ScenarioDTO]:
+    async def get_scenarios_by_project_id(self, project_id: int, user_id: str | None) -> list[ScenarioDTO]:
         """Get list of scenario objects by project id."""
 
     @abc.abstractmethod
-    async def get_scenario_by_id(self, scenario_id: int, user_id: str) -> ScenarioDTO:
+    async def get_scenario_by_id(self, scenario_id: int, user_id: str | None) -> ScenarioDTO:
         """Get scenario object by id."""
 
     @abc.abstractmethod
     async def add_scenario(self, scenario: ScenariosPost, user_id: str) -> ScenarioDTO:
-        """Create scenario object."""
+        """Create scenario object from base scenario."""
+
+    @abc.abstractmethod
+    async def copy_scenario(self, scenario: ScenariosPost, scenario_id: int, user_id: str) -> ScenarioDTO:
+        """Create a new scenario from another scenario (copy) by its identifier."""
 
     @abc.abstractmethod
     async def put_scenario(self, scenario: ScenariosPut, scenario_id: int, user_id) -> ScenarioDTO:
@@ -155,7 +163,7 @@ class UserProjectService(Protocol):
     async def get_physical_objects_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str,
+        user_id: str | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
     ) -> list[ScenarioPhysicalObjectDTO]:
@@ -165,7 +173,7 @@ class UserProjectService(Protocol):
     async def get_context_physical_objects_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str,
+        user_id: str | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
     ) -> list[PhysicalObjectDataDTO]:
@@ -227,7 +235,7 @@ class UserProjectService(Protocol):
     async def get_services_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str,
+        user_id: str | None,
         service_type_id: int | None,
         urban_function_id: int | None,
     ) -> list[ScenarioServiceDTO]:
@@ -237,7 +245,7 @@ class UserProjectService(Protocol):
     async def get_context_services_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str,
+        user_id: str | None,
         service_type_id: int | None,
         urban_function_id: int | None,
     ) -> list[ServiceDTO]:
@@ -283,7 +291,7 @@ class UserProjectService(Protocol):
     async def get_geometries_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str,
+        user_id: str | None,
         physical_object_id: int | None,
         service_id: int | None,
     ) -> list[ScenarioGeometryDTO]:
@@ -293,7 +301,7 @@ class UserProjectService(Protocol):
     async def get_geometries_with_all_objects_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str,
+        user_id: str | None,
         physical_object_type_id: int | None,
         service_type_id: int | None,
         physical_object_function_id: int | None,
@@ -305,7 +313,7 @@ class UserProjectService(Protocol):
     async def get_context_geometries_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str,
+        user_id: str | None,
         physical_object_id: int | None,
         service_id: int | None,
     ) -> list[ObjectGeometryDTO]:
@@ -315,7 +323,7 @@ class UserProjectService(Protocol):
     async def get_context_geometries_with_all_objects_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str,
+        user_id: str | None,
         physical_object_type_id: int | None,
         service_type_id: int | None,
         physical_object_function_id: int | None,
@@ -363,14 +371,14 @@ class UserProjectService(Protocol):
         indicator_group_id: int | None,
         territory_id: int | None,
         hexagon_id: int | None,
-        user_id: str,
+        user_id: str | None,
     ) -> list[ProjectIndicatorValueDTO]:
         """Get project's indicators values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
     async def get_project_indicator_value_by_id(
-        self, indicator_value_id: int, user_id: str
+        self, indicator_value_id: int, user_id: str | None
     ) -> ProjectIndicatorValueDTO:
         """Get project's specific indicator values for given scenario
         if relevant project is public or if you're the project owner."""
@@ -383,7 +391,7 @@ class UserProjectService(Protocol):
 
     @abc.abstractmethod
     async def put_projects_indicator_value(
-        self, projects_indicator: ProjectIndicatorValuePut, indicator_value_id: int, user_id: str
+        self, projects_indicator: ProjectIndicatorValuePut, user_id: str
     ) -> ProjectIndicatorValueDTO:
         """Put project's indicator value."""
 
@@ -407,13 +415,13 @@ class UserProjectService(Protocol):
         scenario_id: int,
         indicator_ids: str | None,
         indicators_group_id: int | None,
-        user_id: str,
+        user_id: str | None,
     ) -> list[HexagonWithIndicatorsDTO]:
         """Get project's indicators values for given regional scenario with hexagons."""
 
     @abc.abstractmethod
     async def get_functional_zones_sources_by_scenario_id(
-        self, scenario_id: int, user_id: str
+        self, scenario_id: int, user_id: str | None
     ) -> list[FunctionalZoneSourceDTO]:
         """Get list of pairs year + source for functional zones for given scenario."""
 
@@ -424,13 +432,13 @@ class UserProjectService(Protocol):
         year: int,
         source: str,
         functional_zone_type_id: int | None,
-        user_id: str,
+        user_id: str | None,
     ) -> list[ProjectProfileDTO]:
         """Get list of functional zone objects by scenario identifier."""
 
     @abc.abstractmethod
     async def get_context_functional_zones_sources_by_scenario_id(
-        self, scenario_id: int, user_id: str
+        self, scenario_id: int, user_id: str | None
     ) -> list[FunctionalZoneSourceDTO]:
         """Get list of pairs year + source for functional zones for 'context' of the project territory."""
 
@@ -441,7 +449,7 @@ class UserProjectService(Protocol):
         year: int,
         source: str,
         functional_zone_type_id: int | None,
-        user_id: str,
+        user_id: str | None,
     ) -> list[FunctionalZoneDataDTO]:
         """Get list of functional zone objects for 'context' of the project territory."""
 

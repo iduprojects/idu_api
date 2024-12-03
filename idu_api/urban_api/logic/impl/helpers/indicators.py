@@ -494,6 +494,7 @@ async def get_indicator_value_by_id_from_db(
     statement = (
         select(
             territory_indicators_data,
+            indicators_dict.c.parent_id,
             indicators_dict.c.name_full,
             indicators_dict.c.level,
             indicators_dict.c.list_label,
@@ -614,6 +615,7 @@ async def get_indicator_values_by_id_from_db(
     statement = (
         select(
             territory_indicators_data,
+            indicators_dict.c.parent_id,
             indicators_dict.c.name_full,
             indicators_dict.c.level,
             indicators_dict.c.list_label,

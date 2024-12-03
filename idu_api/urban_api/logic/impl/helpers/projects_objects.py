@@ -66,7 +66,7 @@ async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user
 
     if result is None:
         raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and result.public is False:
+    if result.user_id != user_id and not result.public:
         raise AccessDeniedError(project_id, "project")
 
     return ProjectDTO(**result)
@@ -81,7 +81,7 @@ async def get_project_territory_by_id_from_db(
     result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
     if result_for_project is None:
         raise EntityNotFoundById(project_id, "project")
-    if result_for_project.user_id != user_id and result_for_project.public is False:
+    if result_for_project.user_id != user_id and not result_for_project.public:
         raise AccessDeniedError(project_id, "project")
 
     statement = (
@@ -703,10 +703,9 @@ async def upload_project_image_to_minio(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     result = (await conn.execute(statement)).mappings().one_or_none()
-
     if result is None:
         raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and result.public is False:
+    if result.user_id != user_id:
         raise AccessDeniedError(project_id, "project")
 
     try:
@@ -768,7 +767,7 @@ async def get_full_project_image_from_minio(
 
     if result is None:
         raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and result.public is False:
+    if result.user_id != user_id and not result.public:
         raise AccessDeniedError(project_id, "project")
 
     return await minio_client.get_file(f"projects/{project_id}/image.jpg")
@@ -784,7 +783,7 @@ async def get_preview_project_image_from_minio(
 
     if result is None:
         raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and result.public is False:
+    if result.user_id != user_id and not result.public:
         raise AccessDeniedError(project_id, "project")
 
     return await minio_client.get_file(f"projects/{project_id}/preview.png")
@@ -800,7 +799,7 @@ async def get_full_project_image_url_from_minio(
 
     if result is None:
         raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and result.public is False:
+    if result.user_id != user_id and not result.public:
         raise AccessDeniedError(project_id, "project")
 
     return await minio_client.get_presigned_url(f"projects/{project_id}/image.jpg")
