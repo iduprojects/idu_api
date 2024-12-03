@@ -22,6 +22,7 @@ class FunctionalZoneDataDTO:
     territory_name: str
     functional_zone_type_id: int
     functional_zone_type_name: str
+    functional_zone_type_nickname: str
     name: str | None
     geometry: geom.Polygon | geom.MultiPolygon
     year: int
@@ -40,6 +41,7 @@ class FunctionalZoneDataDTO:
         zone["functional_zone_type"] = {
             "id": zone.pop("functional_zone_type_id"),
             "name": zone.pop("functional_zone_type_name"),
+            "nickname": zone.pop("functional_zone_type_nickname"),
         }
         return zone
 
@@ -51,6 +53,7 @@ class ProjectProfileDTO:
     scenario_name: str
     functional_zone_type_id: int
     functional_zone_type_name: str
+    functional_zone_type_nickname: str
     name: str | None
     geometry: geom.Polygon | geom.MultiPolygon
     year: int
@@ -68,6 +71,7 @@ class ProjectProfileDTO:
         profile["functional_zone_type"] = {
             "id": profile.pop("functional_zone_type_id"),
             "name": profile.pop("functional_zone_type_name"),
+            "nickname": profile.pop("functional_zone_type_nickname"),
         }
         return profile
 

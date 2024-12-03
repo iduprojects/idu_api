@@ -72,6 +72,7 @@ async def get_functional_zones_by_territory_id_from_db(
             territories_data.c.name.label("territory_name"),
             functional_zones_data.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+            functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
             cast(ST_AsGeoJSON(functional_zones_data.c.geometry), JSONB).label("geometry"),
             functional_zones_data.c.year,

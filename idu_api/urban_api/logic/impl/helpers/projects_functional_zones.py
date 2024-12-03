@@ -92,6 +92,7 @@ async def get_functional_zones_by_scenario_id_from_db(
             scenarios_data.c.name.label("scenario_name"),
             profiles_data.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+            functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             profiles_data.c.name,
             cast(ST_AsGeoJSON(profiles_data.c.geometry), JSONB).label("geometry"),
             profiles_data.c.year,
@@ -275,6 +276,7 @@ async def get_context_functional_zones_by_scenario_id_from_db(
             territories_data.c.name.label("territory_name"),
             functional_zones_data.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+            functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
             cast(ST_AsGeoJSON(ST_Intersection(functional_zones_data.c.geometry, unified_geometry)), JSONB).label(
                 "geometry"
@@ -320,6 +322,7 @@ async def get_functional_zone_by_id(conn: AsyncConnection, profile_id: int) -> P
             scenarios_data.c.name.label("scenario_name"),
             profiles_data.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+            functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             profiles_data.c.name,
             cast(ST_AsGeoJSON(profiles_data.c.geometry), JSONB).label("geometry"),
             profiles_data.c.year,
@@ -398,6 +401,7 @@ async def add_scenario_functional_zones_to_db(
             scenarios_data.c.name.label("scenario_name"),
             profiles_data.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+            functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             profiles_data.c.name,
             cast(ST_AsGeoJSON(profiles_data.c.geometry), JSONB).label("geometry"),
             profiles_data.c.year,

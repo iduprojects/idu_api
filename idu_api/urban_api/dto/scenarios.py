@@ -17,6 +17,7 @@ class ScenarioDTO:
     territory_name: str
     functional_zone_type_id: int | None
     functional_zone_type_name: str | None
+    functional_zone_type_nickname: str | None
     name: str
     is_based: bool
     properties: dict[str, Any]

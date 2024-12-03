@@ -7,7 +7,7 @@ from typing import Any
 import shapely.geometry as geom
 
 
-@dataclass
+@dataclass(frozen=True)
 class ProjectDTO:
     project_id: int
     user_id: str
@@ -17,9 +17,26 @@ class ProjectDTO:
     description: str | None
     is_regional: bool
     public: bool
+    properties: dict[str, Any]
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class ProjectWithBaseScenarioDTO:
+    project_id: int
+    user_id: str
+    territory_id: int
+    territory_name: str
+    scenario_id: int
+    scenario_name: str
+    name: str
+    description: str | None
+    is_regional: bool
+    public: bool
     properties: dict[str, Any]
+    created_at: datetime
+    updated_at: datetime
 
 
 @dataclass

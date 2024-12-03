@@ -89,6 +89,7 @@ from .projects import (
     ProjectPut,
     ProjectTerritory,
     ProjectTerritoryPost,
+    ProjectWithBaseScenario,
 )
 from .scenarios import ScenariosData, ScenariosPatch, ScenariosPost, ScenariosPut
 from .service_types import (

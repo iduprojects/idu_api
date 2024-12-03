@@ -154,16 +154,14 @@ async def get_projects_indicators_values_by_scenario_id_from_db(
 
 
 async def add_project_indicator_value_to_db(
-    conn: AsyncConnection, projects_indicator: ProjectIndicatorValuePost, user_id: str
+    conn: AsyncConnection, project_indicator: ProjectIndicatorValuePost, user_id: str
 ) -> ProjectIndicatorValueDTO:
     """Add a new project's indicator value."""
 
-    statement = select(scenarios_data.c.project_id).where(
-        scenarios_data.c.scenario_id == projects_indicator.scenario_id
-    )
+    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == project_indicator.scenario_id)
     project_id = (await conn.execute(statement)).scalar_one_or_none()
     if project_id is None:
-        raise EntityNotFoundById(projects_indicator.scenario_id, "scenario")
+        raise EntityNotFoundById(project_indicator.scenario_id, "scenario")
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
@@ -172,33 +170,34 @@ async def add_project_indicator_value_to_db(
     if project.user_id != user_id:
         raise AccessDeniedError(project_id, "project")
 
-    statement = select(indicators_dict).where(indicators_dict.c.indicator_id == projects_indicator.indicator_id)
+    statement = select(indicators_dict).where(indicators_dict.c.indicator_id == project_indicator.indicator_id)
     indicator = (await conn.execute(statement)).mappings().one_or_none()
     if indicator is None:
-        raise EntityNotFoundById(projects_indicator.indicator_id, "indicator")
+        raise EntityNotFoundById(project_indicator.indicator_id, "indicator")
 
-    if projects_indicator.territory_id is not None:
-        statement = select(territories_data).where(territories_data.c.territory_id == projects_indicator.territory_id)
+    if project_indicator.territory_id is not None:
+        statement = select(territories_data).where(territories_data.c.territory_id == project_indicator.territory_id)
         territory = (await conn.execute(statement)).mappings().one_or_none()
         if territory is None:
-            raise EntityNotFoundById(projects_indicator.territory_id, "territory")
+            raise EntityNotFoundById(project_indicator.territory_id, "territory")
 
-    if projects_indicator.hexagon_id is not None:
-        statement = select(hexagons_data).where(hexagons_data.c.hexagon_id == projects_indicator.hexagon_id)
+    if project_indicator.hexagon_id is not None:
+        statement = select(hexagons_data).where(hexagons_data.c.hexagon_id == project_indicator.hexagon_id)
         hexagon = (await conn.execute(statement)).mappings().one_or_none()
         if hexagon is None:
-            raise EntityNotFoundById(projects_indicator.hexagon_id, "hexagon")
+            raise EntityNotFoundById(project_indicator.hexagon_id, "hexagon")
 
     statement = (
         insert(projects_indicators_data)
         .values(
-            scenario_id=projects_indicator.scenario_id,
-            indicator_id=projects_indicator.indicator_id,
-            territory_id=projects_indicator.territory_id,
-            hexagon_id=projects_indicator.hexagon_id,
-            value=projects_indicator.value,
-            comment=projects_indicator.comment,
-            information_source=projects_indicator.information_source,
+            scenario_id=project_indicator.scenario_id,
+            indicator_id=project_indicator.indicator_id,
+            territory_id=project_indicator.territory_id,
+            hexagon_id=project_indicator.hexagon_id,
+            value=project_indicator.value,
+            comment=project_indicator.comment,
+            information_source=project_indicator.information_source,
+            properties=project_indicator.properties,
         )
         .returning(projects_indicators_data.c.indicator_value_id)
     )
@@ -211,7 +210,7 @@ async def add_project_indicator_value_to_db(
 
 
 async def put_project_indicator_value_to_db(
-    conn: AsyncConnection, projects_indicator: ProjectIndicatorValuePut, indicator_value_id: int, user_id: str
+    conn: AsyncConnection, project_indicator: ProjectIndicatorValuePut, indicator_value_id: int, user_id: str
 ) -> ProjectIndicatorValueDTO:
     """Put project's indicator value."""
 
@@ -238,9 +237,10 @@ async def put_project_indicator_value_to_db(
         update(projects_indicators_data)
         .where(projects_indicators_data.c.indicator_value_id == indicator_value_id)
         .values(
-            value=projects_indicator.value,
-            comment=projects_indicator.comment,
-            information_source=projects_indicator.information_source,
+            value=project_indicator.value,
+            comment=project_indicator.comment,
+            information_source=project_indicator.information_source,
+            properties=project_indicator.properties,
             updated_at=datetime.now(timezone.utc),
         )
         .returning(projects_indicators_data.c.indicator_value_id)

@@ -37,7 +37,7 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
+from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ProjectWithBaseScenarioDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
@@ -117,31 +117,34 @@ async def get_project_territory_by_id_from_db(
 
 async def get_all_available_projects_from_db(
     conn: AsyncConnection, user_id: str | None, is_regional: bool
-) -> list[ProjectDTO]:
+) -> list[ProjectWithBaseScenarioDTO]:
     """Get all public and user's projects."""
 
     statement = (
-        select(projects_data, territories_data.c.name.label("territory_name"))
+        select(
+            projects_data,
+            territories_data.c.name.label("territory_name"),
+            scenarios_data.c.scenario_id,
+            scenarios_data.c.name.label("scenario_name"),
+        )
         .select_from(
             projects_data.join(
                 territories_data,
                 territories_data.c.territory_id == projects_data.c.territory_id,
-            )
+            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
         )
+        .where(scenarios_data.c.is_based.is_(True), projects_data.c.is_regional.is_(is_regional))
         .order_by(projects_data.c.project_id)
     )
 
     if user_id is not None:
-        statement = statement.where(
-            or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)),
-            projects_data.c.is_regional.is_(is_regional),
-        )
+        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
     else:
-        statement = statement.where(projects_data.c.public.is_(True), projects_data.c.is_regional.is_(is_regional))
+        statement = statement.where(projects_data.c.public.is_(True))
 
     results = (await conn.execute(statement)).mappings().all()
 
-    return [ProjectDTO(**result) for result in results]
+    return [ProjectWithBaseScenarioDTO(**result) for result in results]
 
 
 async def get_all_preview_projects_images_from_minio(
@@ -204,23 +207,34 @@ async def get_all_preview_projects_images_url_from_minio(
     return [{"project_id": project_id, "url": url} for project_id, url in results if url is not None]
 
 
-async def get_user_projects_from_db(conn: AsyncConnection, user_id: str, is_regional: bool) -> list[ProjectDTO]:
+async def get_user_projects_from_db(
+    conn: AsyncConnection, user_id: str, is_regional: bool
+) -> list[ProjectWithBaseScenarioDTO]:
     """Get all user's projects."""
 
     statement = (
-        select(projects_data, territories_data.c.name.label("territory_name"))
+        select(
+            projects_data,
+            territories_data.c.name.label("territory_name"),
+            scenarios_data.c.scenario_id,
+            scenarios_data.c.name.label("scenario_name"),
+        )
         .select_from(
             projects_data.join(
                 territories_data,
                 territories_data.c.territory_id == projects_data.c.territory_id,
-            )
+            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
         )
-        .where(projects_data.c.user_id == user_id, projects_data.c.is_regional.is_(is_regional))
+        .where(
+            scenarios_data.c.is_based.is_(True),
+            projects_data.c.is_regional.is_(is_regional),
+            projects_data.c.user_id == user_id,
+        )
         .order_by(projects_data.c.project_id)
     )
     results = (await conn.execute(statement)).mappings().all()
 
-    return [ProjectDTO(**result) for result in results]
+    return [ProjectWithBaseScenarioDTO(**result) for result in results]
 
 
 async def get_user_preview_projects_images_from_minio(

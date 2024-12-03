@@ -28,7 +28,7 @@ from .physical_objects import (
     ShortScenarioPhysicalObjectDTO,
 )
 from .profiles_reclamation import ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO
-from .projects import ProjectDTO, ProjectTerritoryDTO
+from .projects import ProjectDTO, ProjectTerritoryDTO, ProjectWithBaseScenarioDTO
 from .scenarios import ScenarioDTO
 from .service_types import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from .services import (
@@ -105,4 +105,5 @@ __all__ = [
     "ShortProjectIndicatorValueDTO",
     "ScenarioUrbanObjectDTO",
     "FunctionalZoneSourceDTO",
+    "ProjectWithBaseScenarioDTO",
 ]

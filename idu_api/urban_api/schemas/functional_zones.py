@@ -82,6 +82,7 @@ class FunctionalZoneData(BaseModel):
             functional_zone_type=FunctionalZoneTypeBasic(
                 id=dto.functional_zone_type_id,
                 name=dto.functional_zone_type_name,
+                nickname=dto.functional_zone_type_nickname,
             ),
             name=dto.name,
             year=dto.year,
@@ -157,7 +158,7 @@ class FunctionalZoneDataPatch(NotPointGeometryValidationModel):
     year: int | None = Field(None, description="year when functional zone was loaded", examples=[2024])
     source: str | None = Field(None, description="source from which functional zone was loaded", examples=["--"])
     properties: dict[str, Any] | None = Field(
-        default_factory=None,
+        None,
         description="functional zone additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
@@ -199,6 +200,7 @@ class ProjectProfile(BaseModel):
             functional_zone_type=FunctionalZoneTypeBasic(
                 id=dto.functional_zone_type_id,
                 name=dto.functional_zone_type_name,
+                nickname=dto.functional_zone_type_nickname,
             ),
             name=dto.name,
             geometry=Geometry.from_shapely_geometry(dto.geometry),

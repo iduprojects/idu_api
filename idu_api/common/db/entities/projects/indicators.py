@@ -2,7 +2,8 @@
 
 from typing import Callable
 
-from sqlalchemy import TIMESTAMP, Column, Float, ForeignKey, Integer, Sequence, String, Table, func
+from sqlalchemy import TIMESTAMP, Column, Float, ForeignKey, Integer, Sequence, String, Table, Text, func, text
+from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.indicators_dict import indicators_dict
@@ -47,6 +48,7 @@ projects_indicators_data = Table(
     Column("value", Float(53), nullable=False),
     Column("comment", String(2048), nullable=True),
     Column("information_source", String(300), nullable=True),
+    Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     schema="user_projects",

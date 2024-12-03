@@ -23,13 +23,14 @@ from idu_api.common.db.entities import (
     urban_functions_dict,
 )
 from idu_api.urban_api.dto import ScenarioUrbanObjectDTO
-from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds
 
 
 async def get_scenario_urban_object_by_id_from_db(
-    conn: AsyncConnection, urban_object_id: int
-) -> ScenarioUrbanObjectDTO:
-    """Get scenario urban object by urban object id."""
+    conn: AsyncConnection,
+    urban_object_ids: list[int],
+) -> list[ScenarioUrbanObjectDTO]:
+    """Get scenario urban object by urban object identifier."""
 
     statement = (
         select(
@@ -158,76 +159,79 @@ async def get_scenario_urban_object_by_id_from_db(
                 == projects_physical_objects_data.c.physical_object_id,
             )
         )
-        .where(projects_urban_objects_data.c.urban_object_id == urban_object_id)
+        .where(projects_urban_objects_data.c.urban_object_id.in_(urban_object_ids))
     )
 
-    row = (await conn.execute(statement)).mappings().one_or_none()
-    if row is None:
-        raise EntityNotFoundById(urban_object_id, "urban object")
+    result = (await conn.execute(statement)).mappings().all()
+    if len(urban_object_ids) > len(list(result)):
+        raise EntitiesNotFoundByIds("urban object")
 
-    is_scenario_service = row.service_id is not None and row.public_service_id is None
-    is_scenario_physical_object = row.physical_object_id is not None and row.public_physical_object_id is None
-    is_scenario_geometry = row.object_geometry_id is not None and row.public_object_geometry_id is None
-    result = {
-        "urban_object_id": row.urban_object_id,
-        "scenario_id": row.scenario_id,
-        "public_urban_object_id": row.public_urban_object_id,
-        "physical_object_id": row.physical_object_id or row.public_physical_object_id,
-        "physical_object_type_id": row.physical_object_type_id,
-        "physical_object_type_name": row.physical_object_type_name,
-        "physical_object_function_id": row.physical_object_function_id,
-        "physical_object_function_name": row.physical_object_function_name,
-        "physical_object_name": (
-            row.physical_object_name if is_scenario_physical_object else row.public_physical_object_name
-        ),
-        "physical_object_properties": (
-            row.physical_object_properties if is_scenario_physical_object else row.public_physical_object_properties
-        ),
-        "physical_object_created_at": (
-            row.physical_object_created_at if is_scenario_physical_object else row.public_physical_object_created_at
-        ),
-        "physical_object_updated_at": (
-            row.physical_object_updated_at if is_scenario_physical_object else row.public_physical_object_updated_at
-        ),
-        "living_building_id": (
-            row.living_building_id if is_scenario_physical_object else row.public_living_building_id
-        ),
-        "living_area": row.living_area if is_scenario_physical_object else row.public_living_area,
-        "living_building_properties": (
-            row.living_building_properties if is_scenario_physical_object else row.public_living_building_properties
-        ),
-        "is_scenario_physical_object": is_scenario_physical_object,
-        "object_geometry_id": row.object_geometry_id or row.public_object_geometry_id,
-        "territory_id": row.territory_id,
-        "territory_name": row.territory_name,
-        "geometry": row.geometry if is_scenario_geometry else row.public_geometry,
-        "centre_point": row.centre_point if is_scenario_geometry else row.public_centre_point,
-        "address": row.address if is_scenario_geometry else row.public_address,
-        "osm_id": row.osm_id if is_scenario_geometry else row.public_osm_id,
-        "object_geometry_created_at": (
-            row.object_geometry_created_at if is_scenario_geometry else row.public_object_geometry_created_at
-        ),
-        "object_geometry_updated_at": (
-            row.object_geometry_updated_at if is_scenario_geometry else row.public_object_geometry_updated_at
-        ),
-        "is_scenario_geometry": is_scenario_geometry,
-        "service_id": row.service_id or row.public_service_id,
-        "service_type_id": row.service_type_id,
-        "service_type_name": row.service_type_name,
-        "urban_function_id": row.urban_function_id,
-        "urban_function_name": row.urban_function_name,
-        "service_type_capacity_modeled": row.service_type_capacity_modeled,
-        "service_type_code": row.service_type_code,
-        "infrastructure_type": row.infrastructure_type,
-        "service_type_properties": row.service_type_properties,
-        "territory_type_id": row.territory_type_id,
-        "territory_type_name": row.territory_type_name,
-        "service_name": row.service_name if is_scenario_service else row.public_service_name,
-        "capacity_real": row.capacity_real if is_scenario_service else row.public_capacity_real,
-        "service_properties": row.service_properties if is_scenario_service else row.public_service_properties,
-        "service_created_at": row.service_created_at if is_scenario_service else row.public_service_created_at,
-        "service_updated_at": row.service_updated_at if is_scenario_service else row.public_service_updated_at,
-        "is_scenario_service": is_scenario_service,
-    }
+    objects = []
+    for row in result:
+        is_scenario_service = row.service_id is not None and row.public_service_id is None
+        is_scenario_physical_object = row.physical_object_id is not None and row.public_physical_object_id is None
+        is_scenario_geometry = row.object_geometry_id is not None and row.public_object_geometry_id is None
+        res = {
+            "urban_object_id": row.urban_object_id,
+            "scenario_id": row.scenario_id,
+            "public_urban_object_id": row.public_urban_object_id,
+            "physical_object_id": row.physical_object_id or row.public_physical_object_id,
+            "physical_object_type_id": row.physical_object_type_id,
+            "physical_object_type_name": row.physical_object_type_name,
+            "physical_object_function_id": row.physical_object_function_id,
+            "physical_object_function_name": row.physical_object_function_name,
+            "physical_object_name": (
+                row.physical_object_name if is_scenario_physical_object else row.public_physical_object_name
+            ),
+            "physical_object_properties": (
+                row.physical_object_properties if is_scenario_physical_object else row.public_physical_object_properties
+            ),
+            "physical_object_created_at": (
+                row.physical_object_created_at if is_scenario_physical_object else row.public_physical_object_created_at
+            ),
+            "physical_object_updated_at": (
+                row.physical_object_updated_at if is_scenario_physical_object else row.public_physical_object_updated_at
+            ),
+            "living_building_id": (
+                row.living_building_id if is_scenario_physical_object else row.public_living_building_id
+            ),
+            "living_area": row.living_area if is_scenario_physical_object else row.public_living_area,
+            "living_building_properties": (
+                row.living_building_properties if is_scenario_physical_object else row.public_living_building_properties
+            ),
+            "is_scenario_physical_object": is_scenario_physical_object,
+            "object_geometry_id": row.object_geometry_id or row.public_object_geometry_id,
+            "territory_id": row.territory_id,
+            "territory_name": row.territory_name,
+            "geometry": row.geometry if is_scenario_geometry else row.public_geometry,
+            "centre_point": row.centre_point if is_scenario_geometry else row.public_centre_point,
+            "address": row.address if is_scenario_geometry else row.public_address,
+            "osm_id": row.osm_id if is_scenario_geometry else row.public_osm_id,
+            "object_geometry_created_at": (
+                row.object_geometry_created_at if is_scenario_geometry else row.public_object_geometry_created_at
+            ),
+            "object_geometry_updated_at": (
+                row.object_geometry_updated_at if is_scenario_geometry else row.public_object_geometry_updated_at
+            ),
+            "is_scenario_geometry": is_scenario_geometry,
+            "service_id": row.service_id or row.public_service_id,
+            "service_type_id": row.service_type_id,
+            "service_type_name": row.service_type_name,
+            "urban_function_id": row.urban_function_id,
+            "urban_function_name": row.urban_function_name,
+            "service_type_capacity_modeled": row.service_type_capacity_modeled,
+            "service_type_code": row.service_type_code,
+            "infrastructure_type": row.infrastructure_type,
+            "service_type_properties": row.service_type_properties,
+            "territory_type_id": row.territory_type_id,
+            "territory_type_name": row.territory_type_name,
+            "service_name": row.service_name if is_scenario_service else row.public_service_name,
+            "capacity_real": row.capacity_real if is_scenario_service else row.public_capacity_real,
+            "service_properties": row.service_properties if is_scenario_service else row.public_service_properties,
+            "service_created_at": row.service_created_at if is_scenario_service else row.public_service_created_at,
+            "service_updated_at": row.service_updated_at if is_scenario_service else row.public_service_updated_at,
+            "is_scenario_service": is_scenario_service,
+        }
+        objects.append(res)
 
-    return ScenarioUrbanObjectDTO(**result)
+    return [ScenarioUrbanObjectDTO(**obj) for obj in objects]

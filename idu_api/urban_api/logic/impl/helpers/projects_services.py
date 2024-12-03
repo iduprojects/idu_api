@@ -489,7 +489,7 @@ async def add_service_to_db(
     urban_object_id = (await conn.execute(statement)).scalar_one()
     await conn.commit()
 
-    return await get_scenario_urban_object_by_id_from_db(conn, urban_object_id)
+    return (await get_scenario_urban_object_by_id_from_db(conn, [urban_object_id]))[0]
 
 
 async def get_scenario_service_by_id_from_db(conn: AsyncConnection, service_id: int) -> ScenarioServiceDTO:
