@@ -34,7 +34,9 @@ async def get_project_by_id(
     project_id: int = Path(..., description="project identifier"),
     user: UserDTO = Depends(get_user),
 ) -> Project:
-    """Get a project by identifier."""
+    """Get a project by identifier.
+
+    You must be the owner of the relevant project or the project must be publicly available."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     project_dto = await user_project_service.get_project_by_id(project_id, user.id)
@@ -53,7 +55,9 @@ async def get_project_territory_by_project_id(
     project_id: int = Path(..., description="project identifier"),
     user: UserDTO = Depends(get_user),
 ) -> ProjectTerritory:
-    """Get territory info by project identifier."""
+    """Get territory info by project identifier.
+
+    You must be the owner of the relevant project or the project must be publicly available."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     project_territory_dto = await user_project_service.get_project_territory_by_id(project_id, user.id)
@@ -232,7 +236,9 @@ async def put_project(
     project_id: int = Path(..., description="project identifier"),
     user: UserDTO = Depends(get_user),
 ) -> Project:
-    """Update a project by setting all of its attributes."""
+    """Update a project by setting all of its attributes.
+
+    You must be the owner of the relevant project."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     project_dto = await user_project_service.put_project(project, project_id, user.id)
@@ -252,7 +258,9 @@ async def patch_project(
     project_id: int = Path(..., description="project identifier"),
     user: UserDTO = Depends(get_user),
 ) -> Project:
-    """Update a project by setting given attributes."""
+    """Update a project by setting given attributes.
+
+    You must be the owner of the relevant project."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     project_dto = await user_project_service.patch_project(project, project_id, user.id)
@@ -271,7 +279,9 @@ async def delete_project(
     minio_client: AsyncMinioClient = Depends(get_minio_client),
     user: UserDTO = Depends(get_user),
 ) -> dict:
-    """Delete a project."""
+    """Delete a project.
+
+    You must be the owner of the relevant project."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.delete_project(project_id, minio_client, user.id)
@@ -290,7 +300,9 @@ async def upload_project_image(
     user: UserDTO = Depends(get_user),
     minio_client: AsyncMinioClient = Depends(get_minio_client),
 ) -> MinioImagesURL:
-    """Upload project image to minio."""
+    """Upload project image to minio.
+
+    You must be the owner of the relevant project."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     if not file.content_type.startswith("image/"):
@@ -312,7 +324,9 @@ async def get_full_project_image(
     user: UserDTO = Depends(get_user),
     minio_client: AsyncMinioClient = Depends(get_minio_client),
 ) -> StreamingResponse:
-    """Get full image for given project."""
+    """Get full image for given project.
+
+    You must be the owner of the relevant project or the project must be publicly available."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     image_stream = await user_project_service.get_full_project_image(minio_client, project_id, user.id)
@@ -331,7 +345,9 @@ async def get_preview_project_image(
     user: UserDTO = Depends(get_user),
     minio_client: AsyncMinioClient = Depends(get_minio_client),
 ) -> StreamingResponse:
-    """Get preview image for given project."""
+    """Get preview image for given project.
+
+    You must be the owner of the relevant project or the project must be publicly available."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     image_stream = await user_project_service.get_preview_project_image(minio_client, project_id, user.id)
@@ -351,7 +367,9 @@ async def get_full_project_image_url(
     user: UserDTO = Depends(get_user),
     minio_client: AsyncMinioClient = Depends(get_minio_client),
 ) -> str:
-    """Get full image url for given project."""
+    """Get full image url for given project.
+
+    You must be the owner of the relevant project or the project must be publicly available."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.get_full_project_image_url(minio_client, project_id, user.id)

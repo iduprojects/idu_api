@@ -19,7 +19,7 @@ from idu_api.common.db.entities import (
     territories_data,
 )
 from idu_api.urban_api.dto import HexagonWithIndicatorsDTO, ProjectIndicatorValueDTO, ShortProjectIndicatorValueDTO
-from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.schemas import ProjectIndicatorValuePatch, ProjectIndicatorValuePost, ProjectIndicatorValuePut
 
@@ -33,6 +33,7 @@ async def get_project_indicator_value_by_id_from_db(
     statement = (
         select(
             projects_indicators_data,
+            indicators_dict.c.parent_id,
             indicators_dict.c.name_full,
             indicators_dict.c.measurement_unit_id,
             measurement_units_dict.c.name.label("measurement_unit_name"),
@@ -68,7 +69,7 @@ async def get_project_indicator_value_by_id_from_db(
     project = (await conn.execute(statement)).mappings().one_or_none()
     if project is None:
         raise EntityNotFoundById(project_id, "project")
-    if project.user_id != user_id and project.public is False:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
     return ProjectIndicatorValueDTO(**result)
@@ -95,12 +96,13 @@ async def get_projects_indicators_values_by_scenario_id_from_db(
     project = (await conn.execute(statement)).mappings().one_or_none()
     if project is None:
         raise EntityNotFoundById(project_id, "project")
-    if project.user_id != user_id and project.public is False:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
     statement = (
         select(
             projects_indicators_data,
+            indicators_dict.c.parent_id,
             indicators_dict.c.name_full,
             indicators_dict.c.measurement_unit_id,
             measurement_units_dict.c.name.label("measurement_unit_name"),
@@ -165,8 +167,6 @@ async def add_project_indicator_value_to_db(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project is None:
-        raise EntityNotFoundById(project_id, "project")
     if project.user_id != user_id:
         raise AccessDeniedError(project_id, "project")
 
@@ -187,6 +187,30 @@ async def add_project_indicator_value_to_db(
         if hexagon is None:
             raise EntityNotFoundById(project_indicator.hexagon_id, "hexagon")
 
+    statement = select(projects_indicators_data).where(
+        projects_indicators_data.c.scenario_id == project_indicator.scenario_id,
+        projects_indicators_data.c.indicator_id == project_indicator.indicator_id,
+        (
+            projects_indicators_data.c.territory_id == project_indicator.territory_id
+            if project_indicator.territory_id is not None
+            else projects_indicators_data.c.territory_id.is_(None)
+        ),
+        (
+            projects_indicators_data.c.hexagon_id == project_indicator.hexagon_id
+            if project_indicator.hexagon_id is not None
+            else projects_indicators_data.c.hexagon_id.is_(None)
+        ),
+    )
+    indicator_value = (await conn.execute(statement)).mappings().one_or_none()
+    if indicator_value is not None:
+        raise EntityAlreadyExists(
+            "project indicator value",
+            project_indicator.scenario_id,
+            project_indicator.indicator_id,
+            project_indicator.territory_id,
+            project_indicator.hexagon_id,
+        )
+
     statement = (
         insert(projects_indicators_data)
         .values(
@@ -201,8 +225,7 @@ async def add_project_indicator_value_to_db(
         )
         .returning(projects_indicators_data.c.indicator_value_id)
     )
-
-    indicator_value_id = (await conn.execute(statement)).scalar()
+    indicator_value_id = (await conn.execute(statement)).scalar_one()
 
     await conn.commit()
 
@@ -210,42 +233,85 @@ async def add_project_indicator_value_to_db(
 
 
 async def put_project_indicator_value_to_db(
-    conn: AsyncConnection, project_indicator: ProjectIndicatorValuePut, indicator_value_id: int, user_id: str
+    conn: AsyncConnection, project_indicator: ProjectIndicatorValuePut, user_id: str
 ) -> ProjectIndicatorValueDTO:
     """Put project's indicator value."""
 
-    statement = select(projects_indicators_data.c.scenario_id).where(
-        projects_indicators_data.c.indicator_value_id == indicator_value_id
-    )
-    scenario_id = (await conn.execute(statement)).scalar_one_or_none()
-    if scenario_id is None:
-        raise EntityNotFoundById(indicator_value_id, "indicator value")
-
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
+    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == project_indicator.scenario_id)
     project_id = (await conn.execute(statement)).scalar_one_or_none()
     if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
+        raise EntityNotFoundById(project_indicator.scenario_id, "scenario")
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project is None:
-        raise EntityNotFoundById(project_id, "project")
     if project.user_id != user_id:
         raise AccessDeniedError(project_id, "project")
 
-    statement = (
-        update(projects_indicators_data)
-        .where(projects_indicators_data.c.indicator_value_id == indicator_value_id)
-        .values(
-            value=project_indicator.value,
-            comment=project_indicator.comment,
-            information_source=project_indicator.information_source,
-            properties=project_indicator.properties,
-            updated_at=datetime.now(timezone.utc),
-        )
-        .returning(projects_indicators_data.c.indicator_value_id)
+    statement = select(indicators_dict).where(indicators_dict.c.indicator_id == project_indicator.indicator_id)
+    indicator = (await conn.execute(statement)).mappings().one_or_none()
+    if indicator is None:
+        raise EntityNotFoundById(project_indicator.indicator_id, "indicator")
+
+    if project_indicator.territory_id is not None:
+        statement = select(territories_data).where(territories_data.c.territory_id == project_indicator.territory_id)
+        territory = (await conn.execute(statement)).mappings().one_or_none()
+        if territory is None:
+            raise EntityNotFoundById(project_indicator.territory_id, "territory")
+
+    if project_indicator.hexagon_id is not None:
+        statement = select(hexagons_data).where(hexagons_data.c.hexagon_id == project_indicator.hexagon_id)
+        hexagon = (await conn.execute(statement)).mappings().one_or_none()
+        if hexagon is None:
+            raise EntityNotFoundById(project_indicator.hexagon_id, "hexagon")
+
+    statement = select(projects_indicators_data).where(
+        projects_indicators_data.c.scenario_id == project_indicator.scenario_id,
+        projects_indicators_data.c.indicator_id == project_indicator.indicator_id,
+        (
+            projects_indicators_data.c.territory_id == project_indicator.territory_id
+            if project_indicator.territory_id is not None
+            else projects_indicators_data.c.territory_id.is_(None)
+        ),
+        (
+            projects_indicators_data.c.hexagon_id == project_indicator.hexagon_id
+            if project_indicator.hexagon_id is not None
+            else projects_indicators_data.c.hexagon_id.is_(None)
+        ),
     )
-    indicator_value_id = (await conn.execute(statement)).scalar_one()
+    indicator_value = (await conn.execute(statement)).mappings().one_or_none()
+    if indicator_value is not None:
+        statement = (
+            update(projects_indicators_data)
+            .where(projects_indicators_data.c.indicator_value_id == indicator_value.indicator_value_id)
+            .values(
+                scenario_id=project_indicator.scenario_id,
+                indicator_id=project_indicator.indicator_id,
+                territory_id=project_indicator.territory_id,
+                hexagon_id=project_indicator.hexagon_id,
+                value=project_indicator.value,
+                comment=project_indicator.comment,
+                information_source=project_indicator.information_source,
+                properties=project_indicator.properties,
+            )
+            .returning(projects_indicators_data.c.indicator_value_id)
+        )
+        indicator_value_id = (await conn.execute(statement)).scalar_one()
+    else:
+        statement = (
+            insert(projects_indicators_data)
+            .values(
+                scenario_id=project_indicator.scenario_id,
+                indicator_id=project_indicator.indicator_id,
+                territory_id=project_indicator.territory_id,
+                hexagon_id=project_indicator.hexagon_id,
+                value=project_indicator.value,
+                comment=project_indicator.comment,
+                information_source=project_indicator.information_source,
+                properties=project_indicator.properties,
+            )
+            .returning(projects_indicators_data.c.indicator_value_id)
+        )
+        indicator_value_id = (await conn.execute(statement)).scalar_one()
 
     await conn.commit()
 
@@ -271,8 +337,6 @@ async def patch_project_indicator_value_to_db(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project is None:
-        raise EntityNotFoundById(project_id, "project")
     if project.user_id != user_id:
         raise AccessDeniedError(project_id, "project")
 
@@ -308,8 +372,6 @@ async def delete_projects_indicators_values_by_scenario_id_from_db(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project is None:
-        raise EntityNotFoundById(project_id, "project")
     if project.user_id != user_id:
         raise AccessDeniedError(project_id, "project")
 
@@ -340,8 +402,6 @@ async def delete_project_indicator_value_by_id_from_db(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project is None:
-        raise EntityNotFoundById(project_id, "project")
     if project.user_id != user_id:
         raise AccessDeniedError(project_id, "project")
 
@@ -373,7 +433,7 @@ async def get_hexagons_with_indicators_by_scenario_id_from_db(
     project = (await conn.execute(statement)).mappings().one_or_none()
     if project is None:
         raise EntityNotFoundById(project_id, "project")
-    if project.user_id != user_id and project.public is False:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
     statement = (

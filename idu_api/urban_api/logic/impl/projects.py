@@ -82,6 +82,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
 )
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     add_new_scenario_to_db,
+    copy_scenario_to_db,
     delete_scenario_from_db,
     get_scenario_by_id_from_db,
     get_scenarios_by_project_id_from_db,
@@ -201,6 +202,9 @@ class UserProjectServiceImpl(UserProjectService):
 
     async def add_scenario(self, scenario: ScenariosPost, user_id: str) -> ScenarioDTO:
         return await add_new_scenario_to_db(self._conn, scenario, user_id)
+
+    async def copy_scenario(self, scenario: ScenariosPost, scenario_id: int, user_id: str) -> ScenarioDTO:
+        return await copy_scenario_to_db(self._conn, scenario, scenario_id, user_id)
 
     async def put_scenario(self, scenario: ScenariosPut, scenario_id: int, user_id) -> ScenarioDTO:
         return await put_scenario_to_db(self._conn, scenario, scenario_id, user_id)
@@ -490,9 +494,9 @@ class UserProjectServiceImpl(UserProjectService):
         return await add_project_indicator_value_to_db(self._conn, projects_indicator, user_id)
 
     async def put_projects_indicator_value(
-        self, projects_indicator: ProjectIndicatorValuePut, indicator_value_id: int, user_id: str
+        self, projects_indicator: ProjectIndicatorValuePut, user_id: str
     ) -> ProjectIndicatorValueDTO:
-        return await put_project_indicator_value_to_db(self._conn, projects_indicator, indicator_value_id, user_id)
+        return await put_project_indicator_value_to_db(self._conn, projects_indicator, user_id)
 
     async def patch_projects_indicator_value(
         self, projects_indicator: ProjectIndicatorValuePatch, indicator_value_id: int, user_id: str

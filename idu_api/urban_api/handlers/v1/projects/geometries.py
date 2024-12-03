@@ -38,7 +38,10 @@ async def get_geometries_by_scenario_id(
 ) -> GeoJSONResponse[Feature[Geometry, ScenarioGeometryAttributes]]:
     """Get all geometries for given scenario in geojson format.
 
-    It could be specified by physical object and service."""
+    It could be specified by physical object and service.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     geometries = await user_project_service.get_geometries_by_scenario_id(
@@ -69,7 +72,10 @@ async def get_geometries_with_all_objects_by_scenario_id(
 ) -> GeoJSONResponse[Feature[Geometry, ScenarioAllObjects]]:
     """Get all geometries with lists of services and physical objects for given scenario in geojson format.
 
-    It could be specified by physical object type and service type."""
+    It could be specified by physical object type and service type.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     geometries = await user_project_service.get_geometries_with_all_objects_by_scenario_id(
@@ -100,7 +106,10 @@ async def get_context_geometries_by_scenario_id(
 ) -> GeoJSONResponse[Feature[Geometry, GeometryAttributes]]:
     """Get all geometries for context of the project territory for given scenario in geojson format.
 
-    It could be specified by physical object and service."""
+    It could be specified by physical object and service.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     geometries = await user_project_service.get_context_geometries_by_scenario_id(
@@ -132,7 +141,10 @@ async def get_context_geometries_with_all_objects_by_scenario_id(
     """Get all geometries with lists of services and physical objects for context of the project territory
      for given scenario in geojson format.
 
-    It could be specified by physical object type and service type."""
+    It could be specified by physical object type and service type.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     geometries = await user_project_service.get_context_geometries_with_all_objects_by_scenario_id(
@@ -161,7 +173,10 @@ async def put_object_geometry(
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioObjectGeometry:
-    """Update scenario object geometry - all attributes."""
+    """Update scenario object geometry - all attributes.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     object_geometry_dto = await user_project_service.put_object_geometry(
@@ -189,7 +204,10 @@ async def patch_object_geometry(
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioObjectGeometry:
-    """Update scenario object geometry - only given fields."""
+    """Update scenario object geometry - only given fields.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     object_geometry_dto = await user_project_service.patch_object_geometry(
@@ -216,7 +234,10 @@ async def delete_object_geometry(
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> dict:
-    """Delete scenario object geometry by given id."""
+    """Delete scenario object geometry by given identifier.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.delete_object_geometry(

@@ -34,10 +34,12 @@ async def get_project_indicators_values_by_scenario_id(
     hexagon_id: int | None = Query(None, description="to filter by hexagon identifier"),
     user: UserDTO = Depends(get_user),
 ) -> list[ProjectIndicatorValue]:
-    """Get project's indicators values for given scenario
-    if relevant project is public or if you're the project owner.
+    """Get project's indicators values for given scenario.
 
-    It could be specified by indicator identifiers, indicators group, territory and hexagon."""
+    It could be specified by indicator identifiers, indicators group, territory and hexagon.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicators = await user_project_service.get_projects_indicators_values_by_scenario_id(
@@ -63,8 +65,10 @@ async def get_project_indicator_value_by_id(
     indicator_value_id: int = Path(..., description="indicator identifier"),
     user: UserDTO = Depends(get_user),
 ) -> ProjectIndicatorValue:
-    """Get project's specific indicator values for given scenario
-    if relevant project is public or if you're the project owner."""
+    """Get project's specific indicator values for given scenario.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator_value = await user_project_service.get_project_indicator_value_by_id(indicator_value_id, user.id)
@@ -81,7 +85,10 @@ async def get_project_indicator_value_by_id(
 async def add_project_indicator(
     request: Request, projects_indicator: ProjectIndicatorValuePost, user: UserDTO = Depends(get_user)
 ) -> ProjectIndicatorValue:
-    """Add a new project's indicator value."""
+    """Add a new project's indicator value.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator = await user_project_service.add_projects_indicator_value(projects_indicator, user.id)
@@ -90,7 +97,7 @@ async def add_project_indicator(
 
 
 @projects_router.put(
-    "/scenarios/indicators_values/{indicator_value_id}",
+    "/scenarios/indicators_values",
     response_model=ProjectIndicatorValue,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
@@ -98,13 +105,16 @@ async def add_project_indicator(
 async def put_project_indicator(
     request: Request,
     projects_indicator: ProjectIndicatorValuePut,
-    indicator_value_id: int = Path(..., description="indicator value identifier"),
     user: UserDTO = Depends(get_user),
 ) -> ProjectIndicatorValue:
-    """Put project's indicator value."""
+    """Update project's indicator value if indicator value with such attributes already exists
+    or create new indicator value for given scenario.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    indicator = await user_project_service.put_projects_indicator_value(projects_indicator, indicator_value_id, user.id)
+    indicator = await user_project_service.put_projects_indicator_value(projects_indicator, user.id)
 
     return ProjectIndicatorValue.from_dto(indicator)
 
@@ -121,7 +131,10 @@ async def patch_project_indicator(
     indicator_value_id: int = Path(..., description="indicator value identifier"),
     user: UserDTO = Depends(get_user),
 ) -> ProjectIndicatorValue:
-    """Patch project's indicator value."""
+    """Update project's indicator value - only given fields.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator = await user_project_service.patch_projects_indicator_value(
@@ -141,7 +154,10 @@ async def delete_project_indicators_values_by_scenario_id(
     scenario_id: int = Path(..., description="scenario identifier"),
     user: UserDTO = Depends(get_user),
 ) -> dict:
-    """Delete all project's indicators values for given scenario if you're the project owner."""
+    """Delete all project's indicators values for given scenario.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.delete_projects_indicators_values_by_scenario_id(scenario_id, user.id)
@@ -157,7 +173,10 @@ async def delete_project_indicator_by_id(
     indicator_value_id: int = Path(..., description="indicator value identifier"),
     user: UserDTO = Depends(get_user),
 ) -> dict:
-    """Delete specific project's indicator values for given scenario if you're the project owner."""
+    """Delete specific project's indicator values for given scenario.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.delete_project_indicator_value_by_id(indicator_value_id, user.id)
@@ -178,7 +197,10 @@ async def get_hexagons_with_indicators_values_by_territory_id(
     user: UserDTO = Depends(get_user),
 ) -> GeoJSONResponse[Feature[Geometry, HexagonWithIndicators]]:
     """Get list of hexagons for a given territory and regional scenario
-    with indicators values in properties in geojson format."""
+    with indicators values in properties in geojson format.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     hexagons = await user_project_service.get_hexagons_with_indicators_by_scenario_id(

@@ -137,7 +137,11 @@ class UserProjectService(Protocol):
 
     @abc.abstractmethod
     async def add_scenario(self, scenario: ScenariosPost, user_id: str) -> ScenarioDTO:
-        """Create scenario object."""
+        """Create scenario object from base scenario."""
+
+    @abc.abstractmethod
+    async def copy_scenario(self, scenario: ScenariosPost, scenario_id: int, user_id: str) -> ScenarioDTO:
+        """Create a new scenario from another scenario (copy) by its identifier."""
 
     @abc.abstractmethod
     async def put_scenario(self, scenario: ScenariosPut, scenario_id: int, user_id) -> ScenarioDTO:
@@ -383,7 +387,7 @@ class UserProjectService(Protocol):
 
     @abc.abstractmethod
     async def put_projects_indicator_value(
-        self, projects_indicator: ProjectIndicatorValuePut, indicator_value_id: int, user_id: str
+        self, projects_indicator: ProjectIndicatorValuePut, user_id: str
     ) -> ProjectIndicatorValueDTO:
         """Put project's indicator value."""
 

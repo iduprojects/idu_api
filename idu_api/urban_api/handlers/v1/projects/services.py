@@ -33,7 +33,10 @@ async def get_services_by_scenario_id(
 ) -> list[ScenarioService]:
     """Get list of services for given scenario.
 
-    It could be specified by service type and urban function."""
+    It could be specified by service type and urban function.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     services = await user_project_service.get_services_by_scenario_id(
@@ -61,7 +64,10 @@ async def get_context_services_by_scenario_id(
 ) -> list[ServicesData]:
     """Get list of services for context of the project territory for given scenario.
 
-    It could be specified by service type and urban function."""
+    It could be specified by service type and urban function.
+
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     services = await user_project_service.get_context_services_by_scenario_id(
@@ -86,7 +92,10 @@ async def add_service(
     scenario_id: int = Path(..., description="scenario identifier"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioUrbanObject:
-    """Create new service for given scenario, physical object and geometry."""
+    """Create new service for given scenario, physical object and geometry.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     urban_object = await user_project_service.add_service(service, scenario_id, user.id)
@@ -108,7 +117,10 @@ async def put_service(
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioService:
-    """Update scenario service - all attributes."""
+    """Update scenario service - all attributes.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     service_dto = await user_project_service.put_service(service, scenario_id, service_id, is_scenario_object, user.id)
@@ -130,7 +142,10 @@ async def patch_service(
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioService:
-    """Update scenario service - only given fields."""
+    """Update scenario service - only given fields.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     service_dto = await user_project_service.patch_service(
@@ -157,7 +172,10 @@ async def delete_service(
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> dict:
-    """Delete scenario service by given id."""
+    """Delete scenario service by given identifier.
+
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.delete_service(scenario_id, service_id, is_scenario_object, user.id)

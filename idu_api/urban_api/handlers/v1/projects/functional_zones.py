@@ -35,7 +35,8 @@ async def get_functional_zone_sources_by_scenario_id(
 ) -> list[FunctionalZoneSource]:
     """Get list of pairs (year, source) of functional zones by scenario identifier.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     sources = await user_project_service.get_functional_zones_sources_by_scenario_id(scenario_id, user.id)
@@ -59,7 +60,8 @@ async def get_functional_zones_by_scenario_id(
 ) -> GeoJSONResponse[Feature[Geometry, ProjectProfileWithoutGeometry]]:
     """Get functional zones by scenario identifier, year and source in geojson format.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zones = await user_project_service.get_functional_zones_by_scenario_id(
@@ -83,7 +85,8 @@ async def get_context_functional_zone_sources_by_scenario_id(
     """Get list of pairs (year, source) of functional zones
     by scenario identifier for 'context' of the project territory.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     sources = await user_project_service.get_context_functional_zones_sources_by_scenario_id(scenario_id, user.id)
@@ -108,7 +111,8 @@ async def get_context_functional_zones_by_scenario_id(
     """Get functional zones by scenario identifier, year and source
     for 'context' of the project territory in geojson format.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zones = await user_project_service.get_context_functional_zones_by_scenario_id(
@@ -132,7 +136,8 @@ async def add_scenario_functional_zones(
 ) -> list[ProjectProfile]:
     """Create new functional zones for given scenario and list of functional zones.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zones = await user_project_service.add_scenario_functional_zones(functional_zones, scenario_id, user.id)
@@ -155,7 +160,8 @@ async def put_scenario_functional_zone(
 ) -> ProjectProfile:
     """Update functional zone by all its attributes.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zone = await user_project_service.put_scenario_functional_zone(
@@ -180,7 +186,8 @@ async def patch_scenario_functional_zone(
 ) -> ProjectProfile:
     """Update functional zone by only given attributes.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zone = await user_project_service.patch_scenario_functional_zone(
@@ -202,7 +209,8 @@ async def delete_functional_zones_by_scenario_id(
 ) -> dict:
     """Delete all functional zones for given scenario
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.delete_functional_zones_by_scenario_id(scenario_id, user.id)

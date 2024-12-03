@@ -22,6 +22,7 @@ class IndicatorDTO:
 @dataclass(frozen=True)
 class IndicatorValueDTO:
     indicator_id: int
+    parent_id: int
     name_full: str
     measurement_unit_id: int | None
     measurement_unit_name: str | None
@@ -64,6 +65,7 @@ class ShortProjectIndicatorValueDTO:
 class ProjectIndicatorValueDTO:
     indicator_value_id: int
     indicator_id: int
+    parent_id: int
     name_full: str
     measurement_unit_id: int | None
     measurement_unit_name: str | None

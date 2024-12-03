@@ -40,6 +40,7 @@ class ShortIndicatorInfo(BaseModel):
     """Basic indicator model to encapsulate in other models."""
 
     indicator_id: int = Field(..., examples=[1])
+    parent_id: int = Field(..., description="parent indicator identifier", examples=[1])
     name_full: str = Field(
         ...,
         description="indicator unit full name",
@@ -234,6 +235,7 @@ class IndicatorValue(BaseModel):
         return cls(
             indicator=ShortIndicatorInfo(
                 indicator_id=dto.indicator_id,
+                parent_id=dto.parent_id,
                 name_full=dto.name_full,
                 level=dto.level,
                 list_label=dto.list_label,
@@ -302,23 +304,17 @@ class IndicatorValuePost(BaseModel):
 class ProjectIndicatorValue(BaseModel):
     """Project indicator value with all its attributes."""
 
+    indicator_value_id: int = Field(..., description="indicator value identifier", examples=[1])
     indicator: ShortIndicatorInfo
     scenario: ShortScenario
     territory: ShortTerritory | None
     hexagon_id: int | None
     value: float = Field(..., description="indicator value for scenario at time", examples=[23.5])
     comment: str | None = Field(None, description="comment for indicator value", examples=["--"])
-    information_source: str | None = Field(
-        ...,
-        description="information source",
-        examples=[
-            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
-            "structure_version/229/"
-        ],
-    )
+    information_source: str | None = Field(..., description="information source", examples=["modeled"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="scenario additional properties",
+        description="scenario indicator value additional properties",
         examples=[{"attribute_name": "attribute_value"}],
     )
     created_at: datetime = Field(
@@ -334,8 +330,10 @@ class ProjectIndicatorValue(BaseModel):
         Construct from DTO.
         """
         return cls(
+            indicator_value_id=dto.indicator_value_id,
             indicator=ShortIndicatorInfo(
                 indicator_id=dto.indicator_id,
+                parent_id=dto.parent_id,
                 name_full=dto.name_full,
                 level=dto.level,
                 list_label=dto.list_label,
@@ -370,6 +368,26 @@ class ProjectIndicatorValuePost(BaseModel):
     """Project indicator value schema for POST requests."""
 
     indicator_id: int = Field(..., description="indicator identifier", examples=[1])
+    territory_id: int | None = Field(
+        None, description="real territory identifier for which indicator value was saved", examples=[1]
+    )
+    hexagon_id: int | None = Field(
+        None, description="hexagon identifier for which indicator value was saved", examples=[1]
+    )
+    value: float = Field(..., description="indicator value for territory at time", examples=[23.5])
+    comment: str | None = Field(..., description="comment for indicator value", examples=["--"])
+    information_source: str | None = Field(..., description="information source", examples=["modeled"])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="scenario indicator value additional properties",
+        examples=[{"attribute_name": "attribute_value"}],
+    )
+
+
+class ProjectIndicatorValuePut(BaseModel):
+    """Project indicator value schema for PUT requests."""
+
+    indicator_id: int = Field(..., description="indicator identifier", examples=[1])
     scenario_id: int = Field(..., description="scenario identifier for which indicator value was saved", examples=[1])
     territory_id: int | None = Field(
         ..., description="real territory identifier for which indicator value was saved", examples=[1]
@@ -379,37 +397,10 @@ class ProjectIndicatorValuePost(BaseModel):
     )
     value: float = Field(..., description="indicator value for territory at time", examples=[23.5])
     comment: str | None = Field(..., description="comment for indicator value", examples=["--"])
-    information_source: str | None = Field(
-        ...,
-        description="information source",
-        examples=[
-            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
-            "structure_version/229/"
-        ],
-    )
-    properties: dict[str, Any] = Field(
-        default_factory=dict,
-        description="scenario additional properties",
-        examples=[{"attribute_name": "attribute_value"}],
-    )
-
-
-class ProjectIndicatorValuePut(BaseModel):
-    """Project indicator value schema for PUT requests."""
-
-    value: float = Field(..., description="indicator value for territory at time", examples=[23.5])
-    comment: str | None = Field(..., description="comment for indicator value", examples=["--"])
-    information_source: str | None = Field(
-        ...,
-        description="information source",
-        examples=[
-            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
-            "structure_version/229/"
-        ],
-    )
+    information_source: str | None = Field(..., description="information source", examples=["modeled"])
     properties: dict[str, Any] = Field(
         ...,
-        description="scenario additional properties",
+        description="scenario indicator value additional properties",
         examples=[{"attribute_name": "attribute_value"}],
     )
 
@@ -429,7 +420,7 @@ class ProjectIndicatorValuePatch(BaseModel):
     )
     properties: dict[str, Any] | None = Field(
         None,
-        description="scenario additional properties",
+        description="scenario indicator value additional properties",
         examples=[{"attribute_name": "attribute_value"}],
     )
 

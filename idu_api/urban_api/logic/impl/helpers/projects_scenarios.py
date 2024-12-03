@@ -3,7 +3,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, insert, literal, select, update
+from sqlalchemy import Integer, cast, delete, insert, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -40,7 +40,7 @@ async def get_scenarios_by_project_id_from_db(
     result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
         raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and result.public is False:
+    if result.user_id != user_id and not result.public:
         raise AccessDeniedError(project_id, "project")
 
     scenarios_data_parents = scenarios_data.alias("scenarios_data_parents")
@@ -86,6 +86,7 @@ async def get_scenario_by_id_from_db(conn: AsyncConnection, scenario_id: int, us
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+            functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
         )
         .select_from(
             scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id)
@@ -107,14 +108,14 @@ async def get_scenario_by_id_from_db(conn: AsyncConnection, scenario_id: int, us
 
     statement = select(projects_data).where(projects_data.c.project_id == result.project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and project.public is False:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(result.project_id, "project")
 
     return ScenarioDTO(**result)
 
 
-async def create_scenario_from_other_to_db(
-    conn: AsyncConnection, scenario: ScenariosPost, other_scenario_id: int, user_id: str
+async def copy_scenario_to_db(
+    conn: AsyncConnection, scenario: ScenariosPost, scenario_id: int, user_id: str
 ) -> ScenarioDTO:
     """Create a new scenario from another scenario (copy) by its identifier."""
 
@@ -150,7 +151,7 @@ async def create_scenario_from_other_to_db(
     if parent_scenario_id is None:
         raise EntitiesNotFoundByIds("parent regional scenario")
 
-    scenario_id = (
+    new_scenario_id = (
         await conn.execute(
             insert(scenarios_data)
             .values(
@@ -174,7 +175,7 @@ async def create_scenario_from_other_to_db(
         projects_urban_objects_data.c.public_object_geometry_id,
         projects_urban_objects_data.c.public_physical_object_id,
         projects_urban_objects_data.c.public_service_id,
-    ).where(projects_urban_objects_data.c.scenario_id == other_scenario_id)
+    ).where(projects_urban_objects_data.c.scenario_id == scenario_id)
     old_urban_objects = (await conn.execute(statement)).mappings().all()
 
     geometry_ids = set(obj.object_geometry_id for obj in old_urban_objects if obj.object_geometry_id is not None)
@@ -191,7 +192,7 @@ async def create_scenario_from_other_to_db(
     for obj in old_urban_objects:
         if obj.public_urban_object_id is not None:
             new_obj = {
-                "scenario_id": scenario_id,
+                "scenario_id": new_scenario_id,
                 "object_geometry_id": None,
                 "physical_object_id": None,
                 "service_id": None,
@@ -202,7 +203,7 @@ async def create_scenario_from_other_to_db(
             }
         else:
             new_obj = {
-                "scenario_id": scenario_id,
+                "scenario_id": new_scenario_id,
                 "object_geometry_id": (
                     geometry_mapping.get(obj.object_geometry_id) if obj.public_object_geometry_id is None else None
                 ),
@@ -231,12 +232,12 @@ async def create_scenario_from_other_to_db(
                     profiles_data.c.properties,
                 ],
                 select(
-                    literal(scenario_id).label("scenario_id"),
+                    cast(literal(new_scenario_id), Integer).label("scenario_id"),
                     profiles_data.c.name,
                     profiles_data.c.functional_zone_type_id,
                     profiles_data.c.geometry,
                     profiles_data.c.properties,
-                ).where(profiles_data.c.scenario_id == other_scenario_id),
+                ).where(profiles_data.c.scenario_id == scenario_id),
             )
         ),
         conn.execute(
@@ -251,14 +252,14 @@ async def create_scenario_from_other_to_db(
                     projects_indicators_data.c.information_source,
                 ],
                 select(
-                    literal(scenario_id).label("scenario_id"),
+                    cast(literal(new_scenario_id), Integer).label("scenario_id"),
                     projects_indicators_data.c.indicator_id,
                     projects_indicators_data.c.territory_id,
                     projects_indicators_data.c.hexagon_id,
                     projects_indicators_data.c.value,
                     projects_indicators_data.c.comment,
                     projects_indicators_data.c.information_source,
-                ).where(projects_indicators_data.c.scenario_id == other_scenario_id),
+                ).where(projects_indicators_data.c.scenario_id == scenario_id),
             )
         ),
     )
@@ -269,7 +270,7 @@ async def create_scenario_from_other_to_db(
 
 
 async def add_new_scenario_to_db(conn: AsyncConnection, scenario: ScenariosPost, user_id: str) -> ScenarioDTO:
-    """Create a new scenario."""
+    """Create a new scenario from base scenario."""
 
     base_scenario_id = (
         await conn.execute(
@@ -282,27 +283,26 @@ async def add_new_scenario_to_db(conn: AsyncConnection, scenario: ScenariosPost,
             .limit(1)
         )
     ).scalar_one_or_none()
-
     if base_scenario_id is None:
         raise EntityNotFoundById(scenario.project_id, "project")
 
-    return await create_scenario_from_other_to_db(conn, scenario, base_scenario_id, user_id)
+    return await copy_scenario_to_db(conn, scenario, base_scenario_id, user_id)
 
 
 async def put_scenario_to_db(
     conn: AsyncConnection, scenario: ScenariosPut, scenario_id: int, user_id: str
 ) -> ScenarioDTO:
-    """Put scenario object."""
+    """Update scenario object - all attributes."""
 
     statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
-    result = (await conn.execute(statement)).mappings().one_or_none()
-    if result is None:
+    requested_scenario = (await conn.execute(statement)).mappings().one_or_none()
+    if requested_scenario is None:
         raise EntityNotFoundById(scenario_id, "scenario")
 
-    statement = select(projects_data).where(projects_data.c.project_id == result.project_id)
+    statement = select(projects_data).where(projects_data.c.project_id == requested_scenario.project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
     if project.user_id != user_id:
-        raise AccessDeniedError(result.project_id, "project")
+        raise AccessDeniedError(requested_scenario.project_id, "project")
 
     if scenario.functional_zone_type_id is not None:
         statement = select(functional_zone_types_dict).where(
@@ -312,12 +312,28 @@ async def put_scenario_to_db(
         if functional_zone_type is None:
             raise EntityNotFoundById(scenario.functional_zone_type_id, "functional zone type")
 
+    if requested_scenario.is_based and not scenario.is_based:
+        raise ValueError(
+            "if you want to change the base scenario, change the one that should become the base, not the current one!"
+        )
+
+    if not requested_scenario.is_based and scenario.is_based:
+        statement = select(scenarios_data.c.scenario_id).where(
+            scenarios_data.c.project_id == project.project_id, scenarios_data.c.is_based.is_(True)
+        )
+        based_scenario_id = (await conn.execute(statement)).scalar_one_or_none()
+        statement = (
+            update(scenarios_data).where(scenarios_data.c.scenario_id == based_scenario_id).values(is_based=False)
+        )
+        await conn.execute(statement)
+
     statement = (
         update(scenarios_data)
         .where(scenarios_data.c.scenario_id == scenario_id)
         .values(
             functional_zone_type_id=scenario.functional_zone_type_id,
             name=scenario.name,
+            is_based=scenario.is_based,
             properties=scenario.properties,
             updated_at=datetime.now(timezone.utc),
         )
@@ -331,17 +347,17 @@ async def put_scenario_to_db(
 async def patch_scenario_to_db(
     conn: AsyncConnection, scenario: ScenariosPatch, scenario_id: int, user_id: str
 ) -> ScenarioDTO:
-    """Patch scenario object."""
+    """Update scenario object - only given fields."""
 
     statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
-    result = (await conn.execute(statement)).mappings().one_or_none()
-    if result is None:
+    requested_scenario = (await conn.execute(statement)).mappings().one_or_none()
+    if requested_scenario is None:
         raise EntityNotFoundById(scenario_id, "scenario")
 
-    statement = select(projects_data).where(projects_data.c.project_id == result.project_id)
+    statement = select(projects_data).where(projects_data.c.project_id == requested_scenario.project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
     if project.user_id != user_id:
-        raise AccessDeniedError(result.project_id, "project")
+        raise AccessDeniedError(requested_scenario.project_id, "project")
 
     if scenario.functional_zone_type_id is not None:
         statement = select(functional_zone_types_dict).where(
@@ -350,6 +366,21 @@ async def patch_scenario_to_db(
         functional_zone_type = (await conn.execute(statement)).mappings().one_or_none()
         if functional_zone_type is None:
             raise EntityNotFoundById(scenario.functional_zone_type_id, "functional zone type")
+
+    if scenario.is_based is not None and requested_scenario.is_based and not scenario.is_based:
+        raise ValueError(
+            "if you want to change the base scenario, change the one that should become the base, not the current one!"
+        )
+
+    if scenario.is_based is not None and not requested_scenario.is_based and scenario.is_based:
+        statement = select(scenarios_data.c.scenario_id).where(
+            scenarios_data.c.project_id == project.project_id, scenarios_data.c.is_based.is_(True)
+        )
+        based_scenario_id = (await conn.execute(statement)).scalar_one_or_none()
+        statement = (
+            update(scenarios_data).where(scenarios_data.c.scenario_id == based_scenario_id).values(is_based=False)
+        )
+        await conn.execute(statement)
 
     statement = update(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
     new_values_for_scenario = {}
@@ -363,17 +394,17 @@ async def patch_scenario_to_db(
 
 
 async def delete_scenario_from_db(conn: AsyncConnection, scenario_id: int, user_id: str) -> dict:
-    """Delete scenario object."""
+    """Delete scenario object by identifier."""
 
-    statement = select(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
-    result = (await conn.execute(statement)).mappings().one_or_none()
-    if result is None:
+    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
+    project_id = (await conn.execute(statement)).scalar_one_or_none()
+    if project_id is None:
         raise EntityNotFoundById(scenario_id, "scenario")
 
-    statement = select(projects_data).where(projects_data.c.project_id == result.project_id)
+    statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
     if project.user_id != user_id:
-        raise AccessDeniedError(result.project_id, "project")
+        raise AccessDeniedError(project_id, "project")
 
     urban_objects = (
         (
@@ -477,7 +508,7 @@ async def copy_physical_objects(conn, physical_ids: list[int]) -> dict[int, int]
             await conn.execute(
                 insert(projects_physical_objects_data)
                 .values(old_physical_objects)
-                .returning(projects_physical_objects_data.c.object_geometry_id)
+                .returning(projects_physical_objects_data.c.physical_object_id)
             )
         )
         .scalars()
