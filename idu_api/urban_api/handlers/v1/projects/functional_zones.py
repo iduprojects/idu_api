@@ -86,7 +86,7 @@ async def get_context_functional_zone_sources_by_scenario_id(
     You must be the owner of the relevant project."""
     user_project_service: UserProjectService = request.state.user_project_service
 
-    sources = await user_project_service.get_functional_zones_sources_by_scenario_id(scenario_id, user.id)
+    sources = await user_project_service.get_context_functional_zones_sources_by_scenario_id(scenario_id, user.id)
 
     return [FunctionalZoneSource.from_dto(source) for source in sources]
 

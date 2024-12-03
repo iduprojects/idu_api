@@ -16,6 +16,7 @@ from idu_api.urban_api.schemas import (
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
+    ProjectWithBaseScenario,
     ScenariosData,
 )
 from idu_api.urban_api.utils.auth_client import get_user
@@ -81,20 +82,20 @@ async def get_scenarios_by_project_id(
 
 @projects_router.get(
     "/projects",
-    response_model=list[Project],
+    response_model=list[ProjectWithBaseScenario],
     status_code=status.HTTP_200_OK,
 )
 async def get_all_projects(
     request: Request,
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
     user: UserDTO = Depends(get_user),
-) -> list[Project]:
+) -> list[ProjectWithBaseScenario]:
     """Get all public projects and projects that are owned by the user."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     projects = await user_project_service.get_all_available_projects(user.id if user is not None else None, is_regional)
 
-    return [Project.from_dto(project) for project in projects]
+    return [ProjectWithBaseScenario.from_dto(project) for project in projects]
 
 
 @projects_router.get(
@@ -144,7 +145,7 @@ async def get_all_preview_project_images_url(
 
 @projects_router.get(
     "/user_projects",
-    response_model=list[Project],
+    response_model=list[ProjectWithBaseScenario],
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
@@ -152,13 +153,13 @@ async def get_user_projects(
     request: Request,
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
     user: UserDTO = Depends(get_user),
-) -> list[Project]:
+) -> list[ProjectWithBaseScenario]:
     """Get all user's projects."""
     user_project_service: UserProjectService = request.state.user_project_service
 
     projects = await user_project_service.get_user_projects(user.id, is_regional)
 
-    return [Project.from_dto(project) for project in projects]
+    return [ProjectWithBaseScenario.from_dto(project) for project in projects]
 
 
 @projects_router.get(

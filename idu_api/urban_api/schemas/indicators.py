@@ -316,6 +316,11 @@ class ProjectIndicatorValue(BaseModel):
             "structure_version/229/"
         ],
     )
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="scenario additional properties",
+        examples=[{"attribute_name": "attribute_value"}],
+    )
     created_at: datetime = Field(
         default_factory=datetime.utcnow, description="the time when the indicator value was created"
     )
@@ -382,6 +387,11 @@ class ProjectIndicatorValuePost(BaseModel):
             "structure_version/229/"
         ],
     )
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="scenario additional properties",
+        examples=[{"attribute_name": "attribute_value"}],
+    )
 
 
 class ProjectIndicatorValuePut(BaseModel):
@@ -397,6 +407,11 @@ class ProjectIndicatorValuePut(BaseModel):
             "structure_version/229/"
         ],
     )
+    properties: dict[str, Any] = Field(
+        ...,
+        description="scenario additional properties",
+        examples=[{"attribute_name": "attribute_value"}],
+    )
 
 
 class ProjectIndicatorValuePatch(BaseModel):
@@ -411,6 +426,11 @@ class ProjectIndicatorValuePatch(BaseModel):
             "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
             "structure_version/229/"
         ],
+    )
+    properties: dict[str, Any] | None = Field(
+        None,
+        description="scenario additional properties",
+        examples=[{"attribute_name": "attribute_value"}],
     )
 
     @model_validator(mode="before")

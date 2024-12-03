@@ -14,6 +14,7 @@ from idu_api.urban_api.dto import (
     ProjectIndicatorValueDTO,
     ProjectProfileDTO,
     ProjectTerritoryDTO,
+    ProjectWithBaseScenarioDTO,
     ScenarioDTO,
     ScenarioGeometryDTO,
     ScenarioGeometryWithAllObjectsDTO,
@@ -77,6 +78,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
     get_physical_objects_by_scenario_id,
     patch_physical_object_to_db,
     put_physical_object_to_db,
+    update_physical_objects_by_function_id_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     add_new_scenario_to_db,
@@ -135,7 +137,9 @@ class UserProjectServiceImpl(UserProjectService):
     async def get_project_territory_by_id(self, project_id: int, user_id: str) -> ProjectTerritoryDTO:
         return await get_project_territory_by_id_from_db(self._conn, project_id, user_id)
 
-    async def get_all_available_projects(self, user_id: str | None, is_regional: bool) -> list[ProjectDTO]:
+    async def get_all_available_projects(
+        self, user_id: str | None, is_regional: bool
+    ) -> list[ProjectWithBaseScenarioDTO]:
         return await get_all_available_projects_from_db(self._conn, user_id, is_regional)
 
     async def get_all_preview_projects_images(
@@ -148,7 +152,7 @@ class UserProjectServiceImpl(UserProjectService):
     ) -> list[dict[str, int | str]]:
         return await get_all_preview_projects_images_url_from_minio(self._conn, minio_client, user_id, is_regional)
 
-    async def get_user_projects(self, user_id: str, is_regional: bool) -> list[ProjectDTO]:
+    async def get_user_projects(self, user_id: str, is_regional: bool) -> list[ProjectWithBaseScenarioDTO]:
         return await get_user_projects_from_db(self._conn, user_id, is_regional)
 
     async def get_user_preview_projects_images(
@@ -244,6 +248,17 @@ class UserProjectServiceImpl(UserProjectService):
         user_id: str,
     ) -> ScenarioUrbanObjectDTO:
         return await add_physical_object_with_geometry_to_db(self._conn, physical_object, scenario_id, user_id)
+
+    async def update_physical_objects_by_function_id(
+        self,
+        physical_object: list[PhysicalObjectWithGeometryPost],
+        scenario_id: int,
+        user_id: str,
+        physical_object_function_id: int,
+    ) -> list[ScenarioUrbanObjectDTO]:
+        return await update_physical_objects_by_function_id_to_db(
+            self._conn, physical_object, scenario_id, user_id, physical_object_function_id
+        )
 
     async def put_physical_object(
         self,

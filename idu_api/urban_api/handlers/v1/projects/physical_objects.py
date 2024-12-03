@@ -98,6 +98,33 @@ async def add_physical_object_with_geometry(
     return ScenarioUrbanObject.from_dto(urban_object)
 
 
+@projects_router.post(
+    "/scenarios/{scenario_id}/all_physical_objects",
+    response_model=list[ScenarioUrbanObject],
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def update_physical_objects_by_function_id(
+    request: Request,
+    physical_object: list[PhysicalObjectWithGeometryPost],
+    scenario_id: int = Path(..., description="scenario identifier"),
+    physical_object_function_id: int = Query(..., description="physical object function identifier"),
+    user: UserDTO = Depends(get_user),
+) -> list[ScenarioUrbanObject]:
+    """Delete all physical objects by physical object function identifier
+    and upload new objects with the same function for given scenario."""
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    urban_objects = await user_project_service.update_physical_objects_by_function_id(
+        physical_object,
+        scenario_id,
+        user.id,
+        physical_object_function_id,
+    )
+
+    return [ScenarioUrbanObject.from_dto(urban_object) for urban_object in urban_objects]
+
+
 @projects_router.put(
     "/scenarios/{scenario_id}/physical_objects/{physical_object_id}",
     response_model=ScenarioPhysicalObject,

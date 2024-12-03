@@ -45,6 +45,7 @@ class ScenariosData(BaseModel):
                 FunctionalZoneTypeBasic(
                     id=dto.functional_zone_type_id,
                     name=dto.functional_zone_type_name,
+                    nickname=dto.functional_zone_type_nickname,
                 )
                 if dto.functional_zone_type_id is not None
                 else None
@@ -61,7 +62,7 @@ class ScenariosPost(BaseModel):
     """Scenario schema for POST requests."""
 
     project_id: int = Field(..., description="project identifier for the scenario", examples=[1])
-    # parent_id: int | None = Field(..., description="parent regional scenario identifier", examples[1])
+    # TODO: parent_id: int | None = Field(..., description="parent regional scenario identifier", examples[1])
     functional_zone_type_id: int | None = Field(
         ..., description="target profile identifier for the scenario", examples=[1]
     )
@@ -80,6 +81,7 @@ class ScenariosPut(BaseModel):
         ..., description="target profile identifier for the scenario", examples=[1]
     )
     name: str = Field(..., description="name of the scenario", examples=["--"])
+    is_based: bool = Field(..., description="boolean parameter to determine base scenario")
     properties: dict[str, Any] = Field(
         ...,
         description="scenario additional properties",
@@ -94,6 +96,7 @@ class ScenariosPatch(BaseModel):
         None, description="target profile identifier for the scenario", examples=[1]
     )
     name: str | None = Field(None, description="name of the scenario", examples=["--"])
+    is_based: bool | None = Field(None, description="boolean parameter to determine base scenario")
     properties: dict[str, Any] | None = Field(
         default_factory=None,
         description="scenario additional properties",

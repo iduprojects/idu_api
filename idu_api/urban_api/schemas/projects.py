@@ -5,9 +5,9 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
+from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ProjectWithBaseScenarioDTO
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
-from idu_api.urban_api.schemas.short_models import ShortProject, ShortTerritory
+from idu_api.urban_api.schemas.short_models import ShortProject, ShortScenario, ShortTerritory
 
 
 class ProjectTerritory(BaseModel):
@@ -87,6 +87,42 @@ class Project(BaseModel):
         )
 
 
+class ProjectWithBaseScenario(BaseModel):
+    """Project with all its attributes and base scenario."""
+
+    project_id: int = Field(..., description="project identifier", examples=[1])
+    user_id: str = Field(..., description="project creator identifier", examples=["admin@test.ru"])
+    name: str = Field(..., description="project name", examples=["--"])
+    territory: ShortTerritory
+    base_scenario: ShortScenario
+    description: str | None = Field(None, description="project description", examples=["--"])
+    public: bool = Field(..., description="project publicity", examples=[True])
+    is_regional: bool = Field(..., description="boolean parameter for regional projects", examples=[False])
+    properties: dict[str, Any] = Field(
+        default_factory=dict,
+        description="project's additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="project created at")
+    updated_at: datetime = Field(default_factory=datetime.utcnow, description="project updated at")
+
+    @classmethod
+    def from_dto(cls, dto: ProjectWithBaseScenarioDTO) -> "ProjectWithBaseScenario":
+        return cls(
+            project_id=dto.project_id,
+            user_id=dto.user_id,
+            name=dto.name,
+            territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
+            base_scenario=ShortScenario(id=dto.scenario_id, name=dto.scenario_name),
+            description=dto.description,
+            public=dto.public,
+            is_regional=dto.is_regional,
+            properties=dto.properties,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+        )
+
+
 class ProjectPost(BaseModel):
     """Project schema for POST request."""
 
@@ -100,9 +136,9 @@ class ProjectPost(BaseModel):
         description="project's additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    # regional_scenario_id: int = Field(
-    #     ..., description="identifier of parent regional scenario for base project scenario", examples=[1]
-    # )
+    # TODO: regional_scenario_id: int = Field(
+    #      ..., description="identifier of parent regional scenario for base project scenario", examples=[1]
+    #  )
     territory: ProjectTerritoryPost
 
 

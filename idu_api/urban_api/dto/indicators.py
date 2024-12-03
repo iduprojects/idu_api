@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 
 @dataclass(frozen=True)
@@ -77,5 +77,6 @@ class ProjectIndicatorValueDTO:
     value: int
     comment: str | None
     information_source: str | None
+    properties: dict[str, Any]
     created_at: datetime
     updated_at: datetime

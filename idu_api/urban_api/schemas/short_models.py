@@ -19,6 +19,7 @@ class FunctionalZoneTypeBasic(BaseModel):
 
     id: int
     name: str
+    nickname: str
 
 
 class ShortScenario(BaseModel):

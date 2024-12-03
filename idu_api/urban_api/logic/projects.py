@@ -11,6 +11,7 @@ from idu_api.urban_api.dto import (
     ProjectIndicatorValueDTO,
     ProjectProfileDTO,
     ProjectTerritoryDTO,
+    ProjectWithBaseScenarioDTO,
     ScenarioDTO,
     ScenarioGeometryDTO,
     ScenarioGeometryWithAllObjectsDTO,
@@ -57,7 +58,9 @@ class UserProjectService(Protocol):
         """Get project territory object by id."""
 
     @abc.abstractmethod
-    async def get_all_available_projects(self, user_id: str | None, is_regional: bool) -> list[ProjectDTO]:
+    async def get_all_available_projects(
+        self, user_id: str | None, is_regional: bool
+    ) -> list[ProjectWithBaseScenarioDTO]:
         """Get all public and user's projects."""
 
     @abc.abstractmethod
@@ -73,7 +76,7 @@ class UserProjectService(Protocol):
         """Get preview images url for all public and user's projects."""
 
     @abc.abstractmethod
-    async def get_user_projects(self, user_id: str, is_regional: bool) -> list[ProjectDTO]:
+    async def get_user_projects(self, user_id: str, is_regional: bool) -> list[ProjectWithBaseScenarioDTO]:
         """Get all user's projects."""
 
     @abc.abstractmethod
@@ -176,6 +179,17 @@ class UserProjectService(Protocol):
         user_id: str,
     ) -> ScenarioUrbanObjectDTO:
         """Create scenario physical object with geometry."""
+
+    @abc.abstractmethod
+    async def update_physical_objects_by_function_id(
+        self,
+        physical_object: list[PhysicalObjectWithGeometryPost],
+        scenario_id: int,
+        user_id: str,
+        physical_object_function_id: int,
+    ) -> list[ScenarioUrbanObjectDTO]:
+        """Delete all physical objects by physical object function identifier
+        and upload new objects with the same function for given scenario."""
 
     @abc.abstractmethod
     async def put_physical_object(
