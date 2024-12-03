@@ -44,7 +44,7 @@ async def get_physical_objects_by_territory_id(
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
     physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
     name: str | None = Query(None, description="filter physical objects by name substring (case-insensitive)"),
-    include_child_territories: bool = Query(False, description="to get from child territories"),
+    include_child_territories: bool = Query(True, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only for cities"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
@@ -91,7 +91,7 @@ async def get_physical_objects_with_geometry_by_territory_id(
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
     physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
     name: str | None = Query(None, description="filter physical objects by name substring (case-insensitive)"),
-    include_child_territories: bool = Query(False, description="to get from child territories"),
+    include_child_territories: bool = Query(True, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only for cities"),
     order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
@@ -138,7 +138,7 @@ async def get_physical_objects_geojson_by_territory_id(
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
     physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
     name: str | None = Query(None, description="filter physical objects by name substring (case-insensitive)"),
-    include_child_territories: bool = Query(False, description="to get from child territories"),
+    include_child_territories: bool = Query(True, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only for cities"),
     centers_only: bool = Query(False, description="to get only center points of geometries"),
 ) -> GeoJSONResponse[Feature[Geometry, PhysicalObjectsData]]:

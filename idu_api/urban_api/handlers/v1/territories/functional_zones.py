@@ -42,7 +42,7 @@ async def get_functional_zones_by_territory_id(
     year: int = Query(..., description="to filter by year when zones were uploaded"),
     source: str = Query(..., description="to filter by source from which zones were uploaded"),
     functional_zone_type_id: int | None = Query(None, description="to filter by functional zone type", gt=0),
-    include_child_territories: bool = Query(False, description="to get from child territories"),
+    include_child_territories: bool = Query(True, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only for cities"),
 ) -> list[FunctionalZoneData]:
     """Get list of  functional zones by given territory identifier, year and source.
@@ -68,7 +68,7 @@ async def get_functional_zones_geojson_by_territory_id(
     year: int = Query(..., description="to filter by year when zones were uploaded"),
     source: str = Query(..., description="to filter by source from which zones were uploaded"),
     functional_zone_type_id: int | None = Query(None, description="to filter by functional zone type", gt=0),
-    include_child_territories: bool = Query(False, description="to get from child territories"),
+    include_child_territories: bool = Query(True, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only for cities"),
 ) -> GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]]:
     """Get functional zones by given territory identifier, year and source in geojson format.

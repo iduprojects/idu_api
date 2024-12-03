@@ -19,7 +19,7 @@ from .routers import territories_router
 async def get_living_buildings_with_geometry_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
-    include_child_territories: bool = Query(False, description="to get from child territories"),
+    include_child_territories: bool = Query(True, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only for cities"),
 ) -> Page[LivingBuildingsWithGeometry]:
     """Get living buildings with geometry for territory."""
