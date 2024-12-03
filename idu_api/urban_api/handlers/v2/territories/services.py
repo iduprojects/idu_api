@@ -21,15 +21,16 @@ from .routers import territories_router
 async def get_services_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory id", gt=0),
-    service_type_id: int | None = Query(None, description="Service type id", gt=0),
+    service_type_id: int | None = Query(None, description="service type identifier", gt=0),
     urban_function_id: int | None = Query(None, description="urban function identifier", gt=0),
-    name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
+    name: str | None = Query(None, description="filter services by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only cities or not"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
-        None, description="Attribute to set ordering (created_at or updated_at)"
+        None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
-        Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
     ),
 ) -> CursorPage[ServicesData]:
     """Get services for territory by id.
@@ -45,6 +46,7 @@ async def get_services_by_territory_id(
         service_type_id,
         urban_function_id,
         name,
+        include_child_territories,
         cities_only,
         order_by_value,
         ordering.value,
@@ -66,11 +68,12 @@ async def get_services_by_territory_id(
 )
 async def get_services_with_geometry_by_territory_id(
     request: Request,
-    territory_id: int = Path(..., description="territory id", gt=0),
-    service_type_id: int | None = Query(None, description="Service type id", gt=0),
-    urban_function_id: int | None = Query(None, description="urban function identifier", gt=0),
-    name: str | None = Query(None, description="Filter services by name substring (case-insensitive)"),
-    cities_only: bool = Query(False, description="to get only cities or not"),
+    territory_id: int = Path(..., description="territory identifier", gt=0),
+    service_type_id: int | None = Query(None, description="to filter by service type", gt=0),
+    urban_function_id: int | None = Query(None, description="to filter by urban function", gt=0),
+    name: str | None = Query(None, description="to filter services by name substring (case-insensitive)"),
+    include_child_territories: bool = Query(False, description="to get from child territories"),
+    cities_only: bool = Query(False, description="to get only for cities"),
     order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
@@ -91,6 +94,7 @@ async def get_services_with_geometry_by_territory_id(
         service_type_id,
         urban_function_id,
         name,
+        include_child_territories,
         cities_only,
         order_by_value,
         ordering.value,

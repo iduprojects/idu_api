@@ -12,7 +12,7 @@ from idu_api.urban_api.dto import (
     HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
-    LivingBuildingsWithGeometryDTO,
+    LivingBuildingWithGeometryDTO,
     NormativeDTO,
     PageDTO,
     PhysicalObjectDataDTO,
@@ -132,9 +132,10 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         service_type_id: int | None,
         urban_function_id: int | None,
         name: str | None,
-        cities_only: bool | None,
+        include_child_territories: bool,
+        cities_only: bool,
         order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None = "asc",
+        ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
         return await get_services_by_territory_id_from_db(
@@ -143,6 +144,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             service_type_id,
             urban_function_id,
             name,
+            include_child_territories,
             cities_only,
             order_by,
             ordering,
@@ -155,9 +157,10 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         service_type_id: int | None,
         urban_function_id: int | None,
         name: str | None,
-        cities_only: bool | None,
+        include_child_territories: bool,
+        cities_only: bool,
         order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None = "asc",
+        ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
         return await get_services_with_geometry_by_territory_id_from_db(
@@ -166,6 +169,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             service_type_id,
             urban_function_id,
             name,
+            include_child_territories,
             cities_only,
             order_by,
             ordering,
@@ -261,9 +265,10 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
         name: str | None,
-        cities_only: bool | None,
+        include_child_territories: bool,
+        cities_only: bool,
         order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None = "asc",
+        ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
         return await get_physical_objects_by_territory_id_from_db(
@@ -272,6 +277,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             physical_object_type_id,
             physical_object_function_id,
             name,
+            include_child_territories,
             cities_only,
             order_by,
             ordering,
@@ -284,9 +290,10 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
         name: str | None,
-        cities_only: bool | None,
+        include_child_territories: bool,
+        cities_only: bool,
         order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None = "asc",
+        ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
         return await get_physical_objects_with_geometry_by_territory_id_from_db(
@@ -295,6 +302,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             physical_object_type_id,
             physical_object_function_id,
             name,
+            include_child_territories,
             cities_only,
             order_by,
             ordering,
@@ -302,9 +310,14 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         )
 
     async def get_living_buildings_with_geometry_by_territory_id(
-        self, territory_id: int, cities_only: bool
-    ) -> PageDTO[LivingBuildingsWithGeometryDTO]:
-        return await get_living_buildings_with_geometry_by_territory_id_from_db(self._conn, territory_id, cities_only)
+        self,
+        territory_id: int,
+        include_child_territories: bool,
+        cities_only: bool,
+    ) -> PageDTO[LivingBuildingWithGeometryDTO]:
+        return await get_living_buildings_with_geometry_by_territory_id_from_db(
+            self._conn, territory_id, include_child_territories, cities_only
+        )
 
     async def get_functional_zones_sources_by_territory_id(self, territory_id: int) -> list[FunctionalZoneSourceDTO]:
         return await get_functional_zones_sources_by_territory_id_from_db(self._conn, territory_id)
@@ -315,9 +328,17 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         year: int,
         source: str,
         functional_zone_type_id: int | None,
+        include_child_territories: bool,
+        cities_only: bool,
     ) -> list[FunctionalZoneDataDTO]:
         return await get_functional_zones_by_territory_id_from_db(
-            self._conn, territory_id, year, source, functional_zone_type_id
+            self._conn,
+            territory_id,
+            year,
+            source,
+            functional_zone_type_id,
+            include_child_territories,
+            cities_only,
         )
 
     async def delete_all_functional_zones_for_territory(self, territory_id: int) -> dict:
@@ -326,28 +347,51 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def get_territories_by_parent_id(
         self,
         parent_id: int | None,
-        get_all_levels: bool | None,
+        get_all_levels: bool,
         territory_type_id: int | None,
-        cities_only: bool | None,
-        paginate: bool = False,
+        name: str | None,
+        cities_only: bool,
+        created_at: date | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None,
+        paginate: bool,
     ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
         return await get_territories_by_parent_id_from_db(
-            self._conn, parent_id, get_all_levels, territory_type_id, cities_only, paginate
+            self._conn,
+            parent_id,
+            get_all_levels,
+            territory_type_id,
+            name,
+            cities_only,
+            created_at,
+            order_by,
+            ordering,
+            paginate,
         )
 
     async def get_territories_without_geometry_by_parent_id(
         self,
         parent_id: int | None,
         get_all_levels: bool,
-        order_by: Literal["created_at", "updated_at"] | None,
-        created_at: date | None,
+        territory_type_id: int | None,
         name: str | None,
-        cities_only: bool | None,
-        ordering: Literal["asc", "desc"] | None = "asc",
-        paginate: bool = False,
+        cities_only: bool,
+        created_at: date | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None,
+        paginate: bool,
     ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
         return await get_territories_without_geometry_by_parent_id_from_db(
-            self._conn, parent_id, get_all_levels, order_by, created_at, name, cities_only, ordering, paginate
+            self._conn,
+            parent_id,
+            get_all_levels,
+            territory_type_id,
+            name,
+            cities_only,
+            created_at,
+            order_by,
+            ordering,
+            paginate,
         )
 
     async def get_common_territory_for_geometry(self, geometry: Geom) -> TerritoryDTO | None:

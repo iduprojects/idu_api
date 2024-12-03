@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText, ST_Intersection, ST_Intersects, ST_Union
-from sqlalchemy import cast, delete, insert, or_, select, text, update
+from sqlalchemy import cast, delete, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 

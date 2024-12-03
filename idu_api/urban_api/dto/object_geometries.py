@@ -65,9 +65,9 @@ class GeometryWithAllObjectsDTO:
             self.geometry = geom.shape(self.geometry)
 
     def to_geojson_dict(self) -> dict[str, Any]:
-        object = asdict(self)
-        object["territory"] = {"id": object.pop("territory_id"), "name": object.pop("territory_name")}
-        return object
+        obj = asdict(self)
+        obj["territory"] = {"id": obj.pop("territory_id"), "name": obj.pop("territory_name")}
+        return obj
 
 
 @dataclass

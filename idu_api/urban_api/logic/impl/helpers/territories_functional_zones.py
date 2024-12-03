@@ -47,23 +47,14 @@ async def get_functional_zones_by_territory_id_from_db(
     year: int,
     source: str,
     functional_zone_type_id: int | None,
+    include_child_territories: bool,
+    cities_only: bool,
 ) -> list[FunctionalZoneDataDTO]:
     """Get functional zones with geometry by territory id."""
 
     territory_exists = await check_territory_existence(conn, territory_id)
     if not territory_exists:
         raise EntityNotFoundById(territory_id, "territory")
-
-    territories_cte = (
-        select(territories_data.c.territory_id)
-        .where(territories_data.c.territory_id == territory_id)
-        .cte(recursive=True)
-    )
-    territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id).join(
-            territories_cte, territories_data.c.parent_id == territories_cte.c.territory_id
-        )
-    )
 
     statement = (
         select(
@@ -90,12 +81,27 @@ async def get_functional_zones_by_territory_id_from_db(
                 functional_zone_types_dict.c.functional_zone_type_id == functional_zones_data.c.functional_zone_type_id,
             )
         )
-        .where(
-            functional_zones_data.c.territory_id.in_(select(territories_cte)),
-            functional_zones_data.c.year == year,
-            functional_zones_data.c.source == source,
-        )
+        .where(functional_zones_data.c.year == year, functional_zones_data.c.source == source)
     )
+
+    if include_child_territories:
+        territories_cte = (
+            select(territories_data.c.territory_id, territories_data.c.is_city)
+            .where(territories_data.c.territory_id == territory_id)
+            .cte(recursive=True)
+        )
+        territories_cte = territories_cte.union_all(
+            select(territories_data.c.territory_id, territories_data.c.is_city).where(
+                territories_data.c.parent_id == territories_cte.c.territory_id
+            )
+        )
+
+        if cities_only:
+            territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
+
+        statement = statement.where(functional_zones_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
+    else:
+        statement = statement.where(functional_zones_data.c.territory_id == territory_id)
 
     if functional_zone_type_id is not None:
         statement = statement.where(functional_zones_data.c.functional_zone_type_id == functional_zone_type_id)

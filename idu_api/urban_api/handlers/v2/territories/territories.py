@@ -25,15 +25,22 @@ from .routers import territories_router
 )
 async def get_territory_by_parent_id(
     request: Request,
-    parent_id: int = Query(
-        None,
-        description="Parent territory id to filter, should be skipped to get top level territories",
+    parent_id: int | None = Query(
+        None, description="parent territory identifier to filter, should be skipped to get top level territories"
     ),
     get_all_levels: bool = Query(
-        False, description="Getting full subtree of territories (unsafe for high level parents)"
+        False, description="getting full subtree of territories (unsafe for high level parents)"
     ),
-    territory_type_id: int | None = Query(None, description="Specifying territory type"),
-    cities_only: bool = Query(False, description="to get only cities or not"),
+    territory_type_id: int | None = Query(None, description="to filter by territory type"),
+    name: str | None = Query(None, description="to filter territories by name substring (case-insensitive)"),
+    cities_only: bool = Query(False, description="to get only for cities"),
+    created_at: date | None = Query(None, description="to filter by created date"),
+    order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+        None, description="attribute to set ordering (created_at or updated_at)"
+    ),
+    ordering: Ordering = Query(
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
+    ),
 ) -> CursorPage[TerritoryData]:
     """Get a territory or list of territories by parent.
 
@@ -41,8 +48,18 @@ async def get_territory_by_parent_id(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
+    order_by_value = order_by.value if order_by is not None else None
+
     territories = await territories_service.get_territories_by_parent_id(
-        parent_id, get_all_levels, territory_type_id, cities_only, paginate=True
+        parent_id,
+        get_all_levels,
+        territory_type_id,
+        name,
+        cities_only,
+        created_at,
+        order_by_value,
+        ordering.value,
+        paginate=True,
     )
 
     return paginate(
@@ -61,20 +78,21 @@ async def get_territory_by_parent_id(
 async def get_territory_without_geometry_by_parent_id(
     request: Request,
     parent_id: int | None = Query(
-        None, description="Parent territory id to filter, should be skipped to get top level territories"
+        None, description="parent territory identifier to filter, should be skipped to get top level territories"
     ),
     get_all_levels: bool = Query(
-        False, description="Getting full subtree of territories (unsafe for high level parents)"
+        False, description="getting full subtree of territories (unsafe for high level parents)"
     ),
+    territory_type_id: int | None = Query(None, description="to filter by territory type"),
+    name: str | None = Query(None, description="to filter territories by name substring (case-insensitive)"),
+    cities_only: bool = Query(False, description="to get only for cities"),
+    created_at: date | None = Query(None, description="to filter by created date"),
     order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
-        None, description="Attribute to set ordering (created_at or updated_at)"
+        None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
-        Ordering.ASC, description="Order type (ascending or descending) if ordering field is set"
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
     ),
-    created_at: date | None = Query(None, description="Filter by created date"),
-    name: str | None = Query(None, description="Filter territories by name substring (case-insensitive)"),
-    cities_only: bool = Query(False, description="to get only cities or not"),
 ) -> CursorPage[TerritoryWithoutGeometry]:
     """Get territories by parent id."""
     territories_service: TerritoriesService = request.state.territories_service
@@ -82,7 +100,15 @@ async def get_territory_without_geometry_by_parent_id(
     order_by_value = order_by.value if order_by is not None else "null"
 
     territories = await territories_service.get_territories_without_geometry_by_parent_id(
-        parent_id, get_all_levels, order_by_value, created_at, name, cities_only, ordering.value, paginate=True
+        parent_id,
+        get_all_levels,
+        territory_type_id,
+        name,
+        cities_only,
+        created_at,
+        order_by_value,
+        ordering.value,
+        paginate=True,
     )
 
     return paginate(
