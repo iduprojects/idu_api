@@ -26,7 +26,6 @@ from idu_api.urban_api.utils.auth_client import get_user
     "/scenarios/{scenario_id}/functional_zone_sources",
     response_model=list[FunctionalZoneSource],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_functional_zone_sources_by_scenario_id(
     request: Request,
@@ -48,7 +47,6 @@ async def get_functional_zone_sources_by_scenario_id(
     "/scenarios/{scenario_id}/functional_zones",
     response_model=GeoJSONResponse[Feature[Geometry, ProjectProfileWithoutGeometry]],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_functional_zones_by_scenario_id(
     request: Request,
@@ -75,7 +73,6 @@ async def get_functional_zones_by_scenario_id(
     "/scenarios/{scenario_id}/context/functional_zone_sources",
     response_model=list[FunctionalZoneSource],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_context_functional_zone_sources_by_scenario_id(
     request: Request,
@@ -98,7 +95,6 @@ async def get_context_functional_zone_sources_by_scenario_id(
     "/scenarios/{scenario_id}/context/functional_zones",
     response_model=GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_context_functional_zones_by_scenario_id(
     request: Request,

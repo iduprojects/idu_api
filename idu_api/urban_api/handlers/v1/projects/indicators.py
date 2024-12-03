@@ -23,7 +23,6 @@ from idu_api.urban_api.utils.auth_client import get_user
     "/scenarios/{scenario_id}/indicators_values",
     response_model=list[ProjectIndicatorValue],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_project_indicators_values_by_scenario_id(
     request: Request,
@@ -58,7 +57,6 @@ async def get_project_indicators_values_by_scenario_id(
     "/scenarios/indicators_values/{indicator_value_id}",
     response_model=ProjectIndicatorValue,
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_project_indicator_value_by_id(
     request: Request,
@@ -186,7 +184,6 @@ async def delete_project_indicator_by_id(
     "/scenarios/{scenario_id}/indicators_values/hexagons",
     response_model=GeoJSONResponse[Feature[Geometry, HexagonWithIndicators]],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_hexagons_with_indicators_values_by_territory_id(
     request: Request,

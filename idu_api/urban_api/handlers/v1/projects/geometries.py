@@ -26,7 +26,6 @@ from idu_api.urban_api.utils.auth_client import get_user
     "/scenarios/{scenario_id}/geometries",
     response_model=GeoJSONResponse[Feature[Geometry, ScenarioGeometryAttributes]],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_geometries_by_scenario_id(
     request: Request,
@@ -58,7 +57,6 @@ async def get_geometries_by_scenario_id(
     "/scenarios/{scenario_id}/geometries_with_all_objects",
     response_model=GeoJSONResponse[Feature[Geometry, ScenarioAllObjects]],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_geometries_with_all_objects_by_scenario_id(
     request: Request,
@@ -94,7 +92,6 @@ async def get_geometries_with_all_objects_by_scenario_id(
     "/scenarios/{scenario_id}/context/geometries",
     response_model=GeoJSONResponse[Feature[Geometry, GeometryAttributes]],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_context_geometries_by_scenario_id(
     request: Request,
@@ -126,7 +123,6 @@ async def get_context_geometries_by_scenario_id(
     "/scenarios/{scenario_id}/context/geometries_with_all_objects",
     response_model=GeoJSONResponse[Feature[Geometry, AllObjects]],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_context_geometries_with_all_objects_by_scenario_id(
     request: Request,

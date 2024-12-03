@@ -22,7 +22,6 @@ from idu_api.urban_api.utils.auth_client import get_user
     "/scenarios/{scenario_id}/physical_objects",
     response_model=list[ScenarioPhysicalObject],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_physical_objects_by_scenario_id(
     request: Request,
@@ -53,7 +52,6 @@ async def get_physical_objects_by_scenario_id(
     "/scenarios/{scenario_id}/context/physical_objects",
     response_model=list[PhysicalObjectsData],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_context_physical_objects_by_scenario_id(
     request: Request,

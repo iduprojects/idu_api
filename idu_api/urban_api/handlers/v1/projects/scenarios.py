@@ -20,7 +20,6 @@ from idu_api.urban_api.utils.auth_client import get_user
     "/scenarios/{scenario_id}",
     response_model=ScenariosData,
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_scenario_by_id(
     request: Request,

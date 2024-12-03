@@ -27,7 +27,6 @@ from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_cli
     "/projects/{project_id}",
     response_model=Project,
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_project_by_id(
     request: Request,
@@ -48,7 +47,6 @@ async def get_project_by_id(
     "/projects/{project_id}/territory",
     response_model=ProjectTerritory,
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_project_territory_by_project_id(
     request: Request,
@@ -69,7 +67,6 @@ async def get_project_territory_by_project_id(
     "/projects/{project_id}/scenarios",
     response_model=list[ScenariosData],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_scenarios_by_project_id(
     request: Request,
@@ -238,7 +235,8 @@ async def put_project(
 ) -> Project:
     """Update a project by setting all of its attributes.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     project_dto = await user_project_service.put_project(project, project_id, user.id)
@@ -260,7 +258,8 @@ async def patch_project(
 ) -> Project:
     """Update a project by setting given attributes.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     project_dto = await user_project_service.patch_project(project, project_id, user.id)
@@ -281,7 +280,8 @@ async def delete_project(
 ) -> dict:
     """Delete a project.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.delete_project(project_id, minio_client, user.id)
@@ -302,7 +302,8 @@ async def upload_project_image(
 ) -> MinioImagesURL:
     """Upload project image to minio.
 
-    You must be the owner of the relevant project."""
+    You must be the owner of the relevant project.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     if not file.content_type.startswith("image/"):
@@ -316,7 +317,6 @@ async def upload_project_image(
 @projects_router.get(
     "/projects/{project_id}/image",
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_full_project_image(
     request: Request,
@@ -326,7 +326,8 @@ async def get_full_project_image(
 ) -> StreamingResponse:
     """Get full image for given project.
 
-    You must be the owner of the relevant project or the project must be publicly available."""
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     image_stream = await user_project_service.get_full_project_image(minio_client, project_id, user.id)
@@ -337,7 +338,6 @@ async def get_full_project_image(
 @projects_router.get(
     "/projects/{project_id}/preview",
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_preview_project_image(
     request: Request,
@@ -347,7 +347,8 @@ async def get_preview_project_image(
 ) -> StreamingResponse:
     """Get preview image for given project.
 
-    You must be the owner of the relevant project or the project must be publicly available."""
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     image_stream = await user_project_service.get_preview_project_image(minio_client, project_id, user.id)
@@ -359,7 +360,6 @@ async def get_preview_project_image(
     "/projects/{project_id}/image_url",
     response_model=str,
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_full_project_image_url(
     request: Request,
@@ -369,7 +369,8 @@ async def get_full_project_image_url(
 ) -> str:
     """Get full image url for given project.
 
-    You must be the owner of the relevant project or the project must be publicly available."""
+    You must be the owner of the relevant project or the project must be publicly available.
+    """
     user_project_service: UserProjectService = request.state.user_project_service
 
     return await user_project_service.get_full_project_image_url(minio_client, project_id, user.id)
