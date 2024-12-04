@@ -64,7 +64,7 @@ async def get_geometries_by_scenario_id_from_db(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id or project.public:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
     project_geometry = (
@@ -276,7 +276,7 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id or project.public:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
     project_geometry = (
@@ -730,7 +730,7 @@ async def get_context_geometries_by_scenario_id_from_db(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id or project.public:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
     context_territories = select(
@@ -855,7 +855,7 @@ async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id or project.public:
+    if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
     context_territories = select(

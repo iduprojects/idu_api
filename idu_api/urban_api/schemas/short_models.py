@@ -36,6 +36,13 @@ class TerritoryTypeBasic(BaseModel):
     name: str
 
 
+class MeasurementUnitBasic(BaseModel):
+    """Basic measurement unit model to encapsulate in other models."""
+
+    id: int
+    name: str
+
+
 class ShortIndicatorValueInfo(BaseModel):
     """Indicator value without territory."""
 
@@ -318,3 +325,18 @@ class ShortProjectIndicatorValue(BaseModel):
     measurement_unit_name: str | None = Field(..., description="measurement unit name", examples=["Количество людей"])
     value: float = Field(..., description="indicator value for scenario at time", examples=[23.5])
     comment: str | None = Field(None, description="comment for indicator value", examples=["--"])
+
+
+class ShortIndicatorInfo(BaseModel):
+    """Basic indicator model to encapsulate in other models."""
+
+    indicator_id: int = Field(..., examples=[1])
+    parent_id: int | None = Field(..., description="parent indicator identifier", examples=[1])
+    name_full: str = Field(
+        ...,
+        description="indicator unit full name",
+        examples=["Общее количество людей, постоянно проживающих на территории"],
+    )
+    measurement_unit: MeasurementUnitBasic | None
+    level: int = Field(..., description="number of indicator functions above in a tree + 1", examples=[1])
+    list_label: str = Field(..., description="indicator marker in lists", examples=["1.1.1"])

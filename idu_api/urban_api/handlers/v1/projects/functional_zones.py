@@ -136,6 +136,8 @@ async def add_scenario_functional_zones(
 ) -> list[ProjectProfile]:
     """Create new functional zones for given scenario and list of functional zones.
 
+    IT WILL REMOVE ALL FUNCTIONAL ZONES FOR GIVEN SCENARIO!
+
     You must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
@@ -207,7 +209,7 @@ async def delete_functional_zones_by_scenario_id(
     scenario_id: int = Path(..., description="scenario identifier"),
     user: UserDTO = Depends(get_user),
 ) -> dict:
-    """Delete all functional zones for given scenario
+    """Delete all functional zones for given scenario.
 
     You must be the owner of the relevant project.
     """

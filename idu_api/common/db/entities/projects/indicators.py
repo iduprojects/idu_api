@@ -20,7 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.indicators_dict import indicators_dict
-from idu_api.common.db.entities.projects.hexagons_data import hexagons_data
+from idu_api.common.db.entities.projects.hexagons import hexagons_data
 from idu_api.common.db.entities.projects.scenarios import scenarios_data
 from idu_api.common.db.entities.territories import territories_data
 

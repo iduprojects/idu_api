@@ -13,7 +13,12 @@ from idu_api.urban_api.dto import (
     MeasurementUnitDTO,
     ProjectIndicatorValueDTO,
 )
-from idu_api.urban_api.schemas.short_models import ShortScenario, ShortTerritory
+from idu_api.urban_api.schemas.short_models import (
+    MeasurementUnitBasic,
+    ShortIndicatorInfo,
+    ShortScenario,
+    ShortTerritory,
+)
 
 
 class MeasurementUnit(BaseModel):
@@ -36,27 +41,12 @@ class MeasurementUnitPost(BaseModel):
     name: str = Field(..., description="measurement unit name", examples=["Количество человек"])
 
 
-class ShortIndicatorInfo(BaseModel):
-    """Basic indicator model to encapsulate in other models."""
-
-    indicator_id: int = Field(..., examples=[1])
-    parent_id: int = Field(..., description="parent indicator identifier", examples=[1])
-    name_full: str = Field(
-        ...,
-        description="indicator unit full name",
-        examples=["Общее количество людей, постоянно проживающих на территории"],
-    )
-    measurement_unit: MeasurementUnit | None
-    level: int = Field(..., description="number of indicator functions above in a tree + 1", examples=[1])
-    list_label: str = Field(..., description="indicator marker in lists", examples=["1.1.1"])
-
-
 class IndicatorsGroup(BaseModel):
     """Indicator group with all its attributes."""
 
     indicators_group_id: int = Field(..., description="indicators group identifier", examples=[1])
     name: str = Field(..., description="full name of indicators group", examples=["--"])
-    indicators: list[ShortIndicatorInfo] = Field(default_factory=list, description="list of indicators for the group")
+    indicators: list[ShortIndicatorInfo] = Field(..., description="list of indicators for the group")
 
     @classmethod
     def from_dto(cls, dto: IndicatorsGroupDTO) -> "IndicatorsGroup":
@@ -66,10 +56,11 @@ class IndicatorsGroup(BaseModel):
             indicators=[
                 ShortIndicatorInfo(
                     indicator_id=indicator.indicator_id,
+                    parent_id=indicator.parent_id,
                     name_full=indicator.name_full,
                     measurement_unit=(
-                        MeasurementUnit(
-                            measurement_unit_id=indicator.measurement_unit_id,
+                        MeasurementUnitBasic(
+                            id=indicator.measurement_unit_id,
                             name=indicator.measurement_unit_name,
                         )
                         if indicator.measurement_unit_id is not None
@@ -102,7 +93,7 @@ class Indicator(BaseModel):
         examples=["Общее количество людей, постоянно проживающих на территории"],
     )
     name_short: str = Field(..., description="indicator unit short name", examples=["Численность населения"])
-    measurement_unit: MeasurementUnit | None
+    measurement_unit: MeasurementUnitBasic | None
     level: int = Field(..., description="number of indicator functions above in a tree + 1", examples=[1])
     list_label: str = Field(..., description="indicator marker in lists", examples=["1.1.1"])
     parent_id: int | None = Field(..., description="indicator parent identifier", examples=[1])
@@ -121,7 +112,7 @@ class Indicator(BaseModel):
             name_full=dto.name_full,
             name_short=dto.name_short,
             measurement_unit=(
-                MeasurementUnit(measurement_unit_id=dto.measurement_unit_id, name=dto.measurement_unit_name)
+                MeasurementUnitBasic(id=dto.measurement_unit_id, name=dto.measurement_unit_name)
                 if dto.measurement_unit_id is not None
                 else None
             ),
@@ -240,8 +231,8 @@ class IndicatorValue(BaseModel):
                 level=dto.level,
                 list_label=dto.list_label,
                 measurement_unit=(
-                    MeasurementUnit(
-                        measurement_unit_id=dto.measurement_unit_id,
+                    MeasurementUnitBasic(
+                        id=dto.measurement_unit_id,
                         name=dto.measurement_unit_name,
                     )
                     if dto.measurement_unit_id is not None
@@ -338,8 +329,8 @@ class ProjectIndicatorValue(BaseModel):
                 level=dto.level,
                 list_label=dto.list_label,
                 measurement_unit=(
-                    MeasurementUnit(
-                        measurement_unit_id=dto.measurement_unit_id,
+                    MeasurementUnitBasic(
+                        id=dto.measurement_unit_id,
                         name=dto.measurement_unit_name,
                     )
                     if dto.measurement_unit_id is not None

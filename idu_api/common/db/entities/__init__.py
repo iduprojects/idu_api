@@ -11,7 +11,7 @@ from idu_api.common.db.entities.object_geometries import object_geometries_data
 from idu_api.common.db.entities.physical_object_types import physical_object_functions_dict, physical_object_types_dict
 from idu_api.common.db.entities.physical_objects import physical_objects_data
 from idu_api.common.db.entities.profiles_reclamation import profiles_reclamation_data
-from idu_api.common.db.entities.projects.hexagons_data import hexagons_data
+from idu_api.common.db.entities.projects.hexagons import hexagons_data
 from idu_api.common.db.entities.projects.indicators import projects_indicators_data
 from idu_api.common.db.entities.projects.living_buildings import projects_living_buildings_data
 from idu_api.common.db.entities.projects.object_geometries import projects_object_geometries_data
