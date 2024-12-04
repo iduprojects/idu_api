@@ -38,7 +38,7 @@ async def get_project_by_id(
     You must be the owner of the relevant project or the project must be publicly available."""
     user_project_service: UserProjectService = request.state.user_project_service
 
-    project_dto = await user_project_service.get_project_by_id(project_id, user.id)
+    project_dto = await user_project_service.get_project_by_id(project_id, user.id if user is not None else None)
 
     return Project.from_dto(project_dto)
 
@@ -58,7 +58,9 @@ async def get_project_territory_by_project_id(
     You must be the owner of the relevant project or the project must be publicly available."""
     user_project_service: UserProjectService = request.state.user_project_service
 
-    project_territory_dto = await user_project_service.get_project_territory_by_id(project_id, user.id)
+    project_territory_dto = await user_project_service.get_project_territory_by_id(
+        project_id, user.id if user is not None else None
+    )
 
     return ProjectTerritory.from_dto(project_territory_dto)
 
@@ -76,7 +78,9 @@ async def get_scenarios_by_project_id(
     """Get list of scenarios for given project if project is public or if you're the project owner."""
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenarios = await user_project_service.get_scenarios_by_project_id(project_id, user.id)
+    scenarios = await user_project_service.get_scenarios_by_project_id(
+        project_id, user.id if user is not None else None
+    )
 
     return [ScenariosData.from_dto(scenario) for scenario in scenarios]
 
@@ -330,7 +334,9 @@ async def get_full_project_image(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    image_stream = await user_project_service.get_full_project_image(minio_client, project_id, user.id)
+    image_stream = await user_project_service.get_full_project_image(
+        minio_client, project_id, user.id if user is not None else None
+    )
 
     return StreamingResponse(image_stream, media_type="image/jpeg")
 
@@ -373,4 +379,6 @@ async def get_full_project_image_url(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    return await user_project_service.get_full_project_image_url(minio_client, project_id, user.id)
+    return await user_project_service.get_full_project_image_url(
+        minio_client, project_id, user.id if user is not None else None
+    )

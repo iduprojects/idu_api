@@ -40,7 +40,7 @@ async def get_services_by_scenario_id(
 
     services = await user_project_service.get_services_by_scenario_id(
         scenario_id,
-        user.id,
+        user.id if user is not None else None,
         service_type_id,
         urban_function_id,
     )
@@ -70,7 +70,7 @@ async def get_context_services_by_scenario_id(
 
     services = await user_project_service.get_context_services_by_scenario_id(
         scenario_id,
-        user.id,
+        user.id if user is not None else None,
         service_type_id,
         urban_function_id,
     )

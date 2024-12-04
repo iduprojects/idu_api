@@ -47,7 +47,7 @@ async def get_project_indicators_values_by_scenario_id(
         indicators_group_id,
         territory_id,
         hexagon_id,
-        user.id,
+        user.id if user is not None else None,
     )
 
     return [ProjectIndicatorValue.from_dto(indicator) for indicator in indicators]
@@ -69,7 +69,9 @@ async def get_project_indicator_value_by_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    indicator_value = await user_project_service.get_project_indicator_value_by_id(indicator_value_id, user.id)
+    indicator_value = await user_project_service.get_project_indicator_value_by_id(
+        indicator_value_id, user.id if user is not None else None
+    )
 
     return ProjectIndicatorValue.from_dto(indicator_value)
 
@@ -201,7 +203,7 @@ async def get_hexagons_with_indicators_values_by_territory_id(
     user_project_service: UserProjectService = request.state.user_project_service
 
     hexagons = await user_project_service.get_hexagons_with_indicators_by_scenario_id(
-        scenario_id, indicator_ids, indicators_group_id, user.id
+        scenario_id, indicator_ids, indicators_group_id, user.id if user is not None else None
     )
 
     return await GeoJSONResponse.from_list([hexagon.to_geojson_dict() for hexagon in hexagons], centers_only)

@@ -40,7 +40,7 @@ async def get_physical_objects_by_scenario_id(
 
     physical_objects = await user_project_service.get_physical_objects_by_scenario_id(
         scenario_id,
-        user.id,
+        user.id if user is not None else None,
         physical_object_type_id,
         physical_object_function_id,
     )
@@ -70,7 +70,7 @@ async def get_context_physical_objects_by_scenario_id(
 
     physical_objects = await user_project_service.get_context_physical_objects_by_scenario_id(
         scenario_id,
-        user.id,
+        user.id if user is not None else None,
         physical_object_type_id,
         physical_object_function_id,
     )

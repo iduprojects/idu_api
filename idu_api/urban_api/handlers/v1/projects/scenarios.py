@@ -32,7 +32,7 @@ async def get_scenario_by_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenario = await user_project_service.get_scenario_by_id(scenario_id, user.id)
+    scenario = await user_project_service.get_scenario_by_id(scenario_id, user.id if user is not None else None)
 
     return ScenariosData.from_dto(scenario)
 

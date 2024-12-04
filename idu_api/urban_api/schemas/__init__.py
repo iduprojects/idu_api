@@ -222,6 +222,7 @@ __all__ = [
     "MinioImagesURL",
     "GeometryAttributes",
     "ScenarioGeometryAttributes",
+    "ScenarioObjectGeometry",
     "AllObjects",
     "ScenarioAllObjects",
     "ScenarioPhysicalObject",

@@ -45,7 +45,7 @@ async def get_geometries_by_scenario_id(
 
     geometries = await user_project_service.get_geometries_by_scenario_id(
         scenario_id,
-        user.id,
+        user.id if user is not None else None,
         physical_object_id,
         service_id,
     )
@@ -78,7 +78,7 @@ async def get_geometries_with_all_objects_by_scenario_id(
 
     geometries = await user_project_service.get_geometries_with_all_objects_by_scenario_id(
         scenario_id,
-        user.id,
+        user.id if user is not None else None,
         physical_object_type_id,
         service_type_id,
         physical_object_function_id,
@@ -111,7 +111,7 @@ async def get_context_geometries_by_scenario_id(
 
     geometries = await user_project_service.get_context_geometries_by_scenario_id(
         scenario_id,
-        user.id,
+        user.id if user is not None else None,
         physical_object_id,
         service_id,
     )
@@ -145,7 +145,7 @@ async def get_context_geometries_with_all_objects_by_scenario_id(
 
     geometries = await user_project_service.get_context_geometries_with_all_objects_by_scenario_id(
         scenario_id,
-        user.id,
+        user.id if user is not None else None,
         physical_object_type_id,
         service_type_id,
         physical_object_function_id,

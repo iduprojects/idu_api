@@ -38,7 +38,9 @@ async def get_functional_zone_sources_by_scenario_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    sources = await user_project_service.get_functional_zones_sources_by_scenario_id(scenario_id, user.id)
+    sources = await user_project_service.get_functional_zones_sources_by_scenario_id(
+        scenario_id, user.id if user is not None else None
+    )
 
     return [FunctionalZoneSource.from_dto(source) for source in sources]
 
@@ -63,7 +65,7 @@ async def get_functional_zones_by_scenario_id(
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zones = await user_project_service.get_functional_zones_by_scenario_id(
-        scenario_id, year, source, functional_zone_type_id, user.id
+        scenario_id, year, source, functional_zone_type_id, user.id if user is not None else None
     )
 
     return await GeoJSONResponse.from_list([zone.to_geojson_dict() for zone in functional_zones])
@@ -86,7 +88,9 @@ async def get_context_functional_zone_sources_by_scenario_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    sources = await user_project_service.get_context_functional_zones_sources_by_scenario_id(scenario_id, user.id)
+    sources = await user_project_service.get_context_functional_zones_sources_by_scenario_id(
+        scenario_id, user.id if user is not None else None
+    )
 
     return [FunctionalZoneSource.from_dto(source) for source in sources]
 
@@ -112,7 +116,7 @@ async def get_context_functional_zones_by_scenario_id(
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zones = await user_project_service.get_context_functional_zones_by_scenario_id(
-        scenario_id, year, source, functional_zone_type_id, user.id
+        scenario_id, year, source, functional_zone_type_id, user.id if user is not None else None
     )
 
     return await GeoJSONResponse.from_list([zone.to_geojson_dict() for zone in functional_zones])
