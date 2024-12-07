@@ -9,6 +9,7 @@ from idu_api.urban_api.dto import (
     FunctionalZoneSourceDTO,
     HexagonWithIndicatorsDTO,
     ObjectGeometryDTO,
+    PageDTO,
     PhysicalObjectDataDTO,
     ProjectDTO,
     ProjectIndicatorValueDTO,
@@ -139,32 +140,66 @@ class UserProjectServiceImpl(UserProjectService):
         return await get_project_territory_by_id_from_db(self._conn, project_id, user_id)
 
     async def get_all_available_projects(
-        self, user_id: str | None, is_regional: bool
-    ) -> list[ProjectWithBaseScenarioDTO]:
-        return await get_all_available_projects_from_db(self._conn, user_id, is_regional)
+        self, user_id: str | None, is_regional: bool, territory_id: int | None
+    ) -> PageDTO[ProjectWithBaseScenarioDTO]:
+        return await get_all_available_projects_from_db(self._conn, user_id, is_regional, territory_id)
 
     async def get_all_preview_projects_images(
-        self, minio_client: AsyncMinioClient, user_id: str | None, is_regional: bool
+        self,
+        minio_client: AsyncMinioClient,
+        user_id: str | None,
+        is_regional: bool,
+        territory_id: int | None,
+        page: int,
+        page_size: int,
     ) -> io.BytesIO:
-        return await get_all_preview_projects_images_from_minio(self._conn, minio_client, user_id, is_regional)
+        return await get_all_preview_projects_images_from_minio(
+            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size
+        )
 
     async def get_all_preview_projects_images_url(
-        self, minio_client: AsyncMinioClient, user_id: str | None, is_regional: bool
+        self,
+        minio_client: AsyncMinioClient,
+        user_id: str | None,
+        is_regional: bool,
+        territory_id: int | None,
+        page: int,
+        page_size: int,
     ) -> list[dict[str, int | str]]:
-        return await get_all_preview_projects_images_url_from_minio(self._conn, minio_client, user_id, is_regional)
+        return await get_all_preview_projects_images_url_from_minio(
+            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size
+        )
 
-    async def get_user_projects(self, user_id: str, is_regional: bool) -> list[ProjectWithBaseScenarioDTO]:
-        return await get_user_projects_from_db(self._conn, user_id, is_regional)
+    async def get_user_projects(
+        self, user_id: str, is_regional: bool, territory_id: int | None
+    ) -> PageDTO[ProjectWithBaseScenarioDTO]:
+        return await get_user_projects_from_db(self._conn, user_id, is_regional, territory_id)
 
     async def get_user_preview_projects_images(
-        self, minio_client: AsyncMinioClient, user_id: str, is_regional: bool
+        self,
+        minio_client: AsyncMinioClient,
+        user_id: str,
+        is_regional: bool,
+        territory_id: int | None,
+        page: int,
+        page_size: int,
     ) -> io.BytesIO:
-        return await get_user_preview_projects_images_from_minio(self._conn, minio_client, user_id, is_regional)
+        return await get_user_preview_projects_images_from_minio(
+            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size
+        )
 
     async def get_user_preview_projects_images_url(
-        self, minio_client: AsyncMinioClient, user_id: str | None, is_regional: bool
+        self,
+        minio_client: AsyncMinioClient,
+        user_id: str,
+        is_regional: bool,
+        territory_id: int | None,
+        page: int,
+        page_size: int,
     ) -> list[dict[str, int | str]]:
-        return await get_user_preview_projects_images_url_from_minio(self._conn, minio_client, user_id, is_regional)
+        return await get_user_preview_projects_images_url_from_minio(
+            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size
+        )
 
     async def add_project(self, project: ProjectPost, user_id: str) -> ProjectDTO:
         return await add_project_to_db(self._conn, project, user_id)

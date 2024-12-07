@@ -1,7 +1,8 @@
 """Geojson response models are defined here."""
 
 import json
-from typing import Any, Iterable, Literal, Optional, Type, TypeVar
+from collections.abc import Iterable
+from typing import Any, Literal, Optional, Self, TypeVar
 
 import shapely
 import shapely.geometry as geom
@@ -45,7 +46,7 @@ class AllPossibleGeometry(BaseModel):
     @classmethod
     def from_shapely_geometry(
         cls, geometry: _BaseGeomTypes | geom.MultiPoint | geom.MultiLineString | geom.GeometryCollection | None
-    ) -> Optional["Geometry"]:
+    ) -> Self | None:
         """Construct Geometry model from shapely geometry."""
         if geometry is None:
             return None
@@ -83,7 +84,7 @@ class Geometry(BaseModel):
         return self._shapely_geom
 
     @classmethod
-    def from_shapely_geometry(cls, geometry: _BaseGeomTypes | None) -> Optional["Geometry"]:
+    def from_shapely_geometry(cls, geometry: _BaseGeomTypes | None) -> Self | None:
         """
         Construct Geometry model from shapely geometry.
         """
@@ -129,7 +130,7 @@ class GeometryValidationModel(BaseModel):
 
     @model_validator(mode="after")
     @classmethod
-    def validate_centre_point_from_geometry(cls: Type[T], model: T) -> T:
+    def validate_centre_point_from_geometry(cls: type[T], model: T) -> T:
         """Use the geometry's centroid for centre_point if it is missing."""
         if model.centre_point is None and model.geometry:
             model.centre_point = Geometry.from_shapely_geometry(model.geometry.as_shapely_geometry().centroid)

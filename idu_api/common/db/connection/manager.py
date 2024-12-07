@@ -43,7 +43,7 @@ class PostgresConnectionManager:
         application_name: str | None = None,
     ) -> None:
         """Initialize connection manager entity."""
-        async with self._lock:  # pylint: disable=not-async-context-manager
+        async with self._lock:
             self._host = host or self._host
             self._port = port or self._port
             self._database = database or self._database
@@ -90,7 +90,7 @@ class PostgresConnectionManager:
     async def shutdown(self) -> None:
         """Dispose connection pool and deinitialize."""
         if self._engine is not None:
-            async with self._lock:  # pylint: disable=not-async-context-manager
+            async with self._lock:
                 if self._engine is not None:
                     await self._engine.dispose()
                 self._engine = None
@@ -98,7 +98,7 @@ class PostgresConnectionManager:
     async def get_connection(self) -> AsyncIterator[AsyncConnection]:
         """Get an async connection to the database."""
         if self._engine is None:
-            async with self._lock:  # pylint: disable=not-async-context-manager
+            async with self._lock:
                 if self._engine is None:
                     await self.refresh()
         async with self._engine.connect() as conn:

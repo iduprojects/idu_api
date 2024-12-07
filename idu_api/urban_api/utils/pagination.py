@@ -1,4 +1,5 @@
-from typing import Any, Callable, Optional, Sequence, TypeVar
+from collections.abc import Callable, Sequence
+from typing import Any, TypeVar
 
 from fastapi_pagination.api import apply_items_transformer, create_page
 from fastapi_pagination.bases import AbstractParams
@@ -22,9 +23,9 @@ T = TypeVar("T", bound=BaseModel)
 def paginate(
     items: Sequence[DTO],
     total: int,
-    params: Optional[AbstractParams] = None,
-    transformer: Optional[ItemsTransformer] = None,
-    additional_data: Optional[AdditionalData] = None,
+    params: AbstractParams | None = None,
+    transformer: ItemsTransformer | None = None,
+    additional_data: AdditionalData | None = None,
 ) -> Any:
     """This function transforms list of DTO to pydantic models
     and creates page with list of results, total count and links."""
@@ -44,8 +45,8 @@ def paginate(
 async def paginate_dto(
     conn: AsyncConnection,
     stmt: Select,
-    params: Optional[AbstractParams] = None,
-    transformer: Optional[ItemsTransformer] = None,
+    params: AbstractParams | None = None,
+    transformer: ItemsTransformer | None = None,
 ) -> PageDTO[DTO]:
     """This function returns total count of items and list of results by given params."""
 

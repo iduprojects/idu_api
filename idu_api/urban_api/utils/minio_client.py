@@ -1,3 +1,4 @@
+import asyncio
 import io
 
 import aioboto3
@@ -60,7 +61,7 @@ class AsyncMinioClient:
                 raise UploadFileError(str(exc)) from exc
 
     @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ClientError))
-    async def get_file(self, object_name: str) -> io.BytesIO:
+    async def get_files(self, object_names: list[str]) -> list[io.BytesIO]:
         """Retrieve a file from the bucket asynchronously and return its content as bytes."""
         async with aioboto3.Session().client(
             "s3",
@@ -70,20 +71,28 @@ class AsyncMinioClient:
             region_name=self._region_name,
             config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
+            existence_map = await self.objects_exist(self._bucket_name, object_names)
+            final_names = [
+                name if existence_map.get(name, False) else "defaultImg.png" if "preview" in name else "defaultImg.jpg"
+                for name in object_names
+            ]
             try:
-                file_stream = io.BytesIO()
-                try:
-                    await client.download_fileobj(self._bucket_name, object_name, file_stream)
-                except ClientError:
-                    default_name = "defaultImg.png" if "preview" in object_name else "defaultImg.jpg"
-                    await client.download_fileobj(self._bucket_name, default_name, file_stream)
-                file_stream.seek(0)
-                return file_stream
+                tasks = []
+                file_data_map = {}
+                for name in final_names:
+                    file_data = io.BytesIO()
+                    task = client.download_fileobj(self._bucket_name, name, file_data)
+                    tasks.append(task)
+                    file_data_map[name] = file_data
+                await asyncio.gather(*tasks)
+                for name, file_data in file_data_map.items():
+                    file_data.seek(0)
+                return [file_data_map[name] for name in final_names]
             except ClientError as exc:
                 raise DownloadFileError(str(exc)) from exc
 
     @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ClientError))
-    async def object_exists(self, bucket_name, object_name):
+    async def objects_exist(self, bucket_name: str, object_names: list[str]) -> dict[str, bool]:
         async with aioboto3.Session().client(
             "s3",
             endpoint_url=self._endpoint_url,
@@ -92,21 +101,12 @@ class AsyncMinioClient:
             region_name=self._region_name,
             config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
-            try:
-                await client.head_object(Bucket=bucket_name, Key=object_name)
-                return True
-            except ClientError:
-                return False
+            response = await client.list_objects_v2(Bucket=bucket_name, Prefix="")
+            existing_objects = {obj["Key"] for obj in response.get("Contents", [])}
+            return {name: name in existing_objects for name in object_names}
 
     @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ClientError))
-    async def get_presigned_url(self, object_name: str, expires_in: int = 3600) -> str:
-        """
-        Generate a presigned URL for downloading the file asynchronously.
-
-        :param object_name: Name of the file in the bucket.
-        :param expires_in: Time in seconds for which the URL should be valid.
-        :return: Presigned URL for the file.
-        """
+    async def generate_presigned_urls(self, object_names: list[str], expires_in: int = 3600) -> list[str]:
         async with aioboto3.Session().client(
             "s3",
             endpoint_url=self._endpoint_url,
@@ -115,17 +115,19 @@ class AsyncMinioClient:
             region_name=self._region_name,
             config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
-            default_name = "defaultImg.png" if "preview" in object_name else "defaultImg.jpg"
-
-            # Check project object
-            if not await self.object_exists(self._bucket_name, object_name):
-                object_name = default_name
-
-            # Generate presigned url
+            existence_map = await self.objects_exist(self._bucket_name, object_names)
+            final_names = [
+                name if existence_map.get(name, False) else "defaultImg.png" if "preview" in name else "defaultImg.jpg"
+                for name in object_names
+            ]
             try:
-                return await client.generate_presigned_url(
-                    "get_object", Params={"Bucket": self._bucket_name, "Key": object_name}, ExpiresIn=expires_in
-                )
+                tasks = [
+                    client.generate_presigned_url(
+                        "get_object", Params={"Bucket": self._bucket_name, "Key": name}, ExpiresIn=expires_in
+                    )
+                    for name in final_names
+                ]
+                return await asyncio.gather(*tasks)
             except ClientError as exc:
                 raise GetPresignedURLError(str(exc)) from exc
 
@@ -135,7 +137,7 @@ class AsyncMinioClient:
         Delete a file from the specified bucket asynchronously.
 
         :param object_name: Name of the file to delete from the bucket.
-        :raises ClientError: If the delete operation fails.
+        :raises DeleteFileError: If the delete operation fails.
         """
         async with aioboto3.Session().resource(
             "s3",
@@ -146,7 +148,6 @@ class AsyncMinioClient:
             config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as s3:
             try:
-                # Delete the file from the bucket
                 await (await s3.Bucket(self._bucket_name)).objects.filter(Prefix=object_name).delete()
             except ClientError as exc:
                 raise DeleteFileError(str(exc)) from exc

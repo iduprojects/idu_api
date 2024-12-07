@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "idu-api"
-version = "1.22.4"
+version = "1.22.5"
 description = "This is a Digital Territories Platform API in two versions to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
@@ -61,6 +61,7 @@ expected-line-ending-format = "LF"
 max-locals = 20
 max-attributes = 10
 max-args = 9
+max-positional-arguments = 12
 extension-pkg-allow-list = ["networkit"]
 ignored-modules = ["alembic.context"]
 disable = [

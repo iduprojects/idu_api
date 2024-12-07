@@ -1,6 +1,6 @@
 """Territories physical objects internal logic is defined here."""
 
-from typing import Literal, Optional
+from typing import Literal
 
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import cast, select
@@ -83,8 +83,8 @@ async def get_physical_objects_by_territory_id_from_db(
     name: str | None,
     include_child_territories: bool,
     cities_only: bool,
-    order_by: Optional[Literal["created_at", "updated_at"]],
-    ordering: Optional[Literal["asc", "desc"]] = "asc",
+    order_by: Literal["created_at", "updated_at"] | None,
+    ordering: Literal["asc", "desc"] | None = "asc",
     paginate: bool = False,
 ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
     """Get physical objects by territory id, optional physical object type, is_city and physical object function."""
@@ -194,8 +194,8 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
     name: str | None,
     include_child_territories: bool,
     cities_only: bool,
-    order_by: Optional[Literal["created_at", "updated_at"]],
-    ordering: Optional[Literal["asc", "desc"]] = "asc",
+    order_by: Literal["created_at", "updated_at"] | None,
+    ordering: Literal["asc", "desc"] | None = "asc",
     paginate: bool = False,
 ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
     """Get physical objects with geometry by territory id,

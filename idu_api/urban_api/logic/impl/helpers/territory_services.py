@@ -1,7 +1,8 @@
 """Territories services internal logic is defined here."""
 
 from collections import defaultdict
-from typing import Any, Callable, Literal, Optional
+from collections.abc import Callable
+from typing import Any, Literal
 
 from geoalchemy2.functions import ST_AsGeoJSON
 from sqlalchemy import cast, func, select
@@ -80,8 +81,8 @@ async def get_services_by_territory_id_from_db(
     name: str | None,
     include_child_territories: bool,
     cities_only: bool,
-    order_by: Optional[Literal["created_at", "updated_at"]],
-    ordering: Optional[Literal["asc", "desc"]] = "asc",
+    order_by: Literal["created_at", "updated_at"] | None,
+    ordering: Literal["asc", "desc"] | None = "asc",
     paginate: bool = False,
 ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
     """Get list of services by territory id."""
@@ -183,8 +184,8 @@ async def get_services_with_geometry_by_territory_id_from_db(
     name: str | None,
     include_child_territories: bool,
     cities_only: bool,
-    order_by: Optional[Literal["created_at", "updated_at"]],
-    ordering: Optional[Literal["asc", "desc"]] = "asc",
+    order_by: Literal["created_at", "updated_at"] | None,
+    ordering: Literal["asc", "desc"] | None = "asc",
     paginate: bool = False,
 ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
     """Get list of services with objects geometries by territory id."""
