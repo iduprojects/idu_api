@@ -1,8 +1,7 @@
 import os
-import tempfile
-
 import random
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 from typing import Iterator
@@ -11,8 +10,8 @@ from alembic import command
 from alembic.config import Config
 from dotenv import load_dotenv
 
-from tests.urban_api.projects.helpers.projects import * # pylint: disable=wildcard-import,unused-wildcard-import
-from idu_api.urban_api.config import DBConfig, UrbanAPIConfig, AppConfig
+from idu_api.urban_api.config import AppConfig, DBConfig, UrbanAPIConfig
+from tests.urban_api.projects.helpers.projects import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
 
 @pytest.fixture(scope="session")
@@ -30,7 +29,7 @@ def database() -> DBConfig:
 
 
 @pytest.fixture(scope="session")
-def urban_api_host(database) -> Iterator[str]: # pylint: disable=redefined-outer-name
+def urban_api_host(database) -> Iterator[str]:  # pylint: disable=redefined-outer-name
     """Fixture to start the urban_api HTTP server on random port with poetry command."""
 
     port = random.randint(10000, 50000)
@@ -43,7 +42,7 @@ def urban_api_host(database) -> Iterator[str]: # pylint: disable=redefined-outer
             port=port,
             logger_verbosity=config.app.logger_verbosity,
             debug=config.app.debug,
-            ),
+        ),
         db=database,
         auth=config.auth,
         fileserver=config.fileserver,
@@ -59,7 +58,8 @@ def urban_api_host(database) -> Iterator[str]: # pylint: disable=redefined-outer
         ]
     ) as process:
 
-        client = httpx.Client(timeout=1000)
+        time.sleep(5)
+        client = httpx.Client()
         max_attempts = 10
 
         try:
@@ -75,7 +75,7 @@ def urban_api_host(database) -> Iterator[str]: # pylint: disable=redefined-outer
             process.wait()
 
 
-def run_migrations(database: DBConfig): # pylint: disable=redefined-outer-name
+def run_migrations(database: DBConfig):  # pylint: disable=redefined-outer-name
     dsn = f"postgresql+asyncpg://{database.user}:{database.password}@{database.addr}:{database.port}/{database.name}"
     alembic_dir = Path(__file__).resolve().parent.parent.parent / "idu_api" / "common" / "db"
 
@@ -85,5 +85,5 @@ def run_migrations(database: DBConfig): # pylint: disable=redefined-outer-name
     try:
         alembic_cfg.set_main_option("sqlalchemy.url", dsn)
         command.upgrade(alembic_cfg, "head")
-    except Exception: # pylint: disable=broad-except
+    except Exception:  # pylint: disable=broad-except
         pytest.fail("Error on migration preparation")
