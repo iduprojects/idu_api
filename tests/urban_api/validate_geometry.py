@@ -8,7 +8,8 @@ class TestModel(GeometryValidationModel):
     pass
 
 
-def test_valid_geometry():
+@pytest.mark.asyncio
+async def test_valid_geometry():
     valid_geometry = Geometry(
         type="Polygon",
         coordinates=[
@@ -28,7 +29,8 @@ def test_valid_geometry():
     assert model.geometry.as_shapely_geometry() is not None
 
 
-def test_invalid_geometry_type():
+@pytest.mark.asyncio
+async def test_invalid_geometry_type():
     with pytest.raises(
         ValidationError, match="Input should be 'Point', 'Polygon', 'MultiPolygon', 'LineString' or 'MultiLineString'"
     ):
@@ -46,7 +48,8 @@ def test_invalid_geometry_type():
         )
 
 
-def test_centre_point_validation():
+@pytest.mark.asyncio
+async def test_centre_point_validation():
     valid_geometry = Geometry(
         type="Polygon",
         coordinates=[
@@ -68,7 +71,8 @@ def test_centre_point_validation():
     assert model.centre_point.as_shapely_geometry() is not None
 
 
-def test_invalid_centre_point():
+@pytest.mark.asyncio
+async def test_invalid_centre_point():
     valid_geometry = Geometry(
         type="Polygon",
         coordinates=[
@@ -99,7 +103,8 @@ def test_invalid_centre_point():
         TestModel(territory_id=1, geometry=valid_geometry, centre_point=invalid_centre_point)
 
 
-def test_automatic_centre_point_generation():
+@pytest.mark.asyncio
+async def test_automatic_centre_point_generation():
     valid_geometry = Geometry(
         type="Polygon",
         coordinates=[
