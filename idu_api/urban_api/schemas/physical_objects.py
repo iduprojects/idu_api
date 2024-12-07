@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -239,7 +239,7 @@ class PhysicalObjectsDataPatch(BaseModel):
 
     physical_object_type_id: int | None = Field(None, examples=[1])
     name: str | None = Field(None, description="physical object name", examples=["--"])
-    properties: Optional[dict[str, Any]] = Field(
+    properties: dict[str, Any] | None = Field(
         None,
         description="physical object additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],

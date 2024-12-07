@@ -11,6 +11,7 @@ from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
     MinioImagesURL,
     MinioImageURL,
+    Page,
     Project,
     ProjectPatch,
     ProjectPost,
@@ -21,6 +22,7 @@ from idu_api.urban_api.schemas import (
 )
 from idu_api.urban_api.utils.auth_client import get_user
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client
+from idu_api.urban_api.utils.pagination import paginate
 
 
 @projects_router.get(
@@ -87,20 +89,27 @@ async def get_scenarios_by_project_id(
 
 @projects_router.get(
     "/projects",
-    response_model=list[ProjectWithBaseScenario],
+    response_model=Page[ProjectWithBaseScenario],
     status_code=status.HTTP_200_OK,
 )
 async def get_all_projects(
     request: Request,
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
+    territory_id: int | None = Query(None, description="to filter by territory identifier"),
     user: UserDTO = Depends(get_user),
-) -> list[ProjectWithBaseScenario]:
+) -> Page[ProjectWithBaseScenario]:
     """Get all public projects and projects that are owned by the user."""
     user_project_service: UserProjectService = request.state.user_project_service
 
-    projects = await user_project_service.get_all_available_projects(user.id if user is not None else None, is_regional)
+    projects = await user_project_service.get_all_available_projects(
+        user.id if user is not None else None, is_regional, territory_id
+    )
 
-    return [ProjectWithBaseScenario.from_dto(project) for project in projects]
+    return paginate(
+        projects.items,
+        projects.total,
+        transformer=lambda x: [ProjectWithBaseScenario.from_dto(item) for item in x],
+    )
 
 
 @projects_router.get(
@@ -110,6 +119,9 @@ async def get_all_projects(
 async def get_all_preview_project_images(
     request: Request,
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
+    territory_id: int | None = Query(None, description="to filter by territory identifier"),
+    page: int = Query(1, ge=1, description="to get images for projects from the current page"),
+    page_size: int = Query(10, ge=1, description="the number of projects images"),
     minio_client: AsyncMinioClient = Depends(get_minio_client),
     user: UserDTO = Depends(get_user),
 ) -> StreamingResponse:
@@ -117,7 +129,7 @@ async def get_all_preview_project_images(
     user_project_service: UserProjectService = request.state.user_project_service
 
     zip_buffer = await user_project_service.get_all_preview_projects_images(
-        minio_client, user.id if user is not None else None, is_regional
+        minio_client, user.id if user is not None else None, is_regional, territory_id, page, page_size
     )
 
     return StreamingResponse(
@@ -135,6 +147,9 @@ async def get_all_preview_project_images(
 async def get_all_preview_project_images_url(
     request: Request,
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
+    territory_id: int | None = Query(None, description="to filter by territory identifier"),
+    page: int = Query(1, ge=1, description="to get images for projects from the current page"),
+    page_size: int = Query(10, ge=1, description="the number of projects images"),
     minio_client: AsyncMinioClient = Depends(get_minio_client),
     user: UserDTO = Depends(get_user),
 ) -> list[MinioImageURL]:
@@ -142,7 +157,7 @@ async def get_all_preview_project_images_url(
     user_project_service: UserProjectService = request.state.user_project_service
 
     images = await user_project_service.get_all_preview_projects_images_url(
-        minio_client, user.id if user is not None else None, is_regional
+        minio_client, user.id if user is not None else None, is_regional, territory_id, page, page_size
     )
 
     return [MinioImageURL(**img) for img in images]
@@ -150,21 +165,26 @@ async def get_all_preview_project_images_url(
 
 @projects_router.get(
     "/user_projects",
-    response_model=list[ProjectWithBaseScenario],
+    response_model=Page[ProjectWithBaseScenario],
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
 async def get_user_projects(
     request: Request,
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
+    territory_id: int | None = Query(None, description="to filter by territory identifier"),
     user: UserDTO = Depends(get_user),
-) -> list[ProjectWithBaseScenario]:
+) -> Page[ProjectWithBaseScenario]:
     """Get all user's projects."""
     user_project_service: UserProjectService = request.state.user_project_service
 
-    projects = await user_project_service.get_user_projects(user.id, is_regional)
+    projects = await user_project_service.get_user_projects(user.id, is_regional, territory_id)
 
-    return [ProjectWithBaseScenario.from_dto(project) for project in projects]
+    return paginate(
+        projects.items,
+        projects.total,
+        transformer=lambda x: [ProjectWithBaseScenario.from_dto(item) for item in x],
+    )
 
 
 @projects_router.get(
@@ -175,13 +195,18 @@ async def get_user_projects(
 async def get_user_preview_project_images(
     request: Request,
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
+    territory_id: int | None = Query(None, description="to filter by territory identifier"),
+    page: int = Query(1, ge=1, description="to get images for projects from the current page"),
+    page_size: int = Query(10, ge=1, description="the number of projects images"),
     minio_client: AsyncMinioClient = Depends(get_minio_client),
     user: UserDTO = Depends(get_user),
 ) -> StreamingResponse:
     """Get preview images for all user's projects as a zip archive."""
     user_project_service: UserProjectService = request.state.user_project_service
 
-    zip_buffer = await user_project_service.get_user_preview_projects_images(minio_client, user.id, is_regional)
+    zip_buffer = await user_project_service.get_user_preview_projects_images(
+        minio_client, user.id, is_regional, territory_id, page, page_size
+    )
 
     return StreamingResponse(
         zip_buffer,
@@ -199,13 +224,18 @@ async def get_user_preview_project_images(
 async def get_user_preview_project_images_url(
     request: Request,
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
+    territory_id: int | None = Query(None, description="to filter by territory identifier"),
+    page: int = Query(1, ge=1, description="to get images for projects from the current page"),
+    page_size: int = Query(10, ge=1, description="the number of projects images"),
     minio_client: AsyncMinioClient = Depends(get_minio_client),
     user: UserDTO = Depends(get_user),
 ) -> list[MinioImageURL]:
     """Get preview images url for all user's projects."""
     user_project_service: UserProjectService = request.state.user_project_service
 
-    images = await user_project_service.get_user_preview_projects_images_url(minio_client, user.id, is_regional)
+    images = await user_project_service.get_user_preview_projects_images_url(
+        minio_client, user.id, is_regional, territory_id, page, page_size
+    )
 
     return [MinioImageURL(**img) for img in images]
 

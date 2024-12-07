@@ -239,4 +239,5 @@ __all__ = [
     "ProjectProfileWithoutGeometry",
     "FunctionalZoneWithoutGeometry",
     "FunctionalZoneSource",
+    "ProjectWithBaseScenario",
 ]

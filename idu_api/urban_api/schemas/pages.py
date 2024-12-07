@@ -1,5 +1,6 @@
+from collections.abc import Sequence
 from math import ceil
-from typing import Any, ClassVar, Generic, Optional, Sequence, TypeVar
+from typing import Any, ClassVar, Generic, TypeVar
 
 from fastapi import Query
 from fastapi_pagination.bases import AbstractPage, AbstractParams, CursorRawParams, RawParams
@@ -26,8 +27,8 @@ class BaseParams(BaseModel, AbstractParams):
 
 class Page(AbstractPage[T], Generic[T]):  # pylint: disable=too-few-public-methods
     count: int
-    prev: Optional[str] = None
-    next: Optional[str] = None
+    prev: str | None = None
+    next: str | None = None
     results: Sequence[T]
 
     __params_type__ = BaseParams
@@ -38,7 +39,7 @@ class Page(AbstractPage[T], Generic[T]):  # pylint: disable=too-few-public-metho
         items: Sequence[T],
         params: AbstractParams,
         *,
-        total: Optional[int] = None,
+        total: int | None = None,
         **kwargs: Any,
     ) -> Self:
 
@@ -63,7 +64,7 @@ class Page(AbstractPage[T], Generic[T]):  # pylint: disable=too-few-public-metho
 
 
 class CursorParams(BaseModel, AbstractParams):
-    cursor: Optional[str] = Query(None, description="Cursor for the next page")
+    cursor: str | None = Query(None, description="Cursor for the next page")
     size: int = Query(10, ge=1, description="Page size", alias="page_size")
 
     str_cursor: ClassVar[bool] = True
@@ -77,8 +78,8 @@ class CursorParams(BaseModel, AbstractParams):
 
 class CursorPage(AbstractPage[T], Generic[T]):  # pylint: disable=too-few-public-methods
     count: int
-    prev: Optional[str] = None
-    next: Optional[str] = None
+    prev: str | None = None
+    next: str | None = None
     results: Sequence[T]
 
     __params_type__ = CursorParams
@@ -89,9 +90,9 @@ class CursorPage(AbstractPage[T], Generic[T]):  # pylint: disable=too-few-public
         items: Sequence[T],
         params: AbstractParams,
         *,
-        total: Optional[int] = None,
-        previous: Optional[Cursor] = None,
-        next_: Optional[Cursor] = None,
+        total: int | None = None,
+        previous: Cursor | None = None,
+        next_: Cursor | None = None,
         **kwargs: Any,
     ) -> Self:
 

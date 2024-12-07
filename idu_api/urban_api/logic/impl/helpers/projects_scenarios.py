@@ -3,7 +3,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from sqlalchemy import Integer, cast, delete, insert, literal, select, update
+from sqlalchemy import delete, insert, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -230,13 +230,17 @@ async def copy_scenario_to_db(
                     profiles_data.c.name,
                     profiles_data.c.functional_zone_type_id,
                     profiles_data.c.geometry,
+                    profiles_data.c.year,
+                    profiles_data.c.source,
                     profiles_data.c.properties,
                 ],
                 select(
-                    cast(literal(new_scenario_id), Integer).label("scenario_id"),
+                    literal(new_scenario_id).label("scenario_id"),
                     profiles_data.c.name,
                     profiles_data.c.functional_zone_type_id,
                     profiles_data.c.geometry,
+                    profiles_data.c.year,
+                    profiles_data.c.source,
                     profiles_data.c.properties,
                 ).where(profiles_data.c.scenario_id == scenario_id),
             )
@@ -251,15 +255,17 @@ async def copy_scenario_to_db(
                     projects_indicators_data.c.value,
                     projects_indicators_data.c.comment,
                     projects_indicators_data.c.information_source,
+                    projects_indicators_data.c.properties,
                 ],
                 select(
-                    cast(literal(new_scenario_id), Integer).label("scenario_id"),
+                    literal(new_scenario_id).label("scenario_id"),
                     projects_indicators_data.c.indicator_id,
                     projects_indicators_data.c.territory_id,
                     projects_indicators_data.c.hexagon_id,
                     projects_indicators_data.c.value,
                     projects_indicators_data.c.comment,
                     projects_indicators_data.c.information_source,
+                    projects_indicators_data.c.properties,
                 ).where(projects_indicators_data.c.scenario_id == scenario_id),
             )
         ),
@@ -267,7 +273,7 @@ async def copy_scenario_to_db(
 
     await conn.commit()
 
-    return await get_scenario_by_id_from_db(conn, scenario_id, user_id)
+    return await get_scenario_by_id_from_db(conn, new_scenario_id, user_id)
 
 
 async def add_new_scenario_to_db(conn: AsyncConnection, scenario: ScenariosPost, user_id: str) -> ScenarioDTO:

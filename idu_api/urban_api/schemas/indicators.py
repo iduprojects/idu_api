@@ -359,6 +359,7 @@ class ProjectIndicatorValuePost(BaseModel):
     """Project indicator value schema for POST requests."""
 
     indicator_id: int = Field(..., description="indicator identifier", examples=[1])
+    scenario_id: int = Field(..., description="scenario identifier for which indicator value was saved", examples=[1])
     territory_id: int | None = Field(
         None, description="real territory identifier for which indicator value was saved", examples=[1]
     )

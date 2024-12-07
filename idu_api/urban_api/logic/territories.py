@@ -2,7 +2,7 @@
 
 import abc
 from datetime import datetime
-from typing import Literal, Optional, Protocol
+from typing import Literal, Protocol
 
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 
@@ -125,7 +125,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         indicators_group_id: int | None,
         start_date: datetime | None,
         end_date: datetime | None,
-        value_type: Optional[Literal["real", "target", "forecast"]],
+        value_type: Literal["real", "target", "forecast"] | None,
         information_source: str | None,
         last_only: bool,
     ) -> list[IndicatorValueDTO]:
@@ -143,7 +143,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
         indicators_group_id: int | None,
         start_date: datetime | None,
         end_date: datetime | None,
-        value_type: Optional[Literal["real", "target", "forecast"]],
+        value_type: Literal["real", "target", "forecast"] | None,
         information_source: str | None,
         last_only: bool,
     ) -> list[TerritoryWithIndicatorsDTO]:

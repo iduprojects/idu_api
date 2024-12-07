@@ -1,6 +1,5 @@
 """Projects internal logic is defined here."""
 
-import asyncio
 import io
 import zipfile
 from datetime import datetime, timezone
@@ -17,7 +16,7 @@ from geoalchemy2.functions import (
     ST_Within,
 )
 from PIL import Image
-from sqlalchemy import Integer, cast, delete, insert, literal, or_, select, text, update
+from sqlalchemy import cast, delete, insert, literal, or_, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -37,7 +36,7 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO, ProjectWithBaseScenarioDTO
+from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithBaseScenarioDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
@@ -47,6 +46,7 @@ from idu_api.urban_api.schemas import (
     ProjectPut,
 )
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
+from idu_api.urban_api.utils.pagination import paginate_dto
 
 
 async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user_id: str) -> ProjectDTO:
@@ -116,8 +116,8 @@ async def get_project_territory_by_id_from_db(
 
 
 async def get_all_available_projects_from_db(
-    conn: AsyncConnection, user_id: str | None, is_regional: bool
-) -> list[ProjectWithBaseScenarioDTO]:
+    conn: AsyncConnection, user_id: str | None, is_regional: bool, territory_id: int | None
+) -> PageDTO[ProjectWithBaseScenarioDTO]:
     """Get all public and user's projects."""
 
     statement = (
@@ -141,18 +141,29 @@ async def get_all_available_projects_from_db(
         statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
     else:
         statement = statement.where(projects_data.c.public.is_(True))
+    if territory_id is not None:
+        statement = statement.where(projects_data.c.territory_id == territory_id)
 
-    results = (await conn.execute(statement)).mappings().all()
-
-    return [ProjectWithBaseScenarioDTO(**result) for result in results]
+    return await paginate_dto(conn, statement, transformer=lambda x: [ProjectWithBaseScenarioDTO(**item) for item in x])
 
 
 async def get_all_preview_projects_images_from_minio(
-    conn: AsyncConnection, minio_client: AsyncMinioClient, user_id: str | None, is_regional: bool
+    conn: AsyncConnection,
+    minio_client: AsyncMinioClient,
+    user_id: str | None,
+    is_regional: bool,
+    territory_id: int | None,
+    page: int,
+    page_size: int,
 ) -> io.BytesIO:
     """Get preview images for all public and user's projects with parallel MinIO requests."""
 
-    statement = select(projects_data.c.project_id).order_by(projects_data.c.project_id)
+    statement = (
+        select(projects_data.c.project_id)
+        .order_by(projects_data.c.project_id)
+        .offset(page_size * (page - 1))
+        .limit(page_size)
+    )
     if user_id is not None:
         statement = statement.where(
             or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)),
@@ -160,16 +171,12 @@ async def get_all_preview_projects_images_from_minio(
         )
     else:
         statement = statement.where(projects_data.c.public.is_(True), projects_data.c.is_regional.is_(is_regional))
+    if territory_id is not None:
+        statement = statement.where(projects_data.c.territory_id == territory_id)
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    async def fetch_image(project_id: int) -> tuple[int, io.BytesIO]:
-        """Get preview image for given project identifier."""
-
-        image = await minio_client.get_file(f"projects/{project_id}/preview.png")
-        return project_id, image
-
-    results = await asyncio.gather(*(fetch_image(project_id) for project_id in project_ids))
-    images = {project_id: image for project_id, image in results if image is not None}
+    results = await minio_client.get_files([f"projects/{project_id}/preview.png" for project_id in project_ids])
+    images = {project_id: image for project_id, image in zip(project_ids, results) if image is not None}
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zip_file:
@@ -182,11 +189,22 @@ async def get_all_preview_projects_images_from_minio(
 
 
 async def get_all_preview_projects_images_url_from_minio(
-    conn: AsyncConnection, minio_client: AsyncMinioClient, user_id: str | None, is_regional: bool
+    conn: AsyncConnection,
+    minio_client: AsyncMinioClient,
+    user_id: str | None,
+    is_regional: bool,
+    territory_id: int | None,
+    page: int,
+    page_size: int,
 ) -> list[dict[str, int | str]]:
     """Get preview images url for all public and user's projects."""
 
-    statement = select(projects_data.c.project_id).order_by(projects_data.c.project_id)
+    statement = (
+        select(projects_data.c.project_id)
+        .order_by(projects_data.c.project_id)
+        .offset(page_size * (page - 1))
+        .limit(page_size)
+    )
     if user_id is not None:
         statement = statement.where(
             or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)),
@@ -194,22 +212,20 @@ async def get_all_preview_projects_images_url_from_minio(
         )
     else:
         statement = statement.where(projects_data.c.public.is_(True), projects_data.c.is_regional.is_(is_regional))
+    if territory_id is not None:
+        statement = statement.where(projects_data.c.territory_id == territory_id)
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    async def fetch_image(project_id: int) -> tuple[int, str]:
-        """Get preview image url for given project identifier."""
+    results = await minio_client.generate_presigned_urls(
+        [f"projects/{project_id}/preview.png" for project_id in project_ids]
+    )
 
-        url = await minio_client.get_presigned_url(f"projects/{project_id}/preview.png")
-        return project_id, url
-
-    results = await asyncio.gather(*(fetch_image(project_id) for project_id in project_ids))
-
-    return [{"project_id": project_id, "url": url} for project_id, url in results if url is not None]
+    return [{"project_id": project_id, "url": url} for project_id, url in zip(project_ids, results) if url is not None]
 
 
 async def get_user_projects_from_db(
-    conn: AsyncConnection, user_id: str, is_regional: bool
-) -> list[ProjectWithBaseScenarioDTO]:
+    conn: AsyncConnection, user_id: str, is_regional: bool, territory_id: int | None
+) -> PageDTO[ProjectWithBaseScenarioDTO]:
     """Get all user's projects."""
 
     statement = (
@@ -232,13 +248,21 @@ async def get_user_projects_from_db(
         )
         .order_by(projects_data.c.project_id)
     )
-    results = (await conn.execute(statement)).mappings().all()
 
-    return [ProjectWithBaseScenarioDTO(**result) for result in results]
+    if territory_id is not None:
+        statement = statement.where(projects_data.c.territory_id == territory_id)
+
+    return await paginate_dto(conn, statement, transformer=lambda x: [ProjectWithBaseScenarioDTO(**item) for item in x])
 
 
 async def get_user_preview_projects_images_from_minio(
-    conn: AsyncConnection, minio_client: AsyncMinioClient, user_id: str, is_regional: bool
+    conn: AsyncConnection,
+    minio_client: AsyncMinioClient,
+    user_id: str,
+    is_regional: bool,
+    territory_id: int | None,
+    page: int,
+    page_size: int,
 ) -> io.BytesIO:
     """Get preview images for all user's projects with parallel MinIO requests."""
 
@@ -246,17 +270,15 @@ async def get_user_preview_projects_images_from_minio(
         select(projects_data.c.project_id)
         .where(projects_data.c.user_id == user_id, projects_data.c.is_regional.is_(is_regional))
         .order_by(projects_data.c.project_id)
+        .offset(page_size * (page - 1))
+        .limit(page_size)
     )
+    if territory_id is not None:
+        statement = statement.where(projects_data.c.territory_id == territory_id)
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    async def fetch_image(project_id: int) -> tuple[int, io.BytesIO]:
-        """Get preview image for given project identifier."""
-
-        image = await minio_client.get_file(f"projects/{project_id}/preview.png")
-        return project_id, image
-
-    results = await asyncio.gather(*(fetch_image(project_id) for project_id in project_ids))
-    images = {project_id: image for project_id, image in results if image is not None}
+    results = await minio_client.get_files([f"projects/{project_id}/preview.png" for project_id in project_ids])
+    images = {project_id: image for project_id, image in zip(project_ids, results) if image is not None}
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zip_file:
@@ -269,7 +291,13 @@ async def get_user_preview_projects_images_from_minio(
 
 
 async def get_user_preview_projects_images_url_from_minio(
-    conn: AsyncConnection, minio_client: AsyncMinioClient, user_id: str, is_regional: bool
+    conn: AsyncConnection,
+    minio_client: AsyncMinioClient,
+    user_id: str,
+    is_regional: bool,
+    territory_id: int | None,
+    page: int,
+    page_size: int,
 ) -> list[dict[str, int | str]]:
     """Get preview images url for all user's projects."""
 
@@ -277,18 +305,18 @@ async def get_user_preview_projects_images_url_from_minio(
         select(projects_data.c.project_id)
         .where(projects_data.c.user_id == user_id, projects_data.c.is_regional.is_(is_regional))
         .order_by(projects_data.c.project_id)
+        .offset(page_size * (page - 1))
+        .limit(page_size)
     )
+    if territory_id is not None:
+        statement = statement.where(projects_data.c.territory_id == territory_id)
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    async def fetch_image(project_id: int) -> tuple[int, str]:
-        """Get preview image url for given project identifier."""
+    results = await minio_client.generate_presigned_urls(
+        [f"projects/{project_id}/preview.png" for project_id in project_ids]
+    )
 
-        url = await minio_client.get_presigned_url(f"projects/{project_id}/preview.png")
-        return project_id, url
-
-    results = await asyncio.gather(*(fetch_image(project_id) for project_id in project_ids))
-
-    return [{"project_id": project_id, "url": url} for project_id, url in results if url is not None]
+    return [{"project_id": project_id, "url": url} for project_id, url in zip(project_ids, results) if url is not None]
 
 
 async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id: str) -> ProjectDTO:
@@ -555,7 +583,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                     profiles_data.c.properties,
                 ],
                 select(
-                    cast(literal(scenario_id), Integer).label("scenario_id"),
+                    literal(scenario_id).label("scenario_id"),
                     functional_zones_data.c.functional_zone_type_id,
                     ST_Intersection(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()).label(
                         "geometry"
@@ -752,8 +780,8 @@ async def upload_project_image_to_minio(
     await minio_client.upload_file(preview_stream.getvalue(), f"projects/{project_id}/preview.png")
 
     return {
-        "image_url": await minio_client.get_presigned_url(f"projects/{project_id}/image.jpg"),
-        "preview_url": await minio_client.get_presigned_url(f"projects/{project_id}/preview.png"),
+        "image_url": (await minio_client.generate_presigned_urls([f"projects/{project_id}/image.jpg"]))[0],
+        "preview_url": (await minio_client.generate_presigned_urls([f"projects/{project_id}/preview.png"]))[0],
     }
 
 
@@ -770,7 +798,7 @@ async def get_full_project_image_from_minio(
     if result.user_id != user_id and not result.public:
         raise AccessDeniedError(project_id, "project")
 
-    return await minio_client.get_file(f"projects/{project_id}/image.jpg")
+    return (await minio_client.get_files([f"projects/{project_id}/image.jpg"]))[0]
 
 
 async def get_preview_project_image_from_minio(
@@ -786,7 +814,7 @@ async def get_preview_project_image_from_minio(
     if result.user_id != user_id and not result.public:
         raise AccessDeniedError(project_id, "project")
 
-    return await minio_client.get_file(f"projects/{project_id}/preview.png")
+    return (await minio_client.get_files([f"projects/{project_id}/preview.png"]))[0]
 
 
 async def get_full_project_image_url_from_minio(
@@ -802,4 +830,4 @@ async def get_full_project_image_url_from_minio(
     if result.user_id != user_id and not result.public:
         raise AccessDeniedError(project_id, "project")
 
-    return await minio_client.get_presigned_url(f"projects/{project_id}/image.jpg")
+    return (await minio_client.generate_presigned_urls([f"projects/{project_id}/image.jpg"]))[0]

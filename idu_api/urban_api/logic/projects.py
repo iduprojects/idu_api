@@ -6,6 +6,7 @@ from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
     FunctionalZoneSourceDTO,
     HexagonWithIndicatorsDTO,
+    PageDTO,
     PhysicalObjectDataDTO,
     ProjectDTO,
     ProjectIndicatorValueDTO,
@@ -59,35 +60,61 @@ class UserProjectService(Protocol):
 
     @abc.abstractmethod
     async def get_all_available_projects(
-        self, user_id: str | None, is_regional: bool
-    ) -> list[ProjectWithBaseScenarioDTO]:
+        self, user_id: str | None, is_regional: bool, territory_id: int | None
+    ) -> PageDTO[ProjectWithBaseScenarioDTO]:
         """Get all public and user's projects."""
 
     @abc.abstractmethod
     async def get_all_preview_projects_images(
-        self, minio_client: AsyncMinioClient, user_id: str | None, is_regional: bool
+        self,
+        minio_client: AsyncMinioClient,
+        user_id: str | None,
+        is_regional: bool,
+        territory_id: int | None,
+        page: int,
+        page_size: int,
     ) -> io.BytesIO:
         """Get preview images (zip) for all public and user's projects."""
 
     @abc.abstractmethod
     async def get_all_preview_projects_images_url(
-        self, minio_client: AsyncMinioClient, user_id: str | None, is_regional: bool
+        self,
+        minio_client: AsyncMinioClient,
+        user_id: str | None,
+        is_regional: bool,
+        territory_id: int | None,
+        page: int,
+        page_size: int,
     ) -> list[dict[str, int | str]]:
         """Get preview images url for all public and user's projects."""
 
     @abc.abstractmethod
-    async def get_user_projects(self, user_id: str, is_regional: bool) -> list[ProjectWithBaseScenarioDTO]:
+    async def get_user_projects(
+        self, user_id: str, is_regional: bool, territory_id: int | None
+    ) -> PageDTO[ProjectWithBaseScenarioDTO]:
         """Get all user's projects."""
 
     @abc.abstractmethod
     async def get_user_preview_projects_images(
-        self, minio_client: AsyncMinioClient, user_id: str, is_regional: bool
+        self,
+        minio_client: AsyncMinioClient,
+        user_id: str,
+        is_regional: bool,
+        territory_id: int | None,
+        page: int,
+        page_size: int,
     ) -> io.BytesIO:
         """Get preview images (zip) for all user's projects with parallel MinIO requests."""
 
     @abc.abstractmethod
     async def get_user_preview_projects_images_url(
-        self, minio_client: AsyncMinioClient, user_id: str, is_regional: bool
+        self,
+        minio_client: AsyncMinioClient,
+        user_id: str,
+        is_regional: bool,
+        territory_id: int | None,
+        page: int,
+        page_size: int,
     ) -> list[dict[str, int | str]]:
         """Get preview images url for all user's projects."""
 

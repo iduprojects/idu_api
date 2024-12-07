@@ -1,7 +1,8 @@
 """DTO for pagination is defined here."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Generic, Sequence, TypeVar
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 
