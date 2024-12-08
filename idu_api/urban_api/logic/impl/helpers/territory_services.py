@@ -205,6 +205,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
             service_types_dict.c.infrastructure_type,
             service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.name.label("territory_type_name"),
+            object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),

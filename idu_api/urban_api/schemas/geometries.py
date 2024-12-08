@@ -171,7 +171,7 @@ class GeoJSONResponse(FeatureCollection):
 
         feature_collection = []
         for feature in features:
-            properties = dict(feature)
+            properties = feature.copy()
             if not centers_only:
                 geometry = properties.pop("geometry", None)
                 if properties.get("centre_point", False):

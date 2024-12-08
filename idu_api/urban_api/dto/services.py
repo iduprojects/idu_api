@@ -45,6 +45,7 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     name: str | None
     capacity_real: int | None
     properties: dict[str, Any]
+    object_geometry_id: int
     address: str | None
     osm_id: str | None
     geometry: Geom

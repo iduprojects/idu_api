@@ -20,10 +20,11 @@ class LivingBuildingsWithGeometry(BaseModel):
         description="additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    geometry: Geometry
-    centre_point: Geometry
+    object_geometry_id: int = Field(..., description="object geometry identifier", examples=[1])
     address: str | None = Field(None, description="geometry address", examples=["--"])
     osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
+    geometry: Geometry
+    centre_point: Geometry
 
     @classmethod
     def from_dto(cls, dto: LivingBuildingWithGeometryDTO) -> "LivingBuildingsWithGeometry":
@@ -41,10 +42,11 @@ class LivingBuildingsWithGeometry(BaseModel):
                 name=dto.physical_object_name,
                 properties=dto.physical_object_properties,
             ),
-            address=dto.physical_object_address,
-            osm_id=dto.object_geometry_osm_id,
             living_area=dto.living_area,
             properties=dto.properties,
+            object_geometry_id=dto.object_geometry_id,
+            address=dto.address,
+            osm_id=dto.osm_id,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
         )

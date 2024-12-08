@@ -33,12 +33,13 @@ class PhysicalObjectWithGeometryDTO:
     physical_object_function_id: int
     physical_object_function_name: str
     name: str | None
-    address: str | None
-    osm_id: str | None
+    properties: dict[str, Any]
     living_building_id: int | None
     living_area: float | None
     living_building_properties: dict[str, Any] | None
-    properties: dict[str, Any]
+    object_geometry_id: int
+    address: str | None
+    osm_id: str | None
     geometry: Geom
     centre_point: geom.Point
     created_at: datetime
