@@ -10,6 +10,7 @@ from geoalchemy2.functions import (
     ST_AsGeoJSON,
     ST_Buffer,
     ST_Centroid,
+    ST_GeometryType,
     ST_GeomFromText,
     ST_Intersection,
     ST_Intersects,
@@ -594,6 +595,10 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                 ).where(
                     functional_zones_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
                     ST_Intersects(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()),
+                    ST_GeometryType(
+                        ST_Intersection(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery())
+                    )
+                    in ("ST_Polygon", "ST_MultiPolygon"),
                 ),
             )
         )
