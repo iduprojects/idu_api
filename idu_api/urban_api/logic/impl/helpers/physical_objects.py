@@ -69,6 +69,7 @@ async def get_physical_objects_by_ids_from_db(
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_object_types_dict.c.physical_object_function_id,
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
+            object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
