@@ -6,6 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
+from idu_api.urban_api.config import FileServerConfig
 from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,
@@ -82,14 +83,15 @@ class PhysicalObjectWithGeometry(BaseModel):
     physical_object_id: int = Field(..., examples=[1])
     physical_object_type: PhysicalObjectsTypes
     name: str | None = Field(None, description="physical object name", examples=["--"])
-    address: str | None = Field(None, description="physical object address", examples=["--"])
-    osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
-    living_building: ShortLivingBuilding | None
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="physical object additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
+    living_building: ShortLivingBuilding | None
+    object_geometry_id: int = Field(..., description="object geometry identifier", examples=[1])
+    address: str | None = Field(None, description="physical object address", examples=["--"])
+    osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
     geometry: Geometry
     centre_point: Geometry
     created_at: datetime = Field(
@@ -118,7 +120,7 @@ class PhysicalObjectWithGeometry(BaseModel):
                 ),
             ),
             name=dto.name,
-            address=dto.address,
+            properties=dto.properties,
             living_building=(
                 ShortLivingBuilding(
                     id=dto.living_building_id,
@@ -128,7 +130,9 @@ class PhysicalObjectWithGeometry(BaseModel):
                 if dto.living_building_id is not None
                 else None
             ),
-            properties=dto.properties,
+            object_geometry_id=dto.object_geometry_id,
+            address=dto.address,
+            osm_id=dto.osm_id,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
             created_at=dto.created_at,

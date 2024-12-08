@@ -41,8 +41,9 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
             physical_objects_data.c.properties.label("physical_object_properties"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
-            object_geometries_data.c.address.label("physical_object_address"),
-            object_geometries_data.c.osm_id.label("object_geometry_osm_id"),
+            object_geometries_data.c.object_geometry_id,
+            object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
         )

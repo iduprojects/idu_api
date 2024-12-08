@@ -196,6 +196,7 @@ class ServicesDataWithGeometry(BaseModel):
         description="service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
+    object_geometry_id: int = Field(..., description="object geometry identifier", examples=[1])
     address: str | None = Field(None, description="physical object address", examples=["--"])
     osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
     geometry: Geometry
@@ -229,6 +230,9 @@ class ServicesDataWithGeometry(BaseModel):
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
+            object_geometry_id=dto.object_geometry_id,
+            address=dto.address,
+            osm_id=dto.osm_id,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
             created_at=dto.created_at,

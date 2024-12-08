@@ -16,10 +16,11 @@ class LivingBuildingWithGeometryDTO:  # pylint: disable=too-many-instance-attrib
     physical_object_properties: dict[str, Any]
     living_area: float | None
     properties: dict[str, Any]
+    object_geometry_id: int
+    address: str | None
+    osm_id: str | None
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     centre_point: geom.Point
-    physical_object_address: str | None
-    object_geometry_osm_id: str | None
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):
