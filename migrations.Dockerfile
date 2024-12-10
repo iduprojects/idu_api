@@ -1,4 +1,4 @@
-FROM python:3.11-alpine
+FROM python:3.11-alpine3.20
 
 RUN apk add --virtual build-deps
 RUN apk add python3-dev musl-dev linux-headers postgresql-dev geos-dev
