@@ -46,3 +46,24 @@ def project_post_req() -> dict[str, Any]:
             },
         },
     }
+
+
+@pytest.fixture
+def project_put_req() -> dict[str, Any]:
+    """POST request template for user projects data."""
+
+    return {
+        "name": "Updated Test Project Name",
+        "description": "Updated Test Project Description",
+        "public": True,
+        "properties": {},
+    }
+
+
+@pytest.fixture
+def project_patch_req() -> dict[str, Any]:
+    """POST request template for user projects data."""
+
+    return {
+        "name": "New Patched Project Name",
+    }
