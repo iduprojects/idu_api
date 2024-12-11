@@ -15,6 +15,7 @@ from idu_api.urban_api.schemas import (
     IndicatorsPut,
     IndicatorValue,
     IndicatorValuePost,
+    IndicatorValuePut,
     MeasurementUnit,
     MeasurementUnitPost,
 )
@@ -262,6 +263,18 @@ async def add_indicator_value(request: Request, indicator_value: IndicatorValueP
 
     return IndicatorValue.from_dto(indicator_value_dto)
 
+@indicators_router.put(
+    "/indicator_value",
+    response_model=IndicatorValue,
+    status_code=status.HTTP_201_CREATED,
+)
+async def update_indicator_value(request: Request, indicator_value: IndicatorValuePut) -> IndicatorValue:
+    """Update existing indicator value for a given territory and date period."""
+    indicators_service: IndicatorsService = request.state.indicators_service
+
+    indicator_value_dto = await indicators_service.put_indicator_value(indicator_value)
+
+    return IndicatorValue.from_dto(indicator_value_dto)
 
 @indicators_router.delete(
     "/indicator_value",

@@ -291,6 +291,46 @@ class IndicatorValuePost(BaseModel):
             return value_type.value
         return value_type
 
+class IndicatorValuePut(BaseModel):
+    """Indicator value schema for PUT request."""
+
+    indicator_id: int = Field(..., description="indicator identifier", examples=[1])
+    territory_id: int = Field(..., description="territory identifier", examples=[1])
+    date_type: Literal["year", "half_year", "quarter", "month", "day"] = Field(
+        ..., description="time interval", examples=["year"]
+    )
+    date_value: date = Field(
+        ...,
+        description="first day of the year for 'year' period, first of june for 'half_year',"
+        " first day of jan/apr/jul/oct for quarter, first day of month for 'month', any valid day value for 'day'",
+        examples=["2024-01-01"],
+    )
+    value: float = Field(..., description="indicator value for territory at time", examples=[23.5])
+    value_type: Literal["real", "forecast", "target"] = Field(
+        ..., description="indicator value type", examples=["real"]
+    )
+    information_source: str = Field(
+        ...,
+        description="information source",
+        examples=[
+            "https://data.gov.spb.ru/irsi/7832000076-Obuekty-nedvizhimogo-imushestva-i-zemelnye-uchastki/"
+            "structure_version/229/"
+        ],
+    )
+
+    @field_validator("date_type", mode="before")
+    @staticmethod
+    def date_type_to_string(date_type: Any) -> str:
+        if isinstance(date_type, Enum):
+            return date_type.value
+        return date_type
+
+    @field_validator("value_type", mode="before")
+    @staticmethod
+    def value_type_to_string(value_type: Any) -> str:
+        if isinstance(value_type, Enum):
+            return value_type.value
+        return value_type
 
 class ProjectIndicatorValue(BaseModel):
     """Project indicator value with all its attributes."""

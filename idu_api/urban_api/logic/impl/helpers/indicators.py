@@ -31,6 +31,7 @@ from idu_api.urban_api.schemas import (
     IndicatorsPost,
     IndicatorsPut,
     IndicatorValuePost,
+    IndicatorValuePut,
     MeasurementUnitPost,
 )
 
@@ -656,6 +657,58 @@ async def get_indicator_values_by_id_from_db(
 
     return [IndicatorValueDTO(**value) for value in result]
 
+async def put_indicator_value_to_db(conn: AsyncConnection, indicator_value: IndicatorValuePut) -> IndicatorValueDTO:
+    """Update existing indicator_value or create new if doesn't exists"""
+
+    statement = select(territory_indicators_data).where(
+        territory_indicators_data.c.indicator_id == indicator_value.indicator_id,
+        territory_indicators_data.c.territory_id == indicator_value.territory_id,
+        territory_indicators_data.c.date_type == indicator_value.date_type,
+        territory_indicators_data.c.date_value == indicator_value.date_value,
+        territory_indicators_data.c.value_type == indicator_value.value_type,
+        territory_indicators_data.c.information_source == indicator_value.information_source,
+    )
+
+    result = (await conn.execute(statement)).one_or_none()
+    if result is None:
+        statement = (
+            insert(territory_indicators_data)
+            .values(
+                indicator_id=indicator_value.indicator_id,
+                territory_id=indicator_value.territory_id,
+                date_type=indicator_value.date_type,
+                date_value=indicator_value.date_value,
+                value=indicator_value.value,
+                value_type=indicator_value.value_type,
+                information_source=indicator_value.information_source,
+            )
+            .returning(territory_indicators_data)
+        )
+    else:
+        statement = (
+            update(territory_indicators_data)
+            .values(value=indicator_value.value, updated_at=datetime.now(timezone.utc))
+            .where(
+                (territory_indicators_data.c.indicator_id == indicator_value.indicator_id)
+                & (territory_indicators_data.c.territory_id == indicator_value.territory_id)
+                & (territory_indicators_data.c.date_type == indicator_value.date_type)
+                & (territory_indicators_data.c.value_type == indicator_value.value_type)
+                & (territory_indicators_data.c.information_source == indicator_value.information_source)
+            )
+        )
+
+    await conn.execute(statement)
+    await conn.commit()
+
+    return await get_indicator_value_by_id_from_db(
+        conn,
+        indicator_value.indicator_id,
+        indicator_value.territory_id,
+        indicator_value.date_type,
+        indicator_value.date_value,
+        indicator_value.value_type,
+        indicator_value.information_source,
+    )
 
 async def delete_indicator_value_from_db(
     conn: AsyncConnection,
