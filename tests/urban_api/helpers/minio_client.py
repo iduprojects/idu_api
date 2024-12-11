@@ -2,6 +2,8 @@ import io
 
 import pytest
 
+from idu_api.urban_api.exceptions.utils.minio import GetPresignedURLError
+
 
 class MockAsyncMinioClient:
     """Mock implementation of AsyncMinioClient for testing purposes."""
@@ -16,22 +18,21 @@ class MockAsyncMinioClient:
         self._store[object_name] = file_data
         return object_name
 
-    async def get_file(self, object_name: str) -> io.BytesIO:
+    async def get_files(self, object_names: list[str]) -> list[io.BytesIO]:
         """Mock the get_file method."""
-        if object_name in self._store:
-            return io.BytesIO(self._store[object_name])
-        else:
-            raise FileNotFoundError(f"Object '{object_name}' not found in mock store.")
+        if await self.objects_exist(object_names):
+            return [io.BytesIO(self._store[name]) for name in object_names]
+        raise FileNotFoundError(f"At least one object not found in mock store.")
 
-    async def object_exists(self, bucket_name: str, object_name: str) -> bool:
+    async def objects_exist(self, object_names: list[str]) -> bool:
         """Mock the object_exists method."""
-        return object_name in self._store
+        return all(name in self._store for name in object_names)
 
-    async def get_presigned_url(self, object_name: str, expires_in: int = 3600) -> str:
-        """Mock the get_presigned_url method."""
-        if object_name not in self._store:
-            raise FileNotFoundError(f"Object '{object_name}' not found in mock store.")
-        return f"http://mockstorage/{self._bucket_name}/{object_name}"
+    async def generate_presigned_urls(self, object_names: list[str], expires_in: int = 3600) -> list[str]:
+        """Mock the generate_presigned_url method."""
+        if await self.objects_exist(object_names):
+            return [f"http://mockstorage/{self._bucket_name}/{name}" for name in object_names]
+        raise GetPresignedURLError(f"At least one object not found in mock store.")
 
     async def delete_file(self, object_name: str) -> None:
         """Mock the delete_file method."""

@@ -7,11 +7,11 @@ import httpx
 import pytest
 from PIL import Image
 from playwright.async_api import async_playwright
-from pydantic import BaseModel
 
 from idu_api.urban_api.dto import ProjectDTO
 from idu_api.urban_api.logic.impl.helpers import projects_objects
 from idu_api.urban_api.schemas import Project, ProjectPatch, ProjectPost, ProjectPut
+
 
 ####################################################################################
 #                               Authentication tests                               #
@@ -40,9 +40,9 @@ async def test_invalid_auth_token_post_request(urban_api_host, project_post_req)
     assert response.status_code == 401
 
 
-# ####################################################################################
-# #                              Default use-case tests                              #
-# ####################################################################################
+####################################################################################
+#                              Default use-case tests                              #
+####################################################################################
 
 
 @pytest.mark.asyncio
@@ -55,8 +55,12 @@ async def test_get_all_projects(urban_api_host, expired_auth_token):
         response = await client.get("/projects", headers=headers)
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
-
+    result = response.json()
+    assert isinstance(result, dict)
+    assert "count" in result
+    assert "prev" in result
+    assert "next" in result
+    assert "results" in result
 
 @pytest.mark.asyncio
 async def test_get_user_projects(urban_api_host, expired_auth_token):
@@ -68,7 +72,12 @@ async def test_get_user_projects(urban_api_host, expired_auth_token):
         response = await client.get("/user_projects", headers=headers)
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    result = response.json()
+    assert isinstance(result, dict)
+    assert "count" in result
+    assert "prev" in result
+    assert "next" in result
+    assert "results" in result
 
 
 @pytest.mark.asyncio
@@ -88,9 +97,9 @@ async def test_post_project(urban_api_host, expired_auth_token, project_post_req
     assert body.get("project_id") is not None
 
 
-# ####################################################################################
-# #                               Invalid data tests                                 #
-# ####################################################################################
+####################################################################################
+#                               Invalid data tests                                 #
+####################################################################################
 
 
 @pytest.mark.asyncio
