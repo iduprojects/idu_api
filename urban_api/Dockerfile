@@ -1,21 +1,25 @@
-FROM python:3.11-alpine3.20
+FROM python:3.11-slim
 
-RUN apk add --virtual build-deps
-RUN apk add python3-dev musl-dev linux-headers postgresql-dev geos-dev
-
-RUN pip3 install --no-cache-dir poetry
-
-COPY pyproject.toml /app/pyproject.toml
-RUN sed -i '0,/version = .*/ s//version = "0.1.0"/' /app/pyproject.toml && touch /app/README.md
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-dev \
+    libpq-dev \
+    libgeos-dev \
+    git && \
+    pip install --no-cache-dir poetry && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-RUN poetry config virtualenvs.create false
-RUN poetry install
+COPY pyproject.toml README.md /app/
 
-COPY README.md /app/README.md
-COPY urban-api.config.yaml /app/urban-api.config.yaml
+RUN sed -i '0,/version = .*/ s//version = "0.1.0"/' pyproject.toml
+
+RUN poetry config virtualenvs.create false && \
+    poetry install --with dev
+
+COPY urban-api.config.yaml /app/
 COPY idu_api /app/idu_api
 
-RUN pip3 install .
+RUN pip install .
 
 CMD ["launch_urban_api"]
