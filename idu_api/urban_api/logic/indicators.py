@@ -16,6 +16,7 @@ from idu_api.urban_api.schemas import (
     IndicatorsPost,
     IndicatorsPut,
     IndicatorValuePost,
+    IndicatorValuePut,
     MeasurementUnitPost,
 )
 
@@ -95,6 +96,10 @@ class IndicatorsService(Protocol):
     @abc.abstractmethod
     async def add_indicator_value(self, indicator_value: IndicatorValuePost) -> IndicatorValueDTO:
         """Create indicator value object."""
+
+    @abc.abstractmethod
+    async def put_indicator_value(self, indicator_value: IndicatorValuePut) -> IndicatorValueDTO:
+        """Update indicator value object."""
 
     @abc.abstractmethod
     async def delete_indicator_value(
