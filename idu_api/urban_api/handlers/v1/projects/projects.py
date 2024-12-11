@@ -387,7 +387,9 @@ async def get_preview_project_image(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    image_stream = await user_project_service.get_preview_project_image(minio_client, project_id, user.id)
+    image_stream = await user_project_service.get_preview_project_image(
+        minio_client, project_id, user.id if user is not None else None
+    )
 
     return StreamingResponse(image_stream, media_type="image/png")
 

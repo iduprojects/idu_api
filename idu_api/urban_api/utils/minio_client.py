@@ -71,7 +71,7 @@ class AsyncMinioClient:
             region_name=self._region_name,
             config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
-            existence_map = await self.objects_exist(self._bucket_name, object_names)
+            existence_map = await self.objects_exist(object_names)
             final_names = [
                 name if existence_map.get(name, False) else "defaultImg.png" if "preview" in name else "defaultImg.jpg"
                 for name in object_names
@@ -92,7 +92,7 @@ class AsyncMinioClient:
                 raise DownloadFileError(str(exc)) from exc
 
     @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ClientError))
-    async def objects_exist(self, bucket_name: str, object_names: list[str]) -> dict[str, bool]:
+    async def objects_exist(self, object_names: list[str]) -> dict[str, bool]:
         async with aioboto3.Session().client(
             "s3",
             endpoint_url=self._endpoint_url,
@@ -101,7 +101,7 @@ class AsyncMinioClient:
             region_name=self._region_name,
             config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
-            response = await client.list_objects_v2(Bucket=bucket_name, Prefix="")
+            response = await client.list_objects_v2(Bucket=self._bucket_name, Prefix="")
             existing_objects = {obj["Key"] for obj in response.get("Contents", [])}
             return {name: name in existing_objects for name in object_names}
 
@@ -115,7 +115,7 @@ class AsyncMinioClient:
             region_name=self._region_name,
             config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
-            existence_map = await self.objects_exist(self._bucket_name, object_names)
+            existence_map = await self.objects_exist(object_names)
             final_names = [
                 name if existence_map.get(name, False) else "defaultImg.png" if "preview" in name else "defaultImg.jpg"
                 for name in object_names
