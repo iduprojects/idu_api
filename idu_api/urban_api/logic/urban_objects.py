@@ -4,6 +4,7 @@ import abc
 from typing import Protocol
 
 from idu_api.urban_api.dto import UrbanObjectDTO
+from idu_api.urban_api.schemas import UrbanObjectPatch
 
 
 class UrbanObjectsService(Protocol):
@@ -34,3 +35,7 @@ class UrbanObjectsService(Protocol):
         self, territory_id: int, service_type_id: int | None, physical_object_type_id: int | None
     ) -> list[UrbanObjectDTO]:
         """Get a list of urban objects by territory_id with service_type and physical_object_type filters."""
+
+    @abc.abstractmethod
+    async def patch_urban_object_to_db(self, urban_object: UrbanObjectPatch, urban_object_id: int) -> UrbanObjectDTO:
+        """Update urban object by only given fields."""

@@ -1,13 +1,12 @@
 from pydantic import BaseModel, Field
 
 from idu_api.urban_api.dto import ScenarioUrbanObjectDTO, UrbanObjectDTO
-from idu_api.urban_api.schemas import ScenarioPhysicalObject, ScenarioService
 from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.object_geometries import ObjectGeometries, ScenarioObjectGeometry
 from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic
-from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, PhysicalObjectsTypes
+from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, PhysicalObjectsTypes, ScenarioPhysicalObject
 from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
-from idu_api.urban_api.schemas.services import ServicesData
+from idu_api.urban_api.schemas.services import ScenarioService, ServicesData
 from idu_api.urban_api.schemas.short_models import ShortLivingBuilding, ShortTerritory
 from idu_api.urban_api.schemas.territories import TerritoryType
 
@@ -176,3 +175,11 @@ class ScenarioUrbanObject(BaseModel):
                 else None
             ),
         )
+
+
+class UrbanObjectPatch(BaseModel):
+    """Urban object schema for PATCH requests."""
+
+    physical_object_id: int | None = Field(None, description="physical object identifier", examples=[1])
+    object_geometry_id: int | None = Field(None, description="object geometry identifier", examples=[1])
+    service_id: int | None = Field(None, description="service identifier", examples=[1])

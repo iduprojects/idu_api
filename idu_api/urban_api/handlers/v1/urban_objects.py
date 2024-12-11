@@ -4,7 +4,7 @@ from fastapi import Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.urban_objects import UrbanObjectsService
-from idu_api.urban_api.schemas.urban_objects import UrbanObject
+from idu_api.urban_api.schemas import UrbanObject, UrbanObjectPatch
 
 from .routers import urban_objects_router
 
@@ -112,3 +112,21 @@ async def get_urban_objects_by_territory_id(
     )
 
     return [UrbanObject.from_dto(urban_object) for urban_object in urban_objects]
+
+
+@urban_objects_router.patch(
+    "/urban_objects/{urban_object_id}",
+    response_model=UrbanObject,
+    status_code=status.HTTP_200_OK,
+)
+async def patch_urban_object(
+    request: Request,
+    urban_object: UrbanObjectPatch,
+    urban_object_id: int = Path(..., description="urban object identifier"),
+) -> list[UrbanObject]:
+    """Update urban object - only by given fields."""
+    urban_objects_service: UrbanObjectsService = request.state.urban_objects_service
+
+    urban_object_dto = await urban_objects_service.patch_urban_object_to_db(urban_object, urban_object_id)
+
+    return UrbanObject.from_dto(urban_object_dto)

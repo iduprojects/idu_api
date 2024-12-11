@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Iterable
-from typing import Any, Literal, Optional, Self, TypeVar
+from typing import Any, Literal, Self, TypeVar
 
 import shapely
 import shapely.geometry as geom

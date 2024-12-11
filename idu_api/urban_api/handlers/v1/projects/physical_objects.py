@@ -13,8 +13,8 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsDataPut,
     PhysicalObjectWithGeometryPost,
     ScenarioPhysicalObject,
+    ScenarioUrbanObject,
 )
-from idu_api.urban_api.schemas.urban_objects import ScenarioUrbanObject
 from idu_api.urban_api.utils.auth_client import get_user
 
 

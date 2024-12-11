@@ -10,8 +10,10 @@ from idu_api.urban_api.logic.impl.helpers.urban_objects import (
     get_urban_object_by_physical_object_id_from_db,
     get_urban_object_by_service_id_from_db,
     get_urban_objects_by_territory_id_from_db,
+    patch_urban_object_to_db,
 )
 from idu_api.urban_api.logic.urban_objects import UrbanObjectsService
+from idu_api.urban_api.schemas import UrbanObjectPatch
 
 
 class UrbanObjectsServiceImpl(UrbanObjectsService):
@@ -44,3 +46,6 @@ class UrbanObjectsServiceImpl(UrbanObjectsService):
         return await get_urban_objects_by_territory_id_from_db(
             self._conn, territory_id, service_type_id, physical_object_type_id
         )
+
+    async def patch_urban_object_to_db(self, urban_object: UrbanObjectPatch, urban_object_id: int) -> UrbanObjectDTO:
+        return await patch_urban_object_to_db(self._conn, urban_object, urban_object_id)

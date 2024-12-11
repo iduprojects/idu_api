@@ -18,10 +18,10 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectWithGeometryPost,
     ServicesData,
     ServicesDataWithGeometry,
+    UrbanObject,
 )
 from idu_api.urban_api.schemas.geometries import AllPossibleGeometry
 from idu_api.urban_api.schemas.physical_objects import PhysicalObjectWithGeometry
-from idu_api.urban_api.schemas.urban_objects import UrbanObject
 
 from .routers import physical_objects_router
 

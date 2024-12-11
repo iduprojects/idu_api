@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "idu-api"
-version = "1.22.8"
+version = "1.23.0"
 description = "This is a Digital Territories Platform API in two versions to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
@@ -36,6 +36,7 @@ tenacity = "^9.0.0"
 aioboto3 = "^13.2.0"
 uvicorn = "0.19.0"
 shapely = "^2.0.6"
+playwright = "^1.49.1"
 
 [tool.poetry.scripts]
 launch_urban_api = "idu_api.urban_api.__main__:main"

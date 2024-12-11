@@ -10,8 +10,8 @@ from idu_api.urban_api.schemas import (
     ServicesDataPost,
     ServicesDataPut,
     ServiceWithTerritories,
+    UrbanObject,
 )
-from idu_api.urban_api.schemas.urban_objects import UrbanObject
 
 from .routers import services_router
 

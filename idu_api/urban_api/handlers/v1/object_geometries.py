@@ -10,8 +10,8 @@ from idu_api.urban_api.schemas import (
     ObjectGeometriesPost,
     ObjectGeometriesPut,
     PhysicalObjectsData,
+    UrbanObject,
 )
-from idu_api.urban_api.schemas.urban_objects import UrbanObject
 
 from .routers import object_geometries_router
 

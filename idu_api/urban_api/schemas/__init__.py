@@ -126,6 +126,7 @@ from .territories import (
     TerritoryWithNormatives,
     TerritoryWithoutGeometry,
 )
+from .urban_objects import ScenarioUrbanObject, UrbanObject, UrbanObjectPatch
 
 __all__ = [
     "PingResponse",
@@ -240,4 +241,7 @@ __all__ = [
     "FunctionalZoneWithoutGeometry",
     "FunctionalZoneSource",
     "ProjectWithBaseScenario",
+    "UrbanObject",
+    "UrbanObjectPatch",
+    "ScenarioUrbanObject",
 ]

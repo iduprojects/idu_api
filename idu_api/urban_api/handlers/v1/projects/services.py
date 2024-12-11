@@ -10,11 +10,11 @@ from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
     ScenarioService,
     ScenarioServicePost,
+    ScenarioUrbanObject,
     ServicesData,
     ServicesDataPatch,
     ServicesDataPut,
 )
-from idu_api.urban_api.schemas.urban_objects import ScenarioUrbanObject
 from idu_api.urban_api.utils.auth_client import get_user
 
 

@@ -292,6 +292,7 @@ async def put_project_indicator_value_to_db(
                 comment=project_indicator.comment,
                 information_source=project_indicator.information_source,
                 properties=project_indicator.properties,
+                updated_at=datetime.now(timezone.utc),
             )
             .returning(projects_indicators_data.c.indicator_value_id)
         )

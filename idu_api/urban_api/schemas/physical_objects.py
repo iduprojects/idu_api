@@ -6,7 +6,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from idu_api.urban_api.config import FileServerConfig
 from idu_api.urban_api.dto import (
     PhysicalObjectDataDTO,
     PhysicalObjectWithGeometryDTO,

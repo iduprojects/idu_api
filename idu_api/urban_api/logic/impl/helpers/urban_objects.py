@@ -1,7 +1,7 @@
 """Urban objects internal logic is defined here."""
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, delete, select
+from sqlalchemy import cast, delete, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -19,7 +19,8 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import UrbanObjectDTO
-from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
+from idu_api.urban_api.schemas import UrbanObjectPatch
 
 
 async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id: int) -> UrbanObjectDTO:
@@ -283,3 +284,76 @@ async def get_urban_objects_by_territory_id_from_db(
     urban_objects = (await conn.execute(statement)).mappings().all()
 
     return [UrbanObjectDTO(**urban_object) for urban_object in urban_objects]
+
+
+async def patch_urban_object_to_db(
+    conn: AsyncConnection, urban_object: UrbanObjectPatch, urban_object_id: int
+) -> UrbanObjectDTO:
+    """Update urban object by only given fields."""
+
+    statement = select(urban_objects_data).where(urban_objects_data.c.urban_object_id == urban_object_id).limit(1)
+    existing_object = (await conn.execute(statement)).mappings().one_or_none()
+    if existing_object is None:
+        raise EntityNotFoundById(urban_object_id, "urban object")
+
+    urban_object_fields = urban_object.model_dump(exclude_unset=True)
+
+    if urban_object_fields.get("physical_object_id"):
+        statement = select(physical_objects_data).where(
+            physical_objects_data.c.physical_object_id == urban_object_fields.get("physical_object_id")
+        )
+        physical_object = (await conn.execute(statement)).mappings().one_or_none()
+        if physical_object is None:
+            raise EntityNotFoundById(urban_object_fields.get("physical_object_id"), "physical_object")
+
+    if urban_object_fields.get("physical_object_id", None) is not None:
+        statement = select(physical_objects_data).where(
+            physical_objects_data.c.physical_object_id == urban_object_fields.get("physical_object_id")
+        )
+        physical_object = (await conn.execute(statement)).mappings().one_or_none()
+        if physical_object is None:
+            raise EntityNotFoundById(urban_object_fields.get("physical_object_id"), "physical object")
+
+    if urban_object_fields.get("object_geometry_id", None) is not None:
+        statement = select(object_geometries_data).where(
+            object_geometries_data.c.object_geometry_id == urban_object_fields.get("object_geometry_id")
+        )
+        object_geometry = (await conn.execute(statement)).mappings().one_or_none()
+        if object_geometry is None:
+            raise EntityNotFoundById(urban_object_fields.get("object_geometry_id"), "object geometry")
+
+    if urban_object_fields.get("service_id", None) is not None:
+        statement = select(services_data).where(services_data.c.service_id == urban_object_fields.get("service_id"))
+        service = (await conn.execute(statement)).mappings().one_or_none()
+        if service is None:
+            raise EntityNotFoundById(urban_object_fields.get("service_id"), "service")
+
+    statement = (
+        select(urban_objects_data)
+        .where(
+            *(
+                urban_objects_data.c[key] == urban_object_fields.get(key, getattr(existing_object, key))
+                for key in ("physical_object_id", "object_geometry_id", "service_id")
+            )
+        )
+        .limit(1)
+    )
+    conflicting_object = (await conn.execute(statement)).mappings().one_or_none()
+    if conflicting_object is not None:
+        raise EntityAlreadyExists(
+            "urban object",
+            *(
+                urban_object_fields.get(key, getattr(existing_object, key))
+                for key in ("physical_object_id", "object_geometry_id", "service_id")
+            ),
+        )
+
+    statement = (
+        update(urban_objects_data)
+        .where(urban_objects_data.c.urban_object_id == urban_object_id)
+        .values(**urban_object_fields)
+    )
+    await conn.execute(statement)
+    await conn.commit()
+
+    return await get_urban_object_by_id_from_db(conn, urban_object_id)
