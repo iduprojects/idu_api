@@ -11,6 +11,8 @@ from alembic.config import Config
 from dotenv import load_dotenv
 
 from idu_api.urban_api.config import AppConfig, DBConfig, UrbanAPIConfig
+from tests.urban_api.helpers.connection import *
+from tests.urban_api.helpers.minio_client import *
 from tests.urban_api.projects.helpers.projects import *  # pylint: disable=wildcard-import,unused-wildcard-import
 
 
