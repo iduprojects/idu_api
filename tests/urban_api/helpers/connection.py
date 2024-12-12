@@ -1,44 +1,11 @@
 from datetime import datetime
+from unittest.mock import AsyncMock
 
 import pytest
 from geoalchemy2.types import Geometry
 from shapely.geometry import Point
 from sqlalchemy import Column, Table
 from sqlalchemy.sql import Insert, Select, Update
-
-
-def get_query_columns(query):
-    """
-    Extract column names and their types from a SQLAlchemy query or table.
-    """
-
-    def get_column_type(col: Column):
-        if isinstance(col.type, Geometry):
-            return "GeometryType"
-        try:
-            return col.type.python_type
-        except NotImplementedError:
-            return str
-
-    def process_columns(columns):
-        """Process columns, including those extracted from a Table."""
-        result = {}
-        for col in columns:
-            if isinstance(col, Table):  # If it's a Table, process its columns
-                result.update({c.name: get_column_type(c) for c in col.columns if isinstance(c, Column)})
-            else:
-                result.update({col.name: get_column_type(col)})
-        return result
-
-    if isinstance(query, Select):
-        return process_columns(query.selected_columns)
-
-    if isinstance(query, (Insert, Update)):
-        if query._returning is not None:
-            return process_columns(query._returning)
-        return {}
-
-    return {}
 
 
 class MockRow:
@@ -56,16 +23,16 @@ class MockRow:
         return self._data
 
     def __getitem__(self, item):
-        return self.data.get(item)
+        return self._data.get(item)
 
     def keys(self):
         return self._data.keys()
 
     def items(self):
-        return self.data.items()
+        return self._data.items()
 
     def __repr__(self):
-        return str(self.data)
+        return str(self._data)
 
 
 class MockResult:
@@ -134,16 +101,59 @@ class MockConnection:
     A custom connection type for the purpose of these tests.
     """
 
+    def __init__(self, *args, **kwargs):
+        self.execute_mock = AsyncMock()
+        self.commit_mock = AsyncMock()
+
     async def execute(self, query):
         """
-        Return a mock result based on the query
+        Return a mock result based on the query.
         """
-        columns = get_query_columns(query)
+        await self.execute_mock(str(query))
+        columns = self._get_query_columns(query)
         data = {col: self._mock_value(dtype) for col, dtype in columns.items()}
         return MockResult([MockRow(**data)])
 
     async def commit(self):
+        """
+        Simulate the `commit` method.
+        """
+        await self.commit_mock()
         return self
+
+    @staticmethod
+    def _get_query_columns(query):
+        """
+        Extract column names and their types from a SQLAlchemy query or table.
+        """
+
+        def get_column_type(col: Column):
+            if isinstance(col.type, Geometry):
+                return "GeometryType"
+            try:
+                return col.type.python_type
+            except NotImplementedError:
+                return str
+
+        def process_columns(columns):
+            """Process columns, including those extracted from a Table."""
+            result = {}
+            for col in columns:
+                if isinstance(col, Table):  # If it's a Table, process its columns
+                    result.update({c.name: get_column_type(c) for c in col.columns if isinstance(c, Column)})
+                else:
+                    result.update({col.name: get_column_type(col)})
+            return result
+
+        if isinstance(query, Select):
+            return process_columns(query.selected_columns)
+
+        if isinstance(query, (Insert, Update)):
+            if query._returning is not None:
+                return process_columns(query._returning)
+            return {}
+
+        return {}
 
     @staticmethod
     def _mock_value(dtype):

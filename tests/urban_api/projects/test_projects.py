@@ -1,17 +1,19 @@
 import io
 import json
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
+from unittest.mock import call
 
 import httpx
 import pytest
 from PIL import Image
 from playwright.async_api import async_playwright
+from sqlalchemy import delete, insert, select, update
 
+from idu_api.common.db.entities import projects_data, scenarios_data
 from idu_api.urban_api.dto import ProjectDTO
 from idu_api.urban_api.logic.impl.helpers import projects_objects
 from idu_api.urban_api.schemas import Project, ProjectPatch, ProjectPost, ProjectPut
-
 
 ####################################################################################
 #                               Authentication tests                               #
@@ -61,6 +63,7 @@ async def test_get_all_projects(urban_api_host, expired_auth_token):
     assert "prev" in result
     assert "next" in result
     assert "results" in result
+
 
 @pytest.mark.asyncio
 async def test_get_user_projects(urban_api_host, expired_auth_token):
@@ -307,19 +310,41 @@ async def test_swagger_post_project(urban_api_host, expired_auth_token, project_
 
 
 ####################################################################################
-#                          Unit tests business-logic                               #
+#                                 Unit tests                                       #
 ####################################################################################
 
 
 @pytest.mark.asyncio
 async def test_add_project_to_db(mock_conn, project_post_req):
-    """
-    Test add_project_to_db function
-    """
+    """Test add_project_to_db function."""
 
     # Arrange
     user_id = "mock_string"
     mocked_project = ProjectPost(**project_post_req)
+    statement_for_project = (
+        insert(projects_data)
+        .values(
+            user_id=user_id,
+            territory_id=mocked_project.territory_id,
+            name=mocked_project.name,
+            description=mocked_project.description,
+            public=mocked_project.public,
+            is_regional=mocked_project.is_regional,
+            properties=mocked_project.properties,
+        )
+        .returning(projects_data.c.project_id)
+    )
+    statement_for_base_scenario = (
+        insert(scenarios_data)
+        .values(
+            project_id=1,
+            functional_zone_type_id=None,
+            name="base scenario for user project",
+            is_based=True,
+            parent_id=1,
+        )
+        .returning(scenarios_data.c.scenario_id)
+    )
 
     # Act
     result = await projects_objects.add_project_to_db(mock_conn, mocked_project, user_id)
@@ -332,18 +357,40 @@ async def test_add_project_to_db(mock_conn, project_post_req):
     assert isinstance(result.created_at, datetime), "created_at должен быть объектом datetime"
     assert isinstance(result.updated_at, datetime), "updated_at должен быть объектом datetime"
     assert isinstance(Project.from_dto(result), Project), "не удалось собрать pydantic модель из DTO"
+    mock_conn.execute_mock.assert_called()
+    mock_conn.execute_mock.assert_any_call(str(statement_for_project))
+    assert any(
+        "INSERT INTO user_projects.projects_territory_data" in str(args[0])
+        for args in mock_conn.execute_mock.call_args_list
+    )
+    mock_conn.execute_mock.assert_any_call(str(statement_for_base_scenario))
+    assert any(
+        "INSERT INTO user_projects.profiles_data" in str(args[0]) for args in mock_conn.execute_mock.call_args_list
+    )
+    mock_conn.commit_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_put_project_to_db(mock_conn, project_put_req):
-    """
-    Test put_project_to_db function
-    """
+    """Test put_project_to_db function."""
 
     # Arrange
     project_id = 1
     user_id = "mock_string"
     mocked_project = ProjectPut(**project_put_req)
+    statement = select(projects_data).where(projects_data.c.project_id == project_id)
+    update_statement = (
+        update(projects_data)
+        .where(projects_data.c.project_id == project_id)
+        .values(
+            name=mocked_project.name,
+            description=mocked_project.description,
+            public=mocked_project.public,
+            properties=mocked_project.properties,
+            updated_at=datetime.now(timezone.utc),
+        )
+        .returning(projects_data.c.project_id)
+    )
 
     # Act
     result = await projects_objects.put_project_to_db(mock_conn, mocked_project, project_id, user_id)
@@ -356,18 +403,27 @@ async def test_put_project_to_db(mock_conn, project_put_req):
     assert isinstance(result.created_at, datetime), "created_at должен быть объектом datetime"
     assert isinstance(result.updated_at, datetime), "updated_at должен быть объектом datetime"
     assert isinstance(Project.from_dto(result), Project), "не удалось собрать pydantic модель из DTO"
+    mock_conn.execute_mock.assert_any_call(str(statement))
+    mock_conn.execute_mock.assert_any_call(str(update_statement))
+    assert mock_conn.execute_mock.call_count == 3, "execute должен быть вызван трижды (2 х select + update)"
+    mock_conn.commit_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_patch_project_to_db(mock_conn, project_patch_req):
-    """
-    Test patch_project_to_db function
-    """
+    """Test patch_project_to_db function."""
 
     # Arrange
     project_id = 1
     user_id = "mock_string"
     mocked_project = ProjectPatch(**project_patch_req)
+    statement = select(projects_data).where(projects_data.c.project_id == project_id)
+    update_statement = (
+        update(projects_data)
+        .where(projects_data.c.project_id == project_id)
+        .values(name=mocked_project.name, updated_at=datetime.now(timezone.utc))
+        .returning(projects_data)
+    )
 
     # Act
     result = await projects_objects.patch_project_to_db(mock_conn, mocked_project, project_id, user_id)
@@ -380,33 +436,40 @@ async def test_patch_project_to_db(mock_conn, project_patch_req):
     assert isinstance(result.created_at, datetime), "created_at должен быть объектом datetime"
     assert isinstance(result.updated_at, datetime), "updated_at должен быть объектом datetime"
     assert isinstance(Project.from_dto(result), Project), "не удалось собрать pydantic модель из DTO"
+    mock_conn.execute_mock.assert_any_call(str(statement))
+    mock_conn.execute_mock.assert_any_call(str(update_statement))
+    assert mock_conn.execute_mock.call_count == 3, "execute должен быть вызван трижды (2 х select + update)"
+    mock_conn.commit_mock.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_delete_project_to_db(mock_conn, mock_minio_client):
-    """
-    Test delete_project_to_db function
-    """
+async def test_delete_project_from_db(mock_conn, mock_minio_client):
+    """Test delete_project_from_db function."""
 
     # Arrange
     project_id = 1
     user_id = "mock_string"
     file_data = io.BytesIO()
     await mock_minio_client.upload_file(file_data, "projects/1/")
+    statement = select(projects_data).where(projects_data.c.project_id == project_id)
+    statement_for_project = delete(projects_data).where(projects_data.c.project_id == project_id)
 
     # Act
     result = await projects_objects.delete_project_from_db(mock_conn, project_id, mock_minio_client, user_id)
 
     # Asserting
-    assert isinstance(result, dict)
-    assert result["status"] == "ok"
+    assert isinstance(result, dict), "ответ не является словарем"
+    assert result["status"] == "ok", "содержимое ответа не соответствует ожидаемому"
+    mock_conn.execute_mock.assert_any_call(str(statement))
+    mock_conn.execute_mock.assert_any_call(str(statement_for_project))
+    assert mock_conn.execute_mock.call_count == 6, "execute должен быть вызван 6 раз (2 х select + 4 x delete)"
+    mock_conn.commit_mock.assert_called_once()
+    mock_minio_client.delete_file_mock.assert_called_once_with(f"projects/{project_id}/")
 
 
 @pytest.mark.asyncio
-async def test_upload_project_image_to_minio_without_error(mock_conn, mock_minio_client):
-    """
-    Test upload_project_image_to_minio function
-    """
+async def test_upload_project_image_to_minio(mock_conn, mock_minio_client):
+    """Test upload_project_image_to_minio function."""
 
     # Arrange
     project_id = 1
@@ -415,6 +478,7 @@ async def test_upload_project_image_to_minio_without_error(mock_conn, mock_minio
     img_byte_arr = io.BytesIO()
     img.save(img_byte_arr, format="PNG")
     img_byte_arr = img_byte_arr.getvalue()
+    statement = select(projects_data).where(projects_data.c.project_id == project_id)
 
     # Act
     result = await projects_objects.upload_project_image_to_minio(
@@ -422,6 +486,29 @@ async def test_upload_project_image_to_minio_without_error(mock_conn, mock_minio
     )
 
     # Asserting
-    assert isinstance(result, dict)
-    assert "image_url" in result
-    assert "preview_url" in result
+    assert isinstance(result, dict), "ответ не является словарем"
+    assert "image_url" in result, "содержимое ответа не соответствует ожидаемому (отсутствует image_url)"
+    assert "preview_url" in result, "содержимое ответа не соответствует ожидаемому (отсутствует preview_url)"
+
+    mock_conn.execute_mock.assert_any_call(str(statement))
+    mock_minio_client.upload_file_mock.assert_has_calls(
+        [
+            call(f"projects/{project_id}/image.jpg"),
+            call(f"projects/{project_id}/preview.png"),
+        ],
+        any_order=False,
+    )
+    mock_minio_client.objects_exist_mock.assert_has_calls(
+        [
+            call([f"projects/{project_id}/image.jpg"]),
+            call([f"projects/{project_id}/preview.png"]),
+        ],
+        any_order=False,
+    )
+    mock_minio_client.generate_presigned_urls_mock.assert_has_calls(
+        [
+            call([f"projects/{project_id}/image.jpg"]),
+            call([f"projects/{project_id}/preview.png"]),
+        ],
+        any_order=False,
+    )
