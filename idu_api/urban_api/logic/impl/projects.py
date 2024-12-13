@@ -1,6 +1,7 @@
 """Projects handlers logic is defined here."""
 
 import io
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -53,6 +54,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
     get_projects_indicators_values_by_scenario_id_from_db,
     patch_project_indicator_value_to_db,
     put_project_indicator_value_to_db,
+    update_all_indicators_values_by_scenario_id_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
@@ -558,6 +560,9 @@ class UserProjectServiceImpl(UserProjectService):
         return await get_hexagons_with_indicators_by_scenario_id_from_db(
             self._conn, scenario_id, indicator_ids, indicators_group_id, user_id
         )
+
+    async def update_all_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict[str, Any]:
+        return await update_all_indicators_values_by_scenario_id_to_db(self._conn, scenario_id, user_id)
 
     async def get_functional_zones_sources_by_scenario_id(
         self, scenario_id: int, user_id: str | None

@@ -1,9 +1,11 @@
 """Projects internal logic is defined here."""
 
 import io
+import os
 import zipfile
 from datetime import datetime, timezone
 
+import aiohttp
 from geoalchemy2 import Geography, Geometry
 from geoalchemy2.functions import (
     ST_Area,
@@ -16,6 +18,7 @@ from geoalchemy2.functions import (
     ST_Intersects,
     ST_Within,
 )
+from loguru import logger
 from PIL import Image
 from sqlalchemy import cast, delete, insert, literal, or_, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
@@ -37,6 +40,7 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
+from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithBaseScenarioDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
@@ -48,6 +52,8 @@ from idu_api.urban_api.schemas import (
 )
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 from idu_api.urban_api.utils.pagination import paginate_dto
+
+config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 
 
 async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user_id: str) -> ProjectDTO:
@@ -323,16 +329,16 @@ async def get_user_preview_projects_images_url_from_minio(
 async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id: str) -> ProjectDTO:
     """Create project object, its territory and base scenario."""
 
-    given_geometry = select(ST_GeomFromText(str(project.territory.geometry.as_shapely_geometry()), text("4326"))).cte(
-        "given_geometry"
-    )
+    given_geometry = select(
+        ST_GeomFromText(str(project.territory.geometry.as_shapely_geometry()), text("4326"))
+    ).scalar_subquery()
 
     buffer_meters = 3000
     buffered_project_geometry = select(
         cast(
             ST_Buffer(
                 cast(
-                    select(given_geometry).scalar_subquery(),
+                    given_geometry,
                     Geography(srid=4326),
                 ),
                 buffer_meters,
@@ -375,11 +381,11 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
     )
     intersecting_territories = select(territories_cte.c.name).where(
         territories_cte.c.level == (cities_level.c.level - 1),
-        ST_Intersects(territories_cte.c.geometry, select(given_geometry).scalar_subquery()),
+        ST_Intersects(territories_cte.c.geometry, given_geometry),
     )
     intersecting_district = select(territories_cte.c.name).where(
         territories_cte.c.level == (cities_level.c.level - 2),
-        ST_Intersects(territories_cte.c.geometry, select(given_geometry).scalar_subquery()),
+        ST_Intersects(territories_cte.c.geometry, given_geometry),
     )
     context_territories = select(territories_cte.c.territory_id).where(
         territories_cte.c.level == (cities_level.c.level - 1),
@@ -412,7 +418,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
         (
             insert(projects_territory_data).values(
                 project_id=project_id,
-                geometry=select(given_geometry).scalar_subquery(),
+                geometry=given_geometry,
                 centre_point=ST_GeomFromText(str(project.territory.centre_point.as_shapely_geometry()), text("4326")),
                 properties=project.territory.properties,
             )
@@ -451,8 +457,8 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
     # 1. Find all territories that are only partially included in the transferred geometry
     territories_intersecting_only = (
         select(territories_cte.c.territory_id).where(
-            ST_Intersects(territories_cte.c.geometry, select(given_geometry).scalar_subquery()),
-            ~ST_Within(territories_cte.c.geometry, select(given_geometry).scalar_subquery()),
+            ST_Intersects(territories_cte.c.geometry, given_geometry),
+            ~ST_Within(territories_cte.c.geometry, given_geometry),
         )
     ).cte("territories_intersecting_only")
 
@@ -460,7 +466,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
 
     # 2. Find all objects for territories from the first step (partially included at given percent)
     # where the geometry is not completely included in the passed
-    area_percent = 0.10
+    area_percent = 0.01
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .select_from(
@@ -479,9 +485,9 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
         )
         .where(
             object_geometries_data.c.territory_id.in_(select(territories_intersecting_only)),
-            ST_Intersects(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery()),
-            ~ST_Within(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery()),
-            ST_Area(ST_Intersection(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery()))
+            ST_Intersects(object_geometries_data.c.geometry, given_geometry),
+            ~ST_Within(object_geometries_data.c.geometry, given_geometry),
+            ST_Area(ST_Intersection(object_geometries_data.c.geometry, given_geometry))
             >= area_percent * ST_Area(object_geometries_data.c.geometry),
             physical_object_types_dict.c.physical_object_function_id != 1,  # TODO: remove hardcode to skip buildings
         )
@@ -503,12 +509,8 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
             select(
                 object_geometries_data.c.object_geometry_id.label("public_object_geometry_id"),
                 object_geometries_data.c.territory_id,
-                ST_Intersection(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery()).label(
-                    "geometry"
-                ),
-                ST_Centroid(
-                    ST_Intersection(object_geometries_data.c.geometry, select(given_geometry).scalar_subquery())
-                ).label("centre_point"),
+                ST_Intersection(object_geometries_data.c.geometry, given_geometry).label("geometry"),
+                ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, given_geometry)).label("centre_point"),
                 object_geometries_data.c.address,
                 object_geometries_data.c.osm_id,
             ).where(object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting))),
@@ -560,18 +562,22 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
     # or we haven't got any functional zones for the project territory from public schema,
     # it's needed to generate new functional zones else get it from public schema
     statement = select(
+        literal(scenario_id).label("scenario_id"),
         functional_zones_data.c.functional_zone_type_id,
-        functional_zones_data.c.geometry,
+        ST_Intersection(functional_zones_data.c.geometry, given_geometry).label("geometry"),
+        functional_zones_data.c.year,
+        functional_zones_data.c.source,
         functional_zones_data.c.properties,
     ).where(
         functional_zones_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
-        ST_Within(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery())
-        | ST_Intersects(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()),
+        ST_Intersects(functional_zones_data.c.geometry, given_geometry),
+        ST_GeometryType(ST_Intersection(functional_zones_data.c.geometry, given_geometry)).in_(
+            ("ST_Polygon", "ST_MultiPolygon")
+        ),
     )
     zones = (await conn.execute(statement)).mappings().all()
-
     if not zones:
-        pass  # TODO: use external service to generate functional zones
+        pass  # TODO: use external service to generate zones if there is no zones
     else:
         await conn.execute(
             insert(profiles_data).from_select(
@@ -583,27 +589,29 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                     profiles_data.c.source,
                     profiles_data.c.properties,
                 ],
-                select(
-                    literal(scenario_id).label("scenario_id"),
-                    functional_zones_data.c.functional_zone_type_id,
-                    ST_Intersection(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()).label(
-                        "geometry"
-                    ),
-                    functional_zones_data.c.year,
-                    functional_zones_data.c.source,
-                    functional_zones_data.c.properties,
-                ).where(
-                    functional_zones_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
-                    ST_Intersects(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery()),
-                    ST_GeometryType(
-                        ST_Intersection(functional_zones_data.c.geometry, select(given_geometry).scalar_subquery())
-                    )
-                    in ("ST_Polygon", "ST_MultiPolygon"),
-                ),
+                statement,
             )
         )
 
     await conn.commit()
+
+    async with aiohttp.ClientSession() as session:
+        params = {"scenario_id": scenario_id, "territory_id": project.territory_id, "background": "true"}
+        try:
+            response = await session.put(
+                f"{config.external.hextech_api}/hextech/indicators_saving/save_all",
+                params=params,
+                json=project.territory.geometry.model_dump(),
+            )
+            response.raise_for_status()
+        except aiohttp.ClientResponseError as e:
+            logger.warning(
+                f"Failed to save indicators: {e.status}, {e.message}. " f"URL: {e.request_info.url}. Params: {params}"
+            )
+        except aiohttp.ClientError as e:
+            logger.warning(f"Request failed: {str(e)}. Params: {params}")
+        except Exception as e:
+            logger.error(f"Unexpected error occurred: {str(e)}", exc_info=True)
 
     return await get_project_by_id_from_db(conn, project_id, user_id)
 

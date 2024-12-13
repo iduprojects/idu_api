@@ -657,6 +657,7 @@ async def get_indicator_values_by_id_from_db(
 
     return [IndicatorValueDTO(**value) for value in result]
 
+
 async def put_indicator_value_to_db(conn: AsyncConnection, indicator_value: IndicatorValuePut) -> IndicatorValueDTO:
     """Update existing indicator_value or create new if doesn't exists"""
 
@@ -709,6 +710,7 @@ async def put_indicator_value_to_db(conn: AsyncConnection, indicator_value: Indi
         indicator_value.value_type,
         indicator_value.information_source,
     )
+
 
 async def delete_indicator_value_from_db(
     conn: AsyncConnection,

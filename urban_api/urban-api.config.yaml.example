@@ -26,3 +26,5 @@ fileserver:
   connect_timeout: 5
   read_timeout: 20
   retries: 3
+external:
+  hextech_api: http://10.32.1.48:8100

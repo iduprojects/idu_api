@@ -263,6 +263,7 @@ async def add_indicator_value(request: Request, indicator_value: IndicatorValueP
 
     return IndicatorValue.from_dto(indicator_value_dto)
 
+
 @indicators_router.put(
     "/indicator_value",
     response_model=IndicatorValue,
@@ -275,6 +276,7 @@ async def update_indicator_value(request: Request, indicator_value: IndicatorVal
     indicator_value_dto = await indicators_service.put_indicator_value(indicator_value)
 
     return IndicatorValue.from_dto(indicator_value_dto)
+
 
 @indicators_router.delete(
     "/indicator_value",

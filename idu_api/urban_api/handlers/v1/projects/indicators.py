@@ -207,3 +207,22 @@ async def get_hexagons_with_indicators_values_by_territory_id(
     )
 
     return await GeoJSONResponse.from_list([hexagon.to_geojson_dict() for hexagon in hexagons], centers_only)
+
+
+@projects_router.put(
+    "/scenarios/{scenario_id}/indicators_values/",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def update_all_indicators_values_by_scenario_id(
+    request: Request,
+    scenario_id: int = Path(..., description="scenario identifier"),
+    user: UserDTO = Depends(get_user),
+) -> dict:
+    """Update all indicators values for given scenario.
+
+    You must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    return await user_project_service.update_all_indicators_values_by_scenario_id(scenario_id, user.id)

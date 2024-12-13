@@ -55,11 +55,18 @@ class FileServerConfig:
 
 
 @dataclass
+class ExternalServicesConfig:
+    gen_planner_api: str = "http://10.32.1.102"
+    hextech_api: str = "http://10.32.1.48:8100"
+
+
+@dataclass
 class UrbanAPIConfig:
     app: AppConfig
     db: DBConfig
     auth: AuthConfig
     fileserver: FileServerConfig
+    external: ExternalServicesConfig
 
     def to_order_dict(self) -> OrderedDict:
         """OrderDict transformer."""
@@ -81,6 +88,7 @@ class UrbanAPIConfig:
                 ("db", to_ordered_dict_recursive(self.db)),
                 ("auth", to_ordered_dict_recursive(self.auth)),
                 ("fileserver", to_ordered_dict_recursive(self.fileserver)),
+                ("external", to_ordered_dict_recursive(self.external)),
             ]
         )
 
@@ -103,7 +111,13 @@ class UrbanAPIConfig:
     def example(cls) -> "UrbanAPIConfig":
         """Generate an example of configuration."""
 
-        return cls(app=AppConfig(), db=DBConfig(), auth=AuthConfig(), fileserver=FileServerConfig())
+        return cls(
+            app=AppConfig(),
+            db=DBConfig(),
+            auth=AuthConfig(),
+            fileserver=FileServerConfig(),
+            external=ExternalServicesConfig(),
+        )
 
     @classmethod
     def load(cls, file: str | Path | TextIO) -> "UrbanAPIConfig":
@@ -121,6 +135,7 @@ class UrbanAPIConfig:
                 db=DBConfig(**data.get("db", {})),
                 auth=AuthConfig(**data.get("auth", {})),
                 fileserver=FileServerConfig(**data.get("fileserver", {})),
+                external=ExternalServicesConfig(**data.get("external", {})),
             )
         except Exception as exc:
             raise ValueError("Could not read app config file") from exc

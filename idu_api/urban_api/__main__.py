@@ -114,6 +114,7 @@ def main(
         db=config.db,
         auth=config.auth,
         fileserver=config.fileserver,
+        external=config.external,
     )
     temp_yaml_config_path = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
     config.dump(temp_yaml_config_path)

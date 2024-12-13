@@ -291,6 +291,7 @@ class IndicatorValuePost(BaseModel):
             return value_type.value
         return value_type
 
+
 class IndicatorValuePut(BaseModel):
     """Indicator value schema for PUT request."""
 
@@ -331,6 +332,7 @@ class IndicatorValuePut(BaseModel):
         if isinstance(value_type, Enum):
             return value_type.value
         return value_type
+
 
 class ProjectIndicatorValue(BaseModel):
     """Project indicator value with all its attributes."""

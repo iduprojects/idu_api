@@ -1,6 +1,6 @@
 import abc
 import io
-from typing import Protocol
+from typing import Any, Protocol
 
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
@@ -388,7 +388,7 @@ class UserProjectService(Protocol):
         is_scenario_object: bool,
         user_id: str,
     ) -> dict:
-        """Delete scenario physical object."""
+        """Delete scenario object geometry."""
 
     @abc.abstractmethod
     async def get_projects_indicators_values_by_scenario_id(
@@ -445,6 +445,10 @@ class UserProjectService(Protocol):
         user_id: str | None,
     ) -> list[HexagonWithIndicatorsDTO]:
         """Get project's indicators values for given regional scenario with hexagons."""
+
+    @abc.abstractmethod
+    async def update_all_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict[str, Any]:
+        """Update all indicators values for given scenario."""
 
     @abc.abstractmethod
     async def get_functional_zones_sources_by_scenario_id(
