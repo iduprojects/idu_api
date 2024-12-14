@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import hexagons_data, territories_data
 from idu_api.urban_api.dto import HexagonDTO
-from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.territory_objects import check_territory_existence
 from idu_api.urban_api.schemas import HexagonPost
 
@@ -74,6 +74,11 @@ async def add_hexagons_by_territory_id_to_db(
     territory_exists = await check_territory_existence(conn, territory_id)
     if not territory_exists:
         raise EntityNotFoundById(territory_id, "territory")
+
+    statement = select(hexagons_data.c.territory_id).where(hexagons_data.c.territory_id == territory_id).distinct()
+    territory = (await conn.execute(statement)).scalar_one_or_none()
+    if territory is not None:
+        raise EntityAlreadyExists("hexagon", territory_id)
 
     async def insert_batch(batch: list[HexagonPost]):
         insert_values = [

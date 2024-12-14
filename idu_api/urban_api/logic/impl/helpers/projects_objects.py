@@ -16,6 +16,7 @@ from geoalchemy2.functions import (
     ST_GeomFromText,
     ST_Intersection,
     ST_Intersects,
+    ST_IsEmpty,
     ST_Within,
 )
 from loguru import logger
@@ -574,6 +575,7 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
         ST_GeometryType(ST_Intersection(functional_zones_data.c.geometry, given_geometry)).in_(
             ("ST_Polygon", "ST_MultiPolygon")
         ),
+        ~ST_IsEmpty(ST_Intersection(functional_zones_data.c.geometry, given_geometry)),
     )
     zones = (await conn.execute(statement)).mappings().all()
     if not zones:
