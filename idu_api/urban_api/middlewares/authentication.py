@@ -1,12 +1,12 @@
+import structlog
 from fastapi import Request
-from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from idu_api.urban_api.exceptions import IduApiError
 from idu_api.urban_api.utils.auth_client import AuthenticationClient
 
 
-class AuthenticationMiddleware(BaseHTTPMiddleware):
+class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
     """Middleware for authenticating requests and adding UserDTO to request.state."""
 
     def __init__(self, app, auth_client: AuthenticationClient):
@@ -24,7 +24,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         except IduApiError:
             raise
         except Exception as exc:
-            logger.error("Unexpected error in AuthenticationMiddleware: {}", exc)
+            logger: structlog.stdlib.BoundLogger = request.state.logger
+            await logger.aexception("unexpected error in AuthenticationMiddleware")
             raise exc
 
         return await call_next(request)

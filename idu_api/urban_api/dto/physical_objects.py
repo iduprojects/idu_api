@@ -1,5 +1,7 @@
 """Physical objects DTOs are defined here."""
 
+# pylint: disable=too-many-instance-attributes
+
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any

@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 import aiohttp
+import structlog
 from geoalchemy2.functions import ST_AsGeoJSON
-from loguru import logger
 from sqlalchemy import cast, delete, insert, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -27,7 +27,6 @@ from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto import HexagonWithIndicatorsDTO, ProjectIndicatorValueDTO, ShortProjectIndicatorValueDTO
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
-from idu_api.urban_api.exceptions.utils.external import ExternalServiceResponseError, ExternalServiceUnavailable
 from idu_api.urban_api.schemas import ProjectIndicatorValuePatch, ProjectIndicatorValuePost, ProjectIndicatorValuePut
 
 config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
@@ -515,7 +514,7 @@ async def get_hexagons_with_indicators_by_scenario_id_from_db(
 
 
 async def update_all_indicators_values_by_scenario_id_to_db(
-    conn: AsyncConnection, scenario_id: int, user_id: str
+    conn: AsyncConnection, scenario_id: int, user_id: str, logger: structlog.stdlib.BoundLogger
 ) -> dict[str, Any]:
     """Update all indicators values for given scenario."""
 
@@ -550,13 +549,17 @@ async def update_all_indicators_values_by_scenario_id_to_db(
                 json=project.geometry,
             )
             response.raise_for_status()
-        except aiohttp.ClientResponseError as e:
-            logger.error(
-                f"Failed to save indicators: {e.status}, {e.message}. " f"URL: {e.request_info.url}. Params: {params}"
+        except aiohttp.ClientResponseError as exc:
+            await logger.aerror(
+                "failed to save indicators",
+                status=exc.status,
+                message=exc.message,
+                url=exc.request_info.url,
+                params=params,
             )
             raise
-        except aiohttp.ClientError as e:
-            logger.error(f"Request failed: {str(e)}. Params: {params}")
+        except aiohttp.ClientError as exc:
+            await logger.aerror("request failed", error=str(exc), params=params)
             raise
 
     return {"status": "ok"}

@@ -10,8 +10,10 @@ from idu_api.urban_api.schemas.geometries import Geometry
 class Feature:
     @staticmethod
     async def generate_feature(
-        geometry: geom.Point | geom.Polygon | geom.MultiPolygon, properties: dict = {}
+        geometry: geom.Point | geom.Polygon | geom.MultiPolygon, properties: dict = ...
     ) -> dict[str, Any]:
+        if properties is ...:
+            properties = {}
         return {"type": "Feature", "geometry": Geometry.from_shapely_geometry(geometry), "properties": properties}
 
     @staticmethod

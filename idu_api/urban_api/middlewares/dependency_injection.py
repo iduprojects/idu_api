@@ -31,9 +31,7 @@ class PassServicesDependencies(BaseHTTPMiddleware):
             await self._connection_manager.shutdown()
 
     async def dispatch(self, request: Request, call_next):
-        get_conn = anext(self._connection_manager.get_connection())
-        conn = await get_conn
-
-        for dependency, init in self._dependencies.items():
-            setattr(request.state, dependency, init(conn))
-        return await call_next(request)
+        async with self._connection_manager.get_connection() as conn:
+            for dependency, init in self._dependencies.items():
+                setattr(request.state, dependency, init(conn))
+            return await call_next(request)

@@ -57,7 +57,7 @@ async def get_territories_by_city_id_level_and_type(
     request: Request,
     city: Annotated[int | str, Path(description="city id or name")],
     level: Annotated[int, Query(ge=0, description="level of required territories")],
-    type: Annotated[int, Query(ge=0, description="type of required territories")],
+    type: Annotated[int, Query(ge=0, description="type of required territories")],  # pylint: disable=redefined-builtin
     no_geometry: Annotated[bool, Query(description="get only centers")] = False,
 ) -> list[CATerritoriesData | CATerritoriesWithoutGeometryData]:
     cities_service: CitiesService = request.state.cities_service
@@ -68,13 +68,12 @@ async def get_territories_by_city_id_level_and_type(
                 city, level, type, no_geometry=no_geometry
             )
         ]
-    else:
-        return [
-            await CATerritoriesWithoutGeometryData.from_dto(territory)
-            for territory in await cities_service.get_territories_by_city_id_level_and_type(
-                city, level, type, no_geometry=no_geometry
-            )
-        ]
+    return [
+        await CATerritoriesWithoutGeometryData.from_dto(territory)
+        for territory in await cities_service.get_territories_by_city_id_level_and_type(
+            city, level, type, no_geometry=no_geometry
+        )
+    ]
 
 
 @app.get("/city/{city}/type-hierarchy", tags=tag)
@@ -102,11 +101,10 @@ async def get_city_blocks_by_id(
             await CATerritoriesData.from_dto(block)
             for block in await blocks_service.get_blocks_by_territory_id(city, no_geometry=no_geometry)
         ]
-    else:
-        return [
-            await CATerritoriesWithoutGeometryData.from_dto(block)
-            for block in await blocks_service.get_blocks_by_territory_id(city, no_geometry=no_geometry)
-        ]
+    return [
+        await CATerritoriesWithoutGeometryData.from_dto(block)
+        for block in await blocks_service.get_blocks_by_territory_id(city, no_geometry=no_geometry)
+    ]
 
 
 @app.get("/city/{city}/territories", tags=tag)

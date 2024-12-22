@@ -7,7 +7,7 @@ from idu_api.city_api.services.territories.territories import (
 )
 
 
-class BlocksService:
+class BlocksService:  # pylint: disable=too-few-public-methods
     def __init__(self, conn: AsyncConnection):
         self.conn = conn
 
