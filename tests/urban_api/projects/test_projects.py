@@ -7,6 +7,7 @@ import httpx
 import pytest
 from PIL import Image
 from playwright.async_api import async_playwright
+import structlog
 
 from idu_api.urban_api.dto import ProjectDTO
 from idu_api.urban_api.logic.impl.helpers import projects_objects
@@ -61,6 +62,7 @@ async def test_get_all_projects(urban_api_host, expired_auth_token):
     assert "prev" in result
     assert "next" in result
     assert "results" in result
+
 
 @pytest.mark.asyncio
 async def test_get_user_projects(urban_api_host, expired_auth_token):
@@ -320,9 +322,10 @@ async def test_add_project_to_db(mock_conn, project_post_req):
     # Arrange
     user_id = "mock_string"
     mocked_project = ProjectPost(**project_post_req)
+    logger: structlog.stdlib.BoundLogger = structlog.get_logger()
 
     # Act
-    result = await projects_objects.add_project_to_db(mock_conn, mocked_project, user_id)
+    result = await projects_objects.add_project_to_db(mock_conn, mocked_project, user_id, logger)
 
     # Asserting
     assert isinstance(result, ProjectDTO)

@@ -20,7 +20,7 @@ async def get_territories_by_parent_id_and_level(
     parent_id: int | str,
     level: int | None = None,
     ids: list[int] | None = None,
-    type: int | None = None,
+    type: int | None = None,  # pylint: disable=redefined-builtin
     geometry: geom.Polygon | geom.MultiPolygon | None = None,
     no_geometry: bool = False,
 ) -> list[CATerritoryDTO | CATerritoryWithoutGeometryDTO]:
@@ -94,8 +94,7 @@ async def get_territories_by_parent_id_and_level(
     result = (await conn.execute(statement)).mappings().all()
     if not no_geometry:
         return [CATerritoryDTO(**territory) for territory in result]
-    else:
-        return [CATerritoryWithoutGeometryDTO(**territory) for territory in result]
+    return [CATerritoryWithoutGeometryDTO(**territory) for territory in result]
 
 
 async def get_territory_hierarchy_by_parent_id(
@@ -163,7 +162,10 @@ async def get_territory_ids_by_parent_id(conn: AsyncConnection, parent_id: int |
 
 
 async def get_children_territories_by_type(
-    conn: AsyncConnection, territory: TerritoryDTO | TerritoryWithoutGeometryDTO, type: int, no_geometry: bool = False
+    conn: AsyncConnection,
+    territory: TerritoryDTO | TerritoryWithoutGeometryDTO,
+    type: int,  # pylint: disable=redefined-builtin
+    no_geometry: bool = False,
 ) -> list[CATerritoryDTO | CATerritoryWithoutGeometryDTO]:
     territories_data_parents = territories_data.alias("territories_data_parents")
     if not no_geometry:
@@ -231,8 +233,7 @@ async def get_children_territories_by_type(
     result = (await conn.execute(statement)).mappings().all()
     if not no_geometry:
         return [CATerritoryDTO(**territory) for territory in result]
-    else:
-        return [CATerritoryWithoutGeometryDTO(**territory) for territory in result]
+    return [CATerritoryWithoutGeometryDTO(**territory) for territory in result]
 
 
 async def get_ca_territory_by_id(
@@ -300,13 +301,11 @@ async def get_ca_territory_by_id(
 
     try:
         result = (await conn.execute(statement)).mappings().one()
-    except Exception as e:
-        print(e)
-        raise HTTPException(404, "TERRITORY_NOT_FOUND")
+    except Exception as exc:
+        raise HTTPException(404, "TERRITORY_NOT_FOUND") from exc
     if not no_geometry:
         return CATerritoryDTO(**result)
-    else:
-        return CATerritoryWithoutGeometryDTO(**result)
+    return CATerritoryWithoutGeometryDTO(**result)
 
 
 async def construct_hierarchy(
@@ -316,9 +315,8 @@ async def construct_hierarchy(
     cur: int,
     no_geometry: bool = False,
 ) -> dict:
-    id = territory.territory_id
     level = territory.level
-    if type(territory) is CATerritoryDTO:
+    if isinstance(territory, CATerritoryDTO):
         territory.geometry = None if not territory.geometry else Geometry.from_shapely_geometry(territory.geometry)
         territory.centre_point = Geometry.from_shapely_geometry(territory.centre_point)
     result = territory.__dict__
@@ -337,7 +335,7 @@ async def construct_hierarchy(
         territories: list[CATerritoryDTO | CATerritoryWithoutGeometryDTO | dict] = (
             await get_children_territories_by_type(conn, territory, hierarchy[i].territory_type_id, no_geometry)
         )
-        for j in range(len(territories)):
+        for j in range(len(territories)):  # pylint: disable=consider-using-enumerate
             territories[j] = await construct_hierarchy(conn, territories[j], hierarchy, end, no_geometry)
         if len(territories) != 0:
             result[hierarchy[i].territory_type_name] = territories
@@ -372,18 +370,17 @@ def generate_select(territories_data_parents: NamedFromClause, no_geometry: bool
             territories_data.c.created_at,
             territories_data.c.updated_at,
         )
-    else:
-        return select(
-            territories_data.c.territory_id,
-            territories_data.c.territory_type_id,
-            territory_types_dict.c.name.label("territory_type_name"),
-            territories_data.c.parent_id,
-            territories_data.c.name,
-            territories_data.c.level,
-            territories_data.c.properties,
-            territories_data.c.admin_center,
-            territories_data.c.okato_code,
-            territories_data.c.oktmo_code,
-            territories_data.c.created_at,
-            territories_data.c.updated_at,
-        )
+    return select(
+        territories_data.c.territory_id,
+        territories_data.c.territory_type_id,
+        territory_types_dict.c.name.label("territory_type_name"),
+        territories_data.c.parent_id,
+        territories_data.c.name,
+        territories_data.c.level,
+        territories_data.c.properties,
+        territories_data.c.admin_center,
+        territories_data.c.okato_code,
+        territories_data.c.oktmo_code,
+        territories_data.c.created_at,
+        territories_data.c.updated_at,
+    )

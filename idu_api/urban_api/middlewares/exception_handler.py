@@ -5,7 +5,6 @@ import traceback
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from idu_api.urban_api.exceptions import IduApiError
@@ -19,7 +18,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
     """
 
     def __init__(self, app: FastAPI, debug: list[bool]):
-        """Passing debug as a list is a hack to be able to change the value
+        """Passing debug as a list with single element is a hack to be able to change the value
         on the application startup.
         """
         super().__init__(app)
@@ -29,21 +28,10 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         try:
             return await call_next(request)
         except Exception as exc:  # pylint: disable=broad-except
-            if len(error_message := repr(exc)) > 300:
-                error_message = f"{error_message[:300]}...({len(error_message) - 300} ommitted)"
-            logger.opt(colors=True).error(
-                "<cyan>{} {}</cyan> - '<red>{}</red>': {}",
-                (f"{request.client.host}:{request.client.port}" if request.client is not None else "<unknown user>"),
-                request.method,
-                exc,
-                error_message,
-            )
-
             error_status = 500
             if isinstance(exc, IduApiError):
                 error_status = getattr(exc, "status_code", 500)
 
-            logger.debug("{} Traceback:\n{}", error_message, exc, "".join(traceback.format_tb(exc.__traceback__)))
             if self._debug[0]:
                 return JSONResponse(
                     {

@@ -6,7 +6,7 @@ import typing as tp
 import click
 import uvicorn
 
-from .config import AppConfig, UrbanAPIConfig
+from .config import AppConfig, LoggingConfig, UrbanAPIConfig
 from .utils.dotenv import try_load_envfile
 
 LogLevel = tp.Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR"]
@@ -29,22 +29,25 @@ def logger_from_str(logger_text: str) -> list[tuple[LogLevel, str]]:
     return res
 
 
+def _run_uvicorn(configuration: dict[str, tp.Any]) -> tp.NoReturn:
+    uvicorn.run(
+        "idu_api.urban_api:app",
+        **configuration,
+    )
+
+
 @click.command("Run urban api service")
 @click.option(
     "--port",
     "-p",
     envvar="PORT",
-    default=8000,
     type=int,
-    show_default=True,
     show_envvar=True,
     help="Service port number",
 )
 @click.option(
     "--host",
     envvar="HOST",
-    default="0.0.0.0",
-    show_default=True,
     show_envvar=True,
     help="Service HOST address",
 )
@@ -53,8 +56,6 @@ def logger_from_str(logger_text: str) -> list[tuple[LogLevel, str]]:
     "-v",
     type=click.Choice(("TRACE", "DEBUG", "INFO", "WARNING", "ERROR")),
     envvar="LOGGER_VERBOSITY",
-    default="DEBUG",
-    show_default=True,
     show_envvar=True,
     help="Logger verbosity",
 )
@@ -94,27 +95,23 @@ def main(
 ):
     """
     Urban api backend service main function, performs configuration
-    via command line parameters and environment variables.
+    via config and command line + environment variables overrides.
     """
     additional_loggers = list(itertools.chain.from_iterable(additional_loggers))
-    ctx = click.get_current_context()
-    user_params = {
-        param: ctx.params[param]
-        for param in ctx.params
-        if ctx.get_parameter_source(param) == click.core.ParameterSource.COMMANDLINE
-    }
     config = UrbanAPIConfig.load(config_path)
+    logging_section = config.logging if logger_verbosity is None else LoggingConfig(level=logger_verbosity)
     config = UrbanAPIConfig(
         app=AppConfig(
-            host=user_params.get("host", config.app.host),
-            port=user_params.get("port", config.app.port),
-            logger_verbosity=user_params.get("logger_verbosity", config.app.logger_verbosity),
-            debug=int(user_params.get("debug", config.app.debug)),
+            host=host or config.app.host,
+            port=port or config.app.port,
+            debug=debug or config.app.debug,
+            name=config.app.name,
         ),
         db=config.db,
         auth=config.auth,
         fileserver=config.fileserver,
         external=config.external,
+        logging=logging_section,
     )
     temp_yaml_config_path = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
     config.dump(temp_yaml_config_path)
@@ -122,33 +119,20 @@ def main(
     try:
         with open(temp_envfile_path, "w", encoding="utf-8") as env_file:
             env_file.write(f"CONFIG_PATH={temp_yaml_config_path}\n")
+        uvicorn_config = {
+            "host": config.app.host,
+            "port": config.app.port,
+            "log_level": config.logging.level.lower(),
+            "env_file": temp_envfile_path,
+        }
         if config.app.debug:
             try:
-                uvicorn.run(
-                    "idu_api.urban_api:app",
-                    host=config.app.host,
-                    port=config.app.port,
-                    reload=True,
-                    log_level=config.app.logger_verbosity.lower(),
-                    env_file=temp_envfile_path,
-                )
-            except:
+                _run_uvicorn(uvicorn_config | {"reload": True})
+            except:  # pylint: disable=bare-except
                 print("Debug reload is disabled")
-                uvicorn.run(
-                    "idu_api.urban_api:app",
-                    host=config.app.host,
-                    port=config.app.port,
-                    log_level=config.app.logger_verbosity.lower(),
-                    env_file=temp_envfile_path,
-                )
+                _run_uvicorn(uvicorn_config)
         else:
-            uvicorn.run(
-                "idu_api.urban_api:app",
-                host=config.app.host,
-                port=config.app.port,
-                log_level=config.app.logger_verbosity.lower(),
-                env_file=temp_envfile_path,
-            )
+            _run_uvicorn(uvicorn_config)
     finally:
         if os.path.exists(temp_envfile_path):
             os.remove(temp_envfile_path)

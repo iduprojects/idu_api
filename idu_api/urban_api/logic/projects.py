@@ -2,6 +2,8 @@ import abc
 import io
 from typing import Any, Protocol
 
+import structlog
+
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
     FunctionalZoneSourceDTO,
@@ -47,7 +49,7 @@ from idu_api.urban_api.schemas import (
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
 
-class UserProjectService(Protocol):
+class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     """Service to manipulate projects objects."""
 
     @abc.abstractmethod

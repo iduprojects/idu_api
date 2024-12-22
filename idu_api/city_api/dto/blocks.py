@@ -15,7 +15,11 @@ class BlocksDTO(Base):
 
     @classmethod
     async def from_service(
-        cls, id: int, population: int | None, geometry: Optional[Polygon | MultiPolygon | Point], center: Point = None
+        cls,
+        id: int,  # pylint: disable=redefined-builtin
+        population: int | None,
+        geometry: Optional[Polygon | MultiPolygon | Point],
+        center: Point = None,
     ):
         return cls(id=id, population=population, geometry=geometry, center=center)
 
@@ -27,5 +31,10 @@ class BlocksWithoutGeometryDTO(Base):
     center: Point = None
 
     @classmethod
-    async def from_service(cls, id: int, population: int | None, center: Point = None):
+    async def from_service(
+        cls,
+        id: int,  # pylint: disable=redefined-builtin
+        population: int | None,
+        center: Point = None,
+    ):
         return cls(id=id, population=population, center=center)

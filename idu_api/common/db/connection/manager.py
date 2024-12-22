@@ -1,9 +1,10 @@
 """Connection manager class and get_connection function are defined here."""
 
 from asyncio import Lock
+from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from loguru import logger
+import structlog
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
@@ -18,6 +19,7 @@ class PostgresConnectionManager:
         database: str,
         user: str,
         password: str,
+        logger: structlog.stdlib.BoundLogger,
         pool_size: int = 10,
         application_name: str | None = None,
     ) -> None:
@@ -31,6 +33,7 @@ class PostgresConnectionManager:
         self._pool_size = pool_size
         self._application_name = application_name
         self._lock = Lock()
+        self._logger = logger
 
     async def update(
         self,
@@ -39,6 +42,7 @@ class PostgresConnectionManager:
         database: str | None = None,
         user: str | None = None,
         password: str | None = None,
+        logger: structlog.stdlib.BoundLogger | None = None,
         pool_size: int | None = None,
         application_name: str | None = None,
     ) -> None:
@@ -49,6 +53,7 @@ class PostgresConnectionManager:
             self._database = database or self._database
             self._user = user or self._user
             self._password = password or self._password
+            self._logger = logger or self._logger
             self._pool_size = pool_size or self._pool_size
             self._application_name = application_name or self._application_name
 
@@ -65,13 +70,13 @@ class PostgresConnectionManager:
             await self._engine.dispose()
             self._engine = None
 
-        logger.info(
-            "Creating pool with max_size = {} on postgresql://{}@{}:{}/{}",
-            self._pool_size,
-            self._user,
-            self._host,
-            self._port,
-            self._database,
+        await self._logger.ainfo(
+            "creating postgres connection pool",
+            max_size=self._pool_size,
+            user=self._user,
+            host=self._host,
+            port=self._port,
+            database=self._database,
         )
         self._engine = create_async_engine(
             f"postgresql+asyncpg://{self._user}:{self._password}@{self._host}:{self._port}/{self._database}",
@@ -95,6 +100,7 @@ class PostgresConnectionManager:
                     await self._engine.dispose()
                 self._engine = None
 
+    @asynccontextmanager
     async def get_connection(self) -> AsyncIterator[AsyncConnection]:
         """Get an async connection to the database."""
         if self._engine is None:

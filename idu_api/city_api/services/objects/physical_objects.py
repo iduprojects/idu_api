@@ -5,7 +5,7 @@ from idu_api.city_api.services.objects.urban_objects import get_physical_objects
 from idu_api.city_api.services.territories.territories import get_ca_territory_by_id, get_territory_ids_by_parent_id
 
 
-class PhysicalObjectsService:
+class PhysicalObjectsService:  # pylint: disable=too-few-public-methods
     def __init__(self, conn: AsyncConnection):
         self.conn = conn
 

@@ -23,7 +23,7 @@ class CitiesService:
         return await get_territory_hierarchy_by_parent_id(self.conn, city_id)
 
     async def get_territories_by_city_id_level_and_type(
-        self, city_id: int | str, level: int, type: int, no_geometry: bool = False
+        self, city_id: int | str, level: int, type: int, no_geometry: bool = False  # pylint: disable=redefined-builtin
     ) -> list[CATerritoryDTO | CATerritoryWithoutGeometryDTO]:
         _ = await get_ca_territory_by_id(self.conn, city_id, no_geometry)
 
