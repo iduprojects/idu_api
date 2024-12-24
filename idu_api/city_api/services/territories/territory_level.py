@@ -18,13 +18,11 @@ class TerritoryLevelsService:
 
         if not no_geometry:
             return result
-        else:
-            return await territory_dto_without_geometry(result)
+        return await territory_dto_without_geometry(result)
 
     async def get_level_by_territory_id_and_type(
-        self, territory_id: int, level: int, type: int, no_geometry: bool = False
+        self, territory_id: int, level: int, type: int, no_geometry: bool = False  # pylint: disable=redefined-builtin
     ) -> list[CATerritoryDTO | CATerritoryWithoutGeometryDTO]:
-        """ """
         _ = await get_territory_by_id(self.conn, territory_id)
 
         result: list[CATerritoryDTO | CATerritoryWithoutGeometryDTO] = await get_territories_by_parent_id_and_level(

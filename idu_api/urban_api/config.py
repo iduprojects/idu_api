@@ -2,22 +2,23 @@
 
 import os
 from collections import OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, TextIO
+from typing import TextIO
 
 import yaml
 
 from idu_api.urban_api.version import VERSION as api_version
 
+from .utils.logging import LoggingLevel
+
 
 @dataclass
 class AppConfig:
-    host: str = "0.0.0.0"
-    port: int = 8000
-    debug: int = 0
-    logger_verbosity: Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
-    name: str = "urban_api"
+    host: str
+    port: int
+    debug: bool
+    name: str
 
     def __post_init__(self):
         self.name = f"urban_api ({api_version})"
@@ -25,39 +26,55 @@ class AppConfig:
 
 @dataclass
 class DBConfig:
-    addr: str = "localhost"
-    port: int = 5432
-    name: str = "urban_db"
-    user: str = "postgres"
-    password: str = "postgres"
-    pool_size: int = 15
+    addr: str
+    port: int
+    name: str
+    user: str
+    password: str
+    pool_size: int
 
 
 @dataclass
 class AuthConfig:
-    url: str = ""
-    validate: int = 0
-    cache_size: int = 100
-    cache_ttl: int = 1800
+    url: str
+    validate: bool
+    cache_size: int
+    cache_ttl: int
 
 
 @dataclass
 class FileServerConfig:
-    host: str = ""
-    port: int = 9000
-    projects_bucket: str = ""
-    access_key: str = ""
-    secret_key: str = ""
-    region_name: str = ""
-    connect_timeout: int = 5
-    read_timeout: int = 20
-    retries: int = 3
+    host: str
+    port: int
+    projects_bucket: str
+    access_key: str
+    secret_key: str
+    region_name: str
+    connect_timeout: int
+    read_timeout: int
+    retries: int
 
 
 @dataclass
 class ExternalServicesConfig:
-    gen_planner_api: str = "http://10.32.1.102"
-    hextech_api: str = "http://10.32.1.48:8100"
+    gen_planner_api: str
+    hextech_api: str
+
+
+@dataclass
+class FileLogger:
+    filename: str
+    level: LoggingLevel
+
+
+@dataclass
+class LoggingConfig:
+    level: LoggingLevel
+    files: list[FileLogger] = field(default_factory=list)
+
+    def __post_init__(self):
+        if len(self.files) > 0 and isinstance(self.files[0], dict):
+            self.files = [FileLogger(**f) for f in self.files]
 
 
 @dataclass
@@ -67,6 +84,7 @@ class UrbanAPIConfig:
     auth: AuthConfig
     fileserver: FileServerConfig
     external: ExternalServicesConfig
+    logging: LoggingConfig
 
     def to_order_dict(self) -> OrderedDict:
         """OrderDict transformer."""
@@ -112,11 +130,24 @@ class UrbanAPIConfig:
         """Generate an example of configuration."""
 
         return cls(
-            app=AppConfig(),
-            db=DBConfig(),
-            auth=AuthConfig(),
-            fileserver=FileServerConfig(),
-            external=ExternalServicesConfig(),
+            app=AppConfig(host="0.0.0.0", port=8000, debug=False, name="urban_api"),
+            db=DBConfig(
+                addr="localhost", port=5432, name="urban_db", user="postgres", password="postgres", pool_size=15
+            ),
+            auth=AuthConfig(url="", validate=False, cache_size=100, cache_ttl=1800),
+            fileserver=FileServerConfig(
+                host="",
+                port=9000,
+                projects_bucket="",
+                access_key="",
+                secret_key="",
+                region_name="",
+                connect_timeout=5,
+                read_timeout=20,
+                retries=3,
+            ),
+            external=ExternalServicesConfig(gen_planner_api="", hextech_api=""),
+            logging=LoggingConfig(level="INFO"),
         )
 
     @classmethod
@@ -136,6 +167,7 @@ class UrbanAPIConfig:
                 auth=AuthConfig(**data.get("auth", {})),
                 fileserver=FileServerConfig(**data.get("fileserver", {})),
                 external=ExternalServicesConfig(**data.get("external", {})),
+                logging=LoggingConfig(**data.get("logging", {})),
             )
         except Exception as exc:
             raise ValueError("Could not read app config file") from exc
@@ -151,7 +183,7 @@ class UrbanAPIConfig:
 
     def update(self, other: "UrbanAPIConfig") -> None:
         """Update current config attributes with the values from another UrbanAPIConfig instance."""
-        for section in ("app", "db", "auth", "fileserver"):
+        for section in ("app", "db", "auth", "fileserver", "logging"):
             current_subconfig = getattr(self, section)
             other_subconfig = getattr(other, section)
 

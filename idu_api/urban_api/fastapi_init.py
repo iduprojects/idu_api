@@ -23,7 +23,9 @@ from idu_api.urban_api.logic.impl.urban_objects import UrbanObjectsServiceImpl
 from idu_api.urban_api.middlewares.authentication import AuthenticationMiddleware
 from idu_api.urban_api.middlewares.dependency_injection import PassServicesDependencies
 from idu_api.urban_api.middlewares.exception_handler import ExceptionHandlerMiddleware
+from idu_api.urban_api.middlewares.logging import LoggingMiddleware
 from idu_api.urban_api.utils.auth_client import AuthenticationClient
+from idu_api.urban_api.utils.logging import configure_logging
 
 from .handlers import list_of_routes
 from .version import LAST_UPDATE, VERSION
@@ -75,7 +77,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
 
     add_pagination(application)
 
-    connection_manager = PostgresConnectionManager("", 0, "", "", "", 0, "")
+    connection_manager = PostgresConnectionManager("", 0, "", "", "", ..., 0, "")
     auth_client = AuthenticationClient(0, 0, False, "")
 
     application.add_middleware(
@@ -91,6 +93,9 @@ def get_app(prefix: str = "/api") -> FastAPI:
         territories_service=TerritoriesServiceImpl,
         urban_objects_service=UrbanObjectsServiceImpl,
         user_project_service=UserProjectServiceImpl,
+    )
+    application.add_middleware(
+        LoggingMiddleware,
     )
     application.add_middleware(
         AuthenticationMiddleware,
@@ -111,17 +116,22 @@ async def lifespan(application: FastAPI):
     Initializes database connection in pass_services_dependencies middleware.
     """
     app_config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
+    loggers_dict = {logger_config.filename: logger_config.level for logger_config in app_config.logging.files}
+    logger = configure_logging(app_config.logging.level, loggers_dict)
+    application.state.logger = logger
+
     for middleware in application.user_middleware:
         if middleware.cls == PassServicesDependencies:
             connection_manager: PostgresConnectionManager = middleware.kwargs["connection_manager"]
             await connection_manager.update(
-                app_config.db.addr,
-                app_config.db.port,
-                app_config.db.name,
-                app_config.db.user,
-                app_config.db.password,
-                app_config.db.pool_size,
-                app_config.app.name,
+                host=app_config.db.addr,
+                port=app_config.db.port,
+                database=app_config.db.name,
+                user=app_config.db.user,
+                password=app_config.db.password,
+                logger=logger,
+                pool_size=app_config.db.pool_size,
+                application_name=app_config.app.name,
             )
             await connection_manager.refresh()
         elif middleware.cls == ExceptionHandlerMiddleware:

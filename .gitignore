@@ -23,3 +23,5 @@ pg_data/
 
 # Ignore pylint config
 .pylintrc
+
+*.log

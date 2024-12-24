@@ -1,5 +1,6 @@
 """Indicator values projects-related endpoints are defined here."""
 
+import structlog
 from fastapi import Depends, Path, Query, Request, Security
 from fastapi.security import HTTPBearer
 from geojson_pydantic.geometries import Geometry
@@ -224,5 +225,6 @@ async def update_all_indicators_values_by_scenario_id(
     You must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+    logger: structlog.stdlib.BoundLogger = request.state.logger
 
-    return await user_project_service.update_all_indicators_values_by_scenario_id(scenario_id, user.id)
+    return await user_project_service.update_all_indicators_values_by_scenario_id(scenario_id, user.id, logger)

@@ -6,7 +6,7 @@ from typing import Any
 
 
 @dataclass(frozen=True)
-class ScenarioDTO:
+class ScenarioDTO:  # pylint: disable=too-many-instance-attributes
     scenario_id: int
     parent_id: int | None
     parent_name: str | None

@@ -12,7 +12,8 @@ class Base:
 
         other: another entity as dict (use .__dict__ over vars())
         attribute_mapper: map attribute from other to entity
-        exclude: remove attributes from mapper (if attribute is present in entity, it will be unchanged (default is None))
+        exclude: remove attributes from mapper (if attribute is present in entity, it will be unchanged
+        (default is None))
         """
 
         for key, value in other.items():

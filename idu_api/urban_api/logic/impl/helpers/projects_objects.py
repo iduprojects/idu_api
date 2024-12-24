@@ -6,6 +6,7 @@ import zipfile
 from datetime import datetime, timezone
 
 import aiohttp
+import structlog
 from geoalchemy2 import Geography, Geometry
 from geoalchemy2.functions import (
     ST_Area,
@@ -19,7 +20,6 @@ from geoalchemy2.functions import (
     ST_IsEmpty,
     ST_Within,
 )
-from loguru import logger
 from PIL import Image
 from sqlalchemy import cast, delete, insert, literal, or_, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
@@ -327,7 +327,9 @@ async def get_user_preview_projects_images_url_from_minio(
     return [{"project_id": project_id, "url": url} for project_id, url in zip(project_ids, results) if url is not None]
 
 
-async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id: str) -> ProjectDTO:
+async def add_project_to_db(
+    conn: AsyncConnection, project: ProjectPost, user_id: str, logger: structlog.stdlib.BoundLogger
+) -> ProjectDTO:
     """Create project object, its territory and base scenario."""
 
     given_geometry = select(
@@ -606,14 +608,18 @@ async def add_project_to_db(conn: AsyncConnection, project: ProjectPost, user_id
                 json=project.territory.geometry.model_dump(),
             )
             response.raise_for_status()
-        except aiohttp.ClientResponseError as e:
-            logger.warning(
-                f"Failed to save indicators: {e.status}, {e.message}. " f"URL: {e.request_info.url}. Params: {params}"
+        except aiohttp.ClientResponseError as exc:
+            await logger.awarning(
+                "failed to save indicators",
+                status=exc.status,
+                message=exc.message,
+                url=exc.request_info.url,
+                params=params,
             )
-        except aiohttp.ClientError as e:
-            logger.warning(f"Request failed: {str(e)}. Params: {params}")
-        except Exception as e:
-            logger.error(f"Unexpected error occurred: {str(e)}", exc_info=True)
+        except aiohttp.ClientError as exc:
+            await logger.awarning(f"request failed", reason=str(exc), params=params)
+        except Exception as exc:  # pylint: disable=broad-except
+            await logger.aexception("unexpected error occurred")
 
     return await get_project_by_id_from_db(conn, project_id, user_id)
 

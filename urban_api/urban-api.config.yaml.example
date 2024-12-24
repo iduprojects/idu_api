@@ -1,9 +1,8 @@
 app:
   host: 0.0.0.0
   port: 8000
-  debug: 0
-  logger_verbosity: INFO
-  name: urban_api (0.22.1)
+  debug: false
+  name: urban_api (0.33.0)
 db:
   addr: localhost
   port: 5432
@@ -13,7 +12,7 @@ db:
   pool_size: 15
 auth:
   url: http://10.32.1.100:8086/introspect
-  validate: 0
+  validate: false
   cache_size: 100
   cache_ttl: 1800
 fileserver:
@@ -27,4 +26,11 @@ fileserver:
   read_timeout: 20
   retries: 3
 external:
-  hextech_api: http://10.32.1.48:8100
+  hextech_api: http://localhost:8100
+  gen_planner_api: http://localhost:8101
+logging:
+  level: INFO
+  files:
+    - filename: info.log
+      level: INFO
+

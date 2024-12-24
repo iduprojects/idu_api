@@ -11,7 +11,7 @@ database-docker:
 	cd urban_api && docker compose up -d database
 
 run-urban-api:
-	ENVFILE=urban_api/.env poetry run launch_urban_api
+	CONFIG_PATH=urban_api/urban-api.config.yaml poetry run launch_urban_api
 
 install:
 	pip install .
@@ -32,10 +32,10 @@ install-from-build:
 	python -m wheel install dist/idu_api-*.whl
 
 prepare-migration:
-	cd idu_api/common/db; ENVFILE=../../../urban_api/.env poetry run alembic revision --autogen
+	cd idu_api/common/db; CONFIG_PATH=../../../urban_api/urban-api.config.yaml poetry run alembic revision --autogen
 
 apply-migrations:
-	cd idu_api/common/db; ENVFILE=../../../urban_api/.env poetry run alembic upgrade head
+	cd idu_api/common/db; CONFIG_PATH=../../../urban_api/urban-api.config.yaml poetry run alembic upgrade head
 
 test-urban-api:
 	poetry run pytest --verbose tests/urban_api/
