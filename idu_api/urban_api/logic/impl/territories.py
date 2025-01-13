@@ -93,6 +93,7 @@ func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString
 
 
+# pylint: disable=too-many-arguments
 class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-public-methods
     """Service to manipulate territories entities.
 

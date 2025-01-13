@@ -3,6 +3,7 @@
 import io
 from typing import Any
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
@@ -126,14 +127,16 @@ from idu_api.urban_api.schemas import (
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
 
-class UserProjectServiceImpl(UserProjectService):
+# pylint: disable=too-many-arguments
+class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-public-methods
     """Service to manipulate projects entities.
 
     Based on async SQLAlchemy connection.
     """
 
-    def __init__(self, conn: AsyncConnection):
+    def __init__(self, conn: AsyncConnection, logger: structlog.stdlib.BoundLogger):
         self._conn = conn
+        self._logger = logger
 
     async def get_project_by_id(self, project_id: int, user_id: str | None) -> ProjectDTO:
         return await get_project_by_id_from_db(self._conn, project_id, user_id)
@@ -204,7 +207,7 @@ class UserProjectServiceImpl(UserProjectService):
         )
 
     async def add_project(self, project: ProjectPost, user_id: str) -> ProjectDTO:
-        return await add_project_to_db(self._conn, project, user_id)
+        return await add_project_to_db(self._conn, project, user_id, logger=self._logger)
 
     async def put_project(self, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO:
         return await put_project_to_db(self._conn, project, project_id, user_id)
@@ -561,8 +564,10 @@ class UserProjectServiceImpl(UserProjectService):
             self._conn, scenario_id, indicator_ids, indicators_group_id, user_id
         )
 
-    async def update_all_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict[str, Any]:
-        return await update_all_indicators_values_by_scenario_id_to_db(self._conn, scenario_id, user_id)
+    async def update_all_indicators_values_by_scenario_id(
+        self, scenario_id: int, user_id: str
+    ) -> dict[str, Any]:
+        return await update_all_indicators_values_by_scenario_id_to_db(self._conn, scenario_id, user_id, logger=self._logger)
 
     async def get_functional_zones_sources_by_scenario_id(
         self, scenario_id: int, user_id: str | None

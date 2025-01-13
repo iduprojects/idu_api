@@ -20,7 +20,7 @@ class IndicatorDTO:
 
 
 @dataclass(frozen=True)
-class IndicatorValueDTO:
+class IndicatorValueDTO:  # pylint: disable=too-many-instance-attributes
     indicator_id: int
     parent_id: int
     name_full: str
@@ -62,7 +62,7 @@ class ShortProjectIndicatorValueDTO:
 
 
 @dataclass(frozen=True)
-class ProjectIndicatorValueDTO:
+class ProjectIndicatorValueDTO:  # pylint: disable=too-many-instance-attributes
     indicator_value_id: int
     indicator_id: int
     parent_id: int

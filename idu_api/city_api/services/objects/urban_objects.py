@@ -1,5 +1,5 @@
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import and_, cast, select, text
+from sqlalchemy import and_, cast, null, select, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.functions import count
@@ -39,14 +39,14 @@ async def get_services_types_by_territory_ids(
     if service_type:
         statement = statement.where(
             and_(
-                urban_objects_data.c.service_id != None,
+                urban_objects_data.c.service_id != null(),
                 object_geometries_data.c.territory_id.in_(ids),
                 services_data.c.service_type_id == service_type,
             )
         )
     else:
         statement = statement.where(
-            and_(urban_objects_data.c.service_id != None, object_geometries_data.c.territory_id.in_(ids))
+            and_(urban_objects_data.c.service_id != null(), object_geometries_data.c.territory_id.in_(ids))
         )
 
     statement = statement.group_by(service_types_dict.c.service_type_id)
@@ -78,14 +78,14 @@ async def get_services_by_territory_ids(
     if service_type:
         statement = statement.where(
             and_(
-                urban_objects_data.c.service_id != None,
+                urban_objects_data.c.service_id != null(),
                 object_geometries_data.c.territory_id.in_(ids),
                 services_data.c.service_type_id == service_type,
             )
         )
     else:
         statement = statement.where(
-            and_(urban_objects_data.c.service_id != None, object_geometries_data.c.territory_id.in_(ids))
+            and_(urban_objects_data.c.service_id != null(), object_geometries_data.c.territory_id.in_(ids))
         )
 
     result = (await conn.execute(statement)).mappings().all()
@@ -112,7 +112,7 @@ async def get_physical_objects_by_territory_ids(
         )
     )
     statement = statement.where(
-        and_(urban_objects_data.c.service_id == None, object_geometries_data.c.territory_id.in_(ids))
+        and_(urban_objects_data.c.service_id == null(), object_geometries_data.c.territory_id.in_(ids))
     )
 
     result = (await conn.execute(statement)).mappings().all()

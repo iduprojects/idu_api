@@ -6,11 +6,13 @@ from typing import Any, Literal, Self, TypeVar
 
 import shapely
 import shapely.geometry as geom
+import structlog
 from geojson_pydantic import Feature, FeatureCollection
-from loguru import logger
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 _BaseGeomTypes = geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString
+
+_logger: structlog.stdlib.BoundLogger = structlog.get_logger("geometry_schemas")
 
 
 class AllPossibleGeometry(BaseModel):
@@ -110,7 +112,7 @@ class GeometryValidationModel(BaseModel):
             try:
                 geometry.as_shapely_geometry()
             except (AttributeError, ValueError, TypeError) as exc:
-                logger.debug("Exception on passing geometry: {!r}", exc)
+                _logger.debug("Exception on passing geometry: {!r}", exc)
                 raise ValueError("Invalid geometry passed") from exc
         return geometry
 
@@ -124,7 +126,7 @@ class GeometryValidationModel(BaseModel):
             try:
                 centre_point.as_shapely_geometry()
             except (AttributeError, ValueError, TypeError) as exc:
-                logger.debug("Exception on passing geometry: {!r}", exc)
+                _logger.debug("Exception on passing geometry: {!r}", exc)
                 raise ValueError("Invalid centre_point passed") from exc
         return centre_point
 
@@ -150,7 +152,7 @@ class NotPointGeometryValidationModel(BaseModel):
             try:
                 geometry.as_shapely_geometry()
             except (AttributeError, ValueError, TypeError) as exc:
-                logger.debug("Exception on passing geometry: {!r}", exc)
+                _logger.debug("Exception on passing geometry: {!r}", exc)
                 raise ValueError("Invalid geometry passed") from exc
         return geometry
 

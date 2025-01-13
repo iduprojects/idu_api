@@ -42,7 +42,8 @@ from idu_api.urban_api.schemas import (
 Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString
 
 
-class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods
+# pylint: disable=too-many-arguments
+class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
     """Service to manipulate territories objects."""
 
     @abc.abstractmethod

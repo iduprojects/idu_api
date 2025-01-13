@@ -1,9 +1,12 @@
 import asyncio
 import io
+from contextlib import asynccontextmanager
+from typing import AsyncIterator
 
 import aioboto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
+from cachetools import cached
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from idu_api.urban_api.config import UrbanAPIConfig
@@ -40,7 +43,7 @@ class AsyncMinioClient:
         self._region_name = region_name
         self._connect_timeout = connect_timeout
         self._read_timeout = read_timeout
-        self.RETRIES = retries
+        AsyncMinioClient.RETRIES = retries
 
     @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ClientError))
     async def upload_file(self, file_data: bytes, object_name: str) -> str:
@@ -153,7 +156,9 @@ class AsyncMinioClient:
                 raise DeleteFileError(str(exc)) from exc
 
 
-async def get_minio_client() -> AsyncMinioClient:
+@cached
+@asynccontextmanager
+async def get_minio_client() -> AsyncIterator[AsyncMinioClient]:
     app_config = UrbanAPIConfig.from_file_or_default()
     minio_client = AsyncMinioClient(
         host=app_config.fileserver.host,

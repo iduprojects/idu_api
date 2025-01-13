@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "idu-api"
-version = "1.24.2"
+version = "1.25.0"
 description = "This is a Digital Territories Platform API in two versions to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
@@ -12,7 +12,6 @@ asyncio = "^3.4.3"
 asyncpg = "^0.29.0"
 pydantic = "^2.7.1"
 alembic = "^1.13.1"
-loguru = "^0.7.2"
 sqlalchemy = { version = "^2.0.29", extras = ["asyncio"] }
 cachetools = "^5.3.3"
 geoalchemy2 = "^0.15.0"
@@ -36,6 +35,7 @@ tenacity = "^9.0.0"
 aioboto3 = "^13.2.0"
 uvicorn = "0.19.0"
 shapely = "^2.0.6"
+structlog = "^24.4.0"
 
 [tool.poetry.scripts]
 launch_urban_api = "idu_api.urban_api.__main__:main"
@@ -43,7 +43,7 @@ launch_urban_api = "idu_api.urban_api.__main__:main"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.4.2"
-pylint = "^3.1.0"
+pylint = "^3.3.2"
 isort = "^5.13.2"
 playwright = "1.48.0"
 

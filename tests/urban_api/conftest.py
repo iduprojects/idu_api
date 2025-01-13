@@ -42,12 +42,14 @@ def urban_api_host(database) -> Iterator[str]:  # pylint: disable=redefined-oute
         app=AppConfig(
             host=config.app.host,
             port=port,
-            logger_verbosity=config.app.logger_verbosity,
             debug=config.app.debug,
+            name=config.app.name,
         ),
         db=database,
         auth=config.auth,
         fileserver=config.fileserver,
+        external=config.external,
+        logging=config.logging,
     )
     temp_yaml_config_path = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
     config.dump(temp_yaml_config_path)
