@@ -15,6 +15,7 @@ from .routers import territories_router
     "/territory/{territory_id}/living_buildings_with_geometry",
     response_model=Page[LivingBuildingsWithGeometry],
     status_code=status.HTTP_200_OK,
+    deprecated=True,
 )
 async def get_living_buildings_with_geometry_by_territory_id(
     request: Request,

@@ -160,6 +160,7 @@ async def get_scenario_urban_object_by_id_from_db(
             )
         )
         .where(projects_urban_objects_data.c.urban_object_id.in_(urban_object_ids))
+        .limit(1)  # TODO: a temporary fix to avoid error with multiple living buildings in one physical object
     )
 
     result = (await conn.execute(statement)).mappings().all()

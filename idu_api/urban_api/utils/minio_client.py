@@ -1,7 +1,7 @@
 import asyncio
 import io
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 import aioboto3
 from botocore.client import Config

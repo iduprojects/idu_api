@@ -42,7 +42,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-m
             await logger.ainfo("request handled successfully", time_consumed=round((time_finish - time_begin) / 1e9, 3))
 
             return result
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception as exc:
             time_finish = time.monotonic_ns()
 
             if isinstance(exc, IduApiError):

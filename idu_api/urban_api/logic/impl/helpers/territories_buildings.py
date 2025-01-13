@@ -25,7 +25,7 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
     cities_only: bool,
     include_child_territories: bool,
 ) -> PageDTO[LivingBuildingWithGeometryDTO]:
-    """Get living buildings with geometry by territory id."""
+    """Get living buildings with geometry by territory identifier."""
 
     territory_exists = await check_territory_existence(conn, territory_id)
     if not territory_exists:

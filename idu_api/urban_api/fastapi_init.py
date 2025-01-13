@@ -84,6 +84,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
     def ignore_kwargs(func: Callable) -> Callable:
         def wrapped(*args, **kwargs):
             return func(*args)
+
         return wrapped
 
     application.add_middleware(

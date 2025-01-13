@@ -1,16 +1,14 @@
 """Dependency injection middleware is defined here."""
 
 from asyncio import Lock
-from typing import Any, Callable
+from typing import Any, Protocol
 
+import structlog
 from fastapi import FastAPI, Request
 from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.middleware.base import BaseHTTPMiddleware
-import structlog
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
-
-from typing import Protocol
 
 
 class DependencyInitializer(Protocol):

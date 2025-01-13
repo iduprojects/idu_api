@@ -101,6 +101,7 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             )
         )
         .where(urban_objects_data.c.urban_object_id == urban_object_id)
+        .limit(1)  # TODO: a temporary fix to avoid error with multiple living buildings in one physical object
     )
 
     urban_object = (await conn.execute(statement)).mappings().one_or_none()

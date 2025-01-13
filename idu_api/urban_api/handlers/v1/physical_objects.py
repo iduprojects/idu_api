@@ -85,7 +85,7 @@ async def patch_physical_object(
 )
 async def delete_physical_object(
     request: Request,
-    physical_object_id: int = Path(..., description="Physical object id"),
+    physical_object_id: int = Path(..., description="physical object identifier"),
 ) -> dict:
     """Delete physical object by given id."""
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
@@ -99,7 +99,10 @@ async def delete_physical_object(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_living_building(request: Request, living_building: LivingBuildingsDataPost) -> LivingBuildingsData:
-    """Add new living building"""
+    """Add living building information.
+
+    There can only be one living building for one physical object.
+    """
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
 
     living_building_dto = await physical_objects_service.add_living_building(living_building)
@@ -115,7 +118,7 @@ async def add_living_building(request: Request, living_building: LivingBuildings
 async def put_living_building(
     request: Request,
     living_building: LivingBuildingsDataPut,
-    living_building_id: int = Path(..., description="Living building id"),
+    living_building_id: int = Path(..., description="living building identifier"),
 ) -> LivingBuildingsData:
     """Update living building - all attributes."""
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
@@ -133,7 +136,7 @@ async def put_living_building(
 async def patch_living_building(
     request: Request,
     living_building: LivingBuildingsDataPatch,
-    living_building_id: int = Path(..., description="Living building id"),
+    living_building_id: int = Path(..., description="living building identifier"),
 ) -> LivingBuildingsData:
     """Update living buildings - only given attributes."""
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
@@ -150,9 +153,9 @@ async def patch_living_building(
 )
 async def delete_living_building(
     request: Request,
-    living_building_id: int = Path(..., description="Living building id"),
+    living_building_id: int = Path(..., description="living building identifier"),
 ) -> dict:
-    """Delete living building by given id."""
+    """Delete living building by given identifier."""
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
 
     return await physical_objects_service.delete_living_building(living_building_id)
@@ -162,10 +165,11 @@ async def delete_living_building(
     "/physical_objects/{physical_object_id}/living_buildings",
     response_model=list[LivingBuildingsData],
     status_code=status.HTTP_200_OK,
+    deprecated=True,
 )
 async def get_living_buildings_by_physical_object_id(
     request: Request,
-    physical_object_id: int = Path(..., description="Physical object id"),
+    physical_object_id: int = Path(..., description="physical object identifier"),
 ) -> list[LivingBuildingsData]:
     """Get all living buildings inside a given physical object."""
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
@@ -182,9 +186,9 @@ async def get_living_buildings_by_physical_object_id(
 )
 async def get_services_by_physical_object_id(
     request: Request,
-    physical_object_id: int = Path(..., description="Physical object id"),
-    service_type_id: int = Query(None, description="To filter by service type"),
-    territory_type_id: int = Query(None, description="To filter by territory type"),
+    physical_object_id: int = Path(..., description="physical object identifier"),
+    service_type_id: int = Query(None, description="to filter by service type"),
+    territory_type_id: int = Query(None, description="to filter by territory type"),
 ) -> list[ServicesData]:
     """Get all services inside a given physical object."""
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service

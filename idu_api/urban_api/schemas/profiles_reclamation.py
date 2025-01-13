@@ -91,6 +91,16 @@ class ProfilesReclamationDataPut(BaseModel):
     )
 
 
+class ProfilesReclamationDataDelete(BaseModel):
+    """Profiles reclamation schema for DELETE requests."""
+
+    source_profile_id: int = Field(..., description="id of profile (functional zone) to be reclamated", examples=[1])
+    target_profile_id: int = Field(..., description="id of profile (functional zone) to be reclamated to", examples=[1])
+    territory_id: int | None = Field(
+        ..., description="id of territory where profile should be reclamated", examples=[1]
+    )
+
+
 class ProfilesReclamationDataMatrix(BaseModel):
     """Profiles reclamation matrix schema."""
 

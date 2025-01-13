@@ -1,7 +1,8 @@
 """Territories handlers logic of getting entities from the database is defined here."""
 
+from collections.abc import Callable
 from datetime import date, datetime
-from typing import Callable, Literal
+from typing import Literal
 
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 from sqlalchemy.ext.asyncio import AsyncConnection

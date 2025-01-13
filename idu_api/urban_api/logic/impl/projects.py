@@ -127,7 +127,6 @@ from idu_api.urban_api.schemas import (
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
 
-# pylint: disable=too-many-arguments
 class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-public-methods
     """Service to manipulate projects entities.
 
@@ -564,10 +563,10 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             self._conn, scenario_id, indicator_ids, indicators_group_id, user_id
         )
 
-    async def update_all_indicators_values_by_scenario_id(
-        self, scenario_id: int, user_id: str
-    ) -> dict[str, Any]:
-        return await update_all_indicators_values_by_scenario_id_to_db(self._conn, scenario_id, user_id, logger=self._logger)
+    async def update_all_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict[str, Any]:
+        return await update_all_indicators_values_by_scenario_id_to_db(
+            self._conn, scenario_id, user_id, logger=self._logger
+        )
 
     async def get_functional_zones_sources_by_scenario_id(
         self, scenario_id: int, user_id: str | None

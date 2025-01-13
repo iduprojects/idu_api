@@ -2,8 +2,6 @@ import abc
 import io
 from typing import Any, Protocol
 
-import structlog
-
 from idu_api.urban_api.dto import (
     FunctionalZoneDataDTO,
     FunctionalZoneSourceDTO,

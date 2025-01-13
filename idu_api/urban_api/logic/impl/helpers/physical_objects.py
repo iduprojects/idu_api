@@ -35,6 +35,7 @@ from idu_api.urban_api.dto import (
 )
 from idu_api.urban_api.exceptions.logic.common import (
     EntitiesNotFoundByIds,
+    EntityAlreadyExists,
     EntityNotFoundById,
     TooManyObjectsError,
 )
@@ -183,7 +184,7 @@ async def get_physical_objects_around_from_db(
 
 
 async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_object_id: int) -> PhysicalObjectDataDTO:
-    """Get physical object by id."""
+    """Get physical object by identifier."""
 
     statement = (
         select(
@@ -211,6 +212,7 @@ async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_obje
             )
         )
         .where(physical_objects_data.c.physical_object_id == physical_object_id)
+        .limit(1)  # TODO: a temporary fix to avoid error with multiple living buildings in one physical object
     )
 
     result = (await conn.execute(statement)).mappings().one_or_none()
@@ -404,6 +406,15 @@ async def add_living_building_to_db(
         raise EntityNotFoundById(living_building.physical_object_id, "physical object")
 
     statement = (
+        select(living_buildings_data)
+        .where(living_buildings_data.c.physical_object_id == living_building.physical_object_id)
+        .limit(1)
+    )
+    requested_living_building = (await conn.execute(statement)).one_or_none()
+    if requested_living_building is not None:
+        raise EntityAlreadyExists("living building", living_building.physical_object_id)
+
+    statement = (
         insert(living_buildings_data)
         .values(
             physical_object_id=living_building.physical_object_id,
@@ -423,12 +434,24 @@ async def add_living_building_to_db(
 async def put_living_building_to_db(
     conn: AsyncConnection, living_building: LivingBuildingsDataPut, living_building_id: int
 ) -> LivingBuildingDTO:
-    """Put living building object."""
+    """Update living building object by all its attributes."""
 
     statement = select(living_buildings_data).where(living_buildings_data.c.living_building_id == living_building_id)
     requested_living_building = (await conn.execute(statement)).one_or_none()
     if requested_living_building is None:
         raise EntityNotFoundById(living_building_id, "living building")
+
+    statement = (
+        select(living_buildings_data)
+        .where(
+            living_buildings_data.c.physical_object_id == living_building.physical_object_id,
+            living_buildings_data.c.living_building_id != living_building_id,
+        )
+        .limit(1)
+    )
+    requested_living_building = (await conn.execute(statement)).one_or_none()
+    if requested_living_building is not None:
+        raise EntityAlreadyExists("living building", living_building.physical_object_id)
 
     statement = select(physical_objects_data).where(
         physical_objects_data.c.physical_object_id == living_building.physical_object_id
@@ -457,12 +480,25 @@ async def put_living_building_to_db(
 async def patch_living_building_to_db(
     conn: AsyncConnection, living_building: LivingBuildingsDataPatch, living_building_id: int
 ) -> LivingBuildingDTO:
-    """Patch living building object."""
+    """Update living building object by only given attributes."""
 
     statement = select(living_buildings_data).where(living_buildings_data.c.living_building_id == living_building_id)
     requested_living_building = (await conn.execute(statement)).one_or_none()
     if requested_living_building is None:
         raise EntityNotFoundById(living_building_id, "living building")
+
+    if living_building.physical_object_id is not None:
+        statement = (
+            select(living_buildings_data)
+            .where(
+                living_buildings_data.c.physical_object_id == living_building.physical_object_id,
+                living_buildings_data.c.living_building_id != living_building_id,
+            )
+            .limit(1)
+        )
+        requested_living_building = (await conn.execute(statement)).one_or_none()
+        if requested_living_building is not None:
+            raise EntityAlreadyExists("living building", living_building.physical_object_id)
 
     statement = (
         update(living_buildings_data)
@@ -771,6 +807,7 @@ async def get_physical_object_with_territories_by_id_from_db(
             )
         )
         .where(physical_objects_data.c.physical_object_id == physical_object_id)
+        .limit(1)  # TODO: a temporary fix to avoid error with multiple living buildings in one physical object
     )
     result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:

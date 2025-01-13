@@ -14,10 +14,9 @@ from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     add_functional_zone_type_to_db,
     add_profiles_reclamation_data_to_db,
     delete_functional_zone_from_db,
+    delete_profiles_reclamation_data_from_db,
     get_all_sources_from_db,
     get_functional_zone_types_from_db,
-    get_profiles_reclamation_data_from_db,
-    get_profiles_reclamation_data_matrix_by_territory_id_from_db,
     get_profiles_reclamation_data_matrix_from_db,
     patch_functional_zone_to_db,
     put_functional_zone_to_db,
@@ -48,19 +47,13 @@ class FunctionalZonesServiceImpl(FunctionalZonesService):
     async def add_functional_zone_type(self, functional_zone_type: FunctionalZoneTypePost) -> FunctionalZoneTypeDTO:
         return await add_functional_zone_type_to_db(self._conn, functional_zone_type)
 
-    async def get_profiles_reclamation_data(self) -> list[ProfilesReclamationDataDTO]:
-        return await get_profiles_reclamation_data_from_db(self._conn)
+    async def get_all_sources(self, territory_id: int | None) -> list[int]:
+        return await get_all_sources_from_db(self._conn, territory_id)
 
-    async def get_all_sources(self) -> list[int]:
-        return await get_all_sources_from_db(self._conn)
-
-    async def get_profiles_reclamation_data_matrix(self, labels: list[int]) -> ProfilesReclamationDataMatrixDTO:
-        return await get_profiles_reclamation_data_matrix_from_db(self._conn, labels)
-
-    async def get_profiles_reclamation_data_matrix_by_territory_id(
-        self, territory_id: int | None
+    async def get_profiles_reclamation_data_matrix(
+        self, labels: list[int], territory_id: int | None
     ) -> ProfilesReclamationDataMatrixDTO:
-        return await get_profiles_reclamation_data_matrix_by_territory_id_from_db(self._conn, territory_id)
+        return await get_profiles_reclamation_data_matrix_from_db(self._conn, labels, territory_id)
 
     async def add_profiles_reclamation_data(
         self, profiles_reclamation: ProfilesReclamationDataPost
@@ -68,9 +61,14 @@ class FunctionalZonesServiceImpl(FunctionalZonesService):
         return await add_profiles_reclamation_data_to_db(self._conn, profiles_reclamation)
 
     async def put_profiles_reclamation_data(
-        self, profiles_reclamation_id: int, profiles_reclamation: ProfilesReclamationDataPut
+        self, profiles_reclamation: ProfilesReclamationDataPut
     ) -> ProfilesReclamationDataDTO:
-        return await put_profiles_reclamation_data_to_db(self._conn, profiles_reclamation_id, profiles_reclamation)
+        return await put_profiles_reclamation_data_to_db(self._conn, profiles_reclamation)
+
+    async def delete_profiles_reclamation_data(
+        self, source_id: int, target_id: int, territory_id: int | None
+    ) -> dict[str, str]:
+        return await delete_profiles_reclamation_data_from_db(self._conn, source_id, target_id, territory_id)
 
     async def add_functional_zone(self, functional_zone: FunctionalZoneDataPost) -> FunctionalZoneDataDTO:
         return await add_functional_zone_to_db(self._conn, functional_zone)

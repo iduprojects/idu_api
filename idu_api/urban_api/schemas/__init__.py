@@ -79,6 +79,7 @@ from .physical_objects import (
 )
 from .profiles_reclamation import (
     ProfilesReclamationData,
+    ProfilesReclamationDataDelete,
     ProfilesReclamationDataMatrix,
     ProfilesReclamationDataPost,
     ProfilesReclamationDataPut,
@@ -216,6 +217,7 @@ __all__ = [
     "ProfilesReclamationData",
     "ProfilesReclamationDataPost",
     "ProfilesReclamationDataPut",
+    "ProfilesReclamationDataDelete",
     "ProfilesReclamationDataMatrix",
     "ProjectIndicatorValue",
     "ProjectIndicatorValuePatch",

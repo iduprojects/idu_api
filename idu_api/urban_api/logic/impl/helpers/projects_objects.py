@@ -617,7 +617,7 @@ async def add_project_to_db(
                 params=params,
             )
         except aiohttp.ClientError as exc:
-            await logger.awarning(f"request failed", reason=str(exc), params=params)
+            await logger.awarning("request failed", reason=str(exc), params=params)
         except Exception as exc:  # pylint: disable=broad-except
             await logger.aexception("unexpected error occurred")
 
