@@ -25,6 +25,8 @@ from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
 
+DECIMAL_PLACES = 15
+
 
 async def get_service_types_by_territory_id_from_db(conn: AsyncConnection, territory_id: int) -> list[ServiceTypesDTO]:
     """Get all service types that are located in given territory."""
@@ -208,8 +210,8 @@ async def get_services_with_geometry_by_territory_id_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
         )
         .select_from(
             services_data.join(urban_objects_data, services_data.c.service_id == urban_objects_data.c.service_id)

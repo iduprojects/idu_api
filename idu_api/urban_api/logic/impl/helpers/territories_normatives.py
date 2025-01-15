@@ -20,6 +20,8 @@ from idu_api.urban_api.schemas import NormativeDelete, NormativePatch, Normative
 
 func: Callable
 
+DECIMAL_PLACES = 15
+
 
 async def get_normatives_by_territory_id_from_db(
     conn: AsyncConnection, territory_id: int, year: int
@@ -549,8 +551,8 @@ async def get_normatives_values_by_parent_id_from_db(
     statement = select(
         territories_data.c.territory_id,
         territories_data.c.name,
-        cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
-        cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
+        cast(ST_AsGeoJSON(territories_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+        cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
     ).where(
         territories_data.c.parent_id == parent_id if parent_id is not None else territories_data.c.parent_id.is_(None),
     )

@@ -36,6 +36,8 @@ from idu_api.urban_api.schemas import (
     ProfilesReclamationDataPut,
 )
 
+DECIMAL_PLACES = 15
+
 
 async def check_functional_zone_existence(conn: AsyncConnection, functional_zone_id: int) -> bool:
     """Functional zone (and relevant functional zone type) existence checker function."""
@@ -361,7 +363,7 @@ async def get_functional_zone_by_id(conn: AsyncConnection, functional_zone_id: i
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
-            cast(ST_AsGeoJSON(functional_zones_data.c.geometry), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(functional_zones_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
             functional_zones_data.c.year,
             functional_zones_data.c.source,
             functional_zones_data.c.properties,

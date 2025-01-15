@@ -1,6 +1,5 @@
 """Projects endpoints are defined here."""
 
-import structlog
 from fastapi import Depends, File, HTTPException, Path, Query, Request, Security, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer
@@ -250,9 +249,8 @@ async def get_user_preview_project_images_url(
 async def add_project(request: Request, project: ProjectPost, user: UserDTO = Depends(get_user)) -> Project:
     """Add a new project."""
     user_project_service: UserProjectService = request.state.user_project_service
-    logger: structlog.stdlib.BoundLogger = request.state.logger
 
-    project_dto = await user_project_service.add_project(project, user.id, logger)
+    project_dto = await user_project_service.add_project(project, user.id)
 
     return Project.from_dto(project_dto)
 

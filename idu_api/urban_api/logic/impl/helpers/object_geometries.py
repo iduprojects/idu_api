@@ -23,6 +23,7 @@ from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_object_
 from idu_api.urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
 
 func: Callable
+DECIMAL_PLACES = 15
 
 
 async def get_physical_objects_by_object_geometry_id_from_db(
@@ -94,7 +95,7 @@ async def get_object_geometry_by_ids_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.territory_id,
             cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             object_geometries_data.c.created_at,

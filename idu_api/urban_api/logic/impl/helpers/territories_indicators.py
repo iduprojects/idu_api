@@ -21,6 +21,8 @@ from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, Ent
 
 func: Callable
 
+DECIMAL_PLACES = 15
+
 
 async def get_indicators_by_territory_id_from_db(
     conn: AsyncConnection,
@@ -220,8 +222,8 @@ async def get_indicator_values_by_parent_id_from_db(
     statement = select(
         territories_data.c.territory_id,
         territories_data.c.name,
-        cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
-        cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
+        cast(ST_AsGeoJSON(territories_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+        cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
     ).where(
         (territories_data.c.parent_id == parent_id if parent_id is not None else territories_data.c.parent_id.is_(None))
     )

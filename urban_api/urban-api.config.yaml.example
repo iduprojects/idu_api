@@ -2,7 +2,7 @@ app:
   host: 0.0.0.0
   port: 8000
   debug: false
-  name: urban_api (0.33.0)
+  name: urban_api
 db:
   addr: localhost
   port: 5432
@@ -16,7 +16,7 @@ auth:
   cache_size: 100
   cache_ttl: 1800
 fileserver:
-  host: 10.32.1.42
+  host: localhost
   port: 9000
   projects_bucket: projects.images
   access_key: ''
@@ -31,6 +31,5 @@ external:
 logging:
   level: INFO
   files:
-    - filename: info.log
+    - filename: logs/info.log
       level: INFO
-

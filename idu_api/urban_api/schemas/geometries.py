@@ -22,7 +22,7 @@ class AllPossibleGeometry(BaseModel):
         "Point", "Polygon", "MultiPolygon", "LineString", "MultiPoint", "MultiLineString", "GeometryCollection"
     ] = Field(examples=["Polygon"])
     coordinates: list[Any] = Field(
-        description="list[int] for Point,\n" "list[list[list[int]]] for Polygon",
+        description="list[float] for Point,\n" "list[list[list[float]]] for Polygon",
         examples=[
             [
                 [
@@ -62,14 +62,16 @@ class Geometry(BaseModel):
 
     type: Literal["Point", "Polygon", "MultiPolygon", "LineString", "MultiLineString"] = Field(default="Polygon")
     coordinates: list[Any] = Field(
-        description="list[int] for Point,\n" "list[list[list[int]]] for Polygon",
-        default=[
+        description="list[float] for Point,\n" "list[list[list[float]]] for Polygon",
+        examples=[
             [
-                [30.22, 59.86],
-                [30.22, 59.85],
-                [30.25, 59.85],
-                [30.25, 59.86],
-                [30.22, 59.86],
+                [
+                    [30.22, 59.86],
+                    [30.22, 59.85],
+                    [30.25, 59.85],
+                    [30.25, 59.86],
+                    [30.22, 59.86],
+                ]
             ]
         ],
     )

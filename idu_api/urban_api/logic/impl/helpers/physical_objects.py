@@ -54,6 +54,7 @@ func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString
 
 OBJECTS_NUMBER_LIMIT = 20_000
+DECIMAL_PLACES = 15
 
 
 async def get_physical_objects_by_ids_from_db(
@@ -73,8 +74,8 @@ async def get_physical_objects_by_ids_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             living_buildings_data.c.living_building_id,
             living_buildings_data.c.living_area,
             living_buildings_data.c.properties.label("living_building_properties"),

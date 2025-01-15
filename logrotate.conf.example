@@ -1,0 +1,8 @@
+/app/logs/info.log {
+    rotate 3
+    size 50M
+    compress
+    missingok
+    notifempty
+    copytruncate
+}

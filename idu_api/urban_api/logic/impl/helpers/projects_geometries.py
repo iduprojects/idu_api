@@ -47,6 +47,8 @@ from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, Entit
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPut
 
+DECIMAL_PLACES = 15
+
 
 async def get_geometries_by_scenario_id_from_db(
     conn: AsyncConnection,
@@ -86,8 +88,8 @@ async def get_geometries_by_scenario_id_from_db(
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             object_geometries_data.c.created_at,
             object_geometries_data.c.updated_at,
         )
@@ -147,15 +149,19 @@ async def get_geometries_by_scenario_id_from_db(
             territories_data.c.name.label("territory_name"),
             projects_object_geometries_data.c.address,
             projects_object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
+                "centre_point"
+            ),
             projects_object_geometries_data.c.created_at,
             projects_object_geometries_data.c.updated_at,
             object_geometries_data.c.object_geometry_id.label("public_object_geometry_id"),
             object_geometries_data.c.address.label("public_address"),
             object_geometries_data.c.osm_id.label("public_osm_id"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("public_geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("public_centre_point"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("public_geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
+                "public_centre_point"
+            ),
             object_geometries_data.c.created_at.label("public_created_at"),
             object_geometries_data.c.updated_at.label("public_updated_at"),
         )
@@ -306,8 +312,8 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             services_data.c.service_id,
             services_data.c.name.label("service_name"),
             services_data.c.capacity_real,
@@ -372,8 +378,10 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
             projects_object_geometries_data.c.territory_id,
             projects_object_geometries_data.c.address,
             projects_object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
+                "centre_point"
+            ),
             projects_services_data.c.name.label("service_name"),
             projects_services_data.c.capacity_real,
             projects_services_data.c.properties.label("service_properties"),
@@ -384,8 +392,10 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
             living_buildings_data.c.properties.label("public_living_building_properties"),
             object_geometries_data.c.address.label("public_address"),
             object_geometries_data.c.osm_id.label("public_osm_id"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("public_geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("public_centre_point"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("public_geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
+                "public_centre_point"
+            ),
             services_data.c.name.label("public_service_name"),
             services_data.c.capacity_real.label("public_capacity_real"),
             services_data.c.properties.label("public_service_properties"),
@@ -797,11 +807,14 @@ async def get_context_geometries_by_scenario_id_from_db(
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, unified_geometry)), JSONB).label(
-                "geometry"
-            ),
             cast(
-                ST_AsGeoJSON(ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, unified_geometry))),
+                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, unified_geometry), DECIMAL_PLACES),
+                JSONB,
+            ).label("geometry"),
+            cast(
+                ST_AsGeoJSON(
+                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, unified_geometry)), DECIMAL_PLACES
+                ),
                 JSONB,
             ).label("centre_point"),
             object_geometries_data.c.created_at,
@@ -930,11 +943,14 @@ async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, unified_geometry)), JSONB).label(
-                "geometry"
-            ),
             cast(
-                ST_AsGeoJSON(ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, unified_geometry))),
+                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, unified_geometry), DECIMAL_PLACES),
+                JSONB,
+            ).label("geometry"),
+            cast(
+                ST_AsGeoJSON(
+                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, unified_geometry)), DECIMAL_PLACES
+                ),
                 JSONB,
             ).label("centre_point"),
             services_data.c.service_id,
@@ -1139,8 +1155,10 @@ async def get_scenario_object_geometry_by_id_from_db(
             territories_data.c.name.label("territory_name"),
             projects_object_geometries_data.c.address,
             projects_object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
+                "centre_point"
+            ),
             projects_object_geometries_data.c.created_at,
             projects_object_geometries_data.c.updated_at,
             literal(True).label("is_scenario_object"),

@@ -14,6 +14,7 @@ from idu_api.urban_api.logic.impl.helpers.territory_objects import check_territo
 from idu_api.urban_api.schemas import HexagonPost
 
 OBJECTS_NUMBER_TO_INSERT_LIMIT: int = 7_000
+DECIMAL_PLACES: int = 15
 
 
 async def get_hexagons_by_ids(conn: AsyncConnection, hexagon_ids: list[int]) -> list[HexagonDTO]:
@@ -23,8 +24,8 @@ async def get_hexagons_by_ids(conn: AsyncConnection, hexagon_ids: list[int]) -> 
         select(
             hexagons_data.c.hexagon_id,
             hexagons_data.c.territory_id,
-            cast(ST_AsGeoJSON(hexagons_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(hexagons_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(hexagons_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(hexagons_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             hexagons_data.c.properties,
             territories_data.c.name.label("territory_name"),
         )
@@ -50,8 +51,8 @@ async def get_hexagons_by_territory_id_from_db(conn: AsyncConnection, territory_
         select(
             hexagons_data.c.hexagon_id,
             hexagons_data.c.territory_id,
-            cast(ST_AsGeoJSON(hexagons_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(hexagons_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(hexagons_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(hexagons_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             hexagons_data.c.properties,
             territories_data.c.name.label("territory_name"),
         )

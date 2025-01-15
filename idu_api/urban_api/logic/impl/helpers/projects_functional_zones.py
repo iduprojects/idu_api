@@ -25,6 +25,8 @@ from idu_api.urban_api.schemas import (
     ProjectProfilePut,
 )
 
+DECIMAL_PLACES = 15
+
 
 async def check_functional_zone_existence(conn: AsyncConnection, profile_id: int) -> bool:
     """functional_zone existence checker function."""
@@ -94,7 +96,7 @@ async def get_functional_zones_by_scenario_id_from_db(
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             profiles_data.c.name,
-            cast(ST_AsGeoJSON(profiles_data.c.geometry), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(profiles_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
             profiles_data.c.year,
             profiles_data.c.source,
             profiles_data.c.properties,
@@ -278,9 +280,9 @@ async def get_context_functional_zones_by_scenario_id_from_db(
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
-            cast(ST_AsGeoJSON(ST_Intersection(functional_zones_data.c.geometry, unified_geometry)), JSONB).label(
-                "geometry"
-            ),
+            cast(
+                ST_AsGeoJSON(ST_Intersection(functional_zones_data.c.geometry, unified_geometry), DECIMAL_PLACES), JSONB
+            ).label("geometry"),
             functional_zones_data.c.year,
             functional_zones_data.c.source,
             functional_zones_data.c.properties,
@@ -324,7 +326,7 @@ async def get_functional_zone_by_id(conn: AsyncConnection, profile_id: int) -> P
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             profiles_data.c.name,
-            cast(ST_AsGeoJSON(profiles_data.c.geometry), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(profiles_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
             profiles_data.c.year,
             profiles_data.c.source,
             profiles_data.c.properties,

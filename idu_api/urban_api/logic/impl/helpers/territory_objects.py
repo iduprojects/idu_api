@@ -18,6 +18,8 @@ from idu_api.urban_api.utils.pagination import paginate_dto
 func: Callable
 Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
 
+DECIMAL_PLACES = 15
+
 
 async def check_territory_existence(conn: AsyncConnection, territory_id: int) -> bool:
     """Territory existence checker function."""
@@ -43,10 +45,10 @@ async def get_territories_by_ids(conn: AsyncConnection, territory_ids: list[int]
             territories_data.c.parent_id,
             territories_data_parents.c.name.label("parent_name"),
             territories_data.c.name,
-            cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(territories_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
             territories_data.c.level,
             territories_data.c.properties,
-            cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             territories_data.c.admin_center,
             territories_data.c.okato_code,
             territories_data.c.oktmo_code,
@@ -252,10 +254,10 @@ async def get_territories_by_parent_id_from_db(
         territories_data.c.parent_id,
         territories_data_parents.c.name.label("parent_name"),
         territories_data.c.name,
-        cast(ST_AsGeoJSON(territories_data.c.geometry), JSONB).label("geometry"),
+        cast(ST_AsGeoJSON(territories_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
         territories_data.c.level,
         territories_data.c.properties,
-        cast(ST_AsGeoJSON(territories_data.c.centre_point), JSONB).label("centre_point"),
+        cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
         territories_data.c.admin_center,
         territories_data.c.okato_code,
         territories_data.c.oktmo_code,

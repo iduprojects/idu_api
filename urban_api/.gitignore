@@ -2,6 +2,7 @@
 kc_data/
 pg_data/
 minio_data/
+logs/
 
 # Ignore editor-specific files
 .vscode/

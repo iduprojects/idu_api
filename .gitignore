@@ -25,3 +25,4 @@ pg_data/
 .pylintrc
 
 *.log
+*.conf

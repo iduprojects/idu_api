@@ -21,6 +21,8 @@ from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, Entity
 from idu_api.urban_api.logic.impl.helpers.territory_objects import check_territory_existence
 from idu_api.urban_api.utils.pagination import paginate_dto
 
+DECIMAL_PLACES = 15
+
 
 async def get_physical_object_types_by_territory_id_from_db(
     conn: AsyncConnection, territory_id: int
@@ -214,8 +216,8 @@ async def get_physical_objects_with_geometry_by_territory_id_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             living_buildings_data.c.living_building_id,
             living_buildings_data.c.living_area,
             living_buildings_data.c.properties.label("living_building_properties"),

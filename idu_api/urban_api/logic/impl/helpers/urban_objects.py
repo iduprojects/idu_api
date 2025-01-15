@@ -22,6 +22,8 @@ from idu_api.urban_api.dto import UrbanObjectDTO
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.schemas import UrbanObjectPatch
 
+DECIMAL_PLACES = 15
+
 
 async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id: int) -> UrbanObjectDTO:
     """Get urban object by urban object id."""
@@ -39,8 +41,8 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
             physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             object_geometries_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             object_geometries_data.c.created_at.label("object_geometry_created_at"),
             object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
             services_data.c.name.label("service_name"),
@@ -209,8 +211,8 @@ async def get_urban_objects_by_territory_id_from_db(
                 physical_objects_data.c.created_at.label("physical_object_created_at"),
                 physical_objects_data.c.updated_at.label("physical_object_updated_at"),
                 object_geometries_data.c.territory_id,
-                cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-                cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+                cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+                cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
                 object_geometries_data.c.created_at.label("object_geometry_created_at"),
                 object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
                 services_data.c.name.label("service_name"),

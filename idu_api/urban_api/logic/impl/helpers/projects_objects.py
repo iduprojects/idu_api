@@ -55,6 +55,7 @@ from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
+DECIMAL_PLACES = 15
 
 
 async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user_id: str) -> ProjectDTO:
@@ -100,8 +101,8 @@ async def get_project_territory_by_id_from_db(
             projects_data.c.user_id.label("project_user_id"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.centre_point), JSONB).label("centre_point"),
+            cast(ST_AsGeoJSON(projects_territory_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(projects_territory_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             projects_territory_data.c.properties,
         )
         .select_from(

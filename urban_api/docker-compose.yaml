@@ -54,7 +54,7 @@ services:
         condition: service_healthy
 
   api:
-    container_name: urban_api_and_city_api
+    container_name: urban_api
     build:
       context: ..
       dockerfile: urban_api/Dockerfile
@@ -65,6 +65,8 @@ services:
       - ./.env
     environment:
       - DEBUG
+    volumes:
+      - ./logs:/app/logs
     depends_on:
       fileserver:
         condition: service_healthy
