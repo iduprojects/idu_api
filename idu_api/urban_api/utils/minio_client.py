@@ -1,12 +1,10 @@
 import asyncio
 import io
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 
 import aioboto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
-from cachetools import cached
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from idu_api.urban_api.config import UrbanAPIConfig
@@ -156,8 +154,6 @@ class AsyncMinioClient:
                 raise DeleteFileError(str(exc)) from exc
 
 
-@cached
-@asynccontextmanager
 async def get_minio_client() -> AsyncIterator[AsyncMinioClient]:
     app_config = UrbanAPIConfig.from_file_or_default()
     minio_client = AsyncMinioClient(
