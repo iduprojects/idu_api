@@ -117,10 +117,9 @@ class MockResult:
         """
         if len(self.rows) == 1:
             return self.rows[0]
-        elif len(self.rows) == 0:
+        if len(self.rows) == 0:
             return None
-        else:
-            raise Exception("Expected one or zero rows, but got multiple rows.")
+        raise ValueError("Expected one or zero rows, but got multiple rows.")
 
     def all(self):
         """
@@ -152,17 +151,17 @@ class MockConnection:
         """
         if dtype == int:
             return 1
-        elif dtype == str:
+        if dtype == str:
             return "mock_string"
-        elif dtype == float:
+        if dtype == float:
             return 1.23
-        elif dtype == bool:
+        if dtype == bool:
             return True
-        elif dtype == dict:
+        if dtype == dict:
             return {}
-        elif dtype == "GeometryType":
+        if dtype == "GeometryType":
             return Point(1, 1)
-        elif dtype == datetime:
+        if dtype == datetime:
             return datetime(2024, 1, 1)
         return None  # Default for unknown types
 

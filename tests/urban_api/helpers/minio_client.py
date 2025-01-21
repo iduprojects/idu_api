@@ -22,17 +22,17 @@ class MockAsyncMinioClient:
         """Mock the get_file method."""
         if await self.objects_exist(object_names):
             return [io.BytesIO(self._store[name]) for name in object_names]
-        raise FileNotFoundError(f"At least one object not found in mock store.")
+        raise FileNotFoundError("At least one object not found in mock store.")
 
     async def objects_exist(self, object_names: list[str]) -> bool:
         """Mock the object_exists method."""
         return all(name in self._store for name in object_names)
 
-    async def generate_presigned_urls(self, object_names: list[str], expires_in: int = 3600) -> list[str]:
+    async def generate_presigned_urls(self, object_names: list[str]) -> list[str]:
         """Mock the generate_presigned_url method."""
         if await self.objects_exist(object_names):
             return [f"http://mockstorage/{self._bucket_name}/{name}" for name in object_names]
-        raise GetPresignedURLError(f"At least one object not found in mock store.")
+        raise GetPresignedURLError("At least one object not found in mock store.")
 
     async def delete_file(self, object_name: str) -> None:
         """Mock the delete_file method."""

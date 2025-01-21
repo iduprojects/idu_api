@@ -170,7 +170,7 @@ class UrbanAPIConfig:
                 logging=LoggingConfig(**data.get("logging", {})),
             )
         except Exception as exc:
-            raise ValueError("Could not read app config file") from exc
+            raise ValueError(f"Could not read app config file: {file}") from exc
 
     @classmethod
     def from_file_or_default(cls, config_path: str = os.getenv("CONFIG_PATH")) -> "UrbanAPIConfig":

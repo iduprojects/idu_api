@@ -1,6 +1,6 @@
 import asyncio
 import io
-from collections.abc import AsyncIterator
+from functools import lru_cache
 
 import aioboto3
 from botocore.client import Config
@@ -154,7 +154,8 @@ class AsyncMinioClient:
                 raise DeleteFileError(str(exc)) from exc
 
 
-async def get_minio_client() -> AsyncIterator[AsyncMinioClient]:
+# @lru_cache(4)
+def get_minio_client() -> AsyncMinioClient:
     app_config = UrbanAPIConfig.from_file_or_default()
     minio_client = AsyncMinioClient(
         host=app_config.fileserver.host,
@@ -167,4 +168,4 @@ async def get_minio_client() -> AsyncIterator[AsyncMinioClient]:
         read_timeout=app_config.fileserver.read_timeout,
         retries=app_config.fileserver.retries,
     )
-    yield minio_client
+    return minio_client

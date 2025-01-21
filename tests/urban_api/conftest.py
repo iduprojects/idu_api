@@ -3,17 +3,19 @@ import random
 import subprocess
 import tempfile
 import time
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
+import httpx
+import pytest
 from alembic import command
 from alembic.config import Config
 from dotenv import load_dotenv
 
 from idu_api.urban_api.config import AppConfig, DBConfig, UrbanAPIConfig
-from tests.urban_api.helpers.connection import *
-from tests.urban_api.helpers.minio_client import *
-from tests.urban_api.projects.helpers.projects import *  # pylint: disable=wildcard-import,unused-wildcard-import
+from tests.urban_api.helpers import *
+from tests.urban_api.integration.helpers import *
+from tests.urban_api.unit.helpers import *
 
 
 @pytest.fixture(scope="session")
@@ -67,7 +69,7 @@ def urban_api_host(database) -> Iterator[str]:  # pylint: disable=redefined-oute
         max_attempts = 10
 
         try:
-            for attempt in range(max_attempts):
+            for _ in range(max_attempts):
                 time.sleep(1)
                 if client.get(f"{host}/health_check/ping").is_success:
                     break
