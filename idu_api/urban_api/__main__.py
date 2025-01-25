@@ -81,6 +81,7 @@ def _run_uvicorn(configuration: dict[str, tp.Any]) -> tp.NoReturn:
     "--config_path",
     envvar="CONFIG_PATH",
     default="urban-api.config.yaml",
+    type=click.Path(exists=True, dir_okay=False, path_type=str),
     show_default=True,
     show_envvar=True,
     help="Path to YAML configuration file",

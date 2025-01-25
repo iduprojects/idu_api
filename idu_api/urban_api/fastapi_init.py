@@ -82,7 +82,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
     auth_client = AuthenticationClient(0, 0, False, "")
 
     def ignore_kwargs(func: Callable) -> Callable:
-        def wrapped(*args, **kwargs):
+        def wrapped(*args, **_kwargs):
             return func(*args)
 
         return wrapped

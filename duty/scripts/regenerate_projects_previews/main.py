@@ -1,0 +1,60 @@
+import asyncio
+import click
+import structlog
+from idu_api.common.db.connection.manager import PostgresConnectionManager
+from idu_api.urban_api.config import UrbanAPIConfig
+from idu_api.urban_api.dto.projects import ProjectDTO
+from idu_api.urban_api.logic.impl.projects import UserProjectServiceImpl
+from idu_api.urban_api.logic.projects import UserProjectService
+from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client
+
+
+async def regenerate_preview(service: UserProjectService, minio_client: AsyncMinioClient, project: ProjectDTO):
+    image_buf = await service.get_full_project_image(minio_client, project.project_id, project.user_id)
+    await service.upload_project_image(minio_client, project.project_id, project.user_id, image_buf.read())
+
+
+async def async_main(connection_manager: PostgresConnectionManager, minio_client: AsyncMinioClient, logger: structlog.stdlib.BoundLogger):
+    async with connection_manager.get_connection() as conn:
+        service = UserProjectServiceImpl(conn, logger)
+
+        projects = await service.get_all_projects()
+        
+        for project in projects:
+            try:
+                await regenerate_preview(service, minio_client, project)
+                logger.info("regenerated project preview", project_id=project.project_id)
+            except Exception as exc:
+                logger.warning("could not regenerate preview", project_id=project.project_id, error=repr(exc))
+
+@click.command("regenerate-projects-previews")
+@click.option(
+    "--config_path",
+    envvar="CONFIG_PATH",
+    default="../../../urban-api.config.yaml",
+    type=click.Path(exists=True, dir_okay=False, path_type=str),
+    show_default=True,
+    show_envvar=True,
+    help="Path to YAML configuration file",
+)
+def main(config_path: str):
+    config = UrbanAPIConfig.load(config_path)
+    logger = structlog.getLogger("regenerate-project-previews")
+    connection_manager = PostgresConnectionManager(
+        host=config.db.addr,
+        port=config.db.port,
+        database=config.db.name,
+        user=config.db.user,
+        password=config.db.password,
+        logger=logger,
+        pool_size=1,
+        application_name="duty_regenerate_projects_previews",
+    )
+    minio_client = get_minio_client(config)
+
+    asyncio.run(async_main(connection_manager, minio_client, logger))
+
+
+
+if __name__ == "__main__":
+    main()

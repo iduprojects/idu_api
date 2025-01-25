@@ -74,6 +74,9 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     ) -> PageDTO[ProjectDTO]:
         """Get all public and user's projects."""
 
+    async def get_all_projects(self) -> list[ProjectDTO]:
+        """Get all projects minimal info."""
+
     @abc.abstractmethod
     async def get_projects_territories(
         self,
