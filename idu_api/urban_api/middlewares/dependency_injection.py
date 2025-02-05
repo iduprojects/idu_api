@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 
 
-class DependencyInitializer(Protocol):
+class DependencyInitializer(Protocol):  # pylint: disablt=too-few-public-methods
     def __call__(self, conn: AsyncConnection, **kwargs: Any) -> Any: ...
 
 

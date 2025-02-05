@@ -2,17 +2,17 @@
 
 from asyncio import Lock
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 import structlog
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 
-class PostgresConnectionManager:
+class PostgresConnectionManager:  # pylint: disable=too-many-instance-attributes
     """Connection manager for PostgreSQL database"""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         host: str,
         port: int,
@@ -22,6 +22,7 @@ class PostgresConnectionManager:
         logger: structlog.stdlib.BoundLogger,
         pool_size: int = 10,
         application_name: str | None = None,
+        engine_options: dict[str, Any] | None = None,
     ) -> None:
         """Initialize connection manager entity."""
         self._engine: AsyncEngine | None = None
@@ -34,8 +35,9 @@ class PostgresConnectionManager:
         self._application_name = application_name
         self._lock = Lock()
         self._logger = logger
+        self._engine_options = engine_options or {}
 
-    async def update(
+    async def update(  # pylint: disable=too-many-arguments
         self,
         host: str | None = None,
         port: int | None = None,
@@ -45,6 +47,7 @@ class PostgresConnectionManager:
         logger: structlog.stdlib.BoundLogger | None = None,
         pool_size: int | None = None,
         application_name: str | None = None,
+        engine_options: dict[str, Any] | None = None,
     ) -> None:
         """Initialize connection manager entity."""
         async with self._lock:
@@ -56,6 +59,7 @@ class PostgresConnectionManager:
             self._logger = logger or self._logger
             self._pool_size = pool_size or self._pool_size
             self._application_name = application_name or self._application_name
+            self._engine_options = engine_options or self._engine_options
 
             if self.initialized:
                 await self.refresh()
@@ -83,6 +87,7 @@ class PostgresConnectionManager:
             future=True,
             pool_size=max(1, self._pool_size - 5),
             max_overflow=5,
+            **self._engine_options,
         )
         try:
             async with self._engine.connect() as conn:

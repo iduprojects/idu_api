@@ -60,6 +60,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     delete_project_from_db,
+    get_all_projects_from_db,
     get_full_project_image_from_minio,
     get_full_project_image_url_from_minio,
     get_preview_project_image_from_minio,
@@ -143,6 +144,9 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def get_project_territory_by_id(self, project_id: int, user_id: str | None) -> ProjectTerritoryDTO:
         return await get_project_territory_by_id_from_db(self._conn, project_id, user_id)
+
+    async def get_all_projects(self) -> list[ProjectDTO]:
+        return await get_all_projects_from_db(self._conn)
 
     async def get_projects(
         self,
