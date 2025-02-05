@@ -1,43 +1,32 @@
 """Projects functional zones internal logic is defined here."""
 
-from datetime import datetime, timezone
-
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText, ST_Intersection, ST_Intersects, ST_Union
-from sqlalchemy import cast, delete, insert, select, text, update
+from geoalchemy2.functions import ST_AsGeoJSON, ST_Intersection, ST_Intersects
+from sqlalchemy import cast, delete, insert, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
     functional_zone_types_dict,
     functional_zones_data,
-    profiles_data,
-    projects_data,
+    projects_functional_zones,
     scenarios_data,
     territories_data,
 )
-from idu_api.urban_api.dto import FunctionalZoneDataDTO, FunctionalZoneSourceDTO, ProjectProfileDTO
-from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById
-from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
-from idu_api.urban_api.logic.impl.helpers.functional_zones import check_functional_zone_type_existence
-from idu_api.urban_api.schemas import (
-    ProjectProfilePatch,
-    ProjectProfilePost,
-    ProjectProfilePut,
+from idu_api.urban_api.dto import FunctionalZoneDTO, FunctionalZoneSourceDTO, ScenarioFunctionalZoneDTO
+from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
+from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario
+from idu_api.urban_api.logic.impl.helpers.utils import (
+    DECIMAL_PLACES,
+    OBJECTS_NUMBER_LIMIT,
+    check_existence,
+    extract_values_from_model,
+    get_all_context_territories,
 )
-
-DECIMAL_PLACES = 15
-
-
-async def check_functional_zone_existence(conn: AsyncConnection, profile_id: int) -> bool:
-    """functional_zone existence checker function."""
-
-    statement = select(profiles_data).where(profiles_data.c.profile_id == profile_id)
-    functional_zone = (await conn.execute(statement)).mappings().one_or_none()
-
-    if functional_zone is None:
-        return False
-
-    return True
+from idu_api.urban_api.schemas import (
+    ScenarioFunctionalZonePatch,
+    ScenarioFunctionalZonePost,
+    ScenarioFunctionalZonePut,
+)
 
 
 async def get_functional_zones_sources_by_scenario_id_from_db(
@@ -47,24 +36,16 @@ async def get_functional_zones_sources_by_scenario_id_from_db(
 ) -> list[FunctionalZoneSourceDTO]:
     """Get list of pairs year + source for functional zones for given scenario."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
+    await check_scenario(conn, scenario_id, user_id)
 
     statement = (
-        select(profiles_data.c.year, profiles_data.c.source)
-        .where(profiles_data.c.scenario_id == scenario_id)
+        select(projects_functional_zones.c.year, projects_functional_zones.c.source)
+        .where(projects_functional_zones.c.scenario_id == scenario_id)
         .distinct()
     )
     result = (await conn.execute(statement)).mappings().all()
 
-    return [FunctionalZoneSourceDTO(**res) for res in result]
+    return [FunctionalZoneSourceDTO(**source) for source in result]
 
 
 async def get_functional_zones_by_scenario_id_from_db(
@@ -74,128 +55,66 @@ async def get_functional_zones_by_scenario_id_from_db(
     source: str,
     functional_zone_type_id: int | None,
     user_id: str,
-) -> list[ProjectProfileDTO]:
+) -> list[ScenarioFunctionalZoneDTO]:
     """Get list of functional zone objects by scenario identifier."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
+    await check_scenario(conn, scenario_id, user_id)
 
     statement = (
         select(
-            profiles_data.c.profile_id,
-            profiles_data.c.scenario_id,
+            projects_functional_zones.c.profile_id.label("functional_zone_id"),
+            projects_functional_zones.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
-            profiles_data.c.functional_zone_type_id,
+            projects_functional_zones.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
-            profiles_data.c.name,
-            cast(ST_AsGeoJSON(profiles_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            profiles_data.c.year,
-            profiles_data.c.source,
-            profiles_data.c.properties,
-            profiles_data.c.created_at,
-            profiles_data.c.updated_at,
+            projects_functional_zones.c.name,
+            cast(ST_AsGeoJSON(projects_functional_zones.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            projects_functional_zones.c.year,
+            projects_functional_zones.c.source,
+            projects_functional_zones.c.properties,
+            projects_functional_zones.c.created_at,
+            projects_functional_zones.c.updated_at,
         )
         .select_from(
-            profiles_data.join(
+            projects_functional_zones.join(
                 scenarios_data,
-                scenarios_data.c.scenario_id == profiles_data.c.scenario_id,
+                scenarios_data.c.scenario_id == projects_functional_zones.c.scenario_id,
             ).join(
                 functional_zone_types_dict,
-                functional_zone_types_dict.c.functional_zone_type_id == profiles_data.c.functional_zone_type_id,
+                functional_zone_types_dict.c.functional_zone_type_id
+                == projects_functional_zones.c.functional_zone_type_id,
             )
         )
         .where(
-            profiles_data.c.scenario_id == scenario_id,
-            profiles_data.c.year == year,
-            profiles_data.c.source == source,
+            projects_functional_zones.c.scenario_id == scenario_id,
+            projects_functional_zones.c.year == year,
+            projects_functional_zones.c.source == source,
         )
     )
 
     if functional_zone_type_id is not None:
-        statement = statement.where(profiles_data.c.functional_zone_type_id == functional_zone_type_id)
+        statement = statement.where(projects_functional_zones.c.functional_zone_type_id == functional_zone_type_id)
 
     result = (await conn.execute(statement)).mappings().all()
 
-    return [ProjectProfileDTO(**profile) for profile in result]
+    return [ScenarioFunctionalZoneDTO(**profile) for profile in result]
 
 
-async def get_context_functional_zones_sources_by_scenario_id_from_db(
+async def get_context_functional_zones_sources_from_db(
     conn: AsyncConnection,
-    scenario_id: int,
+    project_id: int,
     user_id: str,
 ) -> list[FunctionalZoneSourceDTO]:
     """Get list of pairs year + source for functional zones for 'context' of the project territory."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
-
-    context_territories = select(
-        territories_data.c.territory_id,
-        territories_data.c.geometry,
-    ).where(territories_data.c.territory_id.in_(project.properties["context"]))
-    unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-    all_descendants = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_descendants", recursive=True)
-    )
-    all_descendants = all_descendants.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_descendants,
-                territories_data.c.parent_id == all_descendants.c.territory_id,
-            )
-        )
-    )
-    all_ancestors = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_ancestors", recursive=True)
-    )
-    all_ancestors = all_ancestors.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_ancestors,
-                territories_data.c.territory_id == all_ancestors.c.parent_id,
-            )
-        )
-    )
-    all_related_territories = (
-        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
-    )
+    context = await get_all_context_territories(conn, project_id, user_id)
 
     statement = (
         select(functional_zones_data.c.year, functional_zones_data.c.source)
         .where(
-            functional_zones_data.c.territory_id.in_(select(all_related_territories.c.territory_id)),
-            ST_Intersects(functional_zones_data.c.geometry, unified_geometry),
+            functional_zones_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
+            ST_Intersects(functional_zones_data.c.geometry, context["geometry"]),
         )
         .distinct()
     )
@@ -204,72 +123,17 @@ async def get_context_functional_zones_sources_by_scenario_id_from_db(
     return [FunctionalZoneSourceDTO(**res) for res in result]
 
 
-async def get_context_functional_zones_by_scenario_id_from_db(
+async def get_context_functional_zones_from_db(
     conn: AsyncConnection,
-    scenario_id: int,
+    project_id: int,
     year: int,
     source: str,
     functional_zone_type_id: int | None,
     user_id: str,
-) -> list[FunctionalZoneDataDTO]:
+) -> list[FunctionalZoneDTO]:
     """Get list of functional zone objects for 'context' of the project territory."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
-
-    context_territories = select(
-        territories_data.c.territory_id,
-        territories_data.c.geometry,
-    ).where(territories_data.c.territory_id.in_(project.properties["context"]))
-    unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-    all_descendants = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_descendants", recursive=True)
-    )
-    all_descendants = all_descendants.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_descendants,
-                territories_data.c.parent_id == all_descendants.c.territory_id,
-            )
-        )
-    )
-    all_ancestors = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_ancestors", recursive=True)
-    )
-    all_ancestors = all_ancestors.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_ancestors,
-                territories_data.c.territory_id == all_ancestors.c.parent_id,
-            )
-        )
-    )
-    all_related_territories = (
-        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
-    )
+    context = await get_all_context_territories(conn, project_id, user_id)
 
     statement = (
         select(
@@ -281,7 +145,8 @@ async def get_context_functional_zones_by_scenario_id_from_db(
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
             cast(
-                ST_AsGeoJSON(ST_Intersection(functional_zones_data.c.geometry, unified_geometry), DECIMAL_PLACES), JSONB
+                ST_AsGeoJSON(ST_Intersection(functional_zones_data.c.geometry, context["geometry"]), DECIMAL_PLACES),
+                JSONB,
             ).label("geometry"),
             functional_zones_data.c.year,
             functional_zones_data.c.source,
@@ -301,8 +166,8 @@ async def get_context_functional_zones_by_scenario_id_from_db(
         .where(
             functional_zones_data.c.year == year,
             functional_zones_data.c.source == source,
-            functional_zones_data.c.territory_id.in_(select(all_related_territories.c.territory_id)),
-            ST_Intersects(functional_zones_data.c.geometry, unified_geometry),
+            functional_zones_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
+            ST_Intersects(functional_zones_data.c.geometry, context["geometry"]),
         )
     )
 
@@ -311,237 +176,161 @@ async def get_context_functional_zones_by_scenario_id_from_db(
 
     result = (await conn.execute(statement)).mappings().all()
 
-    return [FunctionalZoneDataDTO(**zone) for zone in result]
+    return [FunctionalZoneDTO(**zone) for zone in result]
 
 
-async def get_functional_zone_by_id(conn: AsyncConnection, profile_id: int) -> ProjectProfileDTO:
+async def get_functional_zone_by_ids(conn: AsyncConnection, ids: list[int]) -> list[ScenarioFunctionalZoneDTO]:
     """Get functional zone by identifier."""
+
+    if len(ids) > OBJECTS_NUMBER_LIMIT:
+        raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
     statement = (
         select(
-            profiles_data.c.profile_id,
-            profiles_data.c.scenario_id,
+            projects_functional_zones.c.profile_id.label("functional_zone_id"),
+            projects_functional_zones.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
-            profiles_data.c.functional_zone_type_id,
+            projects_functional_zones.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
-            profiles_data.c.name,
-            cast(ST_AsGeoJSON(profiles_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            profiles_data.c.year,
-            profiles_data.c.source,
-            profiles_data.c.properties,
-            profiles_data.c.created_at,
-            profiles_data.c.updated_at,
+            projects_functional_zones.c.name,
+            cast(ST_AsGeoJSON(projects_functional_zones.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            projects_functional_zones.c.year,
+            projects_functional_zones.c.source,
+            projects_functional_zones.c.properties,
+            projects_functional_zones.c.created_at,
+            projects_functional_zones.c.updated_at,
         )
         .select_from(
-            profiles_data.join(
+            projects_functional_zones.join(
                 scenarios_data,
-                scenarios_data.c.scenario_id == profiles_data.c.scenario_id,
+                scenarios_data.c.scenario_id == projects_functional_zones.c.scenario_id,
             ).join(
                 functional_zone_types_dict,
-                functional_zone_types_dict.c.functional_zone_type_id == profiles_data.c.functional_zone_type_id,
+                functional_zone_types_dict.c.functional_zone_type_id
+                == projects_functional_zones.c.functional_zone_type_id,
             )
         )
-        .where(profiles_data.c.profile_id == profile_id)
+        .where(projects_functional_zones.c.profile_id.in_(ids))
     )
 
-    result = (await conn.execute(statement)).mappings().one_or_none()
-    if result is None:
-        raise EntityNotFoundById(profile_id, "scenario functional zone")
+    result = (await conn.execute(statement)).mappings().all()
+    if len(result) < len(ids):
+        raise EntitiesNotFoundByIds("scenario functional zone")
 
-    return ProjectProfileDTO(**result)
+    return [ScenarioFunctionalZoneDTO(**zone) for zone in result]
 
 
 async def add_scenario_functional_zones_to_db(
-    conn: AsyncConnection, functional_zones: list[ProjectProfilePost], scenario_id: int, user_id: str
-) -> list[ProjectProfileDTO]:
-    """Add list of scenario functional zones objects."""
+    conn: AsyncConnection, functional_zones: list[ScenarioFunctionalZonePost], scenario_id: int, user_id: str
+) -> list[ScenarioFunctionalZoneDTO]:
+    """Add list of scenario functional zone objects."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
+    await check_scenario(conn, scenario_id, user_id, to_edit=True)
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    statement = delete(profiles_data).where(profiles_data.c.scenario_id == scenario_id)
+    statement = delete(projects_functional_zones).where(projects_functional_zones.c.scenario_id == scenario_id)
     await conn.execute(statement)
 
-    functional_zone_type_ids = set(functional_zone.functional_zone_type_id for functional_zone in functional_zones)
+    functional_zone_type_ids = {functional_zone.functional_zone_type_id for functional_zone in functional_zones}
     statement = select(functional_zone_types_dict.c.functional_zone_type_id).where(
         functional_zone_types_dict.c.functional_zone_type_id.in_(functional_zone_type_ids)
     )
     functional_zone_types = (await conn.execute(statement)).scalars().all()
-    if len(list(functional_zone_types)) < len(functional_zone_type_ids):
+    if len(functional_zone_types) < len(functional_zone_type_ids):
         raise EntitiesNotFoundByIds("functional zone type")
 
     insert_values = [
-        {
-            "scenario_id": scenario_id,
-            "name": functional_zone.name,
-            "functional_zone_type_id": functional_zone.functional_zone_type_id,
-            "geometry": ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326")),
-            "year": functional_zone.year,
-            "source": functional_zone.source,
-            "properties": functional_zone.properties,
-        }
+        {"scenario_id": scenario_id, **extract_values_from_model(functional_zone)}
         for functional_zone in functional_zones
     ]
 
-    statement = insert(profiles_data).values(insert_values).returning(profiles_data.c.profile_id)
-    profile_ids = (await conn.execute(statement)).scalars().all()
+    statement = (
+        insert(projects_functional_zones).values(insert_values).returning(projects_functional_zones.c.profile_id)
+    )
+    functional_zone_ids = (await conn.execute(statement)).scalars().all()
 
     await conn.commit()
 
-    statement = (
-        select(
-            profiles_data.c.profile_id,
-            profiles_data.c.scenario_id,
-            scenarios_data.c.name.label("scenario_name"),
-            profiles_data.c.functional_zone_type_id,
-            functional_zone_types_dict.c.name.label("functional_zone_type_name"),
-            functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
-            profiles_data.c.name,
-            cast(ST_AsGeoJSON(profiles_data.c.geometry), JSONB).label("geometry"),
-            profiles_data.c.year,
-            profiles_data.c.source,
-            profiles_data.c.properties,
-            profiles_data.c.created_at,
-            profiles_data.c.updated_at,
-        )
-        .select_from(
-            profiles_data.join(
-                scenarios_data,
-                scenarios_data.c.scenario_id == profiles_data.c.scenario_id,
-            ).join(
-                functional_zone_types_dict,
-                functional_zone_types_dict.c.functional_zone_type_id == profiles_data.c.functional_zone_type_id,
-            )
-        )
-        .where(profiles_data.c.profile_id.in_(profile_ids))
-    )
-    result = (await conn.execute(statement)).mappings().all()
-
-    return [ProjectProfileDTO(**profile) for profile in result]
+    return await get_functional_zone_by_ids(conn, functional_zone_ids)
 
 
 async def put_scenario_functional_zone_to_db(
     conn: AsyncConnection,
-    functional_zone: ProjectProfilePut,
+    functional_zone: ScenarioFunctionalZonePut,
     scenario_id: int,
     functional_zone_id: int,
     user_id: str,
-) -> ProjectProfileDTO:
+) -> ScenarioFunctionalZoneDTO:
     """Update scenario functional zone by all its attributes."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
+    await check_scenario(conn, scenario_id, user_id, to_edit=True)
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    functional_zone_exists = await check_functional_zone_existence(conn, functional_zone_id)
-    if not functional_zone_exists:
+    if not await check_existence(conn, projects_functional_zones, conditions={"profile_id": functional_zone_id}):
         raise EntityNotFoundById(functional_zone_id, "scenario functional zone")
 
-    type_exists = await check_functional_zone_type_existence(conn, functional_zone.functional_zone_type_id)
-    if not type_exists:
+    if not await check_existence(
+        conn,
+        functional_zone_types_dict,
+        conditions={"functional_zone_type_id": functional_zone.functional_zone_type_id},
+    ):
         raise EntityNotFoundById(functional_zone.functional_zone_type_id, "functional zone type")
 
+    values = extract_values_from_model(functional_zone, to_update=True)
     statement = (
-        update(profiles_data)
-        .where(profiles_data.c.profile_id == functional_zone_id)
-        .values(
-            functional_zone_type_id=functional_zone.functional_zone_type_id,
-            name=functional_zone.name,
-            geometry=ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326")),
-            year=functional_zone.year,
-            source=functional_zone.source,
-            properties=functional_zone.properties,
-            updated_at=datetime.now(timezone.utc),
-        )
-        .returning(profiles_data.c.profile_id)
+        update(projects_functional_zones)
+        .where(projects_functional_zones.c.profile_id == functional_zone_id)
+        .values(**values)
     )
 
-    result_id = (await conn.execute(statement)).scalar_one()
-
+    await conn.execute(statement)
     await conn.commit()
 
-    return await get_functional_zone_by_id(conn, result_id)
+    return (await get_functional_zone_by_ids(conn, [functional_zone_id]))[0]
 
 
 async def patch_scenario_functional_zone_to_db(
     conn: AsyncConnection,
-    functional_zone: ProjectProfilePatch,
+    functional_zone: ScenarioFunctionalZonePatch,
     scenario_id: int,
     functional_zone_id: int,
     user_id: str,
-) -> ProjectProfileDTO:
+) -> ScenarioFunctionalZoneDTO:
     """Update scenario functional zone by only given attributes."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
+    await check_scenario(conn, scenario_id, user_id, to_edit=True)
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    functional_zone_exists = await check_functional_zone_existence(conn, functional_zone_id)
-    if not functional_zone_exists:
+    if not await check_existence(conn, projects_functional_zones, conditions={"profile_id": functional_zone_id}):
         raise EntityNotFoundById(functional_zone_id, "scenario functional zone")
 
-    type_exists = await check_functional_zone_type_existence(conn, functional_zone.functional_zone_type_id)
-    if not type_exists:
-        raise EntityNotFoundById(functional_zone.functional_zone_type_id, "functional zone type")
+    if functional_zone.functional_zone_type_id is not None:
+        if not await check_existence(
+            conn,
+            functional_zone_types_dict,
+            conditions={"functional_zone_type_id": functional_zone.functional_zone_type_id},
+        ):
+            raise EntityNotFoundById(functional_zone.functional_zone_type_id, "functional zone type")
+
+    values = extract_values_from_model(functional_zone, exclude_unset=True, to_update=True)
 
     statement = (
-        update(profiles_data)
-        .where(profiles_data.c.profile_id == functional_zone_id)
-        .returning(profiles_data.c.profile_id)
+        update(projects_functional_zones)
+        .where(projects_functional_zones.c.profile_id == functional_zone_id)
+        .values(**values)
     )
 
-    values_to_update = {}
-    for k, v in functional_zone.model_dump(exclude_unset=True).items():
-        if k == "geometry":
-            values_to_update.update(
-                {"geometry": ST_GeomFromText(str(functional_zone.geometry.as_shapely_geometry()), text("4326"))}
-            )
-        else:
-            values_to_update.update({k: v})
-
-    statement = statement.values(updated_at=datetime.now(timezone.utc), **values_to_update)
-    result_id = (await conn.execute(statement)).scalar_one()
-
-    await conn.commit()
-
-    return await get_functional_zone_by_id(conn, result_id)
-
-
-async def delete_functional_zone_by_scenario_id_from_db(conn: AsyncConnection, scenario_id: int, user_id: str) -> dict:
-    """Delete functional zones by scenario identifier."""
-
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    statement = delete(profiles_data).where(profiles_data.c.scenario_id == scenario_id)
     await conn.execute(statement)
     await conn.commit()
 
-    return {"result": "ok"}
+    return (await get_functional_zone_by_ids(conn, [functional_zone_id]))[0]
+
+
+async def delete_functional_zones_by_scenario_id_from_db(conn: AsyncConnection, scenario_id: int, user_id: str) -> dict:
+    """Delete functional zones by scenario identifier."""
+
+    await check_scenario(conn, scenario_id, user_id, to_edit=True)
+
+    statement = delete(projects_functional_zones).where(projects_functional_zones.c.scenario_id == scenario_id)
+    await conn.execute(statement)
+    await conn.commit()
+
+    return {"status": "ok"}

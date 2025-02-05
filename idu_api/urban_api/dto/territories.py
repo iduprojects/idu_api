@@ -27,8 +27,8 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
     territory_id: int
     territory_type_id: int
     territory_type_name: str
-    parent_name: int
     parent_id: int
+    parent_name: str
     name: str
     geometry: geom.Polygon | geom.MultiPolygon | geom.Point
     level: int
@@ -51,8 +51,14 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
 
     def to_geojson_dict(self) -> dict[str, Any]:
         territory = asdict(self)
-        territory_type = territory.pop("territory_type_id", None), territory.pop("territory_type_name", None)
-        territory["territory_type"] = {"territory_type_id": territory_type[0], "name": territory_type[1]}
+        territory["territory_type"] = {
+            "id": territory.pop("territory_type_id"),
+            "name": territory.pop("territory_type_name"),
+        }
+        territory["parent"] = {
+            "id": territory.pop("parent_id"),
+            "name": territory.pop("parent_name"),
+        }
         return territory
 
 
@@ -64,6 +70,7 @@ class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attribut
     territory_type_id: int
     territory_type_name: str
     parent_id: int
+    parent_name: str
     name: str
     level: int
     properties: dict[str, Any]
@@ -79,10 +86,10 @@ class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attribut
 class TerritoryWithIndicatorDTO:
     """Territory DTO used to transfer short territory data with indicator."""
 
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
-    centre_point: geom.Point
     territory_id: int
     name: str
+    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    centre_point: geom.Point
     indicator_name: str
     indicator_value: float
     measurement_unit_name: str | None
@@ -103,10 +110,10 @@ class TerritoryWithIndicatorDTO:
 class TerritoryWithIndicatorsDTO:
     """Territory DTO used to transfer short territory data with list of indicators."""
 
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
-    centre_point: geom.Point
     territory_id: int
     name: str
+    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    centre_point: geom.Point
     indicators: list[IndicatorValueDTO]
 
     def __post_init__(self) -> None:
@@ -124,6 +131,7 @@ class TerritoryWithIndicatorsDTO:
             del indicator["measurement_unit_id"]
             del indicator["date_type"]
             del indicator["territory_id"]
+            del indicator["territory_name"]
             del indicator["created_at"]
             del indicator["updated_at"]
         return territory
@@ -133,10 +141,10 @@ class TerritoryWithIndicatorsDTO:
 class TerritoryWithNormativesDTO:
     """Territory DTO used to transfer short territory data with list of indicators."""
 
-    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
-    centre_point: geom.Point
     territory_id: int
     name: str
+    geometry: geom.Polygon | geom.MultiPolygon | geom.Point
+    centre_point: geom.Point
     normatives: list[NormativeDTO]
 
     def __post_init__(self) -> None:
@@ -150,16 +158,17 @@ class TerritoryWithNormativesDTO:
     def to_geojson_dict(self) -> dict[str, Any]:
         territory = asdict(self)
         for normative in territory["normatives"]:
-            del normative["normative_type"]
+            del normative["territory_id"]
+            del normative["territory_name"]
             del normative["service_type_id"]
             del normative["urban_function_id"]
             del normative["created_at"]
             del normative["updated_at"]
             if normative["service_type_name"] is not None:
-                normative["type"] = normative.pop("service_type_name")
+                normative["name"] = normative.pop("service_type_name")
                 del normative["urban_function_name"]
             else:
-                normative["type"] = normative.pop("urban_function_name")
+                normative["name"] = normative.pop("urban_function_name")
                 del normative["service_type_name"]
 
         return territory

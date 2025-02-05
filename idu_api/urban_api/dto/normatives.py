@@ -12,6 +12,8 @@ class NormativeDTO:  # pylint: disable=too-many-instance-attributes
     urban_function_id: int | None
     urban_function_name: str | None
     year: int
+    territory_id: int
+    territory_name: str
     is_regulated: bool
     radius_availability_meters: int | None
     time_availability_minutes: int | None

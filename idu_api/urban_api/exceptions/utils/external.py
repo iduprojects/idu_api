@@ -9,10 +9,10 @@ class ExternalServiceResponseError(IduApiError):
     """Exception to raise when external service returns http error."""
 
     def __init__(self, service: str, exc: str, exc_code: int):
-        super().__init__()
         self.service = service
         self.exc = exc
         self.exc_code = exc_code
+        super().__init__()
 
     def __str__(self) -> str:
         return f'External service "{self.service}" response error: {self.exc}'
@@ -27,13 +27,12 @@ class ExternalServiceResponseError(IduApiError):
 class ExternalServiceUnavailable(IduApiError):
     """Exception to raise when external service is unavailable."""
 
-    def __init__(self, service: str, exc: str):
-        super().__init__()
+    def __init__(self, service: str):
         self.service = service
-        self.exc = exc
+        super().__init__()
 
     def __str__(self) -> str:
-        return f'External service "{self.service}" is unavailable: {self.exc}'
+        return f"External service ({self.service}) is unavailable."
 
     def get_status_code(self) -> int:
         """

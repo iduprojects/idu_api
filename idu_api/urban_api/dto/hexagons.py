@@ -5,7 +5,7 @@ from typing import Any
 
 import shapely.geometry as geom
 
-from idu_api.urban_api.dto.indicators import ProjectIndicatorValueDTO
+from idu_api.urban_api.dto.indicators import ScenarioIndicatorValueDTO
 
 
 @dataclass
@@ -35,7 +35,7 @@ class HexagonWithIndicatorsDTO:
     hexagon_id: int
     geometry: geom.Polygon | geom.MultiPolygon
     centre_point: geom.Point
-    indicators: [ProjectIndicatorValueDTO]
+    indicators: [ScenarioIndicatorValueDTO]
 
     def __post_init__(self) -> None:
         if isinstance(self.centre_point, dict):

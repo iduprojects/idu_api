@@ -1,3 +1,5 @@
+"""All configurations and fixtures, including database and urban_api_host, are defined here."""
+
 import os
 import random
 import subprocess
@@ -6,7 +8,6 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 
-import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
@@ -14,15 +15,14 @@ from dotenv import load_dotenv
 
 from idu_api.urban_api.config import AppConfig, DBConfig, UrbanAPIConfig
 from tests.urban_api.helpers import *
-from tests.urban_api.integration.helpers import *
-from tests.urban_api.unit.helpers import *
+
+load_dotenv(dotenv_path="urban_api/.env")
 
 
 @pytest.fixture(scope="session")
 def database() -> DBConfig:
     """Fixture to get database credentials from environment variables."""
 
-    load_dotenv(dotenv_path="urban_api/.env")
     config = UrbanAPIConfig.load(os.environ["CONFIG_PATH"])
 
     if "CONFIG_PATH" not in os.environ:
@@ -33,12 +33,10 @@ def database() -> DBConfig:
 
 
 @pytest.fixture(scope="session")
-def urban_api_host(database) -> Iterator[str]:  # pylint: disable=redefined-outer-name
-    """Fixture to start the urban_api HTTP server on random port with poetry command."""
+def config(database) -> UrbanAPIConfig:
+    """Fixture to generate configuration from environment variables."""
 
     port = random.randint(10000, 50000)
-    host = f"http://localhost:{port}"
-    load_dotenv(dotenv_path="urban_api/.env")
     config = UrbanAPIConfig.load(os.environ["CONFIG_PATH"])
     config = UrbanAPIConfig(
         app=AppConfig(
@@ -53,6 +51,14 @@ def urban_api_host(database) -> Iterator[str]:  # pylint: disable=redefined-oute
         external=config.external,
         logging=config.logging,
     )
+    return config
+
+
+@pytest.fixture(scope="session")
+def urban_api_host(config) -> Iterator[str]:  # pylint: disable=redefined-outer-name
+    """Fixture to start the urban_api HTTP server on random port with poetry command."""
+
+    host = f"http://localhost:{config.app.port}"
     temp_yaml_config_path = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
     config.dump(temp_yaml_config_path)
     with subprocess.Popen(
@@ -77,6 +83,8 @@ def urban_api_host(database) -> Iterator[str]:  # pylint: disable=redefined-oute
                 pytest.fail("Failed to start urban_api server")
             yield host
         finally:
+            if os.path.exists(temp_yaml_config_path):
+                os.remove(temp_yaml_config_path)
             process.terminate()
             process.wait()
 

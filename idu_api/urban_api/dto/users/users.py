@@ -12,7 +12,9 @@ class UserDTO:
     """
 
     id: str
-    is_active: bool
 
     def __str__(self) -> str:
-        return f"(id={self.id}, is_active: {self.is_active})"
+        return self.id
+
+    def __repr__(self) -> str:
+        return self.id

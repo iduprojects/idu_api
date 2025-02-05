@@ -24,6 +24,6 @@ class InvalidImageError(IduApiError):
 
     def get_status_code(self) -> int:
         """
-        Return '400 Forbidden' status code.
+        Return '400 Bad Request' status code.
         """
         return status.HTTP_400_BAD_REQUEST

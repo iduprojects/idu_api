@@ -1,5 +1,6 @@
 """Services DTOs are defined here."""
 
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
@@ -24,9 +25,14 @@ class ServiceDTO:  # pylint: disable=too-many-instance-attributes
     territory_type_name: str | None
     name: str | None
     capacity_real: int | None
+    territories: list[dict[str, Any]]
     properties: dict[str, Any]
     created_at: datetime
     updated_at: datetime
+
+    @classmethod
+    def fields(cls) -> Iterable[str]:
+        return cls.__annotations__.keys()
 
 
 @dataclass
@@ -42,6 +48,8 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     service_type_properties: dict[str, Any]
     territory_type_id: int | None
     territory_type_name: str | None
+    territory_id: int
+    territory_name: str
     name: str | None
     capacity_real: int | None
     properties: dict[str, Any]
@@ -69,7 +77,7 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
             if territory_type[0] is not None
             else None
         )
-        service_type = {
+        service["service_type"] = {
             "service_type_id": service.pop("service_type_id", None),
             "urban_function": {
                 "id": service.pop("urban_function_id", None),
@@ -81,30 +89,10 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
             "infrastructure_type": service.pop("infrastructure_type", None),
             "properties": service.pop("service_type_properties", None),
         }
-        service["service_type"] = service_type
+
+        service["territories"] = [{"id": service.pop("territory_id"), "name": service.pop("territory_name")}]
 
         return service
-
-
-@dataclass(frozen=True)
-class ServiceWithTerritoriesDTO:  # pylint: disable=too-many-instance-attributes
-    service_id: int
-    service_type_id: int
-    urban_function_id: int
-    urban_function_name: str
-    service_type_name: str
-    service_type_capacity_modeled: int
-    service_type_code: str
-    infrastructure_type: str
-    service_type_properties: dict[str, Any]
-    territory_type_id: int | None
-    territory_type_name: str | None
-    name: str | None
-    capacity_real: int | None
-    properties: dict[str, Any]
-    territories: list[dict[str, Any]]
-    created_at: datetime
-    updated_at: datetime
 
 
 @dataclass(frozen=True)
@@ -134,3 +122,7 @@ class ShortScenarioServiceDTO(ShortServiceDTO):
 @dataclass(frozen=True)
 class ScenarioServiceDTO(ServiceDTO):
     is_scenario_object: bool
+
+    @classmethod
+    def fields(cls) -> Iterable[str]:
+        return cls.__annotations__.keys() | super().__annotations__.keys()

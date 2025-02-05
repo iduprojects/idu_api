@@ -1,5 +1,6 @@
 """Indicators DTOs are defined here."""
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
@@ -17,6 +18,10 @@ class IndicatorDTO:
     parent_id: int
     created_at: datetime
     updated_at: datetime
+
+    @classmethod
+    def fields(cls) -> Iterable[str]:
+        return cls.__annotations__.keys()
 
 
 @dataclass(frozen=True)
@@ -38,6 +43,10 @@ class IndicatorValueDTO:  # pylint: disable=too-many-instance-attributes
     created_at: datetime
     updated_at: datetime
 
+    @classmethod
+    def fields(cls) -> Iterable[str]:
+        return cls.__annotations__.keys()
+
 
 @dataclass(frozen=True)
 class MeasurementUnitDTO:
@@ -53,7 +62,7 @@ class IndicatorsGroupDTO:
 
 
 @dataclass(frozen=True)
-class ShortProjectIndicatorValueDTO:
+class ShortScenarioIndicatorValueDTO:
     indicator_id: int
     name_full: str
     measurement_unit_name: str | None
@@ -62,7 +71,7 @@ class ShortProjectIndicatorValueDTO:
 
 
 @dataclass(frozen=True)
-class ProjectIndicatorValueDTO:  # pylint: disable=too-many-instance-attributes
+class ScenarioIndicatorValueDTO:  # pylint: disable=too-many-instance-attributes
     indicator_value_id: int
     indicator_id: int
     parent_id: int

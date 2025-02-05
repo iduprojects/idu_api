@@ -165,7 +165,7 @@ def upgrade() -> None:
         schema="user_projects",
     )
     op.create_table(
-        "profiles_data",
+        "projects_functional_zones",
         sa.Column("scenario_id", sa.Integer(), nullable=False),
         sa.Column("profile_type_id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=200), nullable=False),
@@ -319,7 +319,7 @@ def downgrade() -> None:
     op.drop_table("physical_objects_data", schema="user_projects")
     op.drop_table("functional_zones_data", schema="user_projects")
     op.drop_table("indicators_data", schema="user_projects")
-    op.drop_table("profiles_data", schema="user_projects")
+    op.drop_table("projects_functional_zones", schema="user_projects")
     op.drop_table("scenarios_data", schema="user_projects")
     op.drop_table("projects_data", schema="user_projects")
     op.drop_table("services_data", schema="user_projects")

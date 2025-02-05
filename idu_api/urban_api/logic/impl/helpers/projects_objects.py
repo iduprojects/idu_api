@@ -3,7 +3,9 @@
 import io
 import os
 import zipfile
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import date, datetime, timezone
+from typing import Literal
 
 import aiohttp
 import structlog
@@ -21,7 +23,7 @@ from geoalchemy2.functions import (
     ST_Within,
 )
 from PIL import Image
-from sqlalchemy import cast, delete, insert, literal, or_, select, text, update
+from sqlalchemy import cast, delete, func, insert, literal, or_, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -30,8 +32,8 @@ from idu_api.common.db.entities import (
     object_geometries_data,
     physical_object_types_dict,
     physical_objects_data,
-    profiles_data,
     projects_data,
+    projects_functional_zones,
     projects_object_geometries_data,
     projects_physical_objects_data,
     projects_services_data,
@@ -42,10 +44,11 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
-from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithBaseScenarioDTO
+from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithTerritoryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
+from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, extract_values_from_model
 from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
@@ -54,20 +57,37 @@ from idu_api.urban_api.schemas import (
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 from idu_api.urban_api.utils.pagination import paginate_dto
 
+func: Callable
+
 config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
-DECIMAL_PLACES = 15
+
+
+async def check_project(conn: AsyncConnection, project_id: int, user_id: str, to_edit: bool = False) -> None:
+    """Check project existence and user access."""
+
+    statement_for_project = select(projects_data).where(projects_data.c.project_id == project_id)
+    result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
+    if result_for_project is None:
+        raise EntityNotFoundById(project_id, "project")
+    if result_for_project.user_id != user_id and (not result_for_project.public or to_edit):
+        raise AccessDeniedError(project_id, "project")
 
 
 async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user_id: str) -> ProjectDTO:
     """Get project object by identifier."""
 
     statement = (
-        select(projects_data, territories_data.c.name.label("territory_name"))
+        select(
+            projects_data,
+            territories_data.c.name.label("territory_name"),
+            scenarios_data.c.scenario_id,
+            scenarios_data.c.name.label("scenario_name"),
+        )
         .select_from(
             projects_data.join(
                 territories_data,
                 territories_data.c.territory_id == projects_data.c.territory_id,
-            )
+            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
         )
         .where(projects_data.c.project_id == project_id)
     )
@@ -86,12 +106,7 @@ async def get_project_territory_by_id_from_db(
 ) -> ProjectTerritoryDTO:
     """Get project territory object by project identifier."""
 
-    statement_for_project = select(projects_data).where(projects_data.c.project_id == project_id)
-    result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
-    if result_for_project is None:
-        raise EntityNotFoundById(project_id, "project")
-    if result_for_project.user_id != user_id and not result_for_project.public:
-        raise AccessDeniedError(project_id, "project")
+    await check_project(conn, project_id, user_id)
 
     statement = (
         select(
@@ -104,17 +119,23 @@ async def get_project_territory_by_id_from_db(
             cast(ST_AsGeoJSON(projects_territory_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
             cast(ST_AsGeoJSON(projects_territory_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
             projects_territory_data.c.properties,
+            scenarios_data.c.scenario_id,
+            scenarios_data.c.name.label("scenario_name"),
         )
         .select_from(
             projects_territory_data.join(
-                projects_data,
-                projects_data.c.project_id == projects_territory_data.c.project_id,
-            ).join(
-                territories_data,
-                territories_data.c.territory_id == projects_data.c.territory_id,
+                projects_data, projects_data.c.project_id == projects_territory_data.c.project_id
+            )
+            .join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+            .join(
+                scenarios_data,
+                scenarios_data.c.project_id == projects_data.c.project_id,
             )
         )
-        .where(projects_territory_data.c.project_id == project_id)
+        .where(
+            projects_territory_data.c.project_id == project_id,
+            scenarios_data.c.is_based.is_(True),
+        )
     )
 
     result = (await conn.execute(statement)).mappings().one_or_none()
@@ -124,9 +145,18 @@ async def get_project_territory_by_id_from_db(
     return ProjectTerritoryDTO(**result)
 
 
-async def get_all_available_projects_from_db(
-    conn: AsyncConnection, user_id: str | None, is_regional: bool, territory_id: int | None
-) -> PageDTO[ProjectWithBaseScenarioDTO]:
+async def get_projects_from_db(
+    conn: AsyncConnection,
+    user_id: str | None,
+    only_own: bool,
+    is_regional: bool,
+    territory_id: int | None,
+    name: str | None,
+    created_at: date | None,
+    order_by: Literal["created_at", "updated_at"] | None,
+    ordering: Literal["asc", "desc"] | None,
+    paginate: bool = False,
+) -> list[ProjectDTO] | PageDTO[ProjectDTO]:
     """Get all public and user's projects."""
 
     statement = (
@@ -143,48 +173,132 @@ async def get_all_available_projects_from_db(
             ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
         )
         .where(scenarios_data.c.is_based.is_(True), projects_data.c.is_regional.is_(is_regional))
-        .order_by(projects_data.c.project_id)
     )
 
-    if user_id is not None:
+    if only_own:
+        statement = statement.where(projects_data.c.user_id == user_id)
+    elif user_id is not None:
         statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
     else:
         statement = statement.where(projects_data.c.public.is_(True))
+
+    if territory_id is not None:
+        statement = statement.where(projects_data.c.territory_id == territory_id)
+    if name is not None:
+        statement = statement.where(projects_data.c.name.ilike(f"%{name}%"))
+    if created_at is not None:
+        statement = statement.where(func.date(projects_data.c.created_at) >= created_at)
+
+    if order_by is not None:
+        order = projects_data.c.created_at if order_by == "created_at" else projects_data.c.updated_at
+        if ordering == "desc":
+            order = order.desc()
+        statement = statement.order_by(order)
+    else:
+        if ordering == "desc":
+            statement = statement.order_by(projects_data.c.project_id.desc())
+        else:
+            statement = statement.order_by(projects_data.c.project_id)
+
+    if paginate:
+        return await paginate_dto(conn, statement, transformer=lambda x: [ProjectDTO(**item) for item in x])
+
+    result = (await conn.execute(statement)).mappings().all()
+
+    return [ProjectDTO(**project) for project in result]
+
+
+async def get_projects_territories_from_db(
+    conn: AsyncConnection,
+    user_id: str | None,
+    only_own: bool,
+    territory_id: int | None,
+) -> list[ProjectWithTerritoryDTO]:
+    """Get all public and user's project territories."""
+
+    statement = (
+        select(
+            projects_data,
+            territories_data.c.name.label("territory_name"),
+            cast(ST_AsGeoJSON(projects_territory_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(projects_territory_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            scenarios_data.c.scenario_id,
+            scenarios_data.c.name.label("scenario_name"),
+        )
+        .select_from(
+            projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+            .join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+            .join(projects_territory_data, projects_territory_data.c.project_id == projects_data.c.project_id)
+        )
+        .where(scenarios_data.c.is_based.is_(True), projects_data.c.is_regional.is_(False))
+    )
+
+    if only_own:
+        statement = statement.where(projects_data.c.user_id == user_id)
+    elif user_id is not None:
+        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
+    else:
+        statement = statement.where(projects_data.c.public.is_(True))
+
     if territory_id is not None:
         statement = statement.where(projects_data.c.territory_id == territory_id)
 
-    return await paginate_dto(conn, statement, transformer=lambda x: [ProjectWithBaseScenarioDTO(**item) for item in x])
+    result = (await conn.execute(statement)).mappings().all()
+
+    return [ProjectWithTerritoryDTO(**project) for project in result]
 
 
-async def get_all_preview_projects_images_from_minio(
+async def get_preview_projects_images_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
     user_id: str | None,
+    only_own: bool,
     is_regional: bool,
     territory_id: int | None,
+    name: str | None,
+    created_at: date | None,
+    order_by: Literal["created_at", "updated_at"] | None,
+    ordering: Literal["asc", "desc"] | None,
     page: int,
     page_size: int,
+    logger: structlog.stdlib.BoundLogger,
 ) -> io.BytesIO:
     """Get preview images for all public and user's projects with parallel MinIO requests."""
 
     statement = (
         select(projects_data.c.project_id)
-        .order_by(projects_data.c.project_id)
+        .where(projects_data.c.is_regional.is_(is_regional))
         .offset(page_size * (page - 1))
         .limit(page_size)
     )
-    if user_id is not None:
-        statement = statement.where(
-            or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)),
-            projects_data.c.is_regional.is_(is_regional),
-        )
+
+    if only_own:
+        statement = statement.where(projects_data.c.user_id == user_id)
+    elif user_id is not None:
+        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
     else:
-        statement = statement.where(projects_data.c.public.is_(True), projects_data.c.is_regional.is_(is_regional))
+        statement = statement.where(projects_data.c.public.is_(True))
     if territory_id is not None:
         statement = statement.where(projects_data.c.territory_id == territory_id)
+    if name is not None:
+        statement = statement.where(projects_data.c.name.ilike(f"%{name}%"))
+    if created_at is not None:
+        statement = statement.where(func.date(projects_data.c.created_at) >= created_at)
+
+    if order_by is not None:
+        order = projects_data.c.created_at if order_by == "created_at" else projects_data.c.updated_at
+        if ordering == "desc":
+            order = order.desc()
+        statement = statement.order_by(order)
+    else:
+        if ordering == "desc":
+            statement = statement.order_by(projects_data.c.project_id.desc())
+        else:
+            statement = statement.order_by(projects_data.c.project_id)
+
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    results = await minio_client.get_files([f"projects/{project_id}/preview.png" for project_id in project_ids])
+    results = await minio_client.get_files([f"projects/{project_id}/preview.png" for project_id in project_ids], logger)
     images = {project_id: image for project_id, image in zip(project_ids, results) if image is not None}
 
     zip_buffer = io.BytesIO()
@@ -197,36 +311,58 @@ async def get_all_preview_projects_images_from_minio(
     return zip_buffer
 
 
-async def get_all_preview_projects_images_url_from_minio(
+async def get_preview_projects_images_url_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
     user_id: str | None,
+    only_own: bool,
     is_regional: bool,
     territory_id: int | None,
+    name: str | None,
+    created_at: date | None,
+    order_by: Literal["created_at", "updated_at"] | None,
+    ordering: Literal["asc", "desc"] | None,
     page: int,
     page_size: int,
+    logger: structlog.stdlib.BoundLogger,
 ) -> list[dict[str, int | str]]:
     """Get preview images url for all public and user's projects."""
 
     statement = (
         select(projects_data.c.project_id)
-        .order_by(projects_data.c.project_id)
+        .where(projects_data.c.is_regional.is_(is_regional))
         .offset(page_size * (page - 1))
         .limit(page_size)
     )
-    if user_id is not None:
-        statement = statement.where(
-            or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)),
-            projects_data.c.is_regional.is_(is_regional),
-        )
+
+    if only_own:
+        statement = statement.where(projects_data.c.user_id == user_id)
+    elif user_id is not None:
+        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
     else:
-        statement = statement.where(projects_data.c.public.is_(True), projects_data.c.is_regional.is_(is_regional))
+        statement = statement.where(projects_data.c.public.is_(True))
     if territory_id is not None:
         statement = statement.where(projects_data.c.territory_id == territory_id)
+    if name is not None:
+        statement = statement.where(projects_data.c.name.ilike(f"%{name}%"))
+    if created_at is not None:
+        statement = statement.where(func.date(projects_data.c.created_at) >= created_at)
+
+    if order_by is not None:
+        order = projects_data.c.created_at if order_by == "created_at" else projects_data.c.updated_at
+        if ordering == "desc":
+            order = order.desc()
+        statement = statement.order_by(order)
+    else:
+        if ordering == "desc":
+            statement = statement.order_by(projects_data.c.project_id.desc())
+        else:
+            statement = statement.order_by(projects_data.c.project_id)
+
     project_ids = (await conn.execute(statement)).scalars().all()
 
     results = await minio_client.generate_presigned_urls(
-        [f"projects/{project_id}/preview.png" for project_id in project_ids]
+        [f"projects/{project_id}/preview.png" for project_id in project_ids], logger
     )
 
     return [{"project_id": project_id, "url": url} for project_id, url in zip(project_ids, results) if url is not None]
@@ -234,7 +370,7 @@ async def get_all_preview_projects_images_url_from_minio(
 
 async def get_user_projects_from_db(
     conn: AsyncConnection, user_id: str, is_regional: bool, territory_id: int | None
-) -> PageDTO[ProjectWithBaseScenarioDTO]:
+) -> PageDTO[ProjectDTO]:
     """Get all user's projects."""
 
     statement = (
@@ -261,7 +397,7 @@ async def get_user_projects_from_db(
     if territory_id is not None:
         statement = statement.where(projects_data.c.territory_id == territory_id)
 
-    return await paginate_dto(conn, statement, transformer=lambda x: [ProjectWithBaseScenarioDTO(**item) for item in x])
+    return await paginate_dto(conn, statement, transformer=lambda x: [ProjectDTO(**item) for item in x])
 
 
 async def get_user_preview_projects_images_from_minio(
@@ -272,6 +408,7 @@ async def get_user_preview_projects_images_from_minio(
     territory_id: int | None,
     page: int,
     page_size: int,
+    logger: structlog.stdlib.BoundLogger,
 ) -> io.BytesIO:
     """Get preview images for all user's projects with parallel MinIO requests."""
 
@@ -286,7 +423,7 @@ async def get_user_preview_projects_images_from_minio(
         statement = statement.where(projects_data.c.territory_id == territory_id)
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    results = await minio_client.get_files([f"projects/{project_id}/preview.png" for project_id in project_ids])
+    results = await minio_client.get_files([f"projects/{project_id}/preview.png" for project_id in project_ids], logger)
     images = {project_id: image for project_id, image in zip(project_ids, results) if image is not None}
 
     zip_buffer = io.BytesIO()
@@ -307,6 +444,7 @@ async def get_user_preview_projects_images_url_from_minio(
     territory_id: int | None,
     page: int,
     page_size: int,
+    logger: structlog.stdlib.BoundLogger,
 ) -> list[dict[str, int | str]]:
     """Get preview images url for all user's projects."""
 
@@ -322,7 +460,7 @@ async def get_user_preview_projects_images_url_from_minio(
     project_ids = (await conn.execute(statement)).scalars().all()
 
     results = await minio_client.generate_presigned_urls(
-        [f"projects/{project_id}/preview.png" for project_id in project_ids]
+        [f"projects/{project_id}/preview.png" for project_id in project_ids], logger
     )
 
     return [{"project_id": project_id, "url": url} for project_id, url in zip(project_ids, results) if url is not None]
@@ -405,31 +543,15 @@ async def add_project_to_db(
 
     statement_for_project = (
         insert(projects_data)
-        .values(
-            user_id=user_id,
-            territory_id=project.territory_id,
-            name=project.name,
-            description=project.description,
-            public=project.public,
-            is_regional=project.is_regional,
-            properties=project.properties,
-        )
+        .values(**project.model_dump(exclude={"territory"}), user_id=user_id)
         .returning(projects_data.c.project_id)
     )
     project_id = (await conn.execute(statement_for_project)).scalar_one()
 
-    await conn.execute(
-        (
-            insert(projects_territory_data).values(
-                project_id=project_id,
-                geometry=given_geometry,
-                centre_point=ST_GeomFromText(str(project.territory.centre_point.as_shapely_geometry()), text("4326")),
-                properties=project.territory.properties,
-            )
-        )
-    )
+    project_territory = extract_values_from_model(project.territory)
+    await conn.execute(insert(projects_territory_data).values(**project_territory, project_id=project_id))
 
-    # TODO: use the real parent scenario identifier from the user
+    # fixme: use the real parent scenario identifier from the user
     #  instead of using the basic regional scenario by default
     parent_scenario_id = (
         await conn.execute(
@@ -440,7 +562,6 @@ async def add_project_to_db(
                 projects_data.c.is_regional.is_(True),
                 scenarios_data.c.is_based.is_(True),
             )
-            .limit(1)
         )
     ).scalar_one()
 
@@ -450,7 +571,7 @@ async def add_project_to_db(
             .values(
                 project_id=project_id,
                 functional_zone_type_id=None,
-                name="base scenario for user project",
+                name="Исходный пользовательский сценарий",
                 is_based=True,
                 parent_id=parent_scenario_id,
             )
@@ -493,7 +614,7 @@ async def add_project_to_db(
             ~ST_Within(object_geometries_data.c.geometry, given_geometry),
             ST_Area(ST_Intersection(object_geometries_data.c.geometry, given_geometry))
             >= area_percent * ST_Area(object_geometries_data.c.geometry),
-            physical_object_types_dict.c.physical_object_function_id != 1,  # TODO: remove hardcode to skip buildings
+            physical_object_types_dict.c.physical_object_function_id != 1,  # fixme: remove hardcode to skip buildings
         )
         .distinct()
     ).cte("objects_intersecting")
@@ -585,14 +706,14 @@ async def add_project_to_db(
         pass  # TODO: use external service to generate zones if there is no zones
     else:
         await conn.execute(
-            insert(profiles_data).from_select(
+            insert(projects_functional_zones).from_select(
                 [
-                    profiles_data.c.scenario_id,
-                    profiles_data.c.functional_zone_type_id,
-                    profiles_data.c.geometry,
-                    profiles_data.c.year,
-                    profiles_data.c.source,
-                    profiles_data.c.properties,
+                    projects_functional_zones.c.scenario_id,
+                    projects_functional_zones.c.functional_zone_type_id,
+                    projects_functional_zones.c.geometry,
+                    projects_functional_zones.c.year,
+                    projects_functional_zones.c.source,
+                    projects_functional_zones.c.properties,
                 ],
                 statement,
             )
@@ -601,12 +722,11 @@ async def add_project_to_db(
     await conn.commit()
 
     async with aiohttp.ClientSession() as session:
-        params = {"scenario_id": scenario_id, "territory_id": project.territory_id, "background": "true"}
+        params = {"scenario_id": scenario_id, "project_id": project_id, "background": "true"}
         try:
             response = await session.put(
                 f"{config.external.hextech_api}/hextech/indicators_saving/save_all",
                 params=params,
-                json=project.territory.geometry.model_dump(),
             )
             response.raise_for_status()
         except aiohttp.ClientResponseError as exc:
@@ -617,9 +737,9 @@ async def add_project_to_db(
                 url=exc.request_info.url,
                 params=params,
             )
-        except aiohttp.ClientError as exc:
+        except aiohttp.ClientConnectorError as exc:
             await logger.awarning("request failed", reason=str(exc), params=params)
-        except Exception as exc:  # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             await logger.aexception("unexpected error occurred")
 
     return await get_project_by_id_from_db(conn, project_id, user_id)
@@ -628,27 +748,15 @@ async def add_project_to_db(
 async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO:
     """Update project object by all its attributes."""
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    requested_project = (await conn.execute(statement)).one_or_none()
-    if requested_project is None:
-        raise EntityNotFoundById(project_id, "project")
-    if requested_project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
+    await check_project(conn, project_id, user_id, to_edit=True)
 
     statement = (
         update(projects_data)
         .where(projects_data.c.project_id == project_id)
-        .values(
-            name=project.name,
-            description=project.description,
-            public=project.public,
-            properties=project.properties,
-            updated_at=datetime.now(timezone.utc),
-        )
-        .returning(projects_data.c.project_id)
+        .values(**extract_values_from_model(project, to_update=True))
     )
-    project_id = (await conn.execute(statement)).scalar_one()
 
+    await conn.execute(statement)
     await conn.commit()
 
     return await get_project_by_id_from_db(conn, project_id, user_id)
@@ -659,42 +767,31 @@ async def patch_project_to_db(
 ) -> ProjectDTO:
     """Patch project object."""
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    requested_project = (await conn.execute(statement)).one_or_none()
-    if requested_project is None:
-        raise EntityNotFoundById(project_id, "project")
-    if requested_project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    new_values_for_project = {}
-
-    for k, v in project.model_dump(exclude_unset=True).items():
-        new_values_for_project.update({k: v})
+    await check_project(conn, project_id, user_id, to_edit=True)
 
     statement_for_project = (
         update(projects_data)
         .where(projects_data.c.project_id == project_id)
-        .values(updated_at=datetime.now(timezone.utc), **new_values_for_project)
+        .values(**project.model_dump(exclude_unset=True), updated_at=datetime.now(timezone.utc))
         .returning(projects_data)
     )
-    await conn.execute(statement_for_project)
 
+    await conn.execute(statement_for_project)
     await conn.commit()
 
     return await get_project_by_id_from_db(conn, project_id, user_id)
 
 
 async def delete_project_from_db(
-    conn: AsyncConnection, project_id: int, minio_client: AsyncMinioClient, user_id: str
+    conn: AsyncConnection,
+    project_id: int,
+    minio_client: AsyncMinioClient,
+    user_id: str,
+    logger: structlog.stdlib.BoundLogger,
 ) -> dict:
     """Delete project object."""
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    result = (await conn.execute(statement)).one_or_none()
-    if result is None:
-        raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
+    await check_project(conn, project_id, user_id, to_edit=True)
 
     urban_objects = (
         (
@@ -721,25 +818,28 @@ async def delete_project_from_db(
     physical_ids = {obj.physical_object_id for obj in urban_objects if obj.physical_object_id is not None}
     service_ids = {obj.service_id for obj in urban_objects if obj.service_id is not None}
 
-    delete_geometry_statement = delete(projects_object_geometries_data).where(
-        projects_object_geometries_data.c.object_geometry_id.in_(geometry_ids)
-    )
-    await conn.execute(delete_geometry_statement)
+    if geometry_ids:
+        delete_geometry_statement = delete(projects_object_geometries_data).where(
+            projects_object_geometries_data.c.object_geometry_id.in_(geometry_ids)
+        )
+        await conn.execute(delete_geometry_statement)
 
-    delete_physical_statement = delete(projects_physical_objects_data).where(
-        projects_physical_objects_data.c.physical_object_id.in_(physical_ids)
-    )
-    await conn.execute(delete_physical_statement)
+    if physical_ids:
+        delete_physical_statement = delete(projects_physical_objects_data).where(
+            projects_physical_objects_data.c.physical_object_id.in_(physical_ids)
+        )
+        await conn.execute(delete_physical_statement)
 
-    delete_service_statement = delete(projects_services_data).where(
-        projects_services_data.c.service_id.in_(service_ids)
-    )
-    await conn.execute(delete_service_statement)
+    if service_ids:
+        delete_service_statement = delete(projects_services_data).where(
+            projects_services_data.c.service_id.in_(service_ids)
+        )
+        await conn.execute(delete_service_statement)
 
     statement_for_project = delete(projects_data).where(projects_data.c.project_id == project_id)
 
     await conn.execute(statement_for_project)
-    await minio_client.delete_file(f"projects/{project_id}/")
+    await minio_client.delete_file(f"projects/{project_id}/", logger)
 
     await conn.commit()
 
@@ -747,16 +847,16 @@ async def delete_project_from_db(
 
 
 async def upload_project_image_to_minio(
-    conn: AsyncConnection, minio_client: AsyncMinioClient, project_id: int, user_id: str, file: bytes
+    conn: AsyncConnection,
+    minio_client: AsyncMinioClient,
+    project_id: int,
+    user_id: str,
+    file: bytes,
+    logger: structlog.stdlib.BoundLogger,
 ) -> dict:
     """Create project image preview and upload it (full and preview) to minio bucket."""
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    result = (await conn.execute(statement)).mappings().one_or_none()
-    if result is None:
-        raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
+    await check_project(conn, project_id, user_id, to_edit=True)
 
     try:
         image = Image.open(io.BytesIO(file))
@@ -765,8 +865,8 @@ async def upload_project_image_to_minio(
 
     preview_image = image.copy()
     width, height = preview_image.size
-    target_width = 100
-    target_height = 100
+    target_width = 300
+    target_height = 300
 
     target_aspect_ratio = target_width / target_height
     current_aspect_ratio = width / height
@@ -798,58 +898,56 @@ async def upload_project_image_to_minio(
     preview_image.save(preview_stream, format="PNG")
     preview_stream.seek(0)
 
-    await minio_client.upload_file(image_stream.getvalue(), f"projects/{project_id}/image.jpg")
-    await minio_client.upload_file(preview_stream.getvalue(), f"projects/{project_id}/preview.png")
+    await minio_client.upload_file(image_stream.getvalue(), f"projects/{project_id}/image.jpg", logger)
+    await minio_client.upload_file(preview_stream.getvalue(), f"projects/{project_id}/preview.png", logger)
+
+    image_url, preview_url = await minio_client.generate_presigned_urls(
+        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.png"], logger
+    )
 
     return {
-        "image_url": (await minio_client.generate_presigned_urls([f"projects/{project_id}/image.jpg"]))[0],
-        "preview_url": (await minio_client.generate_presigned_urls([f"projects/{project_id}/preview.png"]))[0],
+        "image_url": image_url,
+        "preview_url": preview_url,
     }
 
 
 async def get_full_project_image_from_minio(
-    conn: AsyncConnection, minio_client: AsyncMinioClient, project_id: int, user_id: str
+    conn: AsyncConnection,
+    minio_client: AsyncMinioClient,
+    project_id: int,
+    user_id: str,
+    logger: structlog.stdlib.BoundLogger,
 ) -> io.BytesIO:
     """Get full image for given project."""
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    result = (await conn.execute(statement)).mappings().one_or_none()
+    await check_project(conn, project_id, user_id)
 
-    if result is None:
-        raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and not result.public:
-        raise AccessDeniedError(project_id, "project")
-
-    return (await minio_client.get_files([f"projects/{project_id}/image.jpg"]))[0]
+    return (await minio_client.get_files([f"projects/{project_id}/image.jpg"], logger))[0]
 
 
 async def get_preview_project_image_from_minio(
-    conn: AsyncConnection, minio_client: AsyncMinioClient, project_id: int, user_id: str
+    conn: AsyncConnection,
+    minio_client: AsyncMinioClient,
+    project_id: int,
+    user_id: str,
+    logger: structlog.stdlib.BoundLogger,
 ) -> io.BytesIO:
     """Get preview image for given project."""
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    result = (await conn.execute(statement)).mappings().one_or_none()
+    await check_project(conn, project_id, user_id)
 
-    if result is None:
-        raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and not result.public:
-        raise AccessDeniedError(project_id, "project")
-
-    return (await minio_client.get_files([f"projects/{project_id}/preview.png"]))[0]
+    return (await minio_client.get_files([f"projects/{project_id}/preview.png"], logger))[0]
 
 
 async def get_full_project_image_url_from_minio(
-    conn: AsyncConnection, minio_client: AsyncMinioClient, project_id: int, user_id: str
+    conn: AsyncConnection,
+    minio_client: AsyncMinioClient,
+    project_id: int,
+    user_id: str,
+    logger: structlog.stdlib.BoundLogger,
 ) -> str:
     """Get full image url for given project."""
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    result = (await conn.execute(statement)).mappings().one_or_none()
+    await check_project(conn, project_id, user_id)
 
-    if result is None:
-        raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and not result.public:
-        raise AccessDeniedError(project_id, "project")
-
-    return (await minio_client.generate_presigned_urls([f"projects/{project_id}/image.jpg"]))[0]
+    return (await minio_client.generate_presigned_urls([f"projects/{project_id}/image.jpg"], logger))[0]

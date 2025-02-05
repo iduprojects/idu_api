@@ -30,9 +30,3 @@ class InfrastructureType(Enum):
     BASIC = "basic"
     ADDITIONAL = "additional"
     COMFORT = "comfort"
-
-
-class RoadType(Enum):
-    FEDERAL = "federal"
-    REGIONAL = "regional"
-    LOCAL = "local"

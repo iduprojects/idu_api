@@ -1,5 +1,6 @@
 import time
 import uuid
+from http.client import HTTPException
 
 import structlog
 from fastapi import Request
@@ -45,7 +46,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-m
         except Exception as exc:
             time_finish = time.monotonic_ns()
 
-            if isinstance(exc, IduApiError):
+            if isinstance(exc, (IduApiError, HTTPException)):
                 log_func = logger.aerror
             else:
                 log_func = logger.aexception

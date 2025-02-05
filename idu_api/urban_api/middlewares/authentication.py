@@ -1,8 +1,10 @@
 import structlog
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
+from tenacity import RetryError
 
 from idu_api.urban_api.exceptions import IduApiError
+from idu_api.urban_api.exceptions.utils.external import ExternalServiceUnavailable
 from idu_api.urban_api.utils.auth_client import AuthenticationClient
 
 
@@ -23,8 +25,12 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
                 request.state.user = None  # No token, user is unauthenticated
         except IduApiError:
             raise
+        except RetryError as exc:
+            logger: structlog.stdlib.BoundLogger = request.app.state.logger
+            await logger.aerror("could not connect to authentication server")
+            raise ExternalServiceUnavailable("authentication server") from exc
         except Exception as exc:
-            logger: structlog.stdlib.BoundLogger = request.state.logger
+            logger: structlog.stdlib.BoundLogger = request.app.state.logger
             await logger.aexception("unexpected error in AuthenticationMiddleware")
             raise exc
 

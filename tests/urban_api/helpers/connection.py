@@ -1,44 +1,22 @@
-from datetime import datetime
+"""Mock AsyncConnection implementation is defined here."""
+
+from datetime import date, datetime
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from geoalchemy2.types import Geometry
-from shapely.geometry import Point
-from sqlalchemy import Column, Table
+from sqlalchemy import Column, Enum, Table
+from sqlalchemy.engine import Connection
 from sqlalchemy.sql import Insert, Select, Update
 
+from idu_api.urban_api.schemas.enums import NormativeType
 
-def get_query_columns(query):
-    """
-    Extract column names and their types from a SQLAlchemy query or table.
-    """
-
-    def get_column_type(col: Column):
-        if isinstance(col.type, Geometry):
-            return "GeometryType"
-        try:
-            return col.type.python_type
-        except NotImplementedError:
-            return str
-
-    def process_columns(columns):
-        """Process columns, including those extracted from a Table."""
-        result = {}
-        for col in columns:
-            if isinstance(col, Table):  # If it's a Table, process its columns
-                result.update({c.name: get_column_type(c) for c in col.columns if isinstance(c, Column)})
-            else:
-                result.update({col.name: get_column_type(col)})
-        return result
-
-    if isinstance(query, Select):
-        return process_columns(query.selected_columns)
-
-    if isinstance(query, (Insert, Update)):
-        if query._returning is not None:
-            return process_columns(query._returning)
-        return {}
-
-    return {}
+__all__ = [
+    "MockConnection",
+    "MockConnection",
+    "MockRow",
+    "mock_conn",
+]
 
 
 class MockRow:
@@ -50,22 +28,23 @@ class MockRow:
         for key, value in kwargs.items():
             setattr(self, key, value)
         self._data = kwargs
+        self._mapping = self
 
     @property
     def data(self):
         return self._data
 
     def __getitem__(self, item):
-        return self.data.get(item)
+        return self._data.get(item)
 
     def keys(self):
         return self._data.keys()
 
     def items(self):
-        return self.data.items()
+        return self._data.items()
 
     def __repr__(self):
-        return str(self.data)
+        return str(self._data)
 
 
 class MockResult:
@@ -73,8 +52,15 @@ class MockResult:
     Represents a collection of mock rows.
     """
 
-    def __init__(self, rows):
+    def __init__(self, rows, paging_data=None):
         self.rows = rows
+        self.paging = self.Paging(paging_data) if paging_data else None
+
+    def scalar(self):
+        """
+        Simulate the `scalar_one()` method to return the first value of the first row.
+        """
+        return [list(row.data.values())[0] for row in self.rows][0]
 
     def mappings(self):
         """
@@ -96,9 +82,9 @@ class MockResult:
         Simulate the `scalar_one()` method to return the first value of the first row.
         Typically used when you expect a single value from a single row.
         """
-        if self.rows:
+        if len(self.rows) == 1:
             return list(self.rows[0].data.values())[0]
-        return None
+        raise ValueError("Expected one row, but got multiple or zero rows.")
 
     def scalar_one_or_none(self):
         """
@@ -121,11 +107,31 @@ class MockResult:
             return None
         raise ValueError("Expected one or zero rows, but got multiple rows.")
 
+    def one(self):
+        """
+        Simulate the `one()` method. Returns the only one row if there is exactly one.
+        """
+        if len(self.rows) == 1:
+            return self.rows[0]
+        raise ValueError("Expected one row, but got multiple or zero rows.")
+
     def all(self):
         """
         Simulate the `all()` method. Returns all rows.
         """
         return self.rows
+
+    def __iter__(self):
+        return iter(self.rows)
+
+    class Paging:
+        """Simulates a pagination object with bookmarks."""
+
+        def __init__(self, paging_data):
+            self.bookmark_previous = paging_data.get("previous")
+            self.bookmark_next = paging_data.get("next_")
+            self.has_previous = paging_data.get("has_previous", False)
+            self.has_next = paging_data.get("has_next", False)
 
 
 class MockConnection:
@@ -133,36 +139,105 @@ class MockConnection:
     A custom connection type for the purpose of these tests.
     """
 
-    async def execute(self, query):
+    def __init__(self, *args, **kwargs):
+        self.execute_mock = AsyncMock()
+        self.commit_mock = AsyncMock()
+        self.args = args
+        self.kwargs = kwargs
+        self.sync_connection = MagicMock(spec=Connection)
+        self.sync_connection.execute.side_effect = self._sync_execute
+        self.sync_connection.commit.side_effect = self._sync_commit
+
+    async def execute(self, query, paging_data=None):
         """
-        Return a mock result based on the query
+        Return a mock result based on the query.
         """
-        columns = get_query_columns(query)
+        await self.execute_mock(str(query))
+        columns = self._get_query_columns(query)
+        data = {col: self._mock_value(dtype) for col, dtype in columns.items()}
+        return MockResult([MockRow(**data)], paging_data=paging_data)
+
+    async def commit(self):
+        """
+        Simulate the `commit` method.
+        """
+        await self.commit_mock()
+        return self
+
+    def _sync_execute(self, query):
+        columns = self._get_query_columns(query)
         data = {col: self._mock_value(dtype) for col, dtype in columns.items()}
         return MockResult([MockRow(**data)])
 
-    async def commit(self):
-        return self
+    def _sync_commit(self):
+        pass
+
+    @staticmethod
+    def _get_query_columns(query):
+        """
+        Extract column names and their types from a SQLAlchemy query or table.
+        """
+
+        def get_column_type(col: Column):
+            if isinstance(col.type, Geometry) or col.name.removeprefix("public_") in {"geometry", "centre_point"}:
+                return "GeometryType"
+            if isinstance(col.type, Enum):
+                return col.type
+            if col.name == "normative_type":
+                return "normative"
+            if col.name == "row_num":
+                return int
+            try:
+                return col.type.python_type
+            except Exception as e:
+                raise NotImplementedError(f"Unsupported column type: {col.type}") from e
+
+        def process_columns(columns):
+            """Process columns, including those extracted from a Table."""
+            result = {}
+            for col in columns:
+                if isinstance(col, Table):
+                    result.update({c.name: get_column_type(c) for c in col.columns if isinstance(c, Column)})
+                else:
+                    result[col.name] = get_column_type(col)
+            return result
+
+        if isinstance(query, Select):
+            return process_columns(query.selected_columns)
+
+        if isinstance(query, (Insert, Update)):
+            if query._returning is not None:
+                return process_columns(query._returning)
+            return {}
+
+        return {}
 
     @staticmethod
     def _mock_value(dtype):
         """
         Generate a mock value based on the expected Python type.
         """
+
         if dtype == int:
             return 1
         if dtype == str:
             return "mock_string"
         if dtype == float:
-            return 1.23
+            return 1.0
         if dtype == bool:
             return True
         if dtype == dict:
-            return {}
+            return {"context": [1]}
         if dtype == "GeometryType":
-            return Point(1, 1)
+            return {"type": "Point", "coordinates": [1, 2]}
         if dtype == datetime:
             return datetime(2024, 1, 1)
+        if dtype == date:
+            return date(2024, 1, 1)
+        if isinstance(dtype, Enum):
+            return dtype.enums[0]
+        if dtype == "normative":
+            return NormativeType.GLOBAL
         return None  # Default for unknown types
 
 

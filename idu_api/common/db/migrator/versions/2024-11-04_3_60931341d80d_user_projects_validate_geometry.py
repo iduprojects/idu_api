@@ -34,7 +34,7 @@ def upgrade() -> None:
         ),
         (
             "check_geometry_correctness_trigger",
-            "user_projects.profiles_data",
+            "user_projects.projects_functional_zones",
             "public.trigger_validate_geometry_not_point",
         ),
         (
@@ -67,7 +67,7 @@ def downgrade() -> None:
     for trigger_name, table_name in [
         ("check_geometry_correctness_trigger", "user_projects.object_geometries_data"),
         ("set_center_point_trigger", "user_projects.object_geometries_data"),
-        ("check_geometry_correctness_trigger", "user_projects.profiles_data"),
+        ("check_geometry_correctness_trigger", "user_projects.projects_functional_zones"),
         ("check_geometry_correctness_trigger", "user_projects.projects_territory_data"),
         ("set_center_point_trigger", "user_projects.projects_territory_data"),
     ]:

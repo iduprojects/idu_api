@@ -19,14 +19,27 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import UrbanObjectDTO
-from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import (
+    EntitiesNotFoundByIds,
+    EntityAlreadyExists,
+    EntityNotFoundById,
+    TooManyObjectsError,
+)
+from idu_api.urban_api.logic.impl.helpers.utils import (
+    DECIMAL_PLACES,
+    OBJECTS_NUMBER_LIMIT,
+    check_existence,
+    extract_values_from_model,
+    include_child_territories_cte,
+)
 from idu_api.urban_api.schemas import UrbanObjectPatch
 
-DECIMAL_PLACES = 15
 
+async def get_urban_objects_by_ids_from_db(conn: AsyncConnection, ids: list[int]) -> list[UrbanObjectDTO]:
+    """Get urban objects by urban object identifiers."""
 
-async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id: int) -> UrbanObjectDTO:
-    """Get urban object by urban object id."""
+    if len(ids) > OBJECTS_NUMBER_LIMIT:
+        raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
     statement = (
         select(
@@ -102,82 +115,73 @@ async def get_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id:
                 living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
-        .where(urban_objects_data.c.urban_object_id == urban_object_id)
-        .limit(1)  # TODO: a temporary fix to avoid error with multiple living buildings in one physical object
+        .where(urban_objects_data.c.urban_object_id.in_(ids))
     )
 
-    urban_object = (await conn.execute(statement)).mappings().one_or_none()
-    if urban_object is None:
-        raise EntityNotFoundById(urban_object_id, "urban object")
+    urban_objects = (await conn.execute(statement)).mappings().all()
+    if len(ids) > len(urban_objects):
+        raise EntitiesNotFoundByIds("urban object")
 
-    return UrbanObjectDTO(**urban_object)
+    return [UrbanObjectDTO(**uo) for uo in urban_objects]
 
 
-async def get_urban_object_by_physical_object_id_from_db(
+async def get_urban_objects_by_physical_object_id_from_db(
     conn: AsyncConnection,
     physical_object_id: int,
 ) -> list[UrbanObjectDTO]:
     """Get list of urban objects by physical object id."""
 
-    statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
-    physical_object = (await conn.execute(statement)).mappings().one_or_none()
-    if physical_object is None:
+    if not await check_existence(conn, physical_objects_data, conditions={"physical_object_id": physical_object_id}):
         raise EntityNotFoundById(physical_object_id, "physical object")
 
     statement = select(urban_objects_data.c.urban_object_id).where(
         urban_objects_data.c.physical_object_id == physical_object_id
     )
-    urban_objects = (await conn.execute(statement)).scalars()
+    ids = (await conn.execute(statement)).scalars().all()
 
-    return [await get_urban_object_by_id_from_db(conn, urban_object_id) for urban_object_id in urban_objects]
+    return await get_urban_objects_by_ids_from_db(conn, ids)
 
 
-async def get_urban_object_by_object_geometry_id_from_db(
+async def get_urban_objects_by_object_geometry_id_from_db(
     conn: AsyncConnection,
     object_geometry_id: int,
 ) -> list[UrbanObjectDTO]:
     """Get list of urban objects by object geometry id."""
 
-    statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-    object_geometry = (await conn.execute(statement)).mappings().one_or_none()
-    if object_geometry is None:
+    if not await check_existence(conn, object_geometries_data, conditions={"object_geometry_id": object_geometry_id}):
         raise EntityNotFoundById(object_geometry_id, "object geometry")
 
     statement = select(urban_objects_data.c.urban_object_id).where(
         urban_objects_data.c.object_geometry_id == object_geometry_id
     )
-    urban_objects = (await conn.execute(statement)).scalars()
+    ids = (await conn.execute(statement)).scalars().all()
 
-    return [await get_urban_object_by_id_from_db(conn, urban_object_id) for urban_object_id in urban_objects]
+    return await get_urban_objects_by_ids_from_db(conn, ids)
 
 
-async def get_urban_object_by_service_id_from_db(conn: AsyncConnection, service_id: int) -> list[UrbanObjectDTO]:
+async def get_urban_objects_by_service_id_from_db(conn: AsyncConnection, service_id: int) -> list[UrbanObjectDTO]:
     """Get list of urban objects by service id."""
 
-    statement = select(services_data).where(services_data.c.service_id == service_id)
-    service = (await conn.execute(statement)).mappings().one_or_none()
-    if service is None:
+    if not await check_existence(conn, services_data, conditions={"service_id": service_id}):
         raise EntityNotFoundById(service_id, "service")
 
     statement = select(urban_objects_data.c.urban_object_id).where(urban_objects_data.c.service_id == service_id)
-    urban_objects = (await conn.execute(statement)).scalars()
+    ids = (await conn.execute(statement)).scalars().all()
 
-    return [await get_urban_object_by_id_from_db(conn, urban_object_id) for urban_object_id in urban_objects]
+    return await get_urban_objects_by_ids_from_db(conn, ids)
 
 
 async def delete_urban_object_by_id_from_db(conn: AsyncConnection, urban_object_id: int) -> dict:
     """Get urban object by urban object id."""
 
-    statement = select(urban_objects_data).where(urban_objects_data.c.urban_object_id == urban_object_id)
-    urban_object = (await conn.execute(statement)).mappings().one_or_none()
-    if urban_object is None:
+    if not await check_existence(conn, urban_objects_data, conditions={"urban_object_id": urban_object_id}):
         raise EntityNotFoundById(urban_object_id, "urban object")
 
     statement = delete(urban_objects_data).where(urban_objects_data.c.urban_object_id == urban_object_id)
     await conn.execute(statement)
     await conn.commit()
 
-    return {"result": "ok"}
+    return {"status": "ok"}
 
 
 async def get_urban_objects_by_territory_id_from_db(
@@ -188,99 +192,98 @@ async def get_urban_objects_by_territory_id_from_db(
 ) -> list[UrbanObjectDTO]:
     """Get a list of urban objects by territory id with service type and physical object type filters."""
 
-    territories_cte = (
-        select(territories_data.c.territory_id)
-        .where(territories_data.c.territory_id == territory_id)
-        .cte(recursive=True)
-    )
+    if not await check_existence(conn, territories_data, conditions={"territory_id": territory_id}):
+        raise EntityNotFoundById(territory_id, "territory")
 
-    territories_cte = territories_cte.union_all(
-        select(territories_data.c.territory_id).where(territories_data.c.parent_id == territories_cte.c.territory_id)
-    )
-
+    territories_cte = include_child_territories_cte(territory_id)
     statement = (
-        (
-            select(
-                urban_objects_data,
-                physical_objects_data.c.physical_object_type_id,
-                physical_object_types_dict.c.name.label("physical_object_type_name"),
-                physical_object_types_dict.c.physical_object_function_id,
-                physical_object_functions_dict.c.name.label("physical_object_function_name"),
-                physical_objects_data.c.name.label("physical_object_name"),
-                physical_objects_data.c.properties.label("physical_object_properties"),
-                physical_objects_data.c.created_at.label("physical_object_created_at"),
-                physical_objects_data.c.updated_at.label("physical_object_updated_at"),
-                object_geometries_data.c.territory_id,
-                cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-                cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
-                object_geometries_data.c.created_at.label("object_geometry_created_at"),
-                object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
-                services_data.c.name.label("service_name"),
-                services_data.c.capacity_real,
-                services_data.c.properties.label("service_properties"),
-                services_data.c.created_at.label("service_created_at"),
-                services_data.c.updated_at.label("service_updated_at"),
-                object_geometries_data.c.address,
-                object_geometries_data.c.osm_id,
-                service_types_dict.c.service_type_id,
-                service_types_dict.c.urban_function_id,
-                urban_functions_dict.c.name.label("urban_function_name"),
-                service_types_dict.c.name.label("service_type_name"),
-                service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
-                service_types_dict.c.code.label("service_type_code"),
-                service_types_dict.c.infrastructure_type,
-                service_types_dict.c.properties.label("service_type_properties"),
-                territory_types_dict.c.territory_type_id,
-                territory_types_dict.c.name.label("territory_type_name"),
-            )
-            .select_from(
-                urban_objects_data.join(
-                    physical_objects_data,
-                    physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-                )
-                .join(
-                    object_geometries_data,
-                    object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
-                )
-                .join(
-                    physical_object_types_dict,
-                    physical_object_types_dict.c.physical_object_type_id
-                    == physical_objects_data.c.physical_object_type_id,
-                )
-                .join(
-                    physical_object_functions_dict,
-                    physical_object_functions_dict.c.physical_object_function_id
-                    == physical_object_types_dict.c.physical_object_function_id,
-                )
-                .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
-                .outerjoin(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
-                .outerjoin(
-                    urban_functions_dict,
-                    urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
-                )
-                .outerjoin(
-                    territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
-                )
-            )
-            .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
+        select(
+            urban_objects_data,
+            physical_objects_data.c.physical_object_type_id,
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
+            physical_objects_data.c.name.label("physical_object_name"),
+            physical_objects_data.c.properties.label("physical_object_properties"),
+            physical_objects_data.c.created_at.label("physical_object_created_at"),
+            physical_objects_data.c.updated_at.label("physical_object_updated_at"),
+            object_geometries_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            object_geometries_data.c.created_at.label("object_geometry_created_at"),
+            object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
+            services_data.c.name.label("service_name"),
+            services_data.c.capacity_real,
+            services_data.c.properties.label("service_properties"),
+            services_data.c.created_at.label("service_created_at"),
+            services_data.c.updated_at.label("service_updated_at"),
+            object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
+            service_types_dict.c.service_type_id,
+            service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
+            service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties.label("service_type_properties"),
+            territory_types_dict.c.territory_type_id,
+            territory_types_dict.c.name.label("territory_type_name"),
+            living_buildings_data.c.living_building_id,
+            living_buildings_data.c.living_area,
+            living_buildings_data.c.properties.label("living_building_properties"),
         )
+        .select_from(
+            urban_objects_data.join(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+            )
+            .join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
+            .join(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
+            )
+            .join(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
+            )
+            .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
+            .outerjoin(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+            .outerjoin(
+                territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
+            )
+            .outerjoin(
+                living_buildings_data,
+                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+            )
+        )
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
         .order_by(urban_objects_data.c.urban_object_id)
         .distinct()
     )
 
     if physical_object_type_id is not None:
-        query = select(physical_object_types_dict).where(
-            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id
-        )
-        physical_object_type = (await conn.execute(query)).scalar_one_or_none()
-        if physical_object_type is None:
+        if not await check_existence(
+            conn, physical_object_types_dict, conditions={"physical_object_type_id": physical_object_type_id}
+        ):
             raise EntityNotFoundById(physical_object_type_id, "physical object type")
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
 
     if service_type_id is not None:
-        query = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
-        service_type = (await conn.execute(query)).scalar_one_or_none()
-        if service_type is None:
+        if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
             raise EntityNotFoundById(service_type_id, "service type")
         statement = statement.where(services_data.c.service_type_id == service_type_id)
 
@@ -294,69 +297,50 @@ async def patch_urban_object_to_db(
 ) -> UrbanObjectDTO:
     """Update urban object by only given fields."""
 
-    statement = select(urban_objects_data).where(urban_objects_data.c.urban_object_id == urban_object_id).limit(1)
+    statement = select(urban_objects_data).where(urban_objects_data.c.urban_object_id == urban_object_id)
     existing_object = (await conn.execute(statement)).mappings().one_or_none()
     if existing_object is None:
         raise EntityNotFoundById(urban_object_id, "urban object")
 
-    urban_object_fields = urban_object.model_dump(exclude_unset=True)
+    values = extract_values_from_model(urban_object, exclude_unset=True)
 
-    if urban_object_fields.get("physical_object_id"):
-        statement = select(physical_objects_data).where(
-            physical_objects_data.c.physical_object_id == urban_object_fields.get("physical_object_id")
-        )
-        physical_object = (await conn.execute(statement)).mappings().one_or_none()
-        if physical_object is None:
-            raise EntityNotFoundById(urban_object_fields.get("physical_object_id"), "physical_object")
+    if urban_object.physical_object_id is not None:
+        if not await check_existence(
+            conn, physical_objects_data, conditions={"physical_object_id": urban_object.physical_object_id}
+        ):
+            raise EntityNotFoundById(urban_object.physical_object_id, "physical_object")
 
-    if urban_object_fields.get("physical_object_id", None) is not None:
-        statement = select(physical_objects_data).where(
-            physical_objects_data.c.physical_object_id == urban_object_fields.get("physical_object_id")
-        )
-        physical_object = (await conn.execute(statement)).mappings().one_or_none()
-        if physical_object is None:
-            raise EntityNotFoundById(urban_object_fields.get("physical_object_id"), "physical object")
+    if urban_object.object_geometry_id is not None:
+        if not await check_existence(
+            conn, object_geometries_data, conditions={"object_geometry_id": urban_object.object_geometry_id}
+        ):
+            raise EntityNotFoundById(urban_object.object_geometry_id, "object geometry")
 
-    if urban_object_fields.get("object_geometry_id", None) is not None:
-        statement = select(object_geometries_data).where(
-            object_geometries_data.c.object_geometry_id == urban_object_fields.get("object_geometry_id")
-        )
-        object_geometry = (await conn.execute(statement)).mappings().one_or_none()
-        if object_geometry is None:
-            raise EntityNotFoundById(urban_object_fields.get("object_geometry_id"), "object geometry")
+    if urban_object.service_id is not None:
+        if not await check_existence(conn, services_data, conditions={"service_id": urban_object.service_id}):
+            raise EntityNotFoundById(urban_object.service_id, "service")
 
-    if urban_object_fields.get("service_id", None) is not None:
-        statement = select(services_data).where(services_data.c.service_id == urban_object_fields.get("service_id"))
-        service = (await conn.execute(statement)).mappings().one_or_none()
-        if service is None:
-            raise EntityNotFoundById(urban_object_fields.get("service_id"), "service")
-
-    statement = (
-        select(urban_objects_data)
-        .where(
-            *(
-                urban_objects_data.c[key] == urban_object_fields.get(key, getattr(existing_object, key))
-                for key in ("physical_object_id", "object_geometry_id", "service_id")
-            )
-        )
-        .limit(1)
-    )
-    conflicting_object = (await conn.execute(statement)).mappings().one_or_none()
-    if conflicting_object is not None:
+    if await check_existence(
+        conn,
+        urban_objects_data,
+        conditions={
+            key: values.get(key, getattr(existing_object, key))
+            for key in ("physical_object_id", "object_geometry_id", "service_id")
+        },
+        not_conditions={"urban_object_id": urban_object_id},
+    ):
         raise EntityAlreadyExists(
             "urban object",
             *(
-                urban_object_fields.get(key, getattr(existing_object, key))
+                values.get(key, getattr(existing_object, key))
                 for key in ("physical_object_id", "object_geometry_id", "service_id")
             ),
         )
 
     statement = (
-        update(urban_objects_data)
-        .where(urban_objects_data.c.urban_object_id == urban_object_id)
-        .values(**urban_object_fields)
+        update(urban_objects_data).where(urban_objects_data.c.urban_object_id == urban_object_id).values(**values)
     )
     await conn.execute(statement)
     await conn.commit()
 
-    return await get_urban_object_by_id_from_db(conn, urban_object_id)
+    return (await get_urban_objects_by_ids_from_db(conn, [urban_object_id]))[0]

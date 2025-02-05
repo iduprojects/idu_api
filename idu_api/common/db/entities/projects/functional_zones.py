@@ -14,7 +14,7 @@ func: Callable
 
 profiles_data_id_seq = Sequence("profiles_data_id_seq")
 
-profiles_data = Table(
+projects_functional_zones = Table(
     "profiles_data",
     metadata,
     Column("profile_id", Integer, primary_key=True, server_default=profiles_data_id_seq.next_value()),
@@ -46,7 +46,7 @@ profiles_data = Table(
 
 """
 Profiles data:
-- profile_id int
+- functional_zone_id int
 - scenario_id foreign key int
 - functional_zone_type_id foreign key int
 - geometry geometry

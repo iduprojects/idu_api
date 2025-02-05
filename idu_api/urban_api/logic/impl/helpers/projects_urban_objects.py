@@ -23,16 +23,17 @@ from idu_api.common.db.entities import (
     urban_functions_dict,
 )
 from idu_api.urban_api.dto import ScenarioUrbanObjectDTO
-from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds
+from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, TooManyObjectsError
+from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, OBJECTS_NUMBER_LIMIT
 
-DECIMAL_PLACES = 15
 
-
-async def get_scenario_urban_object_by_id_from_db(
-    conn: AsyncConnection,
-    urban_object_ids: list[int],
+async def get_scenario_urban_object_by_ids_from_db(
+    conn: AsyncConnection, ids: list[int]
 ) -> list[ScenarioUrbanObjectDTO]:
-    """Get scenario urban object by urban object identifier."""
+    """Get scenario urban object by identifiers."""
+
+    if len(ids) > OBJECTS_NUMBER_LIMIT:
+        raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
     statement = (
         select(
@@ -165,12 +166,11 @@ async def get_scenario_urban_object_by_id_from_db(
                 == projects_physical_objects_data.c.physical_object_id,
             )
         )
-        .where(projects_urban_objects_data.c.urban_object_id.in_(urban_object_ids))
-        .limit(1)  # TODO: a temporary fix to avoid error with multiple living buildings in one physical object
+        .where(projects_urban_objects_data.c.urban_object_id.in_(ids))
     )
 
     result = (await conn.execute(statement)).mappings().all()
-    if len(urban_object_ids) > len(list(result)):
+    if len(ids) > len(result):
         raise EntitiesNotFoundByIds("urban object")
 
     objects = []

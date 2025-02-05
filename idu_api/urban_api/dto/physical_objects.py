@@ -1,18 +1,20 @@
 """Physical objects DTOs are defined here."""
 
-# pylint: disable=too-many-instance-attributes
-
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
 import shapely.geometry as geom
 
+# pylint: disable=too-many-instance-attributes
+
+
 Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
 
 
 @dataclass(frozen=True)
-class PhysicalObjectDataDTO:
+class PhysicalObjectDTO:
     physical_object_id: int
     physical_object_type_id: int
     physical_object_type_name: str
@@ -23,8 +25,13 @@ class PhysicalObjectDataDTO:
     living_building_id: int | None
     living_area: float | None
     living_building_properties: dict[str, Any] | None
+    territories: list[dict[str, Any]]
     created_at: datetime
     updated_at: datetime
+
+    @classmethod
+    def fields(cls) -> Iterable[str]:
+        return cls.__annotations__.keys()
 
 
 @dataclass
@@ -34,6 +41,8 @@ class PhysicalObjectWithGeometryDTO:
     physical_object_type_name: str
     physical_object_function_id: int
     physical_object_function_name: str
+    territory_id: int
+    territory_name: str
     name: str | None
     properties: dict[str, Any]
     living_building_id: int | None
@@ -79,24 +88,14 @@ class PhysicalObjectWithGeometryDTO:
         else:
             physical_object["living_building"] = None
 
+        physical_object["territories"] = [
+            {
+                "id": physical_object.pop("territory_id"),
+                "name": physical_object.pop("territory_name"),
+            }
+        ]
+
         return physical_object
-
-
-@dataclass(frozen=True)
-class PhysicalObjectWithTerritoryDTO:
-    physical_object_id: int
-    physical_object_type_id: int
-    physical_object_type_name: str
-    physical_object_function_id: int | None
-    physical_object_function_name: str | None
-    name: str | None
-    living_building_id: int | None
-    living_area: float | None
-    living_building_properties: dict[str, Any] | None
-    properties: dict[str, Any]
-    territories: list[dict[str, Any]]
-    created_at: datetime
-    updated_at: datetime
 
 
 @dataclass(frozen=True)
@@ -117,5 +116,9 @@ class ShortScenarioPhysicalObjectDTO(ShortPhysicalObjectDTO):
 
 
 @dataclass(frozen=True)
-class ScenarioPhysicalObjectDTO(PhysicalObjectDataDTO):
+class ScenarioPhysicalObjectDTO(PhysicalObjectDTO):
     is_scenario_object: bool
+
+    @classmethod
+    def fields(cls) -> Iterable[str]:
+        return cls.__annotations__.keys() | super().__annotations__.keys()

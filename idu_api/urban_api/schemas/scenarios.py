@@ -1,6 +1,6 @@
 """Scenarios response models are defined here."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
@@ -9,7 +9,7 @@ from idu_api.urban_api.dto import ScenarioDTO
 from idu_api.urban_api.schemas.short_models import FunctionalZoneTypeBasic, ShortProject, ShortScenario, ShortTerritory
 
 
-class ScenariosData(BaseModel):
+class Scenario(BaseModel):
     """Scenario with all its attributes."""
 
     scenario_id: int = Field(..., description="scenario identifier", examples=[1])
@@ -23,13 +23,15 @@ class ScenariosData(BaseModel):
         description="scenario additional properties",
         examples=[{"attribute_name": "attribute_value"}],
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the scenario was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the scenario was created"
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the scenario was last updated"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the scenario was last updated"
     )
 
     @classmethod
-    def from_dto(cls, dto: ScenarioDTO) -> "ScenariosData":
+    def from_dto(cls, dto: ScenarioDTO) -> "Scenario":
         return cls(
             scenario_id=dto.scenario_id,
             parent_scenario=(
@@ -58,7 +60,7 @@ class ScenariosData(BaseModel):
         )
 
 
-class ScenariosPost(BaseModel):
+class ScenarioPost(BaseModel):
     """Scenario schema for POST requests."""
 
     project_id: int = Field(..., description="project identifier for the scenario", examples=[1])
@@ -74,7 +76,7 @@ class ScenariosPost(BaseModel):
     )
 
 
-class ScenariosPut(BaseModel):
+class ScenarioPut(BaseModel):
     """Scenario schema for PUT requests."""
 
     functional_zone_type_id: int | None = Field(
@@ -89,7 +91,7 @@ class ScenariosPut(BaseModel):
     )
 
 
-class ScenariosPatch(BaseModel):
+class ScenarioPatch(BaseModel):
     """Scenario schema for PATCH requests."""
 
     functional_zone_type_id: int | None = Field(
@@ -98,7 +100,7 @@ class ScenariosPatch(BaseModel):
     name: str | None = Field(None, description="name of the scenario", examples=["--"])
     is_based: bool | None = Field(None, description="boolean parameter to determine base scenario")
     properties: dict[str, Any] | None = Field(
-        default_factory=None,
+        None,
         description="scenario additional properties",
         examples=[{"attribute_name": "attribute_value"}],
     )

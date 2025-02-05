@@ -5,14 +5,15 @@ from starlette import status
 
 from idu_api.urban_api.logic.physical_object_types import PhysicalObjectTypesService
 from idu_api.urban_api.schemas import (
+    OkResponse,
     PhysicalObjectFunction,
     PhysicalObjectFunctionPatch,
     PhysicalObjectFunctionPost,
     PhysicalObjectFunctionPut,
-    PhysicalObjectsTypes,
     PhysicalObjectsTypesHierarchy,
-    PhysicalObjectsTypesPatch,
-    PhysicalObjectsTypesPost,
+    PhysicalObjectType,
+    PhysicalObjectTypePatch,
+    PhysicalObjectTypePost,
 )
 
 from .routers import physical_object_types_router
@@ -20,66 +21,109 @@ from .routers import physical_object_types_router
 
 @physical_object_types_router.get(
     "/physical_object_types",
-    response_model=list[PhysicalObjectsTypes],
+    response_model=list[PhysicalObjectType],
     status_code=status.HTTP_200_OK,
 )
-async def get_physical_object_types(request: Request) -> list[PhysicalObjectsTypes]:
-    """Get all physical object types."""
+async def get_physical_object_types(request: Request) -> list[PhysicalObjectType]:
+    """
+    ## Get all physical object types.
+
+    ### Returns:
+    - **list[PhysicalObjectType]**: A list of all physical object types.
+    """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
     physical_object_types = await physical_object_types_service.get_physical_object_types()
 
-    return [PhysicalObjectsTypes.from_dto(object_type) for object_type in physical_object_types]
+    return [PhysicalObjectType.from_dto(object_type) for object_type in physical_object_types]
 
 
 @physical_object_types_router.post(
     "/physical_object_types",
-    response_model=PhysicalObjectsTypes,
+    response_model=PhysicalObjectType,
     status_code=status.HTTP_201_CREATED,
 )
 async def add_physical_object_type(
-    request: Request, physical_object_type: PhysicalObjectsTypesPost
-) -> PhysicalObjectsTypes:
-    """Add a physical object type."""
+    request: Request, physical_object_type: PhysicalObjectTypePost
+) -> PhysicalObjectType:
+    """
+    ## Create a new physical object type.
+
+    ### Parameters:
+    - **physical_object_type** (PhysicalObjectTypePost, Body): Data for the new physical object type.
+
+    ### Returns:
+    - **PhysicalObjectType**: The created physical object type.
+
+    ### Errors:
+    - **404 Not Found**: If the physical object function does not exist.
+    - **409 Conflict**: If a physical object type with the such name already exists.
+    """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
     physical_object_type_dto = await physical_object_types_service.add_physical_object_type(physical_object_type)
 
-    return PhysicalObjectsTypes.from_dto(physical_object_type_dto)
+    return PhysicalObjectType.from_dto(physical_object_type_dto)
 
 
 @physical_object_types_router.patch(
     "/physical_object_types/{physical_object_type_id}",
-    response_model=PhysicalObjectsTypes,
+    response_model=PhysicalObjectType,
     status_code=status.HTTP_200_OK,
 )
 async def patch_physical_object_type(
     request: Request,
-    physical_object_type: PhysicalObjectsTypesPatch,
-    physical_object_type_id: int = Path(..., description="physical object type identifier"),
-) -> PhysicalObjectsTypes:
-    """Update physical object type by only given attributes."""
+    physical_object_type: PhysicalObjectTypePatch,
+    physical_object_type_id: int = Path(..., description="physical object type identifier", gt=0),
+) -> PhysicalObjectType:
+    """
+    ## Partially update a physical object type.
+
+    ### Parameters:
+    - **physical_object_type_id** (int, Path): Unique identifier of the physical object type.
+    - **physical_object_type** (PhysicalObjectTypePatch, Body): Fields to update in the physical object type.
+
+    ### Returns:
+    - **PhysicalObjectType**: The updated physical object type with modified attributes.
+
+    ### Errors:
+    - **404 Not Found**: If the physical object type (or related entity) does not exist.
+    - **409 Conflict**: If a physical object type with the such name already exists.
+    """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
     physical_object_type_dto = await physical_object_types_service.patch_physical_object_type(
         physical_object_type_id, physical_object_type
     )
 
-    return PhysicalObjectsTypes.from_dto(physical_object_type_dto)
+    return PhysicalObjectType.from_dto(physical_object_type_dto)
 
 
 @physical_object_types_router.delete(
     "/physical_object_types/{physical_object_type_id}",
-    response_model=dict,
+    response_model=OkResponse,
     status_code=status.HTTP_200_OK,
 )
 async def delete_physical_object_type(
-    request: Request, physical_object_type_id: int = Path(..., description="physical object type identifier")
-) -> dict:
-    """Delete physical object type by id."""
+    request: Request, physical_object_type_id: int = Path(..., description="physical object type identifier", gt=0)
+) -> OkResponse:
+    """
+    ## Delete a physical object type by its identifier.
+
+    ### Parameters:
+    - **physical_object_type_id** (int, Path): Unique identifier of the physical object type.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ### Errors:
+    - **404 Not Found**: If the physical object type does not exist.
+    """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
-    return await physical_object_types_service.delete_physical_object_type(physical_object_type_id)
+    await physical_object_types_service.delete_physical_object_type(physical_object_type_id)
+
+    return OkResponse()
 
 
 @physical_object_types_router.get(
@@ -93,11 +137,25 @@ async def get_physical_object_functions_by_parent_id(
         None,
         description="parent physical object function id to filter, "
         "should be skipped for top level physical object functions",
+        gt=0,
     ),
     name: str | None = Query(None, description="search by physical object function name"),
     get_all_subtree: bool = Query(False, description="getting full subtree of physical object functions"),
 ) -> list[PhysicalObjectFunction]:
-    """Get physical object functions by parent id (skip it to get upper level)."""
+    """
+    ## Get physical object functions by parent identifier.
+
+    ### Parameters:
+    - **parent_id** (int | None, Query): Unique identifier of the parent physical object function. If skipped, it returns the highest level functions.
+    - **name** (str | None, Query): Filters results by function name.
+    - **get_all_subtree** (bool, Query): If True, retrieves all subtree of physical object functions.
+
+    ### Returns:
+    - **list[PhysicalObjectFunction]**: A list of physical object functions matching the filters.
+
+    ### Errors:
+    - **404 Not Found**: If the physical object function does not exist.
+    """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
     physical_object_functions = await physical_object_types_service.get_physical_object_functions_by_parent_id(
@@ -118,7 +176,19 @@ async def get_physical_object_functions_by_parent_id(
 async def add_physical_object_function(
     request: Request, physical_object_function: PhysicalObjectFunctionPost
 ) -> PhysicalObjectFunction:
-    """Add a new physical object function."""
+    """
+    ## Create a new physical object function.
+
+    ### Parameters:
+    - **physical_object_function** (PhysicalObjectFunctionPost, Body): Data for the new physical object function.
+
+    ### Returns:
+    - **PhysicalObjectFunction**: The created physical object function.
+
+    ### Errors:
+    - **404 Not Found**: If related entity does not exist.
+    - **409 Conflict**: If a physical object function with the such name already exists.
+    """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
     physical_object_function_dto = await physical_object_types_service.add_physical_object_function(
@@ -129,20 +199,33 @@ async def add_physical_object_function(
 
 
 @physical_object_types_router.put(
-    "/physical_object_functions/{physical_object_function_id}",
+    "/physical_object_functions",
     response_model=PhysicalObjectFunction,
     status_code=status.HTTP_200_OK,
 )
 async def put_physical_object_function(
     request: Request,
     physical_object_function: PhysicalObjectFunctionPut,
-    physical_object_function_id: int = Path(..., description="physical object function identifier"),
 ) -> PhysicalObjectFunction:
-    """Update physical object function by all its attributes."""
+    """
+    ## Update or create a physical object function.
+
+    **NOTE:** If a physical object function with the such name already exists, it will be updated.
+    Otherwise, a new physical object function will be created.
+
+    ### Parameters:
+    - **physical_object_function** (PhysicalObjectFunctionPut, Body): Data for updating or creating a function.
+
+    ### Returns:
+    - **PhysicalObjectFunction**: The updated or created physical object function.
+
+    ### Errors:
+    - **404 Not Found**: If related entity does not exist.
+    """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
     physical_object_function_dto = await physical_object_types_service.put_physical_object_function(
-        physical_object_function_id, physical_object_function
+        physical_object_function
     )
 
     return PhysicalObjectFunction.from_dto(physical_object_function_dto)
@@ -156,9 +239,22 @@ async def put_physical_object_function(
 async def patch_physical_object_function(
     request: Request,
     physical_object_function: PhysicalObjectFunctionPatch,
-    physical_object_function_id: int = Path(..., description="physical object function identifier"),
+    physical_object_function_id: int = Path(..., description="physical object function identifier", gt=0),
 ) -> PhysicalObjectFunction:
-    """Update physical object function by only given attributes."""
+    """
+    ## Partially update a physical object function.
+
+    ### Parameters:
+    - **physical_object_function_id** (int, Path): Unique identifier of the physical object function.
+    - **physical_object_function** (PhysicalObjectFunctionPatch, Body): Fields to update in the function.
+
+    ### Returns:
+    - **PhysicalObjectFunction**: The updated physical object function with modified attributes.
+
+    ### Errors:
+    - **404 Not Found**: If the physical object function (or related entity) does not exist.
+    - **409 Conflict**: If a physical object function with the such name already exists.
+    """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
     physical_object_function_dto = await physical_object_types_service.patch_physical_object_function(
@@ -170,19 +266,32 @@ async def patch_physical_object_function(
 
 @physical_object_types_router.delete(
     "/physical_object_functions/{physical_object_function_id}",
-    response_model=dict,
+    response_model=OkResponse,
     status_code=status.HTTP_200_OK,
 )
 async def delete_physical_object_function(
-    request: Request, physical_object_function_id: int = Path(..., description="physical object function identifier")
-) -> dict:
-    """Delete physical object function by id.
+    request: Request,
+    physical_object_function_id: int = Path(..., description="physical object function identifier", gt=0),
+) -> OkResponse:
+    """
+    ## Delete a physical object function by its identifier.
 
-    It also removes all child elements of this physical object function!!!
+    **WARNING:** This method also removes all child elements of the function.
+
+    ### Parameters:
+    - **physical_object_function_id** (int, Path): Unique identifier of the physical object function.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ### Errors:
+    - **404 Not Found**: If the physical object function does not exist.
     """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
-    return await physical_object_types_service.delete_physical_object_function(physical_object_function_id)
+    await physical_object_types_service.delete_physical_object_function(physical_object_function_id)
+
+    return OkResponse()
 
 
 @physical_object_types_router.get(
@@ -196,10 +305,18 @@ async def get_physical_object_types_hierarchy(
         None, description="list of physical object type ids separated by comma"
     ),
 ) -> list[PhysicalObjectsTypesHierarchy]:
-    """Get physical object types hierarchy (from top-level physical object function to physical object type
-    based on a list of required physical object type ids.
+    """
+    ## Get the hierarchy of physical object types.
 
-    If the list of identifiers was not passed, it returns the full hierarchy.
+    ### Parameters:
+    - **physical_object_types_ids** (str | None, Query): Comma-separated list of physical object type identifiers.
+    If skipped, it will return hierarchy for all physical object types.
+
+    ### Returns:
+    - **list[PhysicalObjectsTypesHierarchy]**: A hierarchical representation of physical object types.
+
+    ### Errors:
+    - **404 Not Found**: If the physical object types do not exist.
     """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 

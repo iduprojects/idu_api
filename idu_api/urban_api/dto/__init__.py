@@ -1,14 +1,19 @@
 """Data Transfer Objects (much like entities from database) are defined in this module."""
 
-from .functional_zones import FunctionalZoneDataDTO, FunctionalZoneSourceDTO, FunctionalZoneTypeDTO, ProjectProfileDTO
+from .functional_zones import (
+    FunctionalZoneDTO,
+    FunctionalZoneSourceDTO,
+    FunctionalZoneTypeDTO,
+    ScenarioFunctionalZoneDTO,
+)
 from .hexagons import HexagonDTO, HexagonWithIndicatorsDTO
 from .indicators import (
     IndicatorDTO,
     IndicatorsGroupDTO,
     IndicatorValueDTO,
     MeasurementUnitDTO,
-    ProjectIndicatorValueDTO,
-    ShortProjectIndicatorValueDTO,
+    ScenarioIndicatorValueDTO,
+    ShortScenarioIndicatorValueDTO,
 )
 from .living_buildings import LivingBuildingDTO, LivingBuildingWithGeometryDTO
 from .normatives import NormativeDTO
@@ -20,23 +25,21 @@ from .physical_object_types import (
     PhysicalObjectTypesHierarchyDTO,
 )
 from .physical_objects import (
-    PhysicalObjectDataDTO,
+    PhysicalObjectDTO,
     PhysicalObjectWithGeometryDTO,
-    PhysicalObjectWithTerritoryDTO,
     ScenarioPhysicalObjectDTO,
     ShortPhysicalObjectDTO,
     ShortScenarioPhysicalObjectDTO,
 )
 from .profiles_reclamation import ProfilesReclamationDataDTO, ProfilesReclamationDataMatrixDTO
-from .projects import ProjectDTO, ProjectTerritoryDTO, ProjectWithBaseScenarioDTO
+from .projects import ProjectDTO, ProjectTerritoryDTO, ProjectWithTerritoryDTO
 from .scenarios import ScenarioDTO
-from .service_types import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from .service_types import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from .services import (
     ScenarioServiceDTO,
     ServiceDTO,
     ServicesCountCapacityDTO,
     ServiceWithGeometryDTO,
-    ServiceWithTerritoriesDTO,
     ShortScenarioServiceDTO,
     ShortServiceDTO,
 )
@@ -59,10 +62,9 @@ __all__ = [
     "ScenarioDTO",
     "ServicesCountCapacityDTO",
     "ServiceDTO",
-    "ServiceTypesDTO",
+    "ServiceTypeDTO",
     "ServiceTypesHierarchyDTO",
     "ServiceWithGeometryDTO",
-    "ServiceWithTerritoriesDTO",
     "IndicatorDTO",
     "IndicatorsGroupDTO",
     "IndicatorValueDTO",
@@ -70,15 +72,14 @@ __all__ = [
     "NormativeDTO",
     "ObjectGeometryDTO",
     "PageDTO",
-    "PhysicalObjectDataDTO",
+    "PhysicalObjectDTO",
     "PhysicalObjectFunctionDTO",
     "PhysicalObjectTypeDTO",
     "PhysicalObjectTypesHierarchyDTO",
     "PhysicalObjectWithGeometryDTO",
-    "PhysicalObjectWithTerritoryDTO",
     "LivingBuildingDTO",
     "LivingBuildingWithGeometryDTO",
-    "FunctionalZoneDataDTO",
+    "FunctionalZoneDTO",
     "FunctionalZoneTypeDTO",
     "TerritoryWithIndicatorDTO",
     "TerritoryWithIndicatorsDTO",
@@ -90,8 +91,8 @@ __all__ = [
     "ProjectTerritoryDTO",
     "ProfilesReclamationDataDTO",
     "ProfilesReclamationDataMatrixDTO",
-    "ProjectIndicatorValueDTO",
-    "ProjectProfileDTO",
+    "ScenarioIndicatorValueDTO",
+    "ScenarioFunctionalZoneDTO",
     "ShortScenarioPhysicalObjectDTO",
     "ScenarioPhysicalObjectDTO",
     "ShortScenarioServiceDTO",
@@ -102,8 +103,8 @@ __all__ = [
     "ShortPhysicalObjectDTO",
     "HexagonDTO",
     "HexagonWithIndicatorsDTO",
-    "ShortProjectIndicatorValueDTO",
+    "ShortScenarioIndicatorValueDTO",
     "ScenarioUrbanObjectDTO",
     "FunctionalZoneSourceDTO",
-    "ProjectWithBaseScenarioDTO",
+    "ProjectWithTerritoryDTO",
 ]

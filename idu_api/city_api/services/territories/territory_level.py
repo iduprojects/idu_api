@@ -4,7 +4,7 @@ from idu_api.city_api.common.mapper import territory_dto_without_geometry
 from idu_api.city_api.dto.territory import CATerritoryDTO, CATerritoryWithoutGeometryDTO
 from idu_api.city_api.services.territories.territories import get_territories_by_parent_id_and_level
 from idu_api.urban_api.dto import TerritoryDTO, TerritoryWithoutGeometryDTO
-from idu_api.urban_api.logic.impl.helpers.territory_objects import get_territory_by_id
+from idu_api.urban_api.logic.impl.helpers.territories_objects import get_territory_by_id
 
 
 class TerritoryLevelsService:

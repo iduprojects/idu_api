@@ -45,9 +45,7 @@ class IndicatorsService(Protocol):
         """Get all indicators by indicators group id."""
 
     @abc.abstractmethod
-    async def update_indicators_group(
-        self, indicators_group: IndicatorsGroupPost, indicators_group_id: int
-    ) -> IndicatorsGroupDTO:
+    async def update_indicators_group(self, indicators_group: IndicatorsGroupPost) -> IndicatorsGroupDTO:
         """Update indicators group object."""
 
     @abc.abstractmethod
@@ -70,7 +68,7 @@ class IndicatorsService(Protocol):
         """Create indicator object."""
 
     @abc.abstractmethod
-    async def put_indicator(self, indicator_id: int, indicator: IndicatorsPut) -> IndicatorDTO:
+    async def put_indicator(self, indicator: IndicatorsPut) -> IndicatorDTO:
         """Update indicator object by all its attributes."""
 
     @abc.abstractmethod
