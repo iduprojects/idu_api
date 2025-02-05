@@ -1,10 +1,10 @@
 """Object geometries internal logic is defined here."""
 
-from datetime import datetime, timezone
+from collections import defaultdict
 from typing import Callable
 
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, delete, insert, select, text, update
+from geoalchemy2.functions import ST_AsGeoJSON
+from sqlalchemy import cast, delete, insert, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -17,24 +17,27 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import ObjectGeometryDTO, PhysicalObjectDataDTO, UrbanObjectDTO
-from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById
-from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_object_by_id_from_db
-from idu_api.urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
+from idu_api.urban_api.dto import ObjectGeometryDTO, PhysicalObjectDTO, UrbanObjectDTO
+from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
+from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_objects_by_ids_from_db
+from idu_api.urban_api.logic.impl.helpers.utils import (
+    DECIMAL_PLACES,
+    OBJECTS_NUMBER_LIMIT,
+    check_existence,
+    extract_values_from_model,
+)
+from idu_api.urban_api.schemas import ObjectGeometryPatch, ObjectGeometryPost, ObjectGeometryPut
 
 func: Callable
-DECIMAL_PLACES = 15
 
 
 async def get_physical_objects_by_object_geometry_id_from_db(
     conn: AsyncConnection,
     object_geometry_id: int,
-) -> list[PhysicalObjectDataDTO]:
+) -> list[PhysicalObjectDTO]:
     """Get physical object or list of physical objects by object geometry id."""
 
-    statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-    object_geometry = (await conn.execute(statement)).one_or_none()
-    if object_geometry is None:
+    if not await check_existence(conn, object_geometries_data, conditions={"object_geometry_id": object_geometry_id}):
         raise EntityNotFoundById(object_geometry_id, "object geometry")
 
     statement = (
@@ -51,6 +54,8 @@ async def get_physical_objects_by_object_geometry_id_from_db(
             living_buildings_data.c.living_building_id,
             living_buildings_data.c.living_area,
             living_buildings_data.c.properties.label("living_building_properties"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
         )
         .select_from(
             physical_objects_data.join(
@@ -70,6 +75,10 @@ async def get_physical_objects_by_object_geometry_id_from_db(
                 object_geometries_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
             .outerjoin(
                 living_buildings_data,
                 living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
@@ -81,14 +90,23 @@ async def get_physical_objects_by_object_geometry_id_from_db(
 
     result = (await conn.execute(statement)).mappings().all()
 
-    return [PhysicalObjectDataDTO(**physical_object) for physical_object in result]
+    grouped_data = defaultdict(lambda: {"territories": []})
+    for row in result:
+        key = row.physical_object_id
+        if key not in grouped_data:
+            grouped_data[key].update({k: v for k, v in row.items() if k in PhysicalObjectDTO.fields()})
+
+        territory = {"territory_id": row["territory_id"], "name": row["territory_name"]}
+        grouped_data[key]["territories"].append(territory)
+
+    return [PhysicalObjectDTO(**physical_object) for physical_object in grouped_data.values()]
 
 
-async def get_object_geometry_by_ids_from_db(
-    conn: AsyncConnection,
-    object_geometry_ids: list[int],
-) -> list[ObjectGeometryDTO]:
+async def get_object_geometry_by_ids_from_db(conn: AsyncConnection, ids: list[int]) -> list[ObjectGeometryDTO]:
     """Get list of object geometries by list of identifiers."""
+
+    if len(ids) > OBJECTS_NUMBER_LIMIT:
+        raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
     statement = (
         select(
@@ -108,12 +126,11 @@ async def get_object_geometry_by_ids_from_db(
                 territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
         )
-        .where(object_geometries_data.c.object_geometry_id.in_(object_geometry_ids))
+        .where(object_geometries_data.c.object_geometry_id.in_(ids))
     )
 
     result = (await conn.execute(statement)).mappings().all()
-
-    if len(object_geometry_ids) > len(list(result)):
+    if len(ids) > len(result):
         raise EntitiesNotFoundByIds("object geometry")
 
     return [ObjectGeometryDTO(**geom) for geom in result]
@@ -121,127 +138,85 @@ async def get_object_geometry_by_ids_from_db(
 
 async def put_object_geometry_to_db(
     conn: AsyncConnection,
-    object_geometry: ObjectGeometriesPut,
+    object_geometry: ObjectGeometryPut,
     object_geometry_id: int,
 ) -> ObjectGeometryDTO:
     """Put object geometry."""
 
-    statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-    requested_object_geometry = (await conn.execute(statement)).one_or_none()
-    if requested_object_geometry is None:
+    if not await check_existence(conn, object_geometries_data, conditions={"object_geometry_id": object_geometry_id}):
         raise EntityNotFoundById(object_geometry_id, "object geometry")
 
-    statement = select(territories_data).where(territories_data.c.territory_id == object_geometry.territory_id)
-    territory = (await conn.execute(statement)).one_or_none()
-    if territory is None:
+    if not await check_existence(conn, territories_data, conditions={"territory_id": object_geometry.territory_id}):
         raise EntityNotFoundById(object_geometry.territory_id, "territory")
 
+    values = extract_values_from_model(object_geometry, to_update=True)
     statement = (
         update(object_geometries_data)
         .where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-        .values(
-            territory_id=object_geometry.territory_id,
-            geometry=ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326")),
-            centre_point=ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326")),
-            address=object_geometry.address,
-            osm_id=object_geometry.osm_id,
-            updated_at=datetime.now(timezone.utc),
-        )
-        .returning(object_geometries_data)
+        .values(**values)
     )
 
-    result = (await conn.execute(statement)).mappings().one()
+    await conn.execute(statement)
     await conn.commit()
 
-    return (await get_object_geometry_by_ids_from_db(conn, [result.object_geometry_id]))[0]
+    return (await get_object_geometry_by_ids_from_db(conn, [object_geometry_id]))[0]
 
 
 async def patch_object_geometry_to_db(
     conn: AsyncConnection,
-    object_geometry: ObjectGeometriesPatch,
+    object_geometry: ObjectGeometryPatch,
     object_geometry_id: int,
 ) -> ObjectGeometryDTO:
     """Patch object geometry."""
 
-    statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-    requested_object_geometry = (await conn.execute(statement)).one_or_none()
-    if requested_object_geometry is None:
+    if not await check_existence(conn, object_geometries_data, conditions={"object_geometry_id": object_geometry_id}):
         raise EntityNotFoundById(object_geometry_id, "object geometry")
+
+    if object_geometry.territory_id is not None:
+        if not await check_existence(conn, territories_data, conditions={"territory_id": object_geometry.territory_id}):
+            raise EntityNotFoundById(object_geometry.territory_id, "territory")
+
+    values = extract_values_from_model(object_geometry, exclude_unset=True, to_update=True)
 
     statement = (
         update(object_geometries_data)
         .where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-        .values(updated_at=datetime.now(timezone.utc))
-        .returning(object_geometries_data)
+        .values(**values)
     )
 
-    values_to_update = {}
-    for k, v in object_geometry.model_dump(exclude={"geometry", "centre_point"}, exclude_unset=True).items():
-        if k == "territory_id":
-            new_statement = select(territories_data).where(
-                territories_data.c.territory_id == object_geometry.territory_id
-            )
-            territory = (await conn.execute(new_statement)).one_or_none()
-            if territory is None:
-                raise EntityNotFoundById(object_geometry.territory_id, "territory")
-        values_to_update.update({k: v})
-
-    if object_geometry.geometry is not None:
-        values_to_update.update(
-            {"geometry": ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326"))}
-        )
-        values_to_update.update(
-            {"centre_point": ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326"))}
-        )
-
-    statement = statement.values(**values_to_update)
-    result = (await conn.execute(statement)).mappings().one()
+    await conn.execute(statement)
     await conn.commit()
 
-    return (await get_object_geometry_by_ids_from_db(conn, [result.object_geometry_id]))[0]
+    return (await get_object_geometry_by_ids_from_db(conn, [object_geometry_id]))[0]
 
 
 async def delete_object_geometry_in_db(conn: AsyncConnection, object_geometry_id: int) -> dict:
     """Delete object geometry."""
 
-    statement = select(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
-    requested_object_geometry = (await conn.execute(statement)).one_or_none()
-    if requested_object_geometry is None:
+    if not await check_existence(conn, object_geometries_data, conditions={"object_geometry_id": object_geometry_id}):
         raise EntityNotFoundById(object_geometry_id, "object geometry")
 
     statement = delete(object_geometries_data).where(object_geometries_data.c.object_geometry_id == object_geometry_id)
     await conn.execute(statement)
     await conn.commit()
 
-    return {"result": "ok"}
+    return {"status": "ok"}
 
 
-async def add_object_geometry_to_physical_object_in_db(
-    conn: AsyncConnection, physical_object_id: int, object_geometry: ObjectGeometriesPost
+async def add_object_geometry_to_physical_object_to_db(
+    conn: AsyncConnection, physical_object_id: int, object_geometry: ObjectGeometryPost
 ) -> UrbanObjectDTO:
     """Create object geometry connected with physical object."""
 
-    statement = select(territories_data).where(territories_data.c.territory_id == object_geometry.territory_id)
-    territory = (await conn.execute(statement)).one_or_none()
-    if territory is None:
-        raise EntityNotFoundById(object_geometry.territory_id, "territory")
-
-    statement = select(physical_objects_data).where(physical_objects_data.c.physical_object_id == physical_object_id)
-    physical_object = (await conn.execute(statement)).one_or_none()
-    if physical_object is None:
+    if not await check_existence(conn, physical_objects_data, conditions={"physical_object_id": physical_object_id}):
         raise EntityNotFoundById(physical_object_id, "physical object")
 
-    statement = (
-        insert(object_geometries_data)
-        .values(
-            territory_id=object_geometry.territory_id,
-            geometry=ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326")),
-            centre_point=ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326")),
-            address=object_geometry.address,
-            osm_id=object_geometry.osm_id,
-        )
-        .returning(object_geometries_data.c.object_geometry_id)
-    )
+    if not await check_existence(conn, territories_data, conditions={"territory_id": object_geometry.territory_id}):
+        raise EntityNotFoundById(object_geometry.territory_id, "territory")
+
+    values = extract_values_from_model(object_geometry)
+
+    statement = insert(object_geometries_data).values(**values).returning(object_geometries_data.c.object_geometry_id)
     object_geometry_id = (await conn.execute(statement)).scalar_one()
 
     statement = (
@@ -253,4 +228,4 @@ async def add_object_geometry_to_physical_object_in_db(
     urban_object_id = (await conn.execute(statement)).scalar_one_or_none()
     await conn.commit()
 
-    return await get_urban_object_by_id_from_db(conn, urban_object_id)
+    return (await get_urban_objects_by_ids_from_db(conn, [urban_object_id]))[0]

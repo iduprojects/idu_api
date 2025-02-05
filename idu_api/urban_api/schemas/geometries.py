@@ -60,7 +60,7 @@ class Geometry(BaseModel):
     Geometry representation for GeoJSON model appliable for points, polygons, multipolygons and linestrings.
     """
 
-    type: Literal["Point", "Polygon", "MultiPolygon", "LineString", "MultiLineString"] = Field(default="Polygon")
+    type: Literal["Point", "Polygon", "MultiPolygon", "LineString", "MultiLineString"] = Field(examples=["Polygon"])
     coordinates: list[Any] = Field(
         description="list[float] for Point,\n" "list[list[list[float]]] for Polygon",
         examples=[
@@ -77,9 +77,7 @@ class Geometry(BaseModel):
     )
     _shapely_geom: _BaseGeomTypes | None = None
 
-    def as_shapely_geometry(
-        self,
-    ) -> _BaseGeomTypes:
+    def as_shapely_geometry(self) -> _BaseGeomTypes:
         """
         Return Shapely geometry object from the parsed geometry.
         """
@@ -106,8 +104,8 @@ class GeometryValidationModel(BaseModel):
     geometry: Geometry | None = None
     centre_point: Geometry | None = None
 
-    @field_validator("geometry")
     @classmethod
+    @field_validator("geometry")
     def validate_geometry(cls, geometry: "Geometry") -> "Geometry":
         """Validate that given geometry is valid by creating a Shapely object."""
         if geometry:
@@ -118,8 +116,8 @@ class GeometryValidationModel(BaseModel):
                 raise ValueError("Invalid geometry passed") from exc
         return geometry
 
-    @field_validator("centre_point")
     @classmethod
+    @field_validator("centre_point")
     def validate_centre_point(cls, centre_point: Geometry | None) -> Geometry | None:
         """Validate that given centre_point is a valid Point geometry."""
         if centre_point:

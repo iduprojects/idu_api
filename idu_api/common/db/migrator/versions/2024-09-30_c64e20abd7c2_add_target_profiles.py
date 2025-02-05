@@ -48,7 +48,7 @@ def upgrade() -> None:
         schema="user_projects",
     )
     op.add_column(
-        "profiles_data",
+        "projects_functional_zones",
         sa.Column(
             "target_profile_id",
             sa.Integer(),
@@ -57,14 +57,16 @@ def upgrade() -> None:
         ),
         schema="user_projects",
     )
-    op.drop_column("profiles_data", "profile_type_id", schema="user_projects")
+    op.drop_column("projects_functional_zones", "profile_type_id", schema="user_projects")
 
 
 def downgrade() -> None:
     # columns
-    op.drop_column("profiles_data", "target_profile_id", schema="user_projects")
+    op.drop_column("projects_functional_zones", "target_profile_id", schema="user_projects")
     op.drop_column("scenarios_data", "target_profile_id", schema="user_projects")
-    op.add_column("profiles_data", sa.Column("profile_type_id", sa.Integer(), nullable=False), schema="user_projects")
+    op.add_column(
+        "projects_functional_zones", sa.Column("profile_type_id", sa.Integer(), nullable=False), schema="user_projects"
+    )
 
     # tables
     op.drop_table("target_profiles_dict", schema="user_projects")

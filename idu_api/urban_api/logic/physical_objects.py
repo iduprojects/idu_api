@@ -8,20 +8,19 @@ from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from idu_api.urban_api.dto import (
     LivingBuildingDTO,
     ObjectGeometryDTO,
-    PhysicalObjectDataDTO,
+    PhysicalObjectDTO,
     PhysicalObjectWithGeometryDTO,
-    PhysicalObjectWithTerritoryDTO,
     ServiceDTO,
     ServiceWithGeometryDTO,
     UrbanObjectDTO,
 )
 from idu_api.urban_api.schemas import (
-    LivingBuildingsDataPatch,
-    LivingBuildingsDataPost,
-    LivingBuildingsDataPut,
-    PhysicalObjectsDataPatch,
-    PhysicalObjectsDataPost,
-    PhysicalObjectsDataPut,
+    LivingBuildingPatch,
+    LivingBuildingPost,
+    LivingBuildingPut,
+    PhysicalObjectPatch,
+    PhysicalObjectPost,
+    PhysicalObjectPut,
     PhysicalObjectWithGeometryPost,
 )
 
@@ -32,8 +31,12 @@ class PhysicalObjectsService(Protocol):
     """Service to manipulate physical objects."""
 
     @abc.abstractmethod
-    async def get_physical_objects_by_ids(self, ids: list[int]) -> list[PhysicalObjectWithGeometryDTO]:
+    async def get_physical_objects_with_geometry_by_ids(self, ids: list[int]) -> list[PhysicalObjectWithGeometryDTO]:
         """Get physical objects by list of ids."""
+
+    @abc.abstractmethod
+    async def get_physical_object_by_id(self, physical_object_id: int) -> PhysicalObjectDTO:
+        """Get physical object by identifier."""
 
     @abc.abstractmethod
     async def get_physical_objects_around(
@@ -49,14 +52,14 @@ class PhysicalObjectsService(Protocol):
 
     @abc.abstractmethod
     async def put_physical_object(
-        self, physical_object: PhysicalObjectsDataPut, physical_object_id: int
-    ) -> PhysicalObjectDataDTO:
+        self, physical_object: PhysicalObjectPut, physical_object_id: int
+    ) -> PhysicalObjectDTO:
         """Put physical object."""
 
     @abc.abstractmethod
     async def patch_physical_object(
-        self, physical_object: PhysicalObjectsDataPatch, physical_object_id: int
-    ) -> PhysicalObjectDataDTO:
+        self, physical_object: PhysicalObjectPatch, physical_object_id: int
+    ) -> PhysicalObjectDTO:
         """Patch physical object."""
 
     @abc.abstractmethod
@@ -64,19 +67,17 @@ class PhysicalObjectsService(Protocol):
         """Delete physical object."""
 
     @abc.abstractmethod
-    async def add_living_building(self, living_building: LivingBuildingsDataPost) -> LivingBuildingDTO:
+    async def add_living_building(self, living_building: LivingBuildingPost) -> PhysicalObjectDTO:
         """Create living building object."""
 
     @abc.abstractmethod
-    async def put_living_building(
-        self, living_building: LivingBuildingsDataPut, living_building_id: int
-    ) -> LivingBuildingDTO:
+    async def put_living_building(self, living_building: LivingBuildingPut) -> PhysicalObjectDTO:
         """Put living building object."""
 
     @abc.abstractmethod
     async def patch_living_building(
-        self, living_building: LivingBuildingsDataPatch, living_building_id: int
-    ) -> LivingBuildingDTO:
+        self, living_building: LivingBuildingPatch, living_building_id: int
+    ) -> PhysicalObjectDTO:
         """Patch living building object."""
 
     @abc.abstractmethod
@@ -117,12 +118,6 @@ class PhysicalObjectsService(Protocol):
 
     @abc.abstractmethod
     async def add_physical_object_to_object_geometry(
-        self, object_geometry_id: int, physical_object: PhysicalObjectsDataPost
+        self, object_geometry_id: int, physical_object: PhysicalObjectPost
     ) -> UrbanObjectDTO:
         """Create object geometry connected with physical object."""
-
-    @abc.abstractmethod
-    async def get_physical_object_with_territories_by_id(
-        self, physical_object_id: int
-    ) -> PhysicalObjectWithTerritoryDTO:
-        """Get service object by id."""

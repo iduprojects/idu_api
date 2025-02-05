@@ -12,8 +12,8 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectFunctionPatch,
     PhysicalObjectFunctionPost,
     PhysicalObjectFunctionPut,
-    PhysicalObjectsTypesPatch,
-    PhysicalObjectsTypesPost,
+    PhysicalObjectTypePatch,
+    PhysicalObjectTypePost,
 )
 
 
@@ -25,12 +25,12 @@ class PhysicalObjectTypesService(Protocol):
         """Get all physical object type objects."""
 
     @abc.abstractmethod
-    async def add_physical_object_type(self, physical_object_type: PhysicalObjectsTypesPost) -> PhysicalObjectTypeDTO:
+    async def add_physical_object_type(self, physical_object_type: PhysicalObjectTypePost) -> PhysicalObjectTypeDTO:
         """Create physical object type object."""
 
     @abc.abstractmethod
     async def patch_physical_object_type(
-        self, physical_object_type_id: int, physical_object_type: PhysicalObjectsTypesPatch
+        self, physical_object_type_id: int, physical_object_type: PhysicalObjectTypePatch
     ) -> PhysicalObjectTypeDTO:
         """Update physical object type object by getting only given attributes."""
 
@@ -55,7 +55,7 @@ class PhysicalObjectTypesService(Protocol):
 
     @abc.abstractmethod
     async def put_physical_object_function(
-        self, physical_object_function_id: int, physical_object_function: PhysicalObjectFunctionPut
+        self, physical_object_function: PhysicalObjectFunctionPut
     ) -> PhysicalObjectFunctionDTO:
         """Update physical object function object by getting all its attributes."""
 

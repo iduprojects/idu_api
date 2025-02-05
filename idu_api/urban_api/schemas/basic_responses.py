@@ -8,4 +8,4 @@ from pydantic import BaseModel
 class OkResponse(BaseModel):
     """Response which is returned when request succeeded."""
 
-    result: Literal["Ok"] = "Ok"
+    status: Literal["ok"] = "ok"

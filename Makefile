@@ -1,11 +1,19 @@
 CODE := idu_api
+TEST := tests
 
 lint:
 	poetry run pylint $(CODE)
 
+lint-tests:
+	poetry run pylint $(TEST)
+
 format:
 	poetry run isort $(CODE)
 	poetry run black $(CODE)
+
+format-tests:
+	poetry run isort $(TEST)
+	poetry run black $(TEST)
 
 database-docker:
 	cd urban_api && docker compose up -d database

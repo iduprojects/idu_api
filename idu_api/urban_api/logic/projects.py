@@ -1,21 +1,22 @@
 import abc
 import io
-from typing import Any, Protocol
+from datetime import date
+from typing import Any, Literal, Protocol
 
 from idu_api.urban_api.dto import (
-    FunctionalZoneDataDTO,
+    FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
     HexagonWithIndicatorsDTO,
     PageDTO,
-    PhysicalObjectDataDTO,
+    PhysicalObjectDTO,
     ProjectDTO,
-    ProjectIndicatorValueDTO,
-    ProjectProfileDTO,
     ProjectTerritoryDTO,
-    ProjectWithBaseScenarioDTO,
+    ProjectWithTerritoryDTO,
     ScenarioDTO,
+    ScenarioFunctionalZoneDTO,
     ScenarioGeometryDTO,
     ScenarioGeometryWithAllObjectsDTO,
+    ScenarioIndicatorValueDTO,
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
     ScenarioUrbanObjectDTO,
@@ -23,26 +24,26 @@ from idu_api.urban_api.dto import (
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO, ObjectGeometryDTO
 from idu_api.urban_api.schemas import (
-    ObjectGeometriesPatch,
-    ObjectGeometriesPut,
-    PhysicalObjectsDataPatch,
-    PhysicalObjectsDataPut,
+    ObjectGeometryPatch,
+    ObjectGeometryPut,
+    PhysicalObjectPatch,
+    PhysicalObjectPut,
     PhysicalObjectWithGeometryPost,
-    ProjectIndicatorValuePatch,
-    ProjectIndicatorValuePost,
-    ProjectIndicatorValuePut,
     ProjectPatch,
     ProjectPost,
-    ProjectProfilePatch,
-    ProjectProfilePost,
-    ProjectProfilePut,
     ProjectPut,
+    ScenarioFunctionalZonePatch,
+    ScenarioFunctionalZonePost,
+    ScenarioFunctionalZonePut,
+    ScenarioIndicatorValuePatch,
+    ScenarioIndicatorValuePost,
+    ScenarioIndicatorValuePut,
+    ScenarioPatch,
+    ScenarioPost,
+    ScenarioPut,
     ScenarioServicePost,
-    ScenariosPatch,
-    ScenariosPost,
-    ScenariosPut,
-    ServicesDataPatch,
-    ServicesDataPut,
+    ServicePatch,
+    ServicePut,
 )
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
@@ -59,39 +60,65 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get project territory object by id."""
 
     @abc.abstractmethod
-    async def get_all_available_projects(
-        self, user_id: str | None, is_regional: bool, territory_id: int | None
-    ) -> PageDTO[ProjectWithBaseScenarioDTO]:
+    async def get_projects(
+        self,
+        user_id: str | None,
+        only_own: bool,
+        is_regional: bool,
+        territory_id: int | None,
+        name: str | None,
+        created_at: date | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None,
+        paginate: bool = False,
+    ) -> PageDTO[ProjectDTO]:
         """Get all public and user's projects."""
 
     @abc.abstractmethod
-    async def get_all_preview_projects_images(
+    async def get_projects_territories(
+        self,
+        user_id: str | None,
+        only_own: bool,
+        territory_id: int | None,
+    ) -> list[ProjectWithTerritoryDTO]:
+        """Get all public and user's projects territories."""
+
+    @abc.abstractmethod
+    async def get_preview_projects_images(
         self,
         minio_client: AsyncMinioClient,
         user_id: str | None,
+        only_own: bool,
         is_regional: bool,
         territory_id: int | None,
+        name: str | None,
+        created_at: date | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None,
         page: int,
         page_size: int,
     ) -> io.BytesIO:
         """Get preview images (zip) for all public and user's projects."""
 
     @abc.abstractmethod
-    async def get_all_preview_projects_images_url(
+    async def get_preview_projects_images_url(
         self,
         minio_client: AsyncMinioClient,
         user_id: str | None,
+        only_own: bool,
         is_regional: bool,
         territory_id: int | None,
+        name: str | None,
+        created_at: date | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None,
         page: int,
         page_size: int,
     ) -> list[dict[str, int | str]]:
         """Get preview images url for all public and user's projects."""
 
     @abc.abstractmethod
-    async def get_user_projects(
-        self, user_id: str, is_regional: bool, territory_id: int | None
-    ) -> PageDTO[ProjectWithBaseScenarioDTO]:
+    async def get_user_projects(self, user_id: str, is_regional: bool, territory_id: int | None) -> PageDTO[ProjectDTO]:
         """Get all user's projects."""
 
     @abc.abstractmethod
@@ -167,19 +194,19 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get scenario object by id."""
 
     @abc.abstractmethod
-    async def add_scenario(self, scenario: ScenariosPost, user_id: str) -> ScenarioDTO:
+    async def add_scenario(self, scenario: ScenarioPost, user_id: str) -> ScenarioDTO:
         """Create scenario object from base scenario."""
 
     @abc.abstractmethod
-    async def copy_scenario(self, scenario: ScenariosPost, scenario_id: int, user_id: str) -> ScenarioDTO:
+    async def copy_scenario(self, scenario: ScenarioPost, scenario_id: int, user_id: str) -> ScenarioDTO:
         """Create a new scenario from another scenario (copy) by its identifier."""
 
     @abc.abstractmethod
-    async def put_scenario(self, scenario: ScenariosPut, scenario_id: int, user_id) -> ScenarioDTO:
+    async def put_scenario(self, scenario: ScenarioPut, scenario_id: int, user_id) -> ScenarioDTO:
         """Put project object."""
 
     @abc.abstractmethod
-    async def patch_scenario(self, scenario: ScenariosPatch, scenario_id: int, user_id: str) -> ScenarioDTO:
+    async def patch_scenario(self, scenario: ScenarioPatch, scenario_id: int, user_id: str) -> ScenarioDTO:
         """Patch project object."""
 
     @abc.abstractmethod
@@ -197,13 +224,13 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get list of physical objects by scenario identifier."""
 
     @abc.abstractmethod
-    async def get_context_physical_objects_by_scenario_id(
+    async def get_context_physical_objects(
         self,
-        scenario_id: int,
+        project_id: int,
         user_id: str | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-    ) -> list[PhysicalObjectDataDTO]:
+    ) -> list[PhysicalObjectDTO]:
         """Get list of physical objects for 'context' of the project territory."""
 
     @abc.abstractmethod
@@ -229,7 +256,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def put_physical_object(
         self,
-        physical_object: PhysicalObjectsDataPut,
+        physical_object: PhysicalObjectPut,
         scenario_id: int,
         physical_object_id: int,
         is_scenario_object: bool,
@@ -240,7 +267,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def patch_physical_object(
         self,
-        physical_object: PhysicalObjectsDataPatch,
+        physical_object: PhysicalObjectPatch,
         scenario_id: int,
         physical_object_id: int,
         is_scenario_object: bool,
@@ -269,9 +296,9 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get list of services by scenario identifier."""
 
     @abc.abstractmethod
-    async def get_context_services_by_scenario_id(
+    async def get_context_services(
         self,
-        scenario_id: int,
+        project_id: int,
         user_id: str | None,
         service_type_id: int | None,
         urban_function_id: int | None,
@@ -285,7 +312,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def put_service(
         self,
-        service: ServicesDataPut,
+        service: ServicePut,
         scenario_id: int,
         service_id: int,
         is_scenario_object: bool,
@@ -296,7 +323,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def patch_service(
         self,
-        service: ServicesDataPatch,
+        service: ServicePatch,
         scenario_id: int,
         service_id: int,
         is_scenario_object: bool,
@@ -337,9 +364,9 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get geometries with lists of physical objects and services by scenario identifier."""
 
     @abc.abstractmethod
-    async def get_context_geometries_by_scenario_id(
+    async def get_context_geometries(
         self,
-        scenario_id: int,
+        project_id: int,
         user_id: str | None,
         physical_object_id: int | None,
         service_id: int | None,
@@ -347,9 +374,9 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get list of geometries for 'context' of the project territory."""
 
     @abc.abstractmethod
-    async def get_context_geometries_with_all_objects_by_scenario_id(
+    async def get_context_geometries_with_all_objects(
         self,
-        scenario_id: int,
+        project_id: int,
         user_id: str | None,
         physical_object_type_id: int | None,
         service_type_id: int | None,
@@ -361,7 +388,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def put_object_geometry(
         self,
-        object_geometry: ObjectGeometriesPut,
+        object_geometry: ObjectGeometryPut,
         scenario_id: int,
         object_geometry_id: int,
         is_scenario_object: bool,
@@ -372,7 +399,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def patch_object_geometry(
         self,
-        object_geometry: ObjectGeometriesPatch,
+        object_geometry: ObjectGeometryPatch,
         scenario_id: int,
         object_geometry_id: int,
         is_scenario_object: bool,
@@ -391,7 +418,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Delete scenario object geometry."""
 
     @abc.abstractmethod
-    async def get_projects_indicators_values_by_scenario_id(
+    async def get_scenario_indicators_values(
         self,
         scenario_id: int,
         indicator_ids: str | None,
@@ -399,41 +426,40 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         territory_id: int | None,
         hexagon_id: int | None,
         user_id: str | None,
-    ) -> list[ProjectIndicatorValueDTO]:
+    ) -> list[ScenarioIndicatorValueDTO]:
         """Get project's indicators values for given scenario
         if relevant project is public or if you're the project owner."""
 
     @abc.abstractmethod
-    async def get_project_indicator_value_by_id(
-        self, indicator_value_id: int, user_id: str | None
-    ) -> ProjectIndicatorValueDTO:
-        """Get project's specific indicator values for given scenario
-        if relevant project is public or if you're the project owner."""
-
-    @abc.abstractmethod
-    async def add_projects_indicator_value(
-        self, projects_indicator: ProjectIndicatorValuePost, user_id: str
-    ) -> ProjectIndicatorValueDTO:
+    async def add_scenario_indicator_value(
+        self, indicator_value: ScenarioIndicatorValuePost, scenario_id: int, user_id: str
+    ) -> ScenarioIndicatorValueDTO:
         """Add a new project's indicator value."""
 
     @abc.abstractmethod
-    async def put_projects_indicator_value(
-        self, projects_indicator: ProjectIndicatorValuePut, user_id: str
-    ) -> ProjectIndicatorValueDTO:
+    async def put_scenario_indicator_value(
+        self, indicator_value: ScenarioIndicatorValuePut, scenario_id: int, user_id: str
+    ) -> ScenarioIndicatorValueDTO:
         """Put project's indicator value."""
 
     @abc.abstractmethod
-    async def patch_projects_indicator_value(
-        self, projects_indicator: ProjectIndicatorValuePatch, indicator_value_id: int, user_id: str
-    ) -> ProjectIndicatorValueDTO:
+    async def patch_scenario_indicator_value(
+        self,
+        indicator_value: ScenarioIndicatorValuePatch,
+        scenario_id: int | None,
+        indicator_value_id: int,
+        user_id: str,
+    ) -> ScenarioIndicatorValueDTO:
         """Patch project's indicator value."""
 
     @abc.abstractmethod
-    async def delete_projects_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
+    async def delete_scenario_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
         """Delete all project's indicators values for given scenario if you're the project owner."""
 
     @abc.abstractmethod
-    async def delete_project_indicator_value_by_id(self, indicator_value_id: int, user_id: str) -> dict:
+    async def delete_scenario_indicator_value_by_id(
+        self, scenario_id: int | None, indicator_value_id: int, user_id: str
+    ) -> dict:
         """Delete specific project's indicator values by indicator value identifier if you're the project owner."""
 
     @abc.abstractmethod
@@ -464,50 +490,50 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         source: str,
         functional_zone_type_id: int | None,
         user_id: str | None,
-    ) -> list[ProjectProfileDTO]:
+    ) -> list[ScenarioFunctionalZoneDTO]:
         """Get list of functional zone objects by scenario identifier."""
 
     @abc.abstractmethod
-    async def get_context_functional_zones_sources_by_scenario_id(
-        self, scenario_id: int, user_id: str | None
+    async def get_context_functional_zones_sources(
+        self, project_id: int, user_id: str | None
     ) -> list[FunctionalZoneSourceDTO]:
         """Get list of pairs year + source for functional zones for 'context' of the project territory."""
 
     @abc.abstractmethod
-    async def get_context_functional_zones_by_scenario_id(
+    async def get_context_functional_zones(
         self,
-        scenario_id: int,
+        project_id: int,
         year: int,
         source: str,
         functional_zone_type_id: int | None,
         user_id: str | None,
-    ) -> list[FunctionalZoneDataDTO]:
+    ) -> list[FunctionalZoneDTO]:
         """Get list of functional zone objects for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def add_scenario_functional_zones(
-        self, profiles: list[ProjectProfilePost], scenario_id: int, user_id: str
-    ) -> list[ProjectProfileDTO]:
+        self, profiles: list[ScenarioFunctionalZonePost], scenario_id: int, user_id: str
+    ) -> list[ScenarioFunctionalZoneDTO]:
         """Add list of scenario functional zone objects."""
 
     @abc.abstractmethod
     async def put_scenario_functional_zone(
         self,
-        profile: ProjectProfilePut,
+        profile: ScenarioFunctionalZonePut,
         scenario_id: int,
         functional_zone_id: int,
         user_id: str,
-    ) -> ProjectProfileDTO:
+    ) -> ScenarioFunctionalZoneDTO:
         """Update scenario functional zone object by all its attributes."""
 
     @abc.abstractmethod
     async def patch_scenario_functional_zone(
         self,
-        profile: ProjectProfilePatch,
+        profile: ScenarioFunctionalZonePatch,
         scenario_id: int,
         functional_zone_id: int,
         user_id: str,
-    ) -> ProjectProfileDTO:
+    ) -> ScenarioFunctionalZoneDTO:
         """Update scenario functional zone object by only given attributes."""
 
     @abc.abstractmethod

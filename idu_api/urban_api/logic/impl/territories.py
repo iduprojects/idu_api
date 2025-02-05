@@ -1,14 +1,14 @@
 """Territories handlers logic of getting entities from the database is defined here."""
 
 from collections.abc import Callable
-from datetime import date, datetime
+from datetime import date
 from typing import Literal
 
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
-    FunctionalZoneDataDTO,
+    FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
     HexagonDTO,
     IndicatorDTO,
@@ -16,12 +16,12 @@ from idu_api.urban_api.dto import (
     LivingBuildingWithGeometryDTO,
     NormativeDTO,
     PageDTO,
-    PhysicalObjectDataDTO,
+    PhysicalObjectDTO,
     PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
     ServicesCountCapacityDTO,
-    ServiceTypesDTO,
+    ServiceTypeDTO,
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
@@ -37,6 +37,11 @@ from idu_api.urban_api.logic.impl.helpers.territories_functional_zones import (
     get_functional_zones_by_territory_id_from_db,
     get_functional_zones_sources_by_territory_id_from_db,
 )
+from idu_api.urban_api.logic.impl.helpers.territories_hexagons import (
+    add_hexagons_by_territory_id_to_db,
+    delete_hexagons_by_territory_id_from_db,
+    get_hexagons_by_territory_id_from_db,
+)
 from idu_api.urban_api.logic.impl.helpers.territories_indicators import (
     get_indicator_values_by_parent_id_from_db,
     get_indicator_values_by_territory_id_from_db,
@@ -50,17 +55,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_normatives import (
     patch_normatives_by_territory_id_in_db,
     put_normatives_by_territory_id_in_db,
 )
-from idu_api.urban_api.logic.impl.helpers.territories_physical_objects import (
-    get_physical_object_types_by_territory_id_from_db,
-    get_physical_objects_by_territory_id_from_db,
-    get_physical_objects_with_geometry_by_territory_id_from_db,
-)
-from idu_api.urban_api.logic.impl.helpers.territory_hexagons import (
-    add_hexagons_by_territory_id_to_db,
-    delete_hexagons_by_territory_id_from_db,
-    get_hexagons_by_territory_id_from_db,
-)
-from idu_api.urban_api.logic.impl.helpers.territory_objects import (
+from idu_api.urban_api.logic.impl.helpers.territories_objects import (
     add_territory_to_db,
     get_common_territory_for_geometry,
     get_intersecting_territories_for_geometry,
@@ -71,23 +66,28 @@ from idu_api.urban_api.logic.impl.helpers.territory_objects import (
     patch_territory_to_db,
     put_territory_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.territory_services import (
+from idu_api.urban_api.logic.impl.helpers.territories_physical_objects import (
+    get_physical_object_types_by_territory_id_from_db,
+    get_physical_objects_by_territory_id_from_db,
+    get_physical_objects_with_geometry_by_territory_id_from_db,
+)
+from idu_api.urban_api.logic.impl.helpers.territories_services import (
     get_service_types_by_territory_id_from_db,
     get_services_by_territory_id_from_db,
     get_services_capacity_by_territory_id_from_db,
     get_services_with_geometry_by_territory_id_from_db,
 )
-from idu_api.urban_api.logic.impl.helpers.territory_types import add_territory_type_to_db, get_territory_types_from_db
+from idu_api.urban_api.logic.impl.helpers.territories_types import add_territory_type_to_db, get_territory_types_from_db
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import (
     HexagonPost,
     NormativeDelete,
     NormativePatch,
     NormativePost,
-    TerritoryDataPatch,
-    TerritoryDataPost,
-    TerritoryDataPut,
-    TerritoryTypesPost,
+    TerritoryPatch,
+    TerritoryPost,
+    TerritoryPut,
+    TerritoryTypePost,
 )
 
 func: Callable
@@ -107,7 +107,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def get_territory_types(self) -> list[TerritoryTypeDTO]:
         return await get_territory_types_from_db(self._conn)
 
-    async def add_territory_type(self, territory_type: TerritoryTypesPost) -> TerritoryTypeDTO:
+    async def add_territory_type(self, territory_type: TerritoryTypePost) -> TerritoryTypeDTO:
         return await add_territory_type_to_db(self._conn, territory_type)
 
     async def get_territories_by_ids(self, territory_ids: list[int]) -> list[TerritoryDTO]:
@@ -116,17 +116,21 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def get_territory_by_id(self, territory_id: int) -> TerritoryDTO:
         return await get_territory_by_id(self._conn, territory_id)
 
-    async def add_territory(self, territory: TerritoryDataPost) -> TerritoryDTO:
+    async def add_territory(self, territory: TerritoryPost) -> TerritoryDTO:
         return await add_territory_to_db(self._conn, territory)
 
-    async def put_territory(self, territory_id: int, territory: TerritoryDataPut) -> TerritoryDTO:
+    async def put_territory(self, territory_id: int, territory: TerritoryPut) -> TerritoryDTO:
         return await put_territory_to_db(self._conn, territory_id, territory)
 
-    async def patch_territory(self, territory_id: int, territory: TerritoryDataPatch) -> TerritoryDTO:
+    async def patch_territory(self, territory_id: int, territory: TerritoryPatch) -> TerritoryDTO:
         return await patch_territory_to_db(self._conn, territory_id, territory)
 
-    async def get_service_types_by_territory_id(self, territory_id: int) -> list[ServiceTypesDTO]:
-        return await get_service_types_by_territory_id_from_db(self._conn, territory_id)
+    async def get_service_types_by_territory_id(
+        self, territory_id: int, include_child_territories: bool, cities_only: bool
+    ) -> list[ServiceTypeDTO]:
+        return await get_service_types_by_territory_id_from_db(
+            self._conn, territory_id, include_child_territories, cities_only
+        )
 
     async def get_services_by_territory_id(
         self,
@@ -191,11 +195,13 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         territory_id: int,
         indicator_ids: str | None,
         indicators_group_id: int | None,
-        start_date: datetime | None,
-        end_date: datetime | None,
+        start_date: date | None,
+        end_date: date | None,
         value_type: Literal["real", "target", "forecast"] | None,
         information_source: str | None,
         last_only: bool,
+        include_child_territories: bool,
+        cities_only: bool,
     ) -> list[IndicatorValueDTO]:
         return await get_indicator_values_by_territory_id_from_db(
             self._conn,
@@ -207,6 +213,8 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             value_type,
             information_source,
             last_only,
+            include_child_territories,
+            cities_only,
         )
 
     async def get_indicator_values_by_parent_id(
@@ -214,8 +222,8 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         parent_id: int | None,
         indicator_ids: str | None,
         indicators_group_id: int | None,
-        start_date: datetime | None,
-        end_date: datetime | None,
+        start_date: date | None,
+        end_date: date | None,
         value_type: Literal["real", "target", "forecast"] | None,
         information_source: str | None,
         last_only: bool,
@@ -232,8 +240,16 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             last_only,
         )
 
-    async def get_normatives_by_territory_id(self, territory_id: int, year: int) -> list[NormativeDTO]:
-        return await get_normatives_by_territory_id_from_db(self._conn, territory_id, year)
+    async def get_normatives_by_territory_id(
+        self,
+        territory_id: int,
+        year: int,
+        include_child_territories,
+        cities_only,
+    ) -> list[NormativeDTO]:
+        return await get_normatives_by_territory_id_from_db(
+            self._conn, territory_id, year, include_child_territories, cities_only
+        )
 
     async def add_normatives_to_territory(
         self, territory_id: int, normatives: list[NormativePost]
@@ -258,8 +274,12 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     ) -> list[TerritoryWithNormativesDTO]:
         return await get_normatives_values_by_parent_id_from_db(self._conn, parent_id, year)
 
-    async def get_physical_object_types_by_territory_id(self, territory_id: int) -> list[PhysicalObjectTypeDTO]:
-        return await get_physical_object_types_by_territory_id_from_db(self._conn, territory_id)
+    async def get_physical_object_types_by_territory_id(
+        self, territory_id: int, include_child_territories: bool, cities_only: bool
+    ) -> list[PhysicalObjectTypeDTO]:
+        return await get_physical_object_types_by_territory_id_from_db(
+            self._conn, territory_id, include_child_territories, cities_only
+        )
 
     async def get_physical_objects_by_territory_id(
         self,
@@ -272,7 +292,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         order_by: Literal["created_at", "updated_at"] | None,
         ordering: Literal["asc", "desc"],
         paginate: bool = False,
-    ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
+    ) -> list[PhysicalObjectDTO] | PageDTO[PhysicalObjectDTO]:
         return await get_physical_objects_by_territory_id_from_db(
             self._conn,
             territory_id,
@@ -321,8 +341,12 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             self._conn, territory_id, include_child_territories, cities_only
         )
 
-    async def get_functional_zones_sources_by_territory_id(self, territory_id: int) -> list[FunctionalZoneSourceDTO]:
-        return await get_functional_zones_sources_by_territory_id_from_db(self._conn, territory_id)
+    async def get_functional_zones_sources_by_territory_id(
+        self, territory_id: int, include_child_territories: bool, cities_only: bool
+    ) -> list[FunctionalZoneSourceDTO]:
+        return await get_functional_zones_sources_by_territory_id_from_db(
+            self._conn, territory_id, include_child_territories, cities_only
+        )
 
     async def get_functional_zones_by_territory_id(
         self,
@@ -332,7 +356,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         functional_zone_type_id: int | None,
         include_child_territories: bool,
         cities_only: bool,
-    ) -> list[FunctionalZoneDataDTO]:
+    ) -> list[FunctionalZoneDTO]:
         return await get_functional_zones_by_territory_id_from_db(
             self._conn,
             territory_id,
@@ -343,8 +367,12 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             cities_only,
         )
 
-    async def delete_all_functional_zones_for_territory(self, territory_id: int) -> dict:
-        return await delete_all_functional_zones_for_territory_from_db(self._conn, territory_id)
+    async def delete_all_functional_zones_for_territory(
+        self, territory_id: int, include_child_territories: bool, cities_only: bool
+    ) -> dict:
+        return await delete_all_functional_zones_for_territory_from_db(
+            self._conn, territory_id, include_child_territories, cities_only
+        )
 
     async def get_territories_by_parent_id(
         self,

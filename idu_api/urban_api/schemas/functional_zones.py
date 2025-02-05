@@ -1,15 +1,15 @@
 """Functional zones schemas are defined here."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import (
-    FunctionalZoneDataDTO,
+    FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
     FunctionalZoneTypeDTO,
-    ProjectProfileDTO,
+    ScenarioFunctionalZoneDTO,
 )
 from idu_api.urban_api.schemas.geometries import Geometry, NotPointGeometryValidationModel
 from idu_api.urban_api.schemas.short_models import FunctionalZoneTypeBasic, ShortScenario, ShortTerritory
@@ -52,7 +52,7 @@ class FunctionalZoneTypePost(BaseModel):
     description: str | None = Field(None, description="description of functional zone type", examples=["--"])
 
 
-class FunctionalZoneData(BaseModel):
+class FunctionalZone(BaseModel):
     """Functional zone with all its attributes."""
 
     functional_zone_id: int = Field(..., description="functional zone identifier", examples=[1])
@@ -68,14 +68,15 @@ class FunctionalZoneData(BaseModel):
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the functional zone was created"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the functional zone was created"
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the functional zone was last updated"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="the time when the functional zone was last updated",
     )
 
     @classmethod
-    def from_dto(cls, dto: FunctionalZoneDataDTO) -> "FunctionalZoneData":
+    def from_dto(cls, dto: FunctionalZoneDTO) -> "FunctionalZone":
         return cls(
             functional_zone_id=dto.functional_zone_id,
             territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
@@ -109,14 +110,15 @@ class FunctionalZoneWithoutGeometry(BaseModel):
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the functional zone was created"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the functional zone was created"
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the functional zone was last updated"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="the time when the functional zone was last updated",
     )
 
 
-class FunctionalZoneDataPost(NotPointGeometryValidationModel):
+class FunctionalZonePost(NotPointGeometryValidationModel):
     """Functional zone schema for POST requests."""
 
     territory_id: int = Field(..., description="territory identifier where functional zone is", examples=[1])
@@ -132,7 +134,7 @@ class FunctionalZoneDataPost(NotPointGeometryValidationModel):
     )
 
 
-class FunctionalZoneDataPut(NotPointGeometryValidationModel):
+class FunctionalZonePut(NotPointGeometryValidationModel):
     """Functional zone schema for PUT requests."""
 
     territory_id: int = Field(..., description="territory identifier where functional zone is", examples=[1])
@@ -148,7 +150,7 @@ class FunctionalZoneDataPut(NotPointGeometryValidationModel):
     )
 
 
-class FunctionalZoneDataPatch(NotPointGeometryValidationModel):
+class FunctionalZonePatch(NotPointGeometryValidationModel):
     """Functional zone schema for PATCH requests."""
 
     territory_id: int | None = Field(None, description="territory identifier where functional zone is", examples=[1])
@@ -172,30 +174,34 @@ class FunctionalZoneDataPatch(NotPointGeometryValidationModel):
         return values
 
 
-class ProjectProfile(BaseModel):
-    """Project profile with all its attributes."""
+class ScenarioFunctionalZone(BaseModel):
+    """Project scenario functional zone with all its attributes."""
 
-    profile_id: int = Field(..., description="profile identifier", examples=[1])
+    functional_zone_id: int = Field(..., description="scenario functional zone identifier", examples=[1])
     scenario: ShortScenario
     functional_zone_type: FunctionalZoneTypeBasic
     name: str | None = Field(..., description="functional zone name", examples=["--"])
-    geometry: Geometry
     year: int = Field(..., description="year when functional zone was loaded", examples=[2024])
     source: str = Field(..., description="source from which functional zone was loaded", examples=["--"])
+    geometry: Geometry
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="profile additional properties",
+        description="scenario functional zone additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the profile was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="the time when the scenario functional zone was created",
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the profile was last updated"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="the time when the scenario functional zone was last updated",
     )
 
     @classmethod
-    def from_dto(cls, dto: ProjectProfileDTO) -> "ProjectProfile":
+    def from_dto(cls, dto: ScenarioFunctionalZoneDTO) -> "ScenarioFunctionalZone":
         return cls(
-            profile_id=dto.profile_id,
+            functional_zone_id=dto.functional_zone_id,
             scenario=ShortScenario(id=dto.scenario_id, name=dto.scenario_name),
             functional_zone_type=FunctionalZoneTypeBasic(
                 id=dto.functional_zone_type_id,
@@ -212,47 +218,51 @@ class ProjectProfile(BaseModel):
         )
 
 
-class ProjectProfileWithoutGeometry(BaseModel):
-    """Project profile with all its attributes except geometry and scenario info."""
+class ScenarioFunctionalZoneWithoutGeometry(BaseModel):
+    """Project scenario functional zone with all its attributes except geometry and scenario info."""
 
-    profile_id: int = Field(..., description="profile identifier", examples=[1])
+    functional_zone_id: int = Field(..., description="scenario functional zone identifier", examples=[1])
     functional_zone_type: FunctionalZoneTypeBasic
     name: str | None = Field(..., description="functional zone name", examples=["--"])
     year: int = Field(..., description="year when functional zone was loaded", examples=[2024])
     source: str = Field(..., description="source from which functional zone was loaded", examples=["--"])
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="profile additional properties",
+        description="scenario functional zone additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the profile was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="the time when the scenario functional zone was created",
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the profile was last updated"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="the time when the scenario functional zone was last updated",
     )
 
 
-class ProjectProfilePost(NotPointGeometryValidationModel):
-    """Project profile schema for POST requests."""
+class ScenarioFunctionalZonePost(NotPointGeometryValidationModel):
+    """Project scenario functional zone schema for POST requests."""
 
     functional_zone_type_id: int = Field(
-        ..., description="functional zone type identifier for the profile", examples=[1]
+        ..., description="functional zone type identifier for the scenario functional zone", examples=[1]
     )
     name: str | None = Field(None, description="functional zone name", examples=["--"])
-    geometry: Geometry
     year: int = Field(..., description="year when functional zone was loaded", examples=[2024])
     source: str = Field(..., description="source from which functional zone was loaded", examples=["--"])
+    geometry: Geometry
     properties: dict[str, Any] = Field(
         default_factory=dict,
-        description="profile additional properties",
+        description="scenario functional zone additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
 
-class ProjectProfilePut(NotPointGeometryValidationModel):
-    """Project profile schema for PUT requests."""
+class ScenarioFunctionalZonePut(NotPointGeometryValidationModel):
+    """Project scenario functional zone schema for PUT requests."""
 
     functional_zone_type_id: int = Field(
-        ..., description="functional zone type identifier for the profile", examples=[1]
+        ..., description="functional zone type identifier for the scenario functional zone", examples=[1]
     )
     name: str | None = Field(..., description="functional zone name", examples=["--"])
     geometry: Geometry
@@ -260,29 +270,29 @@ class ProjectProfilePut(NotPointGeometryValidationModel):
     source: str = Field(..., description="source from which functional zone was loaded", examples=["--"])
     properties: dict[str, Any] = Field(
         ...,
-        description="profile additional properties",
+        description="scenario functional zone additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
 
-class ProjectProfilePatch(NotPointGeometryValidationModel):
-    """Project profile schema for PATCH requests."""
+class ScenarioFunctionalZonePatch(NotPointGeometryValidationModel):
+    """Project scenario functional zone schema for PATCH requests."""
 
     functional_zone_type_id: int | None = Field(
-        None, description="functional zone type identifier for the profile", examples=[1]
+        None, description="functional zone type identifier for the scenario functional zone", examples=[1]
     )
     name: str | None = Field(None, description="functional zone name", examples=["--"])
-    geometry: Geometry | None = None
     year: int | None = Field(None, description="year when functional zone was loaded", examples=[2024])
     source: str | None = Field(None, description="source from which functional zone was loaded", examples=["--"])
+    geometry: Geometry | None = None
     properties: dict[str, Any] | None = Field(
-        default_factory=None,
-        description="profile additional properties",
+        None,
+        description="scenario functional zone additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
 
-    @model_validator(mode="before")
     @classmethod
+    @model_validator(mode="before")
     def check_empty_request(cls, values):
         """Ensure the request body is not empty."""
         if not values:

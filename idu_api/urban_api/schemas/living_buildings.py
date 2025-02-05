@@ -9,7 +9,7 @@ from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.short_models import PhysicalObjectTypeBasic, ShortPhysicalObjectWithoutLivingBuilding
 
 
-class LivingBuildingsWithGeometry(BaseModel):
+class LivingBuildingWithGeometry(BaseModel):
     """Living building with all its attributes and geometry."""
 
     living_building_id: int = Field(..., examples=[1])
@@ -27,7 +27,7 @@ class LivingBuildingsWithGeometry(BaseModel):
     centre_point: Geometry
 
     @classmethod
-    def from_dto(cls, dto: LivingBuildingWithGeometryDTO) -> "LivingBuildingsWithGeometry":
+    def from_dto(cls, dto: LivingBuildingWithGeometryDTO) -> "LivingBuildingWithGeometry":
         """
         Construct from DTO.
         """
@@ -52,7 +52,7 @@ class LivingBuildingsWithGeometry(BaseModel):
         )
 
 
-class LivingBuildingsData(BaseModel):
+class LivingBuilding(BaseModel):
     """Living building with all its attributes."""
 
     living_building_id: int = Field(..., examples=[1])
@@ -65,7 +65,7 @@ class LivingBuildingsData(BaseModel):
     )
 
     @classmethod
-    def from_dto(cls, dto: LivingBuildingDTO) -> "LivingBuildingsData":
+    def from_dto(cls, dto: LivingBuildingDTO) -> "LivingBuilding":
         """
         Construct from DTO.
         """
@@ -85,7 +85,7 @@ class LivingBuildingsData(BaseModel):
         )
 
 
-class LivingBuildingsDataPost(BaseModel):
+class LivingBuildingPost(BaseModel):
     """Living building schema for POST requests."""
 
     physical_object_id: int = Field(..., examples=[1])
@@ -97,7 +97,7 @@ class LivingBuildingsDataPost(BaseModel):
     )
 
 
-class LivingBuildingsDataPut(BaseModel):
+class LivingBuildingPut(BaseModel):
     """Living building schema for PUT requests."""
 
     physical_object_id: int = Field(..., examples=[1])
@@ -107,7 +107,7 @@ class LivingBuildingsDataPut(BaseModel):
     )
 
 
-class LivingBuildingsDataPatch(BaseModel):
+class LivingBuildingPatch(BaseModel):
     """Living building schema for PATCH requests."""
 
     physical_object_id: int | None = Field(None, examples=[1])

@@ -1,7 +1,6 @@
 """Projects geometries internal logic is defined here."""
 
 from collections import defaultdict
-from datetime import datetime, timezone
 
 from geoalchemy2.functions import (
     ST_AsGeoJSON,
@@ -9,7 +8,6 @@ from geoalchemy2.functions import (
     ST_GeomFromText,
     ST_Intersection,
     ST_Intersects,
-    ST_Union,
     ST_Within,
 )
 from sqlalchemy import cast, delete, insert, literal, or_, select, text, update
@@ -22,14 +20,12 @@ from idu_api.common.db.entities import (
     physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
-    projects_data,
     projects_living_buildings_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
     projects_services_data,
     projects_territory_data,
     projects_urban_objects_data,
-    scenarios_data,
     service_types_dict,
     services_data,
     territories_data,
@@ -43,11 +39,15 @@ from idu_api.urban_api.dto import (
     ScenarioGeometryWithAllObjectsDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
-from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
-from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
-from idu_api.urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPut
-
-DECIMAL_PLACES = 15
+from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
+from idu_api.urban_api.logic.impl.helpers.projects_scenarios import get_project_by_scenario_id
+from idu_api.urban_api.logic.impl.helpers.utils import (
+    DECIMAL_PLACES,
+    check_existence,
+    extract_values_from_model,
+    get_all_context_territories,
+)
+from idu_api.urban_api.schemas import ObjectGeometryPatch, ObjectGeometryPut
 
 
 async def get_geometries_by_scenario_id_from_db(
@@ -59,15 +59,7 @@ async def get_geometries_by_scenario_id_from_db(
 ) -> list[ScenarioGeometryDTO]:
     """Get geometries by scenario identifier."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
+    project = await get_project_by_scenario_id(conn, scenario_id, user_id)
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -123,9 +115,11 @@ async def get_geometries_by_scenario_id_from_db(
     if service_id is not None:
         public_urban_objects_query = public_urban_objects_query.where(services_data.c.service_id == service_id)
 
+    rows = (await conn.execute(public_urban_objects_query)).mappings().all()
+
     # Получаем все объекты из public.urban_objects_data
     public_objects = []
-    for row in (await conn.execute(public_urban_objects_query)).mappings().all():
+    for row in rows:
         public_objects.append(
             {
                 "object_geometry_id": row.object_geometry_id,
@@ -195,8 +189,10 @@ async def get_geometries_by_scenario_id_from_db(
                 ),
             )
         )
-        .where(projects_urban_objects_data.c.scenario_id == scenario_id)
-        .where(projects_urban_objects_data.c.public_urban_object_id.is_(None))
+        .where(
+            projects_urban_objects_data.c.scenario_id == scenario_id,
+            projects_urban_objects_data.c.public_urban_object_id.is_(None),
+        )
         .distinct()
     )
 
@@ -208,9 +204,11 @@ async def get_geometries_by_scenario_id_from_db(
     if service_id is not None:
         scenario_urban_objects_query = scenario_urban_objects_query.where(services_data.c.service_id == service_id)
 
+    rows = (await conn.execute(scenario_urban_objects_query)).mappings().all()
+
     # Получаем все объекты из user_projects.urban_objects_data
     scenario_objects = []
-    for row in (await conn.execute(scenario_urban_objects_query)).mappings().all():
+    for row in rows:
         is_scenario_geometry = row.object_geometry_id is not None and row.public_object_geometry_id is None
         scenario_objects.append(
             {
@@ -275,15 +273,7 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
 ) -> list[ScenarioGeometryWithAllObjectsDTO]:
     """Get geometries with list of physical objects and services by scenario identifier."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
+    project = await get_project_by_scenario_id(conn, scenario_id, user_id)
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -476,18 +466,12 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
         )
     )
 
-    # Условия фильтрации для объектов
-    if physical_object_type_id is not None and physical_object_function_id is not None:
-        raise EntityNotFoundByParams(
-            "physical object type and function", physical_object_type_id, physical_object_function_id
-        )
     if physical_object_type_id is not None:
         public_urban_objects_query = public_urban_objects_query.where(
-            projects_physical_objects_data.c.physical_object_type_id == physical_object_type_id
+            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id
         )
         scenario_urban_objects_query = scenario_urban_objects_query.where(
-            (projects_physical_objects_data.c.physical_object_type_id == physical_object_type_id)
-            | (physical_objects_data.c.physical_object_type_id == physical_object_type_id)
+            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id
         )
     elif physical_object_function_id is not None:
         physical_object_functions_cte = (
@@ -518,15 +502,13 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
                 select(physical_object_functions_cte.c.physical_object_function_id)
             )
         )
-    if service_type_id is not None and urban_function_id is not None:
-        raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)
+
     if service_type_id is not None:
         public_urban_objects_query = public_urban_objects_query.where(
-            services_data.c.service_type_id == service_type_id
+            service_types_dict.c.service_type_id == service_type_id
         )
         scenario_urban_objects_query = scenario_urban_objects_query.where(
-            (projects_services_data.c.service_type_id == service_type_id)
-            | (services_data.c.service_type_id == service_type_id)
+            service_types_dict.c.service_type_id == service_type_id
         )
     elif urban_function_id is not None:
         urban_functions_cte = (
@@ -553,9 +535,11 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
             service_types_dict.c.urban_function_id.in_(select(urban_functions_cte))
         )
 
+    rows = (await conn.execute(public_urban_objects_query)).mappings().all()
+
     # Получаем все объекты из public.urban_objects_data
     public_objects = []
-    for row in (await conn.execute(public_urban_objects_query)).mappings().all():
+    for row in rows:
         public_objects.append(
             {
                 "object_geometry_id": row.object_geometry_id,
@@ -605,9 +589,11 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
             }
         )
 
+    rows = (await conn.execute(scenario_urban_objects_query)).mappings().all()
+
     # Получаем все объекты из user_projects.urban_objects_data
     scenario_objects = []
-    for row in (await conn.execute(scenario_urban_objects_query)).mappings().all():
+    for row in rows:
         is_scenario_geometry = row.object_geometry_id is not None and row.public_object_geometry_id is None
         is_scenario_physical_object = row.physical_object_id is not None and row.public_physical_object_id is None
         is_scenario_service = row.service_id is not None and row.public_service_id is None
@@ -724,77 +710,22 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
     return [ScenarioGeometryWithAllObjectsDTO(**group) for group in grouped_objects.values()]
 
 
-async def get_context_geometries_by_scenario_id_from_db(
+async def get_context_geometries_from_db(
     conn: AsyncConnection,
-    scenario_id: int,
+    project_id: int,
     user_id: str,
     physical_object_id: int | None,
     service_id: int | None,
 ) -> list[ObjectGeometryDTO]:
     """Get list of geometries for 'context' of the project territory."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
-
-    context_territories = select(
-        territories_data.c.territory_id,
-        territories_data.c.geometry,
-    ).where(territories_data.c.territory_id.in_(project.properties["context"]))
-    unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-    all_descendants = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_descendants", recursive=True)
-    )
-    all_descendants = all_descendants.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_descendants,
-                territories_data.c.parent_id == all_descendants.c.territory_id,
-            )
-        )
-    )
-    all_ancestors = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_ancestors", recursive=True)
-    )
-    all_ancestors = all_ancestors.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_ancestors,
-                territories_data.c.territory_id == all_ancestors.c.parent_id,
-            )
-        )
-    )
-    all_related_territories = (
-        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
-    )
+    context = await get_all_context_territories(conn, project_id, user_id)
 
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .where(
-            object_geometries_data.c.territory_id.in_(select(all_related_territories)),
-            ST_Intersects(object_geometries_data.c.geometry, unified_geometry),
+            object_geometries_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
+            ST_Intersects(object_geometries_data.c.geometry, context["geometry"]),
         )
         .subquery()
     )
@@ -808,12 +739,12 @@ async def get_context_geometries_by_scenario_id_from_db(
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             cast(
-                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, unified_geometry), DECIMAL_PLACES),
+                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, context["geometry"]), DECIMAL_PLACES),
                 JSONB,
             ).label("geometry"),
             cast(
                 ST_AsGeoJSON(
-                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, unified_geometry)), DECIMAL_PLACES
+                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context["geometry"])), DECIMAL_PLACES
                 ),
                 JSONB,
             ).label("centre_point"),
@@ -850,9 +781,9 @@ async def get_context_geometries_by_scenario_id_from_db(
     return [ObjectGeometryDTO(**row) for row in result]
 
 
-async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
+async def get_context_geometries_with_all_objects_from_db(
     conn: AsyncConnection,
-    scenario_id: int,
+    project_id: int,
     user_id: str,
     physical_object_type_id: int | None,
     service_type_id: int | None,
@@ -861,68 +792,13 @@ async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
 ) -> list[GeometryWithAllObjectsDTO]:
     """Get geometries with lists of physical objects and services for 'context' of the project territory."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
-
-    context_territories = select(
-        territories_data.c.territory_id,
-        territories_data.c.geometry,
-    ).where(territories_data.c.territory_id.in_(project.properties["context"]))
-    unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-    all_descendants = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_descendants", recursive=True)
-    )
-    all_descendants = all_descendants.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_descendants,
-                territories_data.c.parent_id == all_descendants.c.territory_id,
-            )
-        )
-    )
-    all_ancestors = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_ancestors", recursive=True)
-    )
-    all_ancestors = all_ancestors.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_ancestors,
-                territories_data.c.territory_id == all_ancestors.c.parent_id,
-            )
-        )
-    )
-    all_related_territories = (
-        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
-    )
+    context = await get_all_context_territories(conn, project_id, user_id)
 
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .where(
-            object_geometries_data.c.territory_id.in_(select(all_related_territories)),
-            ST_Intersects(object_geometries_data.c.geometry, unified_geometry),
+            object_geometries_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
+            ST_Intersects(object_geometries_data.c.geometry, context["geometry"]),
         )
         .subquery()
     )
@@ -944,12 +820,12 @@ async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             cast(
-                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, unified_geometry), DECIMAL_PLACES),
+                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, context["geometry"]), DECIMAL_PLACES),
                 JSONB,
             ).label("geometry"),
             cast(
                 ST_AsGeoJSON(
-                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, unified_geometry)), DECIMAL_PLACES
+                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context["geometry"])), DECIMAL_PLACES
                 ),
                 JSONB,
             ).label("centre_point"),
@@ -997,13 +873,8 @@ async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
         .distinct()
     )
 
-    # Условия фильтрации для объектов
-    if physical_object_type_id is not None and physical_object_function_id is not None:
-        raise EntityNotFoundByParams(
-            "physical object type and function", physical_object_type_id, physical_object_function_id
-        )
     if physical_object_type_id is not None:
-        statement = statement.where(services_data.c.service_type_id == service_type_id)
+        statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
     elif physical_object_function_id is not None:
         physical_object_functions_cte = (
             select(
@@ -1028,8 +899,7 @@ async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
                 select(physical_object_functions_cte.c.physical_object_function_id)
             )
         )
-    if service_type_id is not None and urban_function_id is not None:
-        raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)
+
     if service_type_id is not None:
         statement = statement.where(services_data.c.service_type_id == service_type_id)
     elif urban_function_id is not None:
@@ -1052,8 +922,10 @@ async def get_context_geometries_with_all_objects_by_scenario_id_from_db(
         )
         statement = statement.where(service_types_dict.c.urban_function_id.in_(select(urban_functions_cte)))
 
+    rows = (await conn.execute(statement)).mappings().all()
+
     urban_objects = []
-    for row in (await conn.execute(statement)).mappings().all():
+    for row in rows:
         urban_objects.append(
             {
                 "object_geometry_id": row.object_geometry_id,
@@ -1170,9 +1042,9 @@ async def get_scenario_object_geometry_by_id_from_db(
             )
         )
         .where(projects_object_geometries_data.c.object_geometry_id == object_geometry_id)
-        .distinct()
     )
     result = (await conn.execute(statement)).mappings().one_or_none()
+
     if result is None:
         raise EntityNotFoundById(object_geometry_id, "scenario object geometry")
 
@@ -1181,7 +1053,7 @@ async def get_scenario_object_geometry_by_id_from_db(
 
 async def put_object_geometry_to_db(
     conn: AsyncConnection,
-    object_geometry: ObjectGeometriesPut,
+    object_geometry: ObjectGeometryPut,
     scenario_id: int,
     object_geometry_id: int,
     is_scenario_object: bool,
@@ -1189,27 +1061,17 @@ async def put_object_geometry_to_db(
 ) -> ScenarioGeometryDTO:
     """Update scenario object geometry by all its attributes."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
+    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    if is_scenario_object:
-        statement = select(projects_object_geometries_data.c.object_geometry_id).where(
-            projects_object_geometries_data.c.object_geometry_id == object_geometry_id
-        )
-    else:
-        statement = select(object_geometries_data.c.object_geometry_id).where(
-            object_geometries_data.c.object_geometry_id == object_geometry_id
-        )
-    requested_geometry = (await conn.execute(statement)).scalar_one_or_none()
-    if requested_geometry is None:
+    if not await check_existence(
+        conn,
+        projects_object_geometries_data if is_scenario_object else object_geometries_data,
+        conditions={"object_geometry_id": object_geometry_id},
+    ):
         raise EntityNotFoundById(object_geometry_id, "object geometry")
+
+    if not await check_existence(conn, territories_data, conditions={"territory_id": object_geometry.territory_id}):
+        raise EntityNotFoundById(object_geometry.territory_id, "territory")
 
     if not is_scenario_object:
         statement = (
@@ -1226,29 +1088,15 @@ async def put_object_geometry_to_db(
                 projects_object_geometries_data.c.public_object_geometry_id == object_geometry_id,
             )
         )
-        public_object_geometry = (await conn.execute(statement)).scalar_one_or_none()
+        public_object_geometry = (await conn.execute(statement)).one_or_none()
         if public_object_geometry is not None:
             raise EntityAlreadyExists("scenario object geometry", object_geometry_id)
-
-    statement = select(territories_data.c.territory_id).where(
-        territories_data.c.territory_id == object_geometry.territory_id
-    )
-    territory = (await conn.execute(statement)).scalar_one_or_none()
-    if territory is None:
-        raise EntityNotFoundById(object_geometry.territory_id, "territory")
 
     if is_scenario_object:
         statement = (
             update(projects_object_geometries_data)
             .where(projects_object_geometries_data.c.object_geometry_id == object_geometry_id)
-            .values(
-                territory_id=object_geometry.territory_id,
-                geometry=ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326")),
-                centre_point=ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326")),
-                address=object_geometry.address,
-                osm_id=object_geometry.osm_id,
-                updated_at=datetime.now(timezone.utc),
-            )
+            .values(**extract_values_from_model(object_geometry, to_update=True))
             .returning(projects_object_geometries_data.c.object_geometry_id)
         )
         updated_object_geometry_id = (await conn.execute(statement)).scalar_one()
@@ -1258,11 +1106,10 @@ async def put_object_geometry_to_db(
             .values(
                 public_object_geometry_id=object_geometry_id,
                 territory_id=object_geometry.territory_id,
-                geometry=ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326")),
-                centre_point=ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326")),
+                geometry=ST_GeomFromText(object_geometry.geometry.as_shapely_geometry().wkt, text("4326")),
+                centre_point=ST_GeomFromText(object_geometry.centre_point.as_shapely_geometry().wkt, text("4326")),
                 address=object_geometry.address,
                 osm_id=object_geometry.osm_id,
-                updated_at=datetime.now(timezone.utc),
             )
             .returning(projects_object_geometries_data.c.object_geometry_id)
         )
@@ -1336,7 +1183,7 @@ async def put_object_geometry_to_db(
 
 async def patch_object_geometry_to_db(
     conn: AsyncConnection,
-    object_geometry: ObjectGeometriesPatch,
+    object_geometry: ObjectGeometryPatch,
     scenario_id: int,
     object_geometry_id: int,
     is_scenario_object: bool,
@@ -1344,15 +1191,7 @@ async def patch_object_geometry_to_db(
 ) -> ScenarioGeometryDTO:
     """Update scenario object geometry by only given attributes."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
+    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
 
     if is_scenario_object:
         statement = select(projects_object_geometries_data).where(
@@ -1365,6 +1204,10 @@ async def patch_object_geometry_to_db(
     requested_geometry = (await conn.execute(statement)).mappings().one_or_none()
     if requested_geometry is None:
         raise EntityNotFoundById(object_geometry_id, "object geometry")
+
+    if object_geometry.territory_id is not None:
+        if not await check_existence(conn, territories_data, conditions={"territory_id": object_geometry.territory_id}):
+            raise EntityNotFoundById(object_geometry.territory_id, "territory")
 
     if not is_scenario_object:
         statement = (
@@ -1385,32 +1228,13 @@ async def patch_object_geometry_to_db(
         if public_object_geometry is not None:
             raise EntityAlreadyExists("scenario object geometry", object_geometry_id)
 
-    if object_geometry.territory_id is not None:
-        statement = select(territories_data.c.territory_id).where(
-            territories_data.c.territory_id == object_geometry.territory_id
-        )
-        territory = (await conn.execute(statement)).scalar_one_or_none()
-        if territory is None:
-            raise EntityNotFoundById(object_geometry.territory_id, "territory")
-
-    values_to_update = {}
-    for k, v in object_geometry.model_dump(exclude_unset=True).items():
-        if k == "geometry":
-            values_to_update.update(
-                {"geometry": ST_GeomFromText(str(object_geometry.geometry.as_shapely_geometry()), text("4326"))}
-            )
-        elif k == "centre_point":
-            values_to_update.update(
-                {"centre_point": ST_GeomFromText(str(object_geometry.centre_point.as_shapely_geometry()), text("4326"))}
-            )
-        else:
-            values_to_update.update({k: v})
+    values = extract_values_from_model(object_geometry, exclude_unset=True, to_update=True)
 
     if is_scenario_object:
         statement = (
             update(projects_object_geometries_data)
             .where(projects_object_geometries_data.c.object_geometry_id == object_geometry_id)
-            .values(updated_at=datetime.now(timezone.utc), **values_to_update)
+            .values(**values)
             .returning(projects_object_geometries_data.c.object_geometry_id)
         )
         updated_object_geometry_id = (await conn.execute(statement)).scalar_one()
@@ -1419,11 +1243,11 @@ async def patch_object_geometry_to_db(
             insert(projects_object_geometries_data)
             .values(
                 public_object_geometry_id=object_geometry_id,
-                territory_id=values_to_update.get("territory_id", requested_geometry.territory_id),
-                geometry=values_to_update.get("geometry", requested_geometry.geometry),
-                centre_point=values_to_update.get("centre_point", requested_geometry.centre_point),
-                address=values_to_update.get("address", requested_geometry.address),
-                osm_id=values_to_update.get("osm_id", requested_geometry.osm_id),
+                territory_id=values.get("territory_id", requested_geometry.territory_id),
+                geometry=values.get("geometry", requested_geometry.geometry),
+                centre_point=values.get("centre_point", requested_geometry.centre_point),
+                address=values.get("address", requested_geometry.address),
+                osm_id=values.get("osm_id", requested_geometry.osm_id),
             )
             .returning(projects_object_geometries_data.c.object_geometry_id)
         )
@@ -1495,7 +1319,7 @@ async def patch_object_geometry_to_db(
     return await get_scenario_object_geometry_by_id_from_db(conn, updated_object_geometry_id)
 
 
-async def delete_object_geometry_in_db(
+async def delete_object_geometry_from_db(
     conn: AsyncConnection,
     scenario_id: int,
     object_geometry_id: int,
@@ -1504,26 +1328,11 @@ async def delete_object_geometry_in_db(
 ) -> dict:
     """Delete scenario physical object."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
+    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    if is_scenario_object:
-        statement = select(projects_object_geometries_data.c.object_geometry_id).where(
-            projects_object_geometries_data.c.object_geometry_id == object_geometry_id
-        )
-    else:
-        statement = select(object_geometries_data.c.object_geometry_id).where(
-            object_geometries_data.c.object_geometry_id == object_geometry_id
-        )
-    requested_geometry = (await conn.execute(statement)).scalar_one_or_none()
-    if requested_geometry is None:
+    if not await check_existence(
+        conn, projects_object_geometries_data if is_scenario_object else object_geometries_data
+    ):
         raise EntityNotFoundById(object_geometry_id, "object geometry")
 
     if is_scenario_object:
@@ -1580,4 +1389,4 @@ async def delete_object_geometry_in_db(
 
     await conn.commit()
 
-    return {"result": "ok"}
+    return {"status": "ok"}

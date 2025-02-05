@@ -3,7 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
-    FunctionalZoneDataDTO,
+    FunctionalZoneDTO,
     FunctionalZoneTypeDTO,
     ProfilesReclamationDataDTO,
     ProfilesReclamationDataMatrixDTO,
@@ -23,9 +23,9 @@ from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     put_profiles_reclamation_data_to_db,
 )
 from idu_api.urban_api.schemas import (
-    FunctionalZoneDataPatch,
-    FunctionalZoneDataPost,
-    FunctionalZoneDataPut,
+    FunctionalZonePatch,
+    FunctionalZonePost,
+    FunctionalZonePut,
     FunctionalZoneTypePost,
     ProfilesReclamationDataPost,
     ProfilesReclamationDataPut,
@@ -70,17 +70,17 @@ class FunctionalZonesServiceImpl(FunctionalZonesService):
     ) -> dict[str, str]:
         return await delete_profiles_reclamation_data_from_db(self._conn, source_id, target_id, territory_id)
 
-    async def add_functional_zone(self, functional_zone: FunctionalZoneDataPost) -> FunctionalZoneDataDTO:
+    async def add_functional_zone(self, functional_zone: FunctionalZonePost) -> FunctionalZoneDTO:
         return await add_functional_zone_to_db(self._conn, functional_zone)
 
     async def put_functional_zone(
-        self, functional_zone_id: int, functional_zone: FunctionalZoneDataPut
-    ) -> FunctionalZoneDataDTO:
+        self, functional_zone_id: int, functional_zone: FunctionalZonePut
+    ) -> FunctionalZoneDTO:
         return await put_functional_zone_to_db(self._conn, functional_zone_id, functional_zone)
 
     async def patch_functional_zone(
-        self, functional_zone_id: int, functional_zone: FunctionalZoneDataPatch
-    ) -> FunctionalZoneDataDTO:
+        self, functional_zone_id: int, functional_zone: FunctionalZonePatch
+    ) -> FunctionalZoneDTO:
         return await patch_functional_zone_to_db(self._conn, functional_zone_id, functional_zone)
 
     async def delete_functional_zone(self, functional_zone_id: int) -> dict:

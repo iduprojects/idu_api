@@ -9,12 +9,13 @@ from idu_api.common.db.entities import (
     service_types_dict,
     urban_functions_dict,
 )
-from idu_api.urban_api.dto import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
+from idu_api.urban_api.logic.impl.helpers.utils import build_recursive_query, check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import (
-    ServiceTypesPatch,
-    ServiceTypesPost,
-    ServiceTypesPut,
+    ServiceTypePatch,
+    ServiceTypePost,
+    ServiceTypePut,
     UrbanFunctionPatch,
     UrbanFunctionPost,
     UrbanFunctionPut,
@@ -26,7 +27,7 @@ func: Callable
 async def get_service_types_from_db(
     conn: AsyncConnection,
     urban_function_id: int | None,
-) -> list[ServiceTypesDTO]:
+) -> list[ServiceTypeDTO]:
     """Get all service type objects."""
 
     statement = (
@@ -43,181 +44,130 @@ async def get_service_types_from_db(
     if urban_function_id is not None:
         statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
 
-    return [ServiceTypesDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
+    return [ServiceTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
+
+
+async def get_service_type_by_id_from_db(conn: AsyncConnection, service_type_id: int) -> ServiceTypeDTO:
+    """Get service type object by identifier."""
+
+    statement = (
+        select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
+        .select_from(
+            service_types_dict.join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+        )
+        .where(service_types_dict.c.service_type_id == service_type_id)
+    )
+    result = (await conn.execute(statement)).mappings().one_or_none()
+
+    if result is None:
+        raise EntityNotFoundById(service_type_id, "service type")
+
+    return ServiceTypeDTO(**result)
 
 
 async def add_service_type_to_db(
     conn: AsyncConnection,
-    service_type: ServiceTypesPost,
-) -> ServiceTypesDTO:
+    service_type: ServiceTypePost,
+) -> ServiceTypeDTO:
     """Create service type object."""
 
-    statement = select(urban_functions_dict).where(
-        urban_functions_dict.c.urban_function_id == service_type.urban_function_id
-    )
-    result = (await conn.execute(statement)).one_or_none()
-    if result is None:
+    if not await check_existence(
+        conn, urban_functions_dict, conditions={"urban_function_id": service_type.urban_function_id}
+    ):
         raise EntityNotFoundById(service_type.urban_function_id, "urban function")
 
-    statement = select(service_types_dict).where(service_types_dict.c.name == service_type.name)
-    result = (await conn.execute(statement)).one_or_none()
-    if result is not None:
+    if await check_existence(conn, service_types_dict, conditions={"name": service_type.name}):
         raise EntityAlreadyExists("service type", service_type.name)
 
     statement = (
-        insert(service_types_dict)
-        .values(
-            name=service_type.name,
-            urban_function_id=service_type.urban_function_id,
-            capacity_modeled=service_type.capacity_modeled,
-            code=service_type.code,
-            infrastructure_type=service_type.infrastructure_type,
-            properties=service_type.properties,
-        )
-        .returning(service_types_dict.c.service_type_id)
+        insert(service_types_dict).values(**service_type.model_dump()).returning(service_types_dict.c.service_type_id)
     )
     service_type_id = (await conn.execute(statement)).scalar_one()
 
-    statement = (
-        select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
-        .select_from(
-            service_types_dict.join(
-                urban_functions_dict,
-                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
-            )
-        )
-        .where(service_types_dict.c.service_type_id == service_type_id)
-    )
-    result = (await conn.execute(statement)).mappings().one()
-
     await conn.commit()
 
-    return ServiceTypesDTO(**result)
+    return await get_service_type_by_id_from_db(conn, service_type_id)
 
 
-async def put_service_type_to_db(
-    conn: AsyncConnection,
-    service_type_id: int,
-    service_type: ServiceTypesPut,
-) -> ServiceTypesDTO:
+async def put_service_type_to_db(conn: AsyncConnection, service_type: ServiceTypePut) -> ServiceTypeDTO:
     """Update service type object by all its attributes."""
 
-    statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
-    result = (await conn.execute(statement)).one_or_none()
-    if result is None:
-        raise EntityNotFoundById(service_type_id, "service type")
-
-    statement = select(urban_functions_dict).where(
-        urban_functions_dict.c.urban_function_id == service_type.urban_function_id
-    )
-    result = (await conn.execute(statement)).one_or_none()
-    if result is None:
+    if not await check_existence(
+        conn, urban_functions_dict, conditions={"urban_function_id": service_type.urban_function_id}
+    ):
         raise EntityNotFoundById(service_type.urban_function_id, "urban function")
 
-    statement = select(service_types_dict).where(
-        service_types_dict.c.name == service_type.name, service_types_dict.c.service_type_id != service_type_id
-    )
-    result = (await conn.execute(statement)).one_or_none()
-    if result is not None:
-        raise EntityAlreadyExists("service type", service_type.name)
-
-    statement = (
-        update(service_types_dict)
-        .where(service_types_dict.c.service_type_id == service_type_id)
-        .values(
-            name=service_type.name,
-            urban_function_id=service_type.urban_function_id,
-            capacity_modeled=service_type.capacity_modeled,
-            code=service_type.code,
-            infrastructure_type=service_type.infrastructure_type,
-            properties=service_type.properties,
+    if await check_existence(conn, service_types_dict, conditions={"name": service_type.name}):
+        statement = (
+            update(service_types_dict)
+            .where(service_types_dict.c.name == service_type.name)
+            .values(**service_type.model_dump())
+            .returning(service_types_dict.c.service_type_id)
         )
-    )
-    await conn.execute(statement)
+    else:
+        statement = (
+            insert(service_types_dict)
+            .values(**service_type.model_dump())
+            .returning(service_types_dict.c.service_type_id)
+        )
+
+    service_type_id = (await conn.execute(statement)).scalar_one()
     await conn.commit()
 
-    statement = (
-        select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
-        .select_from(
-            service_types_dict.join(
-                urban_functions_dict,
-                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
-            )
-        )
-        .where(service_types_dict.c.service_type_id == service_type_id)
-    )
-    result = (await conn.execute(statement)).mappings().one()
-
-    return ServiceTypesDTO(**result)
+    return await get_service_type_by_id_from_db(conn, service_type_id)
 
 
 async def patch_service_type_to_db(
     conn: AsyncConnection,
     service_type_id: int,
-    service_type: ServiceTypesPatch,
-) -> ServiceTypesDTO:
+    service_type: ServiceTypePatch,
+) -> ServiceTypeDTO:
     """Update service type object by only given attributes."""
 
-    statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
-    result = (await conn.execute(statement)).one_or_none()
-    if result is None:
+    if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
         raise EntityNotFoundById(service_type_id, "service type")
 
     if service_type.urban_function_id is not None:
-        statement = select(urban_functions_dict).where(
-            urban_functions_dict.c.urban_function_id == service_type.urban_function_id
-        )
-        result = (await conn.execute(statement)).one_or_none()
-        if result is None:
+        if not await check_existence(
+            conn, urban_functions_dict, conditions={"urban_function_id": service_type.urban_function_id}
+        ):
             raise EntityNotFoundById(service_type.urban_function_id, "urban function")
 
     if service_type.name is not None:
-        statement = select(service_types_dict).where(
-            service_types_dict.c.name == service_type.name, service_types_dict.c.service_type_id != service_type_id
-        )
-        result = (await conn.execute(statement)).one_or_none()
-        if result is not None:
+        if await check_existence(
+            conn,
+            service_types_dict,
+            conditions={"name": service_type.name},
+            not_conditions={"service_type_id": service_type_id},
+        ):
             raise EntityAlreadyExists("service type", service_type.name)
 
-    statement = update(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
-
-    values_to_update = {}
-    for k, v in service_type.model_dump(exclude_unset=True).items():
-        values_to_update.update({k: v})
-
-    statement = statement.values(**values_to_update)
-    await conn.execute(statement)
-
     statement = (
-        select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
-        .select_from(
-            service_types_dict.join(
-                urban_functions_dict,
-                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
-            )
-        )
+        update(service_types_dict)
         .where(service_types_dict.c.service_type_id == service_type_id)
+        .values(**service_type.model_dump(exclude_unset=True))
     )
-    result = (await conn.execute(statement)).mappings().one()
 
+    await conn.execute(statement)
     await conn.commit()
 
-    return ServiceTypesDTO(**result)
+    return await get_service_type_by_id_from_db(conn, service_type_id)
 
 
 async def delete_service_type_from_db(conn: AsyncConnection, service_type_id: int) -> dict:
     """Delete service type object by id."""
 
-    statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
-    service_type = (await conn.execute(statement)).scalar_one_or_none()
-    if service_type is None:
+    if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
         raise EntityNotFoundById(service_type_id, "service type")
 
     statement = delete(service_types_dict).where(service_types_dict.c.service_type_id == service_type_id)
     await conn.execute(statement)
     await conn.commit()
 
-    return {"result": "ok"}
+    return {"status": "ok"}
 
 
 async def get_urban_functions_by_parent_id_from_db(
@@ -229,9 +179,7 @@ async def get_urban_functions_by_parent_id_from_db(
     """Get an urban function or list of urban functions by parent."""
 
     if parent_id is not None:
-        statement = select(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == parent_id)
-        parent_urban_function = (await conn.execute(statement)).one_or_none()
-        if parent_urban_function is None:
+        if not await check_existence(conn, urban_functions_dict, conditions={"urban_function_id": parent_id}):
             raise EntityNotFoundById(parent_id, "urban function")
 
     urban_functions_parents = urban_functions_dict.alias("urban_functions_parents")
@@ -245,18 +193,14 @@ async def get_urban_functions_by_parent_id_from_db(
     )
 
     if get_all_subtree:
-        cte_statement = statement.where(
-            urban_functions_dict.c.parent_urban_function_id == parent_id
-            if parent_id is not None
-            else urban_functions_dict.c.parent_urban_function_id.is_(None)
+        statement = build_recursive_query(
+            statement,
+            urban_functions_dict,
+            parent_id,
+            "urban_function_recursive",
+            "urban_function_id",
+            "parent_urban_function_id",
         )
-        cte_statement = cte_statement.cte(name="urban_function_recursive", recursive=True)
-
-        recursive_part = statement.join(
-            cte_statement, urban_functions_dict.c.parent_urban_function_id == cte_statement.c.urban_function_id
-        )
-
-        statement = select(cte_statement.union_all(recursive_part))
     else:
         statement = statement.where(
             urban_functions_dict.c.parent_urban_function_id == parent_id
@@ -265,7 +209,6 @@ async def get_urban_functions_by_parent_id_from_db(
         )
 
     requested_urban_functions = statement.cte("requested_urban_functions")
-
     statement = select(requested_urban_functions)
 
     if name is not None:
@@ -276,6 +219,28 @@ async def get_urban_functions_by_parent_id_from_db(
     return [UrbanFunctionDTO(**urban_function) for urban_function in result]
 
 
+async def get_urban_function_by_id_from_db(conn: AsyncConnection, urban_function_id: int) -> UrbanFunctionDTO:
+    """Get urban function object by identifier."""
+
+    urban_functions_parents = urban_functions_dict.alias("urban_functions_parents")
+    statement = (
+        select(urban_functions_dict, urban_functions_parents.c.name.label("parent_urban_function_name"))
+        .select_from(
+            urban_functions_dict.outerjoin(
+                urban_functions_parents,
+                urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_urban_function_id,
+            ),
+        )
+        .where(urban_functions_dict.c.urban_function_id == urban_function_id)
+    )
+
+    result = (await conn.execute(statement)).mappings().one_or_none()
+    if result is None:
+        raise EntityNotFoundById(urban_function_id, "urban function")
+
+    return UrbanFunctionDTO(**result)
+
+
 async def add_urban_function_to_db(
     conn: AsyncConnection,
     urban_function: UrbanFunctionPost,
@@ -283,103 +248,64 @@ async def add_urban_function_to_db(
     """Create urban function object."""
 
     if urban_function.parent_id is not None:
-        statement = select(urban_functions_dict).where(
-            urban_functions_dict.c.urban_function_id == urban_function.parent_id
-        )
-        parent_urban_function = (await conn.execute(statement)).one_or_none()
-        if parent_urban_function is None:
+        if not await check_existence(
+            conn, urban_functions_dict, conditions={"urban_function_id": urban_function.parent_id}
+        ):
             raise EntityNotFoundById(urban_function.parent_id, "urban function")
 
-    statement = select(urban_functions_dict).where(urban_functions_dict.c.name == urban_function.name)
-    urban_function_name = (await conn.execute(statement)).one_or_none()
-    if urban_function_name is not None:
+    if await check_existence(conn, urban_functions_dict, conditions={"name": urban_function.name}):
         raise EntityAlreadyExists("urban function", urban_function.name)
 
     statement = (
         insert(urban_functions_dict)
-        .values(
-            parent_urban_function_id=urban_function.parent_id,
-            name=urban_function.name,
-            code=urban_function.code,
-        )
+        .values(**urban_function.model_dump(exclude={"parent_id"}), parent_urban_function_id=urban_function.parent_id)
         .returning(urban_functions_dict.c.urban_function_id)
     )
     urban_function_id = (await conn.execute(statement)).scalar_one()
 
-    urban_functions_parents = urban_functions_dict.alias("urban_functions_parents")
-    statement = (
-        select(urban_functions_dict, urban_functions_parents.c.name.label("parent_urban_function_name"))
-        .select_from(
-            urban_functions_dict.outerjoin(
-                urban_functions_parents,
-                urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_urban_function_id,
-            ),
-        )
-        .where(urban_functions_dict.c.urban_function_id == urban_function_id)
-    )
-    result = (await conn.execute(statement)).mappings().one()
-
     await conn.commit()
 
-    return UrbanFunctionDTO(**result)
+    return await get_urban_function_by_id_from_db(conn, urban_function_id)
 
 
 async def put_urban_function_to_db(
     conn: AsyncConnection,
-    urban_function_id: int,
     urban_function: UrbanFunctionPut,
 ) -> UrbanFunctionDTO:
-    """Update urban function object by getting all its attributes."""
-
-    statement = select(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == urban_function_id)
-    result = (await conn.execute(statement)).one_or_none()
-    if result is None:
-        raise EntityNotFoundById(urban_function_id, "urban function")
+    """Update urban function object by all its attributes."""
 
     if urban_function.parent_id is not None:
-        statement = select(urban_functions_dict).where(
-            urban_functions_dict.c.urban_function_id == urban_function.parent_id
-        )
-        result = (await conn.execute(statement)).one_or_none()
-        if result is None:
+        if not await check_existence(
+            conn, urban_functions_dict, conditions={"urban_function_id": urban_function.parent_id}
+        ):
             raise EntityNotFoundById(urban_function.parent_id, "urban function")
 
-    statement = select(urban_functions_dict).where(
-        urban_functions_dict.c.name == urban_function.name,
-        urban_functions_dict.c.urban_function_id != urban_function_id,
-    )
-    result = (await conn.execute(statement)).one_or_none()
-    if result is not None:
-        raise EntityAlreadyExists("urban function", urban_function.name)
-
-    statement = (
-        update(urban_functions_dict)
-        .where(urban_functions_dict.c.urban_function_id == urban_function_id)
-        .values(
-            name=urban_function.name,
-            parent_urban_function_id=urban_function.parent_id,
-            code=urban_function.code,
+    if await check_existence(
+        conn,
+        urban_functions_dict,
+        conditions={"name": urban_function.name},
+    ):
+        statement = (
+            update(urban_functions_dict)
+            .where(urban_functions_dict.c.name == urban_function.name)
+            .values(
+                **urban_function.model_dump(exclude={"parent_id"}), parent_urban_function_id=urban_function.parent_id
+            )
+            .returning(urban_functions_dict.c.urban_function_id)
         )
-    )
-
-    await conn.execute(statement)
-
-    urban_functions_parents = urban_functions_dict.alias("urban_functions_parents")
-    statement = (
-        select(urban_functions_dict, urban_functions_parents.c.name.label("parent_urban_function_name"))
-        .select_from(
-            urban_functions_dict.outerjoin(
-                urban_functions_parents,
-                urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_urban_function_id,
-            ),
+    else:
+        statement = (
+            insert(urban_functions_dict)
+            .values(
+                **urban_function.model_dump(exclude={"parent_id"}), parent_urban_function_id=urban_function.parent_id
+            )
+            .returning(urban_functions_dict.c.urban_function_id)
         )
-        .where(urban_functions_dict.c.urban_function_id == urban_function_id)
-    )
-    result = (await conn.execute(statement)).mappings().one()
 
+    urban_function_id = (await conn.execute(statement)).scalar_one()
     await conn.commit()
 
-    return UrbanFunctionDTO(**result)
+    return await get_urban_function_by_id_from_db(conn, urban_function_id)
 
 
 async def patch_urban_function_to_db(
@@ -389,71 +315,53 @@ async def patch_urban_function_to_db(
 ) -> UrbanFunctionDTO:
     """Update urban function object by getting only given attributes."""
 
-    statement = select(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == urban_function_id)
-    result = (await conn.execute(statement)).one_or_none()
-    if result is None:
+    if not await check_existence(conn, urban_functions_dict, conditions={"urban_function_id": urban_function_id}):
         raise EntityNotFoundById(urban_function_id, "urban function")
 
     if urban_function.parent_id is not None:
-        statement = select(urban_functions_dict).where(
-            urban_functions_dict.c.urban_function_id == urban_function.parent_id
-        )
-        result = (await conn.execute(statement)).one_or_none()
-        if result is None:
+        if not await check_existence(
+            conn, urban_functions_dict, conditions={"urban_function_id": urban_function.parent_id}
+        ):
             raise EntityNotFoundById(urban_function.parent_id, "urban function")
 
     if urban_function.name is not None:
-        statement = select(urban_functions_dict).where(
-            urban_functions_dict.c.name == urban_function.name,
-            urban_functions_dict.c.urban_function_id != urban_function_id,
-        )
-        result = (await conn.execute(statement)).one_or_none()
-        if result is not None:
+        if await check_existence(
+            conn,
+            urban_functions_dict,
+            conditions={"name": urban_function.name},
+            not_conditions={"urban_function_id": urban_function_id},
+        ):
             raise EntityAlreadyExists("urban function", urban_function.name)
 
-    statement = update(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == urban_function_id)
+    values = extract_values_from_model(urban_function, exclude_unset=True)
 
-    values_to_update = {}
-    for k, v in urban_function.model_dump(exclude_unset=True).items():
-        if k == "parent_id":
-            values_to_update.update({"parent_urban_function_id": v})
-            continue
-        values_to_update.update({k: v})
+    if "parent_id" in values:
+        values.update({"parent_urban_function_id": values["parent_id"]})
+        del values["parent_id"]
 
-    statement = statement.values(**values_to_update)
-    await conn.execute(statement)
-
-    urban_functions_parents = urban_functions_dict.alias("urban_functions_parents")
     statement = (
-        select(urban_functions_dict, urban_functions_parents.c.name.label("parent_urban_function_name"))
-        .select_from(
-            urban_functions_dict.outerjoin(
-                urban_functions_parents,
-                urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_urban_function_id,
-            ),
-        )
+        update(urban_functions_dict)
         .where(urban_functions_dict.c.urban_function_id == urban_function_id)
+        .values(**values)
     )
-    result = (await conn.execute(statement)).mappings().one()
 
+    await conn.execute(statement)
     await conn.commit()
 
-    return UrbanFunctionDTO(**result)
+    return await get_urban_function_by_id_from_db(conn, urban_function_id)
 
 
 async def delete_urban_function_from_db(conn: AsyncConnection, urban_function_id: int) -> dict:
     """Delete urban function object by id."""
 
-    statement = select(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == urban_function_id)
-    urban_function = (await conn.execute(statement)).scalar_one_or_none()
-    if urban_function is None:
+    if not await check_existence(conn, urban_functions_dict, conditions={"urban_function_id": urban_function_id}):
         raise EntityNotFoundById(urban_function_id, "urban function")
 
     statement = delete(urban_functions_dict).where(urban_functions_dict.c.urban_function_id == urban_function_id)
     await conn.execute(statement)
     await conn.commit()
 
-    return {"result": "ok"}
+    return {"status": "ok"}
 
 
 async def get_service_types_hierarchy_from_db(
@@ -495,7 +403,7 @@ async def get_service_types_hierarchy_from_db(
             filtered_children = build_filtered_hierarchy(uf.urban_function_id)
 
             relevant_service_types = [
-                ServiceTypesDTO(**s) for s in service_types if s.urban_function_id == uf.urban_function_id
+                ServiceTypeDTO(**s) for s in service_types if s.urban_function_id == uf.urban_function_id
             ]
 
             if filtered_children or relevant_service_types:

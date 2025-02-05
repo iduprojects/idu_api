@@ -1,6 +1,6 @@
 """Territory schemas are defined here."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -8,7 +8,12 @@ from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import TerritoryDTO, TerritoryTypeDTO, TerritoryWithoutGeometryDTO
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
-from idu_api.urban_api.schemas.short_models import ShortIndicatorValueInfo, ShortNormativeInfo, ShortTerritory
+from idu_api.urban_api.schemas.short_models import (
+    ShortIndicatorValueInfo,
+    ShortNormativeInfo,
+    ShortTerritory,
+    TerritoryTypeBasic,
+)
 
 
 class TerritoriesOrderByField(str, Enum):
@@ -28,17 +33,17 @@ class TerritoryType(BaseModel):
         return cls(territory_type_id=dto.territory_type_id, name=dto.name)
 
 
-class TerritoryTypesPost(BaseModel):
+class TerritoryTypePost(BaseModel):
     """Schema of territory type for POST request."""
 
     name: str = Field(..., description="territory type unit name", examples=["Город"])
 
 
-class TerritoryData(BaseModel):
+class Territory(BaseModel):
     """Territory with all its attributes."""
 
     territory_id: int = Field(..., examples=[1])
-    territory_type: TerritoryType
+    territory_type: TerritoryTypeBasic
     parent: ShortTerritory | None
     name: str = Field(..., description="territory name", examples=["--"])
     geometry: Geometry
@@ -53,18 +58,20 @@ class TerritoryData(BaseModel):
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
     is_city: bool = Field(..., description="boolean parameter to determine cities")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the territory was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the territory was created"
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the territory was last updated"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the territory was last updated"
     )
 
     @classmethod
-    def from_dto(cls, dto: TerritoryDTO) -> "TerritoryData":
+    def from_dto(cls, dto: TerritoryDTO) -> "Territory":
         """Construct from DTO."""
 
         return cls(
             territory_id=dto.territory_id,
-            territory_type=TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
+            territory_type=TerritoryTypeBasic(id=dto.territory_type_id, name=dto.territory_type_name),
             parent=(ShortTerritory(id=dto.parent_id, name=dto.parent_name) if dto.parent_id is not None else None),
             name=dto.name,
             geometry=Geometry.from_shapely_geometry(dto.geometry),
@@ -80,7 +87,7 @@ class TerritoryData(BaseModel):
         )
 
 
-class TerritoryDataPost(GeometryValidationModel):
+class TerritoryPost(GeometryValidationModel):
     """Territory schema for POST request."""
 
     territory_type_id: int = Field(..., examples=[1])
@@ -99,7 +106,7 @@ class TerritoryDataPost(GeometryValidationModel):
     is_city: bool = Field(..., description="boolean parameter to determine cities")
 
 
-class TerritoryDataPut(GeometryValidationModel):
+class TerritoryPut(GeometryValidationModel):
     """Territory schema for PUT request."""
 
     territory_type_id: int = Field(..., examples=[1])
@@ -118,7 +125,7 @@ class TerritoryDataPut(GeometryValidationModel):
     is_city: bool = Field(..., description="boolean parameter to determine cities")
 
 
-class TerritoryDataPatch(GeometryValidationModel):
+class TerritoryPatch(GeometryValidationModel):
     """Territory schema for PATCH request."""
 
     territory_type_id: int | None = Field(None, examples=[1])
@@ -134,7 +141,7 @@ class TerritoryDataPatch(GeometryValidationModel):
     admin_center: int | None = Field(None, examples=[1])
     okato_code: str | None = Field(None, examples=["1"])
     oktmo_code: str | None = Field(None, examples=["1"])
-    is_city: bool = Field(..., description="boolean parameter to determine cities")
+    is_city: bool = Field(None, description="boolean parameter to determine cities")
 
     @model_validator(mode="before")
     @classmethod
@@ -149,10 +156,8 @@ class TerritoryWithoutGeometry(BaseModel):
     """Territory with all its attributes, but without center and geometry."""
 
     territory_id: int = Field(..., examples=[1])
-    territory_type: TerritoryType
-    parent_id: int | None = Field(
-        ..., description="Parent territory identifier, null only for the one territory", examples=[1]
-    )
+    territory_type: TerritoryTypeBasic
+    parent: ShortTerritory | None
     name: str = Field(..., description="territory name", examples=["--"])
     level: int = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
@@ -164,9 +169,11 @@ class TerritoryWithoutGeometry(BaseModel):
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
     is_city: bool = Field(..., description="boolean parameter to determine cities")
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the territory was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the territory was created"
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the territory was last updated"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the territory was last updated"
     )
 
     @classmethod
@@ -174,8 +181,8 @@ class TerritoryWithoutGeometry(BaseModel):
         """Construct from DTO."""
         return cls(
             territory_id=dto.territory_id,
-            territory_type=TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name),
-            parent_id=dto.parent_id,
+            territory_type=TerritoryTypeBasic(id=dto.territory_type_id, name=dto.territory_type_name),
+            parent=(ShortTerritory(id=dto.parent_id, name=dto.parent_name) if dto.parent_id is not None else None),
             name=dto.name,
             level=dto.level,
             properties=dto.properties,
@@ -193,6 +200,7 @@ class TerritoryWithIndicator(BaseModel):
 
     territory_id: int = Field(..., examples=[1])
     name: str = Field(..., description="territory name", examples=["--"])
+    is_city: bool = Field(..., description="boolean parameter to determine cities")
     indicator_name: str = Field(
         ...,
         description="indicator unit full name",

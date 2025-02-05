@@ -93,9 +93,9 @@ class EntityAlreadyExists(IduApiError):
 
     def get_status_code(self) -> int:
         """
-        Return '404 Not found' status code.
+        Return '409 Conflict' status code.
         """
-        return status.HTTP_400_BAD_REQUEST
+        return status.HTTP_409_CONFLICT
 
 
 class TooManyObjectsError(IduApiError):

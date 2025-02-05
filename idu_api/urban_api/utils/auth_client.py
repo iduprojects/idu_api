@@ -1,16 +1,17 @@
 """FastAPI authentication client is defined here."""
 
+import base64
 import json
-from base64 import b64decode
-from datetime import datetime
+from datetime import datetime, timezone
 
-import httpx
+import aiohttp
+from aiohttp import ClientConnectorError, ClientResponseError
 from cachetools import TTLCache
 from fastapi import Request
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from idu_api.urban_api.dto.users import UserDTO
 from idu_api.urban_api.exceptions.utils.auth import (
-    AuthServiceUnavailable,
     ExpiredToken,
     InvalidTokenSignature,
     JWTDecodeError,
@@ -18,6 +19,8 @@ from idu_api.urban_api.exceptions.utils.auth import (
 
 
 class AuthenticationClient:
+
+    RETRIES = 3
 
     def __init__(self, cache_size: int, cache_ttl: int, validate_token: int, auth_url: str):
         self._validate_token = validate_token
@@ -28,17 +31,20 @@ class AuthenticationClient:
     def decode_token(token: str) -> dict:
         """Decode the JWT token without verification to extract payload."""
         try:
-            return json.loads(b64decode(token.split(".")[1]))
+            payload_base64 = token.split(".")[1]
+            padded_payload = payload_base64 + "=" * (-len(payload_base64) % 4)
+            decoded_payload = base64.urlsafe_b64decode(padded_payload)
+            return json.loads(decoded_payload)
         except Exception as exc:
-            raise JWTDecodeError(token) from exc
+            raise JWTDecodeError() from exc
 
     @staticmethod
     def is_token_expired(payload: dict) -> bool:
         """Check if the JWT token is expired."""
         if "exp" in payload:
-            expiration = datetime.utcfromtimestamp(payload["exp"])
-            return expiration < datetime.utcnow()
-        return False
+            expiration = datetime.fromtimestamp(payload["exp"], timezone.utc)
+            return expiration < datetime.now(timezone.utc)
+        return True
 
     def update(
         self,
@@ -55,15 +61,19 @@ class AuthenticationClient:
             else self._cache
         )
 
+    @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ClientConnectorError))
     async def validate_token_online(self, token: str) -> None:
         """Validate token by calling an external service if needed."""
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(self._auth_url, headers={"Authorization": f"Bearer {token}"})
-            if response.status_code != 200:
-                raise InvalidTokenSignature(token)
-        except Exception as exc:
-            raise AuthServiceUnavailable() from exc
+            async with aiohttp.ClientSession() as session:
+                response = await session.post(
+                    self._auth_url,
+                    headers={"Authorization": f"Bearer {token}"},
+                    data={"token": token, "token_type_hint": "access_token"},
+                )
+            response.raise_for_status()
+        except ClientResponseError as exc:
+            raise InvalidTokenSignature() from exc
 
     async def get_user_from_token(self, token: str) -> UserDTO:
         """Main method that processes the token and returns UserDTO."""
@@ -77,10 +87,10 @@ class AuthenticationClient:
         # Optionally validate the token online
         if self._validate_token:
             if self.is_token_expired(payload):
-                raise ExpiredToken(token)
+                raise ExpiredToken()
             await self.validate_token_online(token)
 
-        user_dto = UserDTO(id=payload.get("sub"), is_active=payload.get("active"))
+        user_dto = UserDTO(id=payload.get("sub"))
 
         self._cache[token] = user_dto
 

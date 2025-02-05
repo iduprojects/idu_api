@@ -31,11 +31,7 @@ class ObjectGeometryDTO:
 
     def to_geojson_dict(self) -> dict[str, Any]:
         geometry = asdict(self)
-        territory = {
-            "id": geometry.pop("territory_id"),
-            "name": geometry.pop("territory_name"),
-        }
-        geometry["territory"] = territory
+        geometry["territory"] = {"id": geometry.pop("territory_id"), "name": geometry.pop("territory_name")}
         return geometry
 
 

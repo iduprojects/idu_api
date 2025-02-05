@@ -1,26 +1,27 @@
 """Projects handlers logic is defined here."""
 
 import io
-from typing import Any
+from datetime import date
+from typing import Any, Literal
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.urban_api.dto import (
-    FunctionalZoneDataDTO,
+    FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
     HexagonWithIndicatorsDTO,
     ObjectGeometryDTO,
     PageDTO,
-    PhysicalObjectDataDTO,
+    PhysicalObjectDTO,
     ProjectDTO,
-    ProjectIndicatorValueDTO,
-    ProjectProfileDTO,
     ProjectTerritoryDTO,
-    ProjectWithBaseScenarioDTO,
+    ProjectWithTerritoryDTO,
     ScenarioDTO,
+    ScenarioFunctionalZoneDTO,
     ScenarioGeometryDTO,
     ScenarioGeometryWithAllObjectsDTO,
+    ScenarioIndicatorValueDTO,
     ScenarioPhysicalObjectDTO,
     ScenarioServiceDTO,
     ScenarioUrbanObjectDTO,
@@ -29,45 +30,45 @@ from idu_api.urban_api.dto import (
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.logic.impl.helpers.projects_functional_zones import (
     add_scenario_functional_zones_to_db,
-    delete_functional_zone_by_scenario_id_from_db,
-    get_context_functional_zones_by_scenario_id_from_db,
-    get_context_functional_zones_sources_by_scenario_id_from_db,
+    delete_functional_zones_by_scenario_id_from_db,
+    get_context_functional_zones_from_db,
+    get_context_functional_zones_sources_from_db,
     get_functional_zones_by_scenario_id_from_db,
     get_functional_zones_sources_by_scenario_id_from_db,
     patch_scenario_functional_zone_to_db,
     put_scenario_functional_zone_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
-    delete_object_geometry_in_db,
-    get_context_geometries_by_scenario_id_from_db,
-    get_context_geometries_with_all_objects_by_scenario_id_from_db,
+    delete_object_geometry_from_db,
+    get_context_geometries_from_db,
+    get_context_geometries_with_all_objects_from_db,
     get_geometries_by_scenario_id_from_db,
     get_geometries_with_all_objects_by_scenario_id_from_db,
     patch_object_geometry_to_db,
     put_object_geometry_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
-    add_project_indicator_value_to_db,
-    delete_project_indicator_value_by_id_from_db,
-    delete_projects_indicators_values_by_scenario_id_from_db,
+    add_scenario_indicator_value_to_db,
+    delete_scenario_indicator_value_by_id_from_db,
+    delete_scenario_indicators_values_by_scenario_id_from_db,
     get_hexagons_with_indicators_by_scenario_id_from_db,
-    get_project_indicator_value_by_id_from_db,
-    get_projects_indicators_values_by_scenario_id_from_db,
-    patch_project_indicator_value_to_db,
-    put_project_indicator_value_to_db,
+    get_scenario_indicators_values_by_scenario_id_from_db,
+    patch_scenario_indicator_value_to_db,
+    put_scenario_indicator_value_to_db,
     update_all_indicators_values_by_scenario_id_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     delete_project_from_db,
-    get_all_available_projects_from_db,
-    get_all_preview_projects_images_from_minio,
-    get_all_preview_projects_images_url_from_minio,
     get_full_project_image_from_minio,
     get_full_project_image_url_from_minio,
     get_preview_project_image_from_minio,
+    get_preview_projects_images_from_minio,
+    get_preview_projects_images_url_from_minio,
     get_project_by_id_from_db,
     get_project_territory_by_id_from_db,
+    get_projects_from_db,
+    get_projects_territories_from_db,
     get_user_preview_projects_images_from_minio,
     get_user_preview_projects_images_url_from_minio,
     get_user_projects_from_db,
@@ -77,9 +78,9 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
 )
 from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
     add_physical_object_with_geometry_to_db,
-    delete_physical_object_in_db,
-    get_context_physical_objects_by_scenario_id_from_db,
-    get_physical_objects_by_scenario_id,
+    delete_physical_object_from_db,
+    get_context_physical_objects_from_db,
+    get_physical_objects_by_scenario_id_from_db,
     patch_physical_object_to_db,
     put_physical_object_to_db,
     update_physical_objects_by_function_id_to_db,
@@ -95,34 +96,34 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
 )
 from idu_api.urban_api.logic.impl.helpers.projects_services import (
     add_service_to_db,
-    delete_service_in_db,
-    get_context_services_by_scenario_id_from_db,
-    get_services_by_scenario_id,
+    delete_service_from_db,
+    get_context_services_from_db,
+    get_services_by_scenario_id_from_db,
     patch_service_to_db,
     put_service_to_db,
 )
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
-    ObjectGeometriesPatch,
-    ObjectGeometriesPut,
-    PhysicalObjectsDataPatch,
-    PhysicalObjectsDataPut,
+    ObjectGeometryPatch,
+    ObjectGeometryPut,
+    PhysicalObjectPatch,
+    PhysicalObjectPut,
     PhysicalObjectWithGeometryPost,
-    ProjectIndicatorValuePatch,
-    ProjectIndicatorValuePost,
-    ProjectIndicatorValuePut,
     ProjectPatch,
     ProjectPost,
-    ProjectProfilePatch,
-    ProjectProfilePost,
-    ProjectProfilePut,
     ProjectPut,
+    ScenarioFunctionalZonePatch,
+    ScenarioFunctionalZonePost,
+    ScenarioFunctionalZonePut,
+    ScenarioIndicatorValuePatch,
+    ScenarioIndicatorValuePost,
+    ScenarioIndicatorValuePut,
+    ScenarioPatch,
+    ScenarioPost,
+    ScenarioPut,
     ScenarioServicePost,
-    ScenariosPatch,
-    ScenariosPost,
-    ScenariosPut,
-    ServicesDataPatch,
-    ServicesDataPut,
+    ServicePatch,
+    ServicePut,
 )
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
@@ -143,40 +144,100 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_project_territory_by_id(self, project_id: int, user_id: str | None) -> ProjectTerritoryDTO:
         return await get_project_territory_by_id_from_db(self._conn, project_id, user_id)
 
-    async def get_all_available_projects(
-        self, user_id: str | None, is_regional: bool, territory_id: int | None
-    ) -> PageDTO[ProjectWithBaseScenarioDTO]:
-        return await get_all_available_projects_from_db(self._conn, user_id, is_regional, territory_id)
+    async def get_projects(
+        self,
+        user_id: str | None,
+        only_own: bool,
+        is_regional: bool,
+        territory_id: int | None,
+        name: str | None,
+        created_at: date | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None,
+        paginate: bool = False,
+    ) -> PageDTO[ProjectDTO]:
+        return await get_projects_from_db(
+            self._conn,
+            user_id,
+            only_own,
+            is_regional,
+            territory_id,
+            name,
+            created_at,
+            order_by,
+            ordering,
+            paginate,
+        )
 
-    async def get_all_preview_projects_images(
+    async def get_projects_territories(
+        self,
+        user_id: str | None,
+        only_own: bool,
+        territory_id: int | None,
+    ) -> list[ProjectWithTerritoryDTO]:
+        return await get_projects_territories_from_db(self._conn, user_id, only_own, territory_id)
+
+    async def get_preview_projects_images(
         self,
         minio_client: AsyncMinioClient,
         user_id: str | None,
+        only_own: bool,
         is_regional: bool,
         territory_id: int | None,
+        name: str | None,
+        created_at: date | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None,
         page: int,
         page_size: int,
     ) -> io.BytesIO:
-        return await get_all_preview_projects_images_from_minio(
-            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size
+        return await get_preview_projects_images_from_minio(
+            self._conn,
+            minio_client,
+            user_id,
+            only_own,
+            is_regional,
+            territory_id,
+            name,
+            created_at,
+            order_by,
+            ordering,
+            page,
+            page_size,
+            self._logger,
         )
 
-    async def get_all_preview_projects_images_url(
+    async def get_preview_projects_images_url(
         self,
         minio_client: AsyncMinioClient,
         user_id: str | None,
+        only_own: bool,
         is_regional: bool,
         territory_id: int | None,
+        name: str | None,
+        created_at: date | None,
+        order_by: Literal["created_at", "updated_at"] | None,
+        ordering: Literal["asc", "desc"] | None,
         page: int,
         page_size: int,
     ) -> list[dict[str, int | str]]:
-        return await get_all_preview_projects_images_url_from_minio(
-            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size
+        return await get_preview_projects_images_url_from_minio(
+            self._conn,
+            minio_client,
+            user_id,
+            only_own,
+            is_regional,
+            territory_id,
+            name,
+            created_at,
+            order_by,
+            ordering,
+            page,
+            page_size,
+            self._logger,
         )
 
-    async def get_user_projects(
-        self, user_id: str, is_regional: bool, territory_id: int | None
-    ) -> PageDTO[ProjectWithBaseScenarioDTO]:
+    async def get_user_projects(self, user_id: str, is_regional: bool, territory_id: int | None) -> PageDTO[ProjectDTO]:
         return await get_user_projects_from_db(self._conn, user_id, is_regional, territory_id)
 
     async def get_user_preview_projects_images(
@@ -189,7 +250,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         page_size: int,
     ) -> io.BytesIO:
         return await get_user_preview_projects_images_from_minio(
-            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size
+            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size, self._logger
         )
 
     async def get_user_preview_projects_images_url(
@@ -202,7 +263,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         page_size: int,
     ) -> list[dict[str, int | str]]:
         return await get_user_preview_projects_images_url_from_minio(
-            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size
+            self._conn, minio_client, user_id, is_regional, territory_id, page, page_size, self._logger
         )
 
     async def add_project(self, project: ProjectPost, user_id: str) -> ProjectDTO:
@@ -215,27 +276,27 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         return await patch_project_to_db(self._conn, project, project_id, user_id)
 
     async def delete_project(self, project_id: int, minio_client: AsyncMinioClient, user_id: str) -> dict:
-        return await delete_project_from_db(self._conn, project_id, minio_client, user_id)
+        return await delete_project_from_db(self._conn, project_id, minio_client, user_id, self._logger)
 
     async def upload_project_image(
         self, minio_client: AsyncMinioClient, project_id: int, user_id: str, file: bytes
     ) -> dict:
-        return await upload_project_image_to_minio(self._conn, minio_client, project_id, user_id, file)
+        return await upload_project_image_to_minio(self._conn, minio_client, project_id, user_id, file, self._logger)
 
     async def get_full_project_image(
         self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
     ) -> io.BytesIO:
-        return await get_full_project_image_from_minio(self._conn, minio_client, project_id, user_id)
+        return await get_full_project_image_from_minio(self._conn, minio_client, project_id, user_id, self._logger)
 
     async def get_preview_project_image(
         self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
     ) -> io.BytesIO:
-        return await get_preview_project_image_from_minio(self._conn, minio_client, project_id, user_id)
+        return await get_preview_project_image_from_minio(self._conn, minio_client, project_id, user_id, self._logger)
 
     async def get_full_project_image_url(
         self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
     ) -> str:
-        return await get_full_project_image_url_from_minio(self._conn, minio_client, project_id, user_id)
+        return await get_full_project_image_url_from_minio(self._conn, minio_client, project_id, user_id, self._logger)
 
     async def get_scenarios_by_project_id(self, project_id: int, user_id: str | None) -> list[ScenarioDTO]:
         return await get_scenarios_by_project_id_from_db(self._conn, project_id, user_id)
@@ -243,16 +304,16 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_scenario_by_id(self, scenario_id: int, user_id: str | None) -> ScenarioDTO:
         return await get_scenario_by_id_from_db(self._conn, scenario_id, user_id)
 
-    async def add_scenario(self, scenario: ScenariosPost, user_id: str) -> ScenarioDTO:
+    async def add_scenario(self, scenario: ScenarioPost, user_id: str) -> ScenarioDTO:
         return await add_new_scenario_to_db(self._conn, scenario, user_id)
 
-    async def copy_scenario(self, scenario: ScenariosPost, scenario_id: int, user_id: str) -> ScenarioDTO:
+    async def copy_scenario(self, scenario: ScenarioPost, scenario_id: int, user_id: str) -> ScenarioDTO:
         return await copy_scenario_to_db(self._conn, scenario, scenario_id, user_id)
 
-    async def put_scenario(self, scenario: ScenariosPut, scenario_id: int, user_id) -> ScenarioDTO:
+    async def put_scenario(self, scenario: ScenarioPut, scenario_id: int, user_id) -> ScenarioDTO:
         return await put_scenario_to_db(self._conn, scenario, scenario_id, user_id)
 
-    async def patch_scenario(self, scenario: ScenariosPatch, scenario_id: int, user_id: str) -> ScenarioDTO:
+    async def patch_scenario(self, scenario: ScenarioPatch, scenario_id: int, user_id: str) -> ScenarioDTO:
         return await patch_scenario_to_db(self._conn, scenario, scenario_id, user_id)
 
     async def delete_scenario(self, scenario_id: int, user_id: str) -> dict:
@@ -265,7 +326,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
     ) -> list[ScenarioPhysicalObjectDTO]:
-        return await get_physical_objects_by_scenario_id(
+        return await get_physical_objects_by_scenario_id_from_db(
             self._conn,
             scenario_id,
             user_id,
@@ -273,16 +334,16 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             physical_object_function_id,
         )
 
-    async def get_context_physical_objects_by_scenario_id(
+    async def get_context_physical_objects(
         self,
-        scenario_id: int,
+        project_id: int,
         user_id: str | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-    ) -> list[PhysicalObjectDataDTO]:
-        return await get_context_physical_objects_by_scenario_id_from_db(
+    ) -> list[PhysicalObjectDTO]:
+        return await get_context_physical_objects_from_db(
             self._conn,
-            scenario_id,
+            project_id,
             user_id,
             physical_object_type_id,
             physical_object_function_id,
@@ -309,7 +370,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def put_physical_object(
         self,
-        physical_object: PhysicalObjectsDataPut,
+        physical_object: PhysicalObjectPut,
         scenario_id: int,
         physical_object_id: int,
         is_scenario_object: bool,
@@ -321,7 +382,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def patch_physical_object(
         self,
-        physical_object: PhysicalObjectsDataPatch,
+        physical_object: PhysicalObjectPatch,
         scenario_id: int,
         physical_object_id: int,
         is_scenario_object: bool,
@@ -338,7 +399,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         is_scenario_object: bool,
         user_id: str,
     ) -> dict:
-        return await delete_physical_object_in_db(
+        return await delete_physical_object_from_db(
             self._conn, scenario_id, physical_object_id, is_scenario_object, user_id
         )
 
@@ -349,7 +410,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         service_type_id: int | None,
         urban_function_id: int | None,
     ) -> list[ScenarioServiceDTO]:
-        return await get_services_by_scenario_id(
+        return await get_services_by_scenario_id_from_db(
             self._conn,
             scenario_id,
             user_id,
@@ -357,27 +418,21 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             urban_function_id,
         )
 
-    async def get_context_services_by_scenario_id(
+    async def get_context_services(
         self,
-        scenario_id: int,
+        project_id: int,
         user_id: str | None,
         service_type_id: int | None,
         urban_function_id: int | None,
     ) -> list[ServiceDTO]:
-        return await get_context_services_by_scenario_id_from_db(
-            self._conn,
-            scenario_id,
-            user_id,
-            service_type_id,
-            urban_function_id,
-        )
+        return await get_context_services_from_db(self._conn, project_id, user_id, service_type_id, urban_function_id)
 
     async def add_service(self, service: ScenarioServicePost, scenario_id: int, user_id: str) -> ScenarioUrbanObjectDTO:
         return await add_service_to_db(self._conn, service, scenario_id, user_id)
 
     async def put_service(
         self,
-        service: ServicesDataPut,
+        service: ServicePut,
         scenario_id: int,
         service_id: int,
         is_scenario_object: bool,
@@ -387,7 +442,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def patch_service(
         self,
-        service: ServicesDataPatch,
+        service: ServicePatch,
         scenario_id: int,
         service_id: int,
         is_scenario_object: bool,
@@ -402,7 +457,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         is_scenario_object: bool,
         user_id: str,
     ) -> dict:
-        return await delete_service_in_db(self._conn, scenario_id, service_id, is_scenario_object, user_id)
+        return await delete_service_from_db(self._conn, scenario_id, service_id, is_scenario_object, user_id)
 
     async def get_geometries_by_scenario_id(
         self,
@@ -438,33 +493,33 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             urban_function_id,
         )
 
-    async def get_context_geometries_by_scenario_id(
+    async def get_context_geometries(
         self,
-        scenario_id: int,
+        project_id: int,
         user_id: str | None,
         physical_object_id: int | None,
         service_id: int | None,
     ) -> list[ObjectGeometryDTO]:
-        return await get_context_geometries_by_scenario_id_from_db(
+        return await get_context_geometries_from_db(
             self._conn,
-            scenario_id,
+            project_id,
             user_id,
             physical_object_id,
             service_id,
         )
 
-    async def get_context_geometries_with_all_objects_by_scenario_id(
+    async def get_context_geometries_with_all_objects(
         self,
-        scenario_id: int,
+        project_id: int,
         user_id: str | None,
         physical_object_type_id: int | None,
         service_type_id: int | None,
         physical_object_function_id: int | None,
         urban_function_id: int | None,
     ) -> list[GeometryWithAllObjectsDTO]:
-        return await get_context_geometries_with_all_objects_by_scenario_id_from_db(
+        return await get_context_geometries_with_all_objects_from_db(
             self._conn,
-            scenario_id,
+            project_id,
             user_id,
             physical_object_type_id,
             service_type_id,
@@ -474,7 +529,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def put_object_geometry(
         self,
-        object_geometry: ObjectGeometriesPut,
+        object_geometry: ObjectGeometryPut,
         scenario_id: int,
         object_geometry_id: int,
         is_scenario_object: bool,
@@ -486,7 +541,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def patch_object_geometry(
         self,
-        object_geometry: ObjectGeometriesPatch,
+        object_geometry: ObjectGeometryPatch,
         scenario_id: int,
         object_geometry_id: int,
         is_scenario_object: bool,
@@ -503,11 +558,11 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         is_scenario_object: bool,
         user_id: str,
     ) -> dict:
-        return await delete_object_geometry_in_db(
+        return await delete_object_geometry_from_db(
             self._conn, scenario_id, object_geometry_id, is_scenario_object, user_id
         )
 
-    async def get_projects_indicators_values_by_scenario_id(
+    async def get_scenario_indicators_values(
         self,
         scenario_id: int,
         indicator_ids: str | None,
@@ -515,42 +570,39 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         territory_id: int | None,
         hexagon_id: int | None,
         user_id: str | None,
-    ) -> list[ProjectIndicatorValueDTO]:
-        return await get_projects_indicators_values_by_scenario_id_from_db(
-            self._conn,
-            scenario_id,
-            indicator_ids,
-            indicator_group_id,
-            territory_id,
-            hexagon_id,
-            user_id,
+    ) -> list[ScenarioIndicatorValueDTO]:
+        return await get_scenario_indicators_values_by_scenario_id_from_db(
+            self._conn, scenario_id, indicator_ids, indicator_group_id, territory_id, hexagon_id, user_id
         )
 
-    async def get_project_indicator_value_by_id(
-        self, indicator_value_id: int, user_id: str | None
-    ) -> ProjectIndicatorValueDTO:
-        return await get_project_indicator_value_by_id_from_db(self._conn, indicator_value_id, user_id)
+    async def add_scenario_indicator_value(
+        self, indicator_value: ScenarioIndicatorValuePost, scenario_id, user_id: str
+    ) -> ScenarioIndicatorValueDTO:
+        return await add_scenario_indicator_value_to_db(self._conn, indicator_value, scenario_id, user_id)
 
-    async def add_projects_indicator_value(
-        self, projects_indicator: ProjectIndicatorValuePost, user_id: str
-    ) -> ProjectIndicatorValueDTO:
-        return await add_project_indicator_value_to_db(self._conn, projects_indicator, user_id)
+    async def put_scenario_indicator_value(
+        self, indicator_value: ScenarioIndicatorValuePut, scenario_id: int, user_id: str
+    ) -> ScenarioIndicatorValueDTO:
+        return await put_scenario_indicator_value_to_db(self._conn, indicator_value, scenario_id, user_id)
 
-    async def put_projects_indicator_value(
-        self, projects_indicator: ProjectIndicatorValuePut, user_id: str
-    ) -> ProjectIndicatorValueDTO:
-        return await put_project_indicator_value_to_db(self._conn, projects_indicator, user_id)
+    async def patch_scenario_indicator_value(
+        self,
+        indicator_value: ScenarioIndicatorValuePatch,
+        scenario_id: int | None,
+        indicator_value_id: int,
+        user_id: str,
+    ) -> ScenarioIndicatorValueDTO:
+        return await patch_scenario_indicator_value_to_db(
+            self._conn, indicator_value, scenario_id, indicator_value_id, user_id
+        )
 
-    async def patch_projects_indicator_value(
-        self, projects_indicator: ProjectIndicatorValuePatch, indicator_value_id: int, user_id: str
-    ) -> ProjectIndicatorValueDTO:
-        return await patch_project_indicator_value_to_db(self._conn, projects_indicator, indicator_value_id, user_id)
+    async def delete_scenario_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
+        return await delete_scenario_indicators_values_by_scenario_id_from_db(self._conn, scenario_id, user_id)
 
-    async def delete_projects_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
-        return await delete_projects_indicators_values_by_scenario_id_from_db(self._conn, scenario_id, user_id)
-
-    async def delete_project_indicator_value_by_id(self, indicator_value_id: int, user_id: str) -> dict:
-        return await delete_project_indicator_value_by_id_from_db(self._conn, indicator_value_id, user_id)
+    async def delete_scenario_indicator_value_by_id(
+        self, scenario_id: int | None, indicator_value_id: int, user_id: str
+    ) -> dict:
+        return await delete_scenario_indicator_value_by_id_from_db(self._conn, scenario_id, indicator_value_id, user_id)
 
     async def get_hexagons_with_indicators_by_scenario_id(
         self,
@@ -580,50 +632,50 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         source: str,
         functional_zone_type_id: int | None,
         user_id: str | None,
-    ) -> list[ProjectProfileDTO]:
+    ) -> list[ScenarioFunctionalZoneDTO]:
         return await get_functional_zones_by_scenario_id_from_db(
             self._conn, scenario_id, year, source, functional_zone_type_id, user_id
         )
 
-    async def get_context_functional_zones_sources_by_scenario_id(
-        self, scenario_id: int, user_id: str | None
+    async def get_context_functional_zones_sources(
+        self, project_id: int, user_id: str | None
     ) -> list[FunctionalZoneSourceDTO]:
-        return await get_context_functional_zones_sources_by_scenario_id_from_db(self._conn, scenario_id, user_id)
+        return await get_context_functional_zones_sources_from_db(self._conn, project_id, user_id)
 
-    async def get_context_functional_zones_by_scenario_id(
+    async def get_context_functional_zones(
         self,
-        scenario_id: int,
+        project_id: int,
         year: int,
         source: str,
         functional_zone_type_id: int | None,
         user_id: str | None,
-    ) -> list[FunctionalZoneDataDTO]:
-        return await get_context_functional_zones_by_scenario_id_from_db(
-            self._conn, scenario_id, year, source, functional_zone_type_id, user_id
+    ) -> list[FunctionalZoneDTO]:
+        return await get_context_functional_zones_from_db(
+            self._conn, project_id, year, source, functional_zone_type_id, user_id
         )
 
     async def add_scenario_functional_zones(
-        self, profiles: list[ProjectProfilePost], scenario_id: int, user_id: str
-    ) -> list[ProjectProfileDTO]:
+        self, profiles: list[ScenarioFunctionalZonePost], scenario_id: int, user_id: str
+    ) -> list[ScenarioFunctionalZoneDTO]:
         return await add_scenario_functional_zones_to_db(self._conn, profiles, scenario_id, user_id)
 
     async def put_scenario_functional_zone(
         self,
-        profile: ProjectProfilePut,
+        profile: ScenarioFunctionalZonePut,
         scenario_id: int,
         functional_zone_id: int,
         user_id: str,
-    ) -> ProjectProfileDTO:
+    ) -> ScenarioFunctionalZoneDTO:
         return await put_scenario_functional_zone_to_db(self._conn, profile, scenario_id, functional_zone_id, user_id)
 
     async def patch_scenario_functional_zone(
         self,
-        profile: ProjectProfilePatch,
+        profile: ScenarioFunctionalZonePatch,
         scenario_id: int,
         functional_zone_id: int,
         user_id: str,
-    ) -> ProjectProfileDTO:
+    ) -> ScenarioFunctionalZoneDTO:
         return await patch_scenario_functional_zone_to_db(self._conn, profile, scenario_id, functional_zone_id, user_id)
 
     async def delete_functional_zones_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
-        return await delete_functional_zone_by_scenario_id_from_db(self._conn, scenario_id, user_id)
+        return await delete_functional_zones_by_scenario_id_from_db(self._conn, scenario_id, user_id)

@@ -1,6 +1,6 @@
 """Physical objects projects-related endpoints are defined here."""
 
-from fastapi import Depends, Path, Query, Request, Security
+from fastapi import Depends, HTTPException, Path, Query, Request, Security
 from fastapi.security import HTTPBearer
 from starlette import status
 
@@ -8,9 +8,10 @@ from idu_api.urban_api.dto.users import UserDTO
 from idu_api.urban_api.handlers.v1.projects.routers import projects_router
 from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
-    PhysicalObjectsData,
-    PhysicalObjectsDataPatch,
-    PhysicalObjectsDataPut,
+    OkResponse,
+    PhysicalObject,
+    PhysicalObjectPatch,
+    PhysicalObjectPut,
     PhysicalObjectWithGeometryPost,
     ScenarioPhysicalObject,
     ScenarioUrbanObject,
@@ -25,18 +26,39 @@ from idu_api.urban_api.utils.auth_client import get_user
 )
 async def get_physical_objects_by_scenario_id(
     request: Request,
-    scenario_id: int = Path(..., description="scenario identifier"),
-    physical_object_type_id: int | None = Query(None, description="to filter by physical object type"),
-    physical_object_function_id: int | None = Query(None, description="to filter by physical object function"),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
     user: UserDTO = Depends(get_user),
 ) -> list[ScenarioPhysicalObject]:
-    """Get list of physical objects for given scenario.
+    """
+    ## Get a list of physical objects for a given scenario.
 
-    It could be specified by physical object type and physical object function.
+    **WARNING:** You can only filter by physical object type or physical object function.
 
-    You must be the owner of the relevant project or the project must be publicly available.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **physical_object_type_id** (int | None, Query): Optional filter by physical object type identifier.
+    - **physical_object_function_id** (int | None, Query): Optional filter by physical object function identifier.
+
+    ### Returns:
+    - **list[ScenarioPhysicalObject]**: A list of physical objects.
+
+    ### Errors:
+    - **400 Bad Request**: If you set both `physical_object_type_id` and `physical_object_function_id`.
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario does not exist.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project or the project must be publicly available.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+
+    if physical_object_type_id is not None and physical_object_function_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, choose either physical_object_type_id or physical_object_function_id",
+        )
 
     physical_objects = await user_project_service.get_physical_objects_by_scenario_id(
         scenario_id,
@@ -49,33 +71,51 @@ async def get_physical_objects_by_scenario_id(
 
 
 @projects_router.get(
-    "/scenarios/{scenario_id}/context/physical_objects",
-    response_model=list[PhysicalObjectsData],
+    "/projects/{project_id}/context/physical_objects",
+    response_model=list[PhysicalObject],
     status_code=status.HTTP_200_OK,
 )
-async def get_context_physical_objects_by_scenario_id(
+async def get_context_physical_objects(
     request: Request,
-    scenario_id: int = Path(..., description="scenario identifier"),
-    physical_object_type_id: int | None = Query(None, description="to filter by physical object type"),
-    physical_object_function_id: int | None = Query(None, description="to filter by physical object function"),
+    project_id: int = Path(..., description="project identifier", gt=0),
+    physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
     user: UserDTO = Depends(get_user),
-) -> list[PhysicalObjectsData]:
-    """Get list of physical objects for context of the project territory for given scenario.
+) -> list[PhysicalObject]:
+    """
+    ## Get a list of physical objects for the context of a project territory.
 
-    It could be specified by physical object type and physical object function.
+    **WARNING:** You can only filter by physical object type or physical object function.
 
-    You must be the owner of the relevant project or the project must be publicly available.
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **physical_object_type_id** (int | None, Query): Optional filter by physical object type identifier.
+    - **physical_object_function_id** (int | None, Query): Optional filter by physical object function identifier.
+
+    ### Returns:
+    - **list[PhysicalObject]**: A list of physical objects.
+
+    ### Errors:
+    - **400 Bad Request**: If you set both `physical_object_type_id` and `physical_object_function_id`.
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project or the project must be publicly available.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    physical_objects = await user_project_service.get_context_physical_objects_by_scenario_id(
-        scenario_id,
-        user.id if user is not None else None,
-        physical_object_type_id,
-        physical_object_function_id,
+    if physical_object_type_id is not None and physical_object_function_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, choose either physical_object_type_id or physical_object_function_id",
+        )
+
+    physical_objects = await user_project_service.get_context_physical_objects(
+        project_id, user.id if user is not None else None, physical_object_type_id, physical_object_function_id
     )
 
-    return [PhysicalObjectsData.from_dto(phys_obj) for phys_obj in physical_objects]
+    return [PhysicalObject.from_dto(phys_obj) for phys_obj in physical_objects]
 
 
 @projects_router.post(
@@ -87,12 +127,25 @@ async def get_context_physical_objects_by_scenario_id(
 async def add_physical_object_with_geometry(
     request: Request,
     physical_object: PhysicalObjectWithGeometryPost,
-    scenario_id: int = Path(..., description="scenario identifier"),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioUrbanObject:
-    """Create new physical object and geometry for given scenario.
+    """
+    ## Create a new physical object with geometry for a given scenario.
 
-    You must be the owner of the relevant project.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **physical_object** (PhysicalObjectWithGeometryPost, Body): The physical object data including geometry.
+
+    ### Returns:
+    - **ScenarioUrbanObject**: The created urban object (physical object + geometry).
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario (or related entity) does not exist.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
@@ -114,23 +167,43 @@ async def add_physical_object_with_geometry(
 async def update_physical_objects_by_function_id(
     request: Request,
     physical_object: list[PhysicalObjectWithGeometryPost],
-    scenario_id: int = Path(..., description="scenario identifier"),
-    physical_object_function_id: int = Query(..., description="physical object function identifier"),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    physical_object_function_id: int = Query(..., description="physical object function identifier", gt=0),
     user: UserDTO = Depends(get_user),
 ) -> list[ScenarioUrbanObject]:
-    """Delete all physical objects by physical object function identifier
-    and upload new objects with the same function for given scenario.
+    """
+    ## Update physical objects by function identifier for a given scenario.
 
-    You must be the owner of the relevant project.
+    **NOTE:** This operation deletes all physical objects with the specified function identifier
+    for a given scenario and uploads new objects with the same function.
+
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **physical_object_function_id** (int, Query): Unique identifier of the physical object function.
+    - **physical_object** (list[PhysicalObjectWithGeometryPost], Body): List of physical objects to be added.
+
+    ### Returns:
+    - **list[ScenarioUrbanObject]**: A list of updated urban objects (physical objects + geometry + service).
+
+    ### Errors:
+    - **400 Bad Request**: If a list of physical objects contains physical objects with another function.
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario or physical object function (or related entity) does not exist.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    urban_objects = await user_project_service.update_physical_objects_by_function_id(
-        physical_object,
-        scenario_id,
-        user.id,
-        physical_object_function_id,
-    )
+    try:
+        urban_objects = await user_project_service.update_physical_objects_by_function_id(
+            physical_object,
+            scenario_id,
+            user.id,
+            physical_object_function_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     return [ScenarioUrbanObject.from_dto(urban_object) for urban_object in urban_objects]
 
@@ -143,15 +216,32 @@ async def update_physical_objects_by_function_id(
 )
 async def put_physical_object(
     request: Request,
-    physical_object: PhysicalObjectsDataPut,
-    scenario_id: int = Path(..., description="scenario identifier"),
-    physical_object_id: int = Path(..., description="physical object identifier"),
+    physical_object: PhysicalObjectPut,
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    physical_object_id: int = Path(..., description="physical object identifier", gt=0),
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioPhysicalObject:
-    """Update scenario physical object - all attributes.
+    """
+    ## Update all attributes of a physical object for a given scenario.
 
-    You must be the owner of the relevant project.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **physical_object_id** (int, Path): Unique identifier of the physical object.
+    - **is_scenario_object** (bool, Query): Flag to determine if the object is a scenario object.
+    - **physical_object** (PhysicalObjectPut, Body): The updated physical object data.
+
+    ### Returns:
+    - **ScenarioPhysicalObject**: The updated physical object.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario or physical object (or related entity) does not exist.
+    - **409 Conflict**: If you try to update non-scenario physical object that has been already updated
+    (then it is scenario object).
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
@@ -174,15 +264,32 @@ async def put_physical_object(
 )
 async def patch_physical_object(
     request: Request,
-    physical_object: PhysicalObjectsDataPatch,
-    scenario_id: int = Path(..., description="scenario identifier"),
-    physical_object_id: int = Path(..., description="physical object identifier"),
+    physical_object: PhysicalObjectPatch,
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    physical_object_id: int = Path(..., description="physical object identifier", gt=0),
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
 ) -> ScenarioPhysicalObject:
-    """Update scenario physical object - only given fields.
+    """
+    ## Update specific fields of a physical object for a given scenario.
 
-    You must be the owner of the relevant project.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **physical_object_id** (int, Path): Unique identifier of the physical object.
+    - **is_scenario_object** (bool, Query): Flag to determine if the object is a scenario object.
+    - **physical_object** (PhysicalObjectPatch, Body): The partial physical object data to update.
+
+    ### Returns:
+    - **ScenarioPhysicalObject**: The updated physical object.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario or physical object (or related entity) does not exist.
+    - **409 Conflict**: If you try to update non-scenario physical object that has been already updated
+    (then it is scenario object).
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
@@ -199,23 +306,37 @@ async def patch_physical_object(
 
 @projects_router.delete(
     "/scenarios/{scenario_id}/physical_objects/{physical_object_id}",
-    response_model=dict,
+    response_model=OkResponse,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
 async def delete_physical_object(
     request: Request,
-    scenario_id: int = Path(..., description="scenario identifier"),
-    physical_object_id: int = Path(..., description="physical object identifier"),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    physical_object_id: int = Path(..., description="physical object identifier", gt=0),
     is_scenario_object: bool = Query(..., description="to determine scenario object"),
     user: UserDTO = Depends(get_user),
-) -> dict:
-    """Delete scenario physical object by given identifier.
+) -> OkResponse:
+    """
+    ## Delete a physical object by its identifier for a given scenario.
 
-    You must be the owner of the relevant project.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **physical_object_id** (int, Path): Unique identifier of the physical object.
+    - **is_scenario_object** (bool, Query): Flag to determine if the object is a scenario object.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario or physical object does not exist.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    return await user_project_service.delete_physical_object(
-        scenario_id, physical_object_id, is_scenario_object, user.id
-    )
+    await user_project_service.delete_physical_object(scenario_id, physical_object_id, is_scenario_object, user.id)
+
+    return OkResponse()

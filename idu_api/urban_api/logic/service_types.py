@@ -3,11 +3,11 @@
 import abc
 from typing import Protocol
 
-from idu_api.urban_api.dto import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from idu_api.urban_api.schemas import (
-    ServiceTypesPatch,
-    ServiceTypesPost,
-    ServiceTypesPut,
+    ServiceTypePatch,
+    ServiceTypePost,
+    ServiceTypePut,
     UrbanFunctionPatch,
     UrbanFunctionPost,
     UrbanFunctionPut,
@@ -18,19 +18,19 @@ class ServiceTypesService(Protocol):
     """Service to manipulate service types objects."""
 
     @abc.abstractmethod
-    async def get_service_types(self, urban_function_id: int | None) -> list[ServiceTypesDTO]:
+    async def get_service_types(self, urban_function_id: int | None) -> list[ServiceTypeDTO]:
         """Get all service type objects."""
 
     @abc.abstractmethod
-    async def add_service_type(self, service_type: ServiceTypesPost) -> ServiceTypesDTO:
+    async def add_service_type(self, service_type: ServiceTypePost) -> ServiceTypeDTO:
         """Create service type object."""
 
     @abc.abstractmethod
-    async def put_service_type(self, service_type_id: int, service_type: ServiceTypesPut) -> ServiceTypesDTO:
+    async def put_service_type(self, service_type: ServiceTypePut) -> ServiceTypeDTO:
         """Update service type object by getting all its attributes."""
 
     @abc.abstractmethod
-    async def patch_service_type(self, service_type_id: int, service_type: ServiceTypesPatch) -> ServiceTypesDTO:
+    async def patch_service_type(self, service_type_id: int, service_type: ServiceTypePatch) -> ServiceTypeDTO:
         """Update service type object by getting only given attributes."""
 
     @abc.abstractmethod
@@ -51,7 +51,7 @@ class ServiceTypesService(Protocol):
         """Create urban function object."""
 
     @abc.abstractmethod
-    async def put_urban_function(self, urban_function_id: int, urban_function: UrbanFunctionPut) -> UrbanFunctionDTO:
+    async def put_urban_function(self, urban_function: UrbanFunctionPut) -> UrbanFunctionDTO:
         """Update urban function object by getting all its attributes."""
 
     @abc.abstractmethod

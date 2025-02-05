@@ -15,22 +15,19 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.dto import LivingBuildingWithGeometryDTO, PageDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
-from idu_api.urban_api.logic.impl.helpers.territory_objects import check_territory_existence
+from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, check_existence, include_child_territories_cte
 from idu_api.urban_api.utils.pagination import paginate_dto
-
-DECIMAL_PLACES = 15
 
 
 async def get_living_buildings_with_geometry_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
-    cities_only: bool,
     include_child_territories: bool,
+    cities_only: bool,
 ) -> PageDTO[LivingBuildingWithGeometryDTO]:
     """Get living buildings with geometry by territory identifier."""
 
-    territory_exists = await check_territory_existence(conn, territory_id)
-    if not territory_exists:
+    if not await check_existence(conn, territories_data, conditions={"territory_id": territory_id}):
         raise EntityNotFoundById(territory_id, "territory")
 
     statement = (
@@ -72,20 +69,7 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
     )
 
     if include_child_territories:
-        territories_cte = (
-            select(territories_data.c.territory_id, territories_data.c.is_city)
-            .where(territories_data.c.territory_id == territory_id)
-            .cte(recursive=True)
-        )
-        territories_cte = territories_cte.union_all(
-            select(territories_data.c.territory_id, territories_data.c.is_city).where(
-                territories_data.c.parent_id == territories_cte.c.territory_id
-            )
-        )
-
-        if cities_only:
-            territories_cte = select(territories_cte.c.territory_id).where(territories_cte.c.is_city.is_(cities_only))
-
+        territories_cte = include_child_territories_cte(territory_id, cities_only)
         statement = statement.where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
     else:
         statement = statement.where(object_geometries_data.c.territory_id == territory_id)

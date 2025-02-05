@@ -5,11 +5,12 @@ from starlette import status
 
 from idu_api.urban_api.logic.service_types import ServiceTypesService
 from idu_api.urban_api.schemas import (
-    ServiceTypes,
+    OkResponse,
+    ServiceType,
+    ServiceTypePatch,
+    ServiceTypePost,
+    ServiceTypePut,
     ServiceTypesHierarchy,
-    ServiceTypesPatch,
-    ServiceTypesPost,
-    ServiceTypesPut,
     UrbanFunction,
     UrbanFunctionPatch,
     UrbanFunctionPost,
@@ -21,83 +22,139 @@ from .routers import service_types_router
 
 @service_types_router.get(
     "/service_types",
-    response_model=list[ServiceTypes],
+    response_model=list[ServiceType],
     status_code=status.HTTP_200_OK,
 )
 async def get_service_types(
     request: Request,
-    urban_function_id: int | None = Query(None, description="To filter by urban function"),
-) -> list[ServiceTypes]:
-    """Get service types list."""
+    urban_function_id: int | None = Query(None, description="to filter by urban function", gt=0),
+) -> list[ServiceType]:
+    """
+    ## Get all service types.
+
+    ### Returns:
+    - **list[ServiceType]**: A list of all service types.
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
     service_types = await service_types_service.get_service_types(urban_function_id)
 
-    return [ServiceTypes.from_dto(service_type) for service_type in service_types]
+    return [ServiceType.from_dto(service_type) for service_type in service_types]
 
 
 @service_types_router.post(
     "/service_types",
-    response_model=ServiceTypes,
+    response_model=ServiceType,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_service_type(request: Request, service_type: ServiceTypesPost) -> ServiceTypes:
-    """Add a new service type."""
+async def add_service_type(request: Request, service_type: ServiceTypePost) -> ServiceType:
+    """
+    ## Create a new service type.
+
+    ### Parameters:
+    - **service_type** (ServiceTypePost, Body): Data for the new service type.
+
+    ### Returns:
+    - **ServiceType**: The created service type.
+
+    ### Errors:
+    - **404 Not Found**: If related entity does not exist.
+    - **409 Conflict**: If a service type with the such name already exists.
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
     service_type_dto = await service_types_service.add_service_type(service_type)
 
-    return ServiceTypes.from_dto(service_type_dto)
+    return ServiceType.from_dto(service_type_dto)
 
 
 @service_types_router.put(
-    "/service_types/{service_type_id}",
-    response_model=ServiceTypes,
+    "/service_types",
+    response_model=ServiceType,
     status_code=status.HTTP_200_OK,
 )
 async def put_service_type(
     request: Request,
-    service_type: ServiceTypesPut,
-    service_type_id: int = Path(..., description="service type identifier"),
-) -> ServiceTypes:
-    """Update service type by all its attributes."""
+    service_type: ServiceTypePut,
+) -> ServiceType:
+    """
+    ## Update or create a service type.
+
+    **NOTE:** If a service type with the such name already exists, it will be updated.
+    Otherwise, a new service type will be created.
+
+    ### Parameters:
+    - **service_type** (ServiceTypePut, Body): Data for updating or creating a service type.
+
+    ### Returns:
+    - **ServiceType**: The updated or created service type.
+
+    ### Errors:
+    - **404 Not Found**: If related entity does not exist.
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
-    service_type_dto = await service_types_service.put_service_type(service_type_id, service_type)
+    service_type_dto = await service_types_service.put_service_type(service_type)
 
-    return ServiceTypes.from_dto(service_type_dto)
+    return ServiceType.from_dto(service_type_dto)
 
 
 @service_types_router.patch(
     "/service_types/{service_type_id}",
-    response_model=ServiceTypes,
+    response_model=ServiceType,
     status_code=status.HTTP_200_OK,
 )
 async def patch_service_type(
     request: Request,
-    service_type: ServiceTypesPatch,
-    service_type_id: int = Path(..., description="service type identifier"),
-) -> ServiceTypes:
-    """Update service type by only given attributes."""
+    service_type: ServiceTypePatch,
+    service_type_id: int = Path(..., description="service type identifier", gt=0),
+) -> ServiceType:
+    """
+    ## Partially update a service type.
+
+    ### Parameters:
+    - **service_type_id** (int, Path): Unique identifier of the service type.
+    - **service_type** (ServiceTypePatch, Body): Fields to update in the service type.
+
+    ### Returns:
+    - **ServiceType**: The updated service type with modified attributes.
+
+    ### Errors:
+    - **404 Not Found**: If the service type (or related entity) does not exist.
+    - **409 Conflict**: If a service type with the such name already exists.
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
     service_type_dto = await service_types_service.patch_service_type(service_type_id, service_type)
 
-    return ServiceTypes.from_dto(service_type_dto)
+    return ServiceType.from_dto(service_type_dto)
 
 
 @service_types_router.delete(
     "/service_types/{service_type_id}",
-    response_model=dict,
+    response_model=OkResponse,
     status_code=status.HTTP_200_OK,
 )
 async def delete_service_type(
-    request: Request, service_type_id: int = Path(..., description="service type identifier")
-) -> dict:
-    """Delete service type by id."""
+    request: Request, service_type_id: int = Path(..., description="service type identifier", gt=0)
+) -> OkResponse:
+    """
+    ## Delete a service type by its identifier.
+
+    ### Parameters:
+    - **service_type_id** (int, Path): Unique identifier of the service type.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ### Errors:
+    - **404 Not Found**: If the service type does not exist.
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
-    return await service_types_service.delete_service_type(service_type_id)
+    await service_types_service.delete_service_type(service_type_id)
+
+    return OkResponse()
 
 
 @service_types_router.get(
@@ -108,12 +165,25 @@ async def delete_service_type(
 async def get_urban_functions_by_parent_id(
     request: Request,
     parent_id: int | None = Query(
-        None, description="Parent urban function id to filter, should be skipped for top level urban functions"
+        None, description="parent urban function id to filter, should be skipped for top level urban functions", gt=0
     ),
-    name: str | None = Query(None, description="Search by urban function name"),
-    get_all_subtree: bool = Query(False, description="Getting full subtree of urban functions"),
+    name: str | None = Query(None, description="search by urban function name"),
+    get_all_subtree: bool = Query(False, description="getting full subtree of urban functions"),
 ) -> list[UrbanFunction]:
-    """Get urban functions by parent id (skip it to get upper level)."""
+    """
+    ## Get urban functions by parent identifier.
+
+    ### Parameters:
+    - **parent_id** (int | None, Query): Unique identifier of the parent urban function. If skipped, it returns the highest level functions.
+    - **name** (str | None, Query): Filters results by function name.
+    - **get_all_subtree** (bool, Query): If True, retrieves all subtree of urban functions.
+
+    ### Returns:
+    - **list[UrbanFunction]**: A list of urban functions matching the filters.
+
+    ### Errors:
+    - **404 Not Found**: If the urban function does not exist.
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
     urban_functions = await service_types_service.get_urban_functions_by_parent_id(parent_id, name, get_all_subtree)
@@ -127,7 +197,19 @@ async def get_urban_functions_by_parent_id(
     status_code=status.HTTP_201_CREATED,
 )
 async def add_urban_function(request: Request, urban_function: UrbanFunctionPost) -> UrbanFunction:
-    """Add a new urban function."""
+    """
+    ## Create a new urban function.
+
+    ### Parameters:
+    - **urban_function** (UrbanFunctionPost, Body): Data for the new urban function.
+
+    ### Returns:
+    - **UrbanFunction**: The created urban function.
+
+    ### Errors:
+    - **404 Not Found**: If related entity does not exist.
+    - **409 Conflict**: If an urban function with the such name already exists.
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
     urban_function_dto = await service_types_service.add_urban_function(urban_function)
@@ -136,19 +218,32 @@ async def add_urban_function(request: Request, urban_function: UrbanFunctionPost
 
 
 @service_types_router.put(
-    "/urban_functions/{urban_function_id}",
+    "/urban_functions",
     response_model=UrbanFunction,
     status_code=status.HTTP_200_OK,
 )
 async def put_urban_function(
     request: Request,
     urban_function: UrbanFunctionPut,
-    urban_function_id: int = Path(..., description="urban function identifier"),
 ) -> UrbanFunction:
-    """Update urban function by all its attributes."""
+    """
+    ## Update or create an urban function.
+
+    **NOTE:** If an urban function with the such name already exists, it will be updated.
+    Otherwise, a new urban function will be created.
+
+    ### Parameters:
+    - **urban_function** (UrbanFunctionPut, Body): Data for updating or creating a function.
+
+    ### Returns:
+    - **UrbanFunction**: The updated or created urban function.
+
+    ### Errors:
+    - **404 Not Found**: If related entity does not exist.
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
-    urban_function_dto = await service_types_service.put_urban_function(urban_function_id, urban_function)
+    urban_function_dto = await service_types_service.put_urban_function(urban_function)
 
     return UrbanFunction.from_dto(urban_function_dto)
 
@@ -161,9 +256,22 @@ async def put_urban_function(
 async def patch_urban_function(
     request: Request,
     urban_function: UrbanFunctionPatch,
-    urban_function_id: int = Path(..., description="urban function identifier"),
+    urban_function_id: int = Path(..., description="urban function identifier", gt=0),
 ) -> UrbanFunction:
-    """Update urban function by only given attributes."""
+    """
+    ## Partially update an urban function.
+
+    ### Parameters:
+    - **urban_function_id** (int, Path): Unique identifier of the urban function.
+    - **urban_function** (UrbanFunctionPatch, Body): Fields to update in the function.
+
+    ### Returns:
+    - **UrbanFunction**: The updated urban function with modified attributes.
+
+    ### Errors:
+    - **404 Not Found**: If the urban function (or related entity) does not exist.
+    - **409 Conflict**: If an urban function with the such name already exists.
+    """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
     urban_function_dto = await service_types_service.patch_urban_function(urban_function_id, urban_function)
@@ -173,19 +281,31 @@ async def patch_urban_function(
 
 @service_types_router.delete(
     "/urban_functions/{urban_function_id}",
-    response_model=dict,
+    response_model=OkResponse,
     status_code=status.HTTP_200_OK,
 )
 async def delete_urban_function(
-    request: Request, urban_function_id: int = Path(..., description="urban function identifier")
-) -> dict:
-    """Delete urban function by id.
+    request: Request, urban_function_id: int = Path(..., description="urban function identifier", gt=0)
+) -> OkResponse:
+    """
+    ## Delete an urban function by its identifier.
 
-    It also removes all child elements of this urban function!!!
+    **WARNING:** This method also removes all child elements of the function.
+
+    ### Parameters:
+    - **urban_function_id** (int, Path): Unique identifier of the urban function.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ### Errors:
+    - **404 Not Found**: If the urban function does not exist.
     """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
-    return await service_types_service.delete_urban_function(urban_function_id)
+    await service_types_service.delete_urban_function(urban_function_id)
+
+    return OkResponse()
 
 
 @service_types_router.get(
@@ -197,10 +317,18 @@ async def get_service_types_hierarchy(
     request: Request,
     service_types_ids: str | None = Query(None, description="list of service type ids separated by comma"),
 ) -> list[ServiceTypesHierarchy]:
-    """Get service types hierarchy (from top-level urban function to service type)
-    based on a list of required service type ids.
+    """
+    ## Get the hierarchy of service types.
 
-    If the list of identifiers was not passed, it returns the full hierarchy.
+    ### Parameters:
+    - **service_types_ids** (str | None, Query): Comma-separated list of service type identifiers.
+    If None, it will return hierarchy for all service types.
+
+    ### Returns:
+    - **list[ServicesTypesHierarchy]**: A hierarchical representation of service types.
+
+    ### Errors:
+    - **404 Not Found**: If the service types do not exist.
     """
     service_types_service: ServiceTypesService = request.state.service_types_service
 

@@ -12,11 +12,12 @@ from idu_api.urban_api.logic.projects import UserProjectService
 from idu_api.urban_api.schemas import (
     FunctionalZoneSource,
     FunctionalZoneWithoutGeometry,
-    ProjectProfile,
-    ProjectProfilePatch,
-    ProjectProfilePost,
-    ProjectProfilePut,
-    ProjectProfileWithoutGeometry,
+    OkResponse,
+    ScenarioFunctionalZone,
+    ScenarioFunctionalZonePatch,
+    ScenarioFunctionalZonePost,
+    ScenarioFunctionalZonePut,
+    ScenarioFunctionalZoneWithoutGeometry,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.utils.auth_client import get_user
@@ -29,12 +30,24 @@ from idu_api.urban_api.utils.auth_client import get_user
 )
 async def get_functional_zone_sources_by_scenario_id(
     request: Request,
-    scenario_id: int = Path(..., description="scenario identifier"),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     user: UserDTO = Depends(get_user),
 ) -> list[FunctionalZoneSource]:
-    """Get list of pairs (year, source) of functional zones by scenario identifier.
+    """
+    ## Get a list of functional zone sources for a given scenario.
 
-    You must be the owner of the relevant project or the project must be publicly available.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+
+    ### Returns:
+    - **list[FunctionalZoneSource]**: A list of functional zone sources, each represented as a (year, source) pair.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario does not exist.
+
+    ### Constraints:
+    - The user must be the relevant project owner or the project must be publicly accessible.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
@@ -47,20 +60,35 @@ async def get_functional_zone_sources_by_scenario_id(
 
 @projects_router.get(
     "/scenarios/{scenario_id}/functional_zones",
-    response_model=GeoJSONResponse[Feature[Geometry, ProjectProfileWithoutGeometry]],
+    response_model=GeoJSONResponse[Feature[Geometry, ScenarioFunctionalZoneWithoutGeometry]],
     status_code=status.HTTP_200_OK,
 )
 async def get_functional_zones_by_scenario_id(
     request: Request,
-    scenario_id: int = Path(..., description="scenario identifier"),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     year: int = Query(..., description="to filter by year when zones were uploaded"),
     source: str = Query(..., description="to filter by source from which zones were uploaded"),
-    functional_zone_type_id: int | None = Query(None, description="functional zone type identifier"),
+    functional_zone_type_id: int | None = Query(None, description="functional zone type identifier", gt=0),
     user: UserDTO = Depends(get_user),
-) -> GeoJSONResponse[Feature[Geometry, ProjectProfileWithoutGeometry]]:
-    """Get functional zones by scenario identifier, year and source in geojson format.
+) -> GeoJSONResponse[Feature[Geometry, ScenarioFunctionalZoneWithoutGeometry]]:
+    """
+    ## Get functional zones in GeoJSON format for a given scenario, filtered by year and source.
 
-    You must be the owner of the relevant project or the project must be publicly available.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **year** (int, Query): Year of zone upload.
+    - **source** (str, Query): Source from which zones were uploaded.
+    - **functional_zone_type_id** (int | None, Query): Optional functional zone type filter.
+
+    ### Returns:
+    - **GeoJSONResponse[Feature[Geometry, ScenarioFunctionalZoneWithoutGeometry]]**: Functional zones in GeoJSON format.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario does not exist.
+
+    ### Constraints:
+    - The user must be the relevant project owner or the project must be publicly accessible.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
@@ -72,51 +100,76 @@ async def get_functional_zones_by_scenario_id(
 
 
 @projects_router.get(
-    "/scenarios/{scenario_id}/context/functional_zone_sources",
+    "/projects/{project_id}/context/functional_zone_sources",
     response_model=list[FunctionalZoneSource],
     status_code=status.HTTP_200_OK,
 )
-async def get_context_functional_zone_sources_by_scenario_id(
+async def get_context_functional_zone_sources(
     request: Request,
-    scenario_id: int = Path(..., description="scenario identifier"),
+    project_id: int = Path(..., description="project identifier", gt=0),
     user: UserDTO = Depends(get_user),
 ) -> list[FunctionalZoneSource]:
-    """Get list of pairs (year, source) of functional zones
-    by scenario identifier for 'context' of the project territory.
+    """
+    ## Get functional zone sources for the project's context.
 
-    You must be the owner of the relevant project or the project must be publicly available.
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+
+    ### Returns:
+    - **list[FunctionalZoneSource]**: A list of functional zone sources, each represented as a (year, source) pair.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+
+    ### Constraints:
+    - The user must be the relevant project owner or the project must be publicly accessible.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    sources = await user_project_service.get_context_functional_zones_sources_by_scenario_id(
-        scenario_id, user.id if user is not None else None
+    sources = await user_project_service.get_context_functional_zones_sources(
+        project_id, user.id if user is not None else None
     )
 
     return [FunctionalZoneSource.from_dto(source) for source in sources]
 
 
 @projects_router.get(
-    "/scenarios/{scenario_id}/context/functional_zones",
+    "/projects/{project_id}/context/functional_zones",
     response_model=GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]],
     status_code=status.HTTP_200_OK,
 )
 async def get_context_functional_zones_by_scenario_id(
     request: Request,
-    scenario_id: int = Path(..., description="scenario identifier"),
+    project_id: int = Path(..., description="project identifier", gt=0),
     year: int = Query(..., description="to filter by year when zones were uploaded"),
     source: str = Query(..., description="to filter by source from which zones were uploaded"),
-    functional_zone_type_id: int | None = Query(None, description="functional zone type identifier"),
+    functional_zone_type_id: int | None = Query(None, description="functional zone type identifier", gt=0),
     user: UserDTO = Depends(get_user),
 ) -> GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]]:
-    """Get functional zones by scenario identifier, year and source
-    for 'context' of the project territory in geojson format.
+    """
+    ## Get functional zones in GeoJSON format for the project's context, filtered by year and source.
 
-    You must be the owner of the relevant project or the project must be publicly available.
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **year** (int, Query): Year of zone upload.
+    - **source** (str, Query): Source from which zones were uploaded.
+    - **functional_zone_type_id** (int | None, Query): Optional functional zone type filter.
+
+    ### Returns:
+    - **GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]]**: Functional zones in GeoJSON format.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+
+    ### Constraints:
+    - The user must be the relevant project owner or the project must be publicly accessible.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    functional_zones = await user_project_service.get_context_functional_zones_by_scenario_id(
-        scenario_id, year, source, functional_zone_type_id, user.id if user is not None else None
+    functional_zones = await user_project_service.get_context_functional_zones(
+        project_id, year, source, functional_zone_type_id, user.id if user is not None else None
     )
 
     return await GeoJSONResponse.from_list([zone.to_geojson_dict() for zone in functional_zones])
@@ -124,45 +177,72 @@ async def get_context_functional_zones_by_scenario_id(
 
 @projects_router.post(
     "/scenarios/{scenario_id}/functional_zones",
-    response_model=list[ProjectProfile],
+    response_model=list[ScenarioFunctionalZone],
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
 async def add_scenario_functional_zones(
     request: Request,
-    functional_zones: list[ProjectProfilePost],
-    scenario_id: int = Path(..., description="scenario identifier"),
+    functional_zones: list[ScenarioFunctionalZonePost],
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     user: UserDTO = Depends(get_user),
-) -> list[ProjectProfile]:
-    """Create new functional zones for given scenario and list of functional zones.
+) -> list[ScenarioFunctionalZone]:
+    """
+    ## Create new functional zones for a given scenario.
 
-    IT WILL REMOVE ALL FUNCTIONAL ZONES FOR GIVEN SCENARIO!
+    **WARNING:** This method will delete all existing functional zones for the specified scenario before adding new ones.
 
-    You must be the owner of the relevant project.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **functional_zones** (list[ScenarioFunctionalZonePost], Body): List of functional zones to be added.
+
+    ### Returns:
+    - **list[ScenarioFunctionalZone]**: A list of created functional zones.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario (or related entity) does not exist.
+
+    ### Constraints:
+    - The user must be the relevant project owner.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zones = await user_project_service.add_scenario_functional_zones(functional_zones, scenario_id, user.id)
 
-    return [ProjectProfile.from_dto(zone) for zone in functional_zones]
+    return [ScenarioFunctionalZone.from_dto(zone) for zone in functional_zones]
 
 
 @projects_router.put(
     "/scenarios/{scenario_id}/functional_zones/{functional_zone_id}",
-    response_model=ProjectProfile,
+    response_model=ScenarioFunctionalZone,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
 async def put_scenario_functional_zone(
     request: Request,
-    functional_zone: ProjectProfilePut,
-    scenario_id: int = Path(..., description="scenario identifier"),
-    functional_zone_id: int = Path(..., description="functional zone identifier"),
+    functional_zone: ScenarioFunctionalZonePut,
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    functional_zone_id: int = Path(..., description="functional zone identifier", gt=0),
     user: UserDTO = Depends(get_user),
-) -> ProjectProfile:
-    """Update functional zone by all its attributes.
+) -> ScenarioFunctionalZone:
+    """
+    ## Update a functional zone by replacing all its attributes.
 
-    You must be the owner of the relevant project.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **functional_zone_id** (int, Path): Unique identifier of the functional zone.
+    - **functional_zone** (ScenarioFunctionalZonePut, Body): New attributes for the functional zone.
+
+    ### Returns:
+    - **ScenarioFunctionalZone**: The updated functional zone.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario or functional zone (or related entity) does not exist.
+
+    ### Constraints:
+    - The user must be the relevant project owner.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
@@ -170,25 +250,39 @@ async def put_scenario_functional_zone(
         functional_zone, scenario_id, functional_zone_id, user.id
     )
 
-    return ProjectProfile.from_dto(functional_zone)
+    return ScenarioFunctionalZone.from_dto(functional_zone)
 
 
 @projects_router.patch(
     "/scenarios/{scenario_id}/functional_zones/{functional_zone_id}",
-    response_model=ProjectProfile,
+    response_model=ScenarioFunctionalZone,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
 async def patch_scenario_functional_zone(
     request: Request,
-    functional_zone: ProjectProfilePatch,
-    scenario_id: int = Path(..., description="scenario identifier"),
-    functional_zone_id: int = Path(..., description="functional zone identifier"),
+    functional_zone: ScenarioFunctionalZonePatch,
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    functional_zone_id: int = Path(..., description="functional zone identifier", gt=0),
     user: UserDTO = Depends(get_user),
-) -> ProjectProfile:
-    """Update functional zone by only given attributes.
+) -> ScenarioFunctionalZone:
+    """
+    ## Partially update a functional zone by modifying only specified attributes.
 
-    You must be the owner of the relevant project.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **functional_zone_id** (int, Path): Unique identifier of the functional zone.
+    - **functional_zone** (ScenarioFunctionalZonePatch, Body): Attributes to be updated.
+
+    ### Returns:
+    - **ScenarioFunctionalZone**: The updated functional zone.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario or functional zone (or related entity) does not exist.
+
+    ### Constraints:
+    - The user must be the relevant project owner.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
@@ -196,23 +290,38 @@ async def patch_scenario_functional_zone(
         functional_zone, scenario_id, functional_zone_id, user.id
     )
 
-    return ProjectProfile.from_dto(functional_zone)
+    return ScenarioFunctionalZone.from_dto(functional_zone)
 
 
 @projects_router.delete(
     "/scenarios/{scenario_id}/functional_zones",
+    response_model=OkResponse,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
 async def delete_functional_zones_by_scenario_id(
     request: Request,
-    scenario_id: int = Path(..., description="scenario identifier"),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     user: UserDTO = Depends(get_user),
-) -> dict:
-    """Delete all functional zones for given scenario.
+) -> OkResponse:
+    """
+    ## Delete all functional zones associated with a given scenario.
 
-    You must be the owner of the relevant project.
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario does not exist.
+
+    ### Constraints:
+    - The user must be the relevant project owner.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    return await user_project_service.delete_functional_zones_by_scenario_id(scenario_id, user.id)
+    await user_project_service.delete_functional_zones_by_scenario_id(scenario_id, user.id)
+
+    return OkResponse()

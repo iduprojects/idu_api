@@ -1,6 +1,6 @@
 """Normative schemas are defined here."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from idu_api.urban_api.dto import NormativeDTO
 from idu_api.urban_api.schemas.enums import NormativeType
-from idu_api.urban_api.schemas.short_models import ServiceTypeBasic, UrbanFunctionBasic
+from idu_api.urban_api.schemas.short_models import ServiceTypeBasic, ShortTerritory, UrbanFunctionBasic
 
 
 class Normative(BaseModel):
@@ -17,6 +17,7 @@ class Normative(BaseModel):
     service_type: ServiceTypeBasic | None = None
     urban_function: UrbanFunctionBasic | None = None
     year: int = Field(..., examples=[2024])
+    territory: ShortTerritory
     radius_availability_meters: int | None = Field(None, examples=[1])
     time_availability_minutes: int | None = Field(None, examples=[None])
     services_per_1000_normative: int | None = Field(None, examples=[1])
@@ -31,11 +32,11 @@ class Normative(BaseModel):
             "structure_version/229/"
         ],
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    @field_validator("normative_type", mode="before")
     @staticmethod
+    @field_validator("normative_type", mode="before")
     def value_type_to_string(normative_type: Any) -> str:
         if isinstance(normative_type, Enum):
             return normative_type.value
@@ -72,23 +73,20 @@ class Normative(BaseModel):
         """
         Construct from DTO.
         """
-        if dto.urban_function_id is not None:
-            return cls(
-                urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
-                year=dto.year,
-                is_regulated=dto.is_regulated,
-                radius_availability_meters=dto.radius_availability_meters,
-                time_availability_minutes=dto.time_availability_minutes,
-                services_per_1000_normative=dto.services_per_1000_normative,
-                services_capacity_per_1000_normative=dto.services_capacity_per_1000_normative,
-                normative_type=dto.normative_type,
-                source=dto.source,
-                created_at=dto.created_at,
-                updated_at=dto.updated_at,
-            )
+
         return cls(
-            service_type=ServiceTypeBasic(id=dto.service_type_id, name=dto.service_type_name),
+            service_type=(
+                ServiceTypeBasic(id=dto.service_type_id, name=dto.service_type_name)
+                if dto.service_type_id is not None
+                else None
+            ),
+            urban_function=(
+                UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name)
+                if dto.urban_function_id is not None
+                else None
+            ),
             year=dto.year,
+            territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
             is_regulated=dto.is_regulated,
             radius_availability_meters=dto.radius_availability_meters,
             time_availability_minutes=dto.time_availability_minutes,

@@ -3,8 +3,8 @@
 import abc
 from typing import Protocol
 
-from idu_api.urban_api.dto import ObjectGeometryDTO, PhysicalObjectDataDTO, UrbanObjectDTO
-from idu_api.urban_api.schemas import ObjectGeometriesPatch, ObjectGeometriesPost, ObjectGeometriesPut
+from idu_api.urban_api.dto import ObjectGeometryDTO, PhysicalObjectDTO, UrbanObjectDTO
+from idu_api.urban_api.schemas import ObjectGeometryPatch, ObjectGeometryPost, ObjectGeometryPut
 
 
 class ObjectGeometriesService(Protocol):
@@ -16,13 +16,13 @@ class ObjectGeometriesService(Protocol):
 
     @abc.abstractmethod
     async def put_object_geometry(
-        self, object_geometry: ObjectGeometriesPut, object_geometry_id: int
+        self, object_geometry: ObjectGeometryPut, object_geometry_id: int
     ) -> ObjectGeometryDTO:
         """Put object geometry."""
 
     @abc.abstractmethod
     async def patch_object_geometry(
-        self, object_geometry: ObjectGeometriesPatch, object_geometry_id: int
+        self, object_geometry: ObjectGeometryPatch, object_geometry_id: int
     ) -> ObjectGeometryDTO:
         """Patch object geometry."""
 
@@ -32,10 +32,10 @@ class ObjectGeometriesService(Protocol):
 
     @abc.abstractmethod
     async def add_object_geometry_to_physical_object(
-        self, physical_object_id: int, object_geometry: ObjectGeometriesPost
+        self, physical_object_id: int, object_geometry: ObjectGeometryPost
     ) -> UrbanObjectDTO:
         """Create object geometry connected with physical object."""
 
     @abc.abstractmethod
-    async def get_physical_objects_by_object_geometry_id(self, object_geometry_id: int) -> list[PhysicalObjectDataDTO]:
+    async def get_physical_objects_by_object_geometry_id(self, object_geometry_id: int) -> list[PhysicalObjectDTO]:
         """Get physical object or list of physical objects by object geometry id."""

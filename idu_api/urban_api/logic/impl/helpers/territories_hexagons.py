@@ -9,16 +9,26 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import hexagons_data, territories_data
 from idu_api.urban_api.dto import HexagonDTO
-from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
-from idu_api.urban_api.logic.impl.helpers.territory_objects import check_territory_existence
+from idu_api.urban_api.exceptions.logic.common import (
+    EntitiesNotFoundByIds,
+    EntityAlreadyExists,
+    EntityNotFoundById,
+    TooManyObjectsError,
+)
+from idu_api.urban_api.logic.impl.helpers.utils import (
+    DECIMAL_PLACES,
+    OBJECTS_NUMBER_LIMIT,
+    OBJECTS_NUMBER_TO_INSERT_LIMIT,
+    check_existence,
+)
 from idu_api.urban_api.schemas import HexagonPost
 
-OBJECTS_NUMBER_TO_INSERT_LIMIT: int = 7_000
-DECIMAL_PLACES: int = 15
 
-
-async def get_hexagons_by_ids(conn: AsyncConnection, hexagon_ids: list[int]) -> list[HexagonDTO]:
+async def get_hexagons_by_ids(conn: AsyncConnection, ids: list[int]) -> list[HexagonDTO]:
     """Get hexagons by given ids."""
+
+    if len(ids) > OBJECTS_NUMBER_LIMIT:
+        raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
     statement = (
         select(
@@ -32,10 +42,12 @@ async def get_hexagons_by_ids(conn: AsyncConnection, hexagon_ids: list[int]) -> 
         .select_from(
             hexagons_data.join(territories_data, hexagons_data.c.territory_id == territories_data.c.territory_id)
         )
-        .where(hexagons_data.c.hexagon_id.in_(hexagon_ids))
+        .where(hexagons_data.c.hexagon_id.in_(ids))
     )
 
     hexagons = (await conn.execute(statement)).mappings().all()
+    if len(ids) > len(hexagons):
+        raise EntitiesNotFoundByIds("object geometry")
 
     return [HexagonDTO(**hexagon) for hexagon in hexagons]
 
@@ -43,8 +55,7 @@ async def get_hexagons_by_ids(conn: AsyncConnection, hexagon_ids: list[int]) -> 
 async def get_hexagons_by_territory_id_from_db(conn: AsyncConnection, territory_id: int) -> list[HexagonDTO]:
     """Get hexagons for a given territory."""
 
-    territory_exists = await check_territory_existence(conn, territory_id)
-    if not territory_exists:
+    if not await check_existence(conn, territories_data, conditions={"territory_id": territory_id}):
         raise EntityNotFoundById(territory_id, "territory")
 
     statement = (
@@ -72,21 +83,18 @@ async def add_hexagons_by_territory_id_to_db(
 ) -> list[HexagonDTO]:
     """Create hexagons for a given territory using asyncio.gather."""
 
-    territory_exists = await check_territory_existence(conn, territory_id)
-    if not territory_exists:
+    if not await check_existence(conn, territories_data, conditions={"territory_id": territory_id}):
         raise EntityNotFoundById(territory_id, "territory")
 
-    statement = select(hexagons_data.c.territory_id).where(hexagons_data.c.territory_id == territory_id).distinct()
-    territory = (await conn.execute(statement)).scalar_one_or_none()
-    if territory is not None:
+    if await check_existence(conn, hexagons_data, conditions={"territory_id": territory_id}):
         raise EntityAlreadyExists("hexagon", territory_id)
 
     async def insert_batch(batch: list[HexagonPost]):
         insert_values = [
             {
                 "territory_id": territory_id,
-                "geometry": ST_GeomFromText(str(hexagon.geometry.as_shapely_geometry()), text("4326")),
-                "centre_point": ST_GeomFromText(str(hexagon.centre_point.as_shapely_geometry()), text("4326")),
+                "geometry": ST_GeomFromText(hexagon.geometry.as_shapely_geometry().wkt, text("4326")),
+                "centre_point": ST_GeomFromText(hexagon.centre_point.as_shapely_geometry().wkt, text("4326")),
                 "properties": hexagon.properties,
             }
             for hexagon in batch
@@ -112,8 +120,7 @@ async def add_hexagons_by_territory_id_to_db(
 async def delete_hexagons_by_territory_id_from_db(conn: AsyncConnection, territory_id: int) -> dict:
     """Delete hexagons for a given territory."""
 
-    territory_exists = await check_territory_existence(conn, territory_id)
-    if not territory_exists:
+    if not await check_existence(conn, territories_data, conditions={"territory_id": territory_id}):
         raise EntityNotFoundById(territory_id, "territory")
 
     statement = delete(hexagons_data).where(hexagons_data.c.territory_id == territory_id)
@@ -121,4 +128,4 @@ async def delete_hexagons_by_territory_id_from_db(conn: AsyncConnection, territo
     await conn.execute(statement)
     await conn.commit()
 
-    return {"result": "ok"}
+    return {"status": "ok"}

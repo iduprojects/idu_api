@@ -1,6 +1,6 @@
 """Object geometries schemas are defined here."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -15,7 +15,7 @@ from idu_api.urban_api.schemas.short_models import (
 )
 
 
-class ObjectGeometries(BaseModel):
+class ObjectGeometry(BaseModel):
     """Object geometry with all its attributes."""
 
     object_geometry_id: int = Field(..., examples=[1])
@@ -24,13 +24,15 @@ class ObjectGeometries(BaseModel):
     osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
     geometry: Geometry
     centre_point: Geometry
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the geometry was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the geometry was created"
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the geometry was last updated"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the geometry was last updated"
     )
 
     @classmethod
-    def from_dto(cls, dto: ObjectGeometryDTO) -> "ObjectGeometries":
+    def from_dto(cls, dto: ObjectGeometryDTO) -> "ObjectGeometry":
         """
         Construct from DTO.
         """
@@ -46,7 +48,7 @@ class ObjectGeometries(BaseModel):
         )
 
 
-class ScenarioObjectGeometry(ObjectGeometries):
+class ScenarioObjectGeometry(ObjectGeometry):
     """Object geometry with all its attributes."""
 
     is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
@@ -69,7 +71,7 @@ class ScenarioObjectGeometry(ObjectGeometries):
         )
 
 
-class ObjectGeometriesPost(GeometryValidationModel):
+class ObjectGeometryPost(GeometryValidationModel):
     """Object geometry schema for POST requests."""
 
     territory_id: int = Field(..., examples=[1])
@@ -79,7 +81,7 @@ class ObjectGeometriesPost(GeometryValidationModel):
     osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
 
 
-class ObjectGeometriesPut(GeometryValidationModel):
+class ObjectGeometryPut(GeometryValidationModel):
     """Object geometry schema for PUT requests."""
 
     territory_id: int = Field(..., examples=[1])
@@ -89,7 +91,7 @@ class ObjectGeometriesPut(GeometryValidationModel):
     osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
 
 
-class ObjectGeometriesPatch(GeometryValidationModel):
+class ObjectGeometryPatch(GeometryValidationModel):
     """Object geometry schema for PATCH requests."""
 
     territory_id: int | None = Field(None, examples=[1])
@@ -116,9 +118,11 @@ class GeometryAttributes(BaseModel):
     territory: ShortTerritory
     address: str | None = Field(..., description="physical object address", examples=["--"])
     osm_id: str | None = Field(..., description="open street map identifier", examples=["1"])
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the geometry was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the geometry was created"
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the geometry was last updated"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the geometry was last updated"
     )
 
 

@@ -1,13 +1,13 @@
 """Territories handlers logic of getting entities from the database is defined here."""
 
 import abc
-from datetime import datetime
+from datetime import date
 from typing import Literal, Protocol
 
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 
 from idu_api.urban_api.dto import (
-    FunctionalZoneDataDTO,
+    FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
     HexagonDTO,
     IndicatorDTO,
@@ -15,12 +15,12 @@ from idu_api.urban_api.dto import (
     LivingBuildingWithGeometryDTO,
     NormativeDTO,
     PageDTO,
-    PhysicalObjectDataDTO,
+    PhysicalObjectDTO,
     PhysicalObjectTypeDTO,
     PhysicalObjectWithGeometryDTO,
     ServiceDTO,
     ServicesCountCapacityDTO,
-    ServiceTypesDTO,
+    ServiceTypeDTO,
     ServiceWithGeometryDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
@@ -33,10 +33,10 @@ from idu_api.urban_api.schemas import (
     NormativeDelete,
     NormativePatch,
     NormativePost,
-    TerritoryDataPatch,
-    TerritoryDataPost,
-    TerritoryDataPut,
-    TerritoryTypesPost,
+    TerritoryPatch,
+    TerritoryPost,
+    TerritoryPut,
+    TerritoryTypePost,
 )
 
 Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString
@@ -51,7 +51,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         """Get all territory type objects."""
 
     @abc.abstractmethod
-    async def add_territory_type(self, territory_type: TerritoryTypesPost) -> TerritoryTypeDTO:
+    async def add_territory_type(self, territory_type: TerritoryTypePost) -> TerritoryTypeDTO:
         """Create territory type object."""
 
     @abc.abstractmethod
@@ -63,19 +63,21 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         """Get territory object by id."""
 
     @abc.abstractmethod
-    async def add_territory(self, territory: TerritoryDataPost) -> TerritoryDTO:
+    async def add_territory(self, territory: TerritoryPost) -> TerritoryDTO:
         """Create territory object."""
 
     @abc.abstractmethod
-    async def put_territory(self, territory_id: int, territory: TerritoryDataPut) -> TerritoryDTO:
+    async def put_territory(self, territory_id: int, territory: TerritoryPut) -> TerritoryDTO:
         """Update territory object (put, update all the fields)."""
 
     @abc.abstractmethod
-    async def patch_territory(self, territory_id: int, territory: TerritoryDataPatch) -> TerritoryDTO:
+    async def patch_territory(self, territory_id: int, territory: TerritoryPatch) -> TerritoryDTO:
         """Patch territory object (patch, update only non-None fields)."""
 
     @abc.abstractmethod
-    async def get_service_types_by_territory_id(self, territory_id: int) -> list[ServiceTypesDTO]:
+    async def get_service_types_by_territory_id(
+        self, territory_id: int, include_child_territories: bool, cities_only: bool
+    ) -> list[ServiceTypeDTO]:
         """Get all service types that are located in given territory."""
 
     @abc.abstractmethod
@@ -124,11 +126,13 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         territory_id: int,
         indicator_ids: str | None,
         indicators_group_id: int | None,
-        start_date: datetime | None,
-        end_date: datetime | None,
+        start_date: date | None,
+        end_date: date | None,
         value_type: Literal["real", "target", "forecast"] | None,
         information_source: str | None,
         last_only: bool,
+        include_child_territories: bool,
+        cities_only: bool,
     ) -> list[IndicatorValueDTO]:
         """Get indicator values by territory id, optional indicator_ids, indicators_group_id,
         value_type, source and time period.
@@ -142,8 +146,8 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         parent_id: int | None,
         indicator_ids: str | None,
         indicators_group_id: int | None,
-        start_date: datetime | None,
-        end_date: datetime | None,
+        start_date: date | None,
+        end_date: date | None,
         value_type: Literal["real", "target", "forecast"] | None,
         information_source: str | None,
         last_only: bool,
@@ -155,7 +159,13 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         """
 
     @abc.abstractmethod
-    async def get_normatives_by_territory_id(self, territory_id: int, year: int) -> list[NormativeDTO]:
+    async def get_normatives_by_territory_id(
+        self,
+        territory_id: int,
+        year: int,
+        include_child_territories,
+        cities_only,
+    ) -> list[NormativeDTO]:
         """Get normatives by territory id and year"""
 
     @abc.abstractmethod
@@ -182,14 +192,14 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
 
     @abc.abstractmethod
     async def get_normatives_values_by_parent_id(
-        self,
-        parent_id: int | None,
-        year: int,
+        self, parent_id: int | None, year: int
     ) -> list[TerritoryWithNormativesDTO]:
         """Get list of normatives with values for territory by parent id and year."""
 
     @abc.abstractmethod
-    async def get_physical_object_types_by_territory_id(self, territory_id: int) -> list[PhysicalObjectTypeDTO]:
+    async def get_physical_object_types_by_territory_id(
+        self, territory_id: int, include_child_territories: bool, cities_only: bool
+    ) -> list[PhysicalObjectTypeDTO]:
         """Get all physical object types for given territory."""
 
     @abc.abstractmethod
@@ -204,7 +214,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         order_by: Literal["created_at", "updated_at"] | None,
         ordering: Literal["asc", "desc"],
         paginate: bool = False,
-    ) -> list[PhysicalObjectDataDTO] | PageDTO[PhysicalObjectDataDTO]:
+    ) -> list[PhysicalObjectDTO] | PageDTO[PhysicalObjectDTO]:
         """Get physical objects by territory id, optional physical object type, function and for cities only."""
 
     @abc.abstractmethod
@@ -233,8 +243,10 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         """Get living buildings with geometry by territory id."""
 
     @abc.abstractmethod
-    async def get_functional_zones_sources_by_territory_id(self, territory_id: int) -> list[FunctionalZoneSourceDTO]:
-        """Get list of pairs year + source for functional zones for given territory and its children."""
+    async def get_functional_zones_sources_by_territory_id(
+        self, territory_id: int, include_child_territories: bool, cities_only: bool
+    ) -> list[FunctionalZoneSourceDTO]:
+        """Get list of pairs year + source for functional zones for given territory and its children (optional)."""
 
     @abc.abstractmethod
     async def get_functional_zones_by_territory_id(
@@ -245,11 +257,13 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         functional_zone_type_id: int | None,
         include_child_territories: bool,
         cities_only: bool,
-    ) -> list[FunctionalZoneDataDTO]:
+    ) -> list[FunctionalZoneDTO]:
         """Get functional zones with geometry by territory id."""
 
     @abc.abstractmethod
-    async def delete_all_functional_zones_for_territory(self, territory_id) -> dict:
+    async def delete_all_functional_zones_for_territory(
+        self, territory_id: int, include_child_territories: bool, cities_only: bool
+    ) -> dict:
         """Delete all functional zones for territory."""
 
     @abc.abstractmethod
@@ -260,7 +274,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         territory_type_id: int | None,
         name: str | None,
         cities_only: bool,
-        created_at: datetime | None,
+        created_at: date | None,
         order_by: Literal["created_at", "updated_at"] | None,
         ordering: Literal["asc", "desc"],
         paginate: bool,
@@ -275,7 +289,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         territory_type_id: int | None,
         name: str | None,
         cities_only: bool,
-        created_at: datetime | None,
+        created_at: date | None,
         order_by: Literal["created_at", "updated_at"] | None,
         ordering: Literal["asc", "desc"],
         paginate: bool,

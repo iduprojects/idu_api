@@ -12,7 +12,7 @@ from idu_api.urban_api.dto import (
 from idu_api.urban_api.schemas.short_models import PhysicalObjectFunctionBasic
 
 
-class PhysicalObjectsTypes(BaseModel):
+class PhysicalObjectType(BaseModel):
     """Physical object type with all its attributes."""
 
     physical_object_type_id: int = Field(..., description="physical object type identifier", examples=[1])
@@ -20,7 +20,7 @@ class PhysicalObjectsTypes(BaseModel):
     physical_object_function: PhysicalObjectFunctionBasic
 
     @classmethod
-    def from_dto(cls, dto: PhysicalObjectTypeDTO) -> "PhysicalObjectsTypes":
+    def from_dto(cls, dto: PhysicalObjectTypeDTO) -> "PhysicalObjectType":
         """
         Construct from DTO.
         """
@@ -34,14 +34,14 @@ class PhysicalObjectsTypes(BaseModel):
         )
 
 
-class PhysicalObjectsTypesPost(BaseModel):
+class PhysicalObjectTypePost(BaseModel):
     """Schema of physical object type for POST request."""
 
     name: str = Field(..., description="physical object type unit name", examples=["Здание"])
     physical_object_function_id: int = Field(..., description="function identifier", examples=[1])
 
 
-class PhysicalObjectsTypesPatch(BaseModel):
+class PhysicalObjectTypePatch(BaseModel):
     """Schema of physical object type for PATCH request."""
 
     name: str | None = Field(None, description="physical object type unit name", examples=["Здание"])
@@ -104,9 +104,9 @@ class PhysicalObjectFunctionPut(BaseModel):
 class PhysicalObjectFunctionPatch(BaseModel):
     """Schema of physical object function for PATCH request."""
 
-    name: str | None = Field(..., description="physical object function unit name", examples=["--"])
+    name: str | None = Field(None, description="physical object function unit name", examples=["--"])
     parent_id: int | None = Field(None, description="physical object function parent id, if set", examples=[1])
-    code: str | None = Field(..., description="physical object function code", examples=["1"])
+    code: str | None = Field(None, description="physical object function code", examples=["1"])
 
 
 class PhysicalObjectsTypesHierarchy(BaseModel):
@@ -118,7 +118,7 @@ class PhysicalObjectsTypesHierarchy(BaseModel):
     level: int = Field(..., description="number of physical object functions above in a tree + [1]", examples=[1])
     list_label: str = Field(..., description="physical object function list label", examples=["1.1.1"])
     code: str = Field(..., description="physical object function code", examples=["1"])
-    children: list[Self | PhysicalObjectsTypes]
+    children: list[Self | PhysicalObjectType]
 
     @classmethod
     def from_dto(cls, dto: PhysicalObjectTypesHierarchyDTO) -> "PhysicalObjectsTypesHierarchy":
@@ -136,7 +136,7 @@ class PhysicalObjectsTypesHierarchy(BaseModel):
                 (
                     PhysicalObjectsTypesHierarchy.from_dto(child)
                     if isinstance(child, PhysicalObjectTypesHierarchyDTO)
-                    else PhysicalObjectsTypes.from_dto(child)
+                    else PhysicalObjectType.from_dto(child)
                 )
                 for child in dto.children
             ],

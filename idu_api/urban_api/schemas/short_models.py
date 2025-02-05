@@ -12,6 +12,7 @@ from idu_api.urban_api.dto import (
     ShortScenarioServiceDTO,
     ShortServiceDTO,
 )
+from idu_api.urban_api.schemas.enums import NormativeType
 
 
 class FunctionalZoneTypeBasic(BaseModel):
@@ -84,8 +85,9 @@ class ShortIndicatorValueInfo(BaseModel):
 class ShortNormativeInfo(BaseModel):
     """Normative geojson response model for a given territory"""
 
-    type: str = Field(..., examples=["Школа"])
+    name: str = Field(..., examples=["Школа"])
     year: int = Field(..., examples=[2024])
+    normative_type: NormativeType = Field(NormativeType.SELF, examples=[NormativeType.SELF])
     radius_availability_meters: int | None = Field(None, examples=[1])
     time_availability_minutes: int | None = Field(None, examples=None)
     services_per_1000_normative: int | None = Field(None, examples=[1])
@@ -109,6 +111,13 @@ class ShortNormativeInfo(BaseModel):
         if self.services_per_1000_normative is not None and self.services_capacity_per_1000_normative is not None:
             raise ValueError("services_per_1000_normative and services_capacity_per_1000_normative cannot both be set")
         return self
+
+    @staticmethod
+    @field_validator("normative_type", mode="before")
+    def value_type_to_string(normative_type: Any) -> str:
+        if isinstance(normative_type, Enum):
+            return normative_type.value
+        return normative_type
 
 
 class PhysicalObjectTypeBasic(BaseModel):
@@ -139,6 +148,16 @@ class ShortProject(BaseModel):
     user_id: str = Field(..., description="project creator identifier", examples=["admin@test.ru"])
     name: str = Field(..., description="project name", examples=["--"])
     region: ShortTerritory
+
+
+class ShortProjectWithScenario(BaseModel):
+    """Basic project with scenario model to encapsulate in other models."""
+
+    project_id: int = Field(..., description="project identifier", examples=[1])
+    user_id: str = Field(..., description="project creator identifier", examples=["admin@test.ru"])
+    name: str = Field(..., description="project name", examples=["--"])
+    region: ShortTerritory
+    base_scenario: ShortScenario
 
 
 class ServiceTypeBasic(BaseModel):

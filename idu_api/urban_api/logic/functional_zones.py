@@ -4,15 +4,15 @@ import abc
 from typing import Protocol
 
 from idu_api.urban_api.dto import (
-    FunctionalZoneDataDTO,
+    FunctionalZoneDTO,
     FunctionalZoneTypeDTO,
     ProfilesReclamationDataDTO,
     ProfilesReclamationDataMatrixDTO,
 )
 from idu_api.urban_api.schemas import (
-    FunctionalZoneDataPatch,
-    FunctionalZoneDataPost,
-    FunctionalZoneDataPut,
+    FunctionalZonePatch,
+    FunctionalZonePost,
+    FunctionalZonePut,
     FunctionalZoneTypePost,
     ProfilesReclamationDataPost,
     ProfilesReclamationDataPut,
@@ -59,19 +59,19 @@ class FunctionalZonesService(Protocol):
         """Delete profiles reclamation data by source and target profile identifier and territory identifier."""
 
     @abc.abstractmethod
-    async def add_functional_zone(self, functional_zone: FunctionalZoneDataPost) -> FunctionalZoneDataDTO:
+    async def add_functional_zone(self, functional_zone: FunctionalZonePost) -> FunctionalZoneDTO:
         """Add a functional zone."""
 
     @abc.abstractmethod
     async def put_functional_zone(
-        self, functional_zone_id: int, functional_zone: FunctionalZoneDataPut
-    ) -> FunctionalZoneDataDTO:
+        self, functional_zone_id: int, functional_zone: FunctionalZonePut
+    ) -> FunctionalZoneDTO:
         """Update functional zone by all its attributes."""
 
     @abc.abstractmethod
     async def patch_functional_zone(
-        self, functional_zone_id: int, functional_zone: FunctionalZoneDataPatch
-    ) -> FunctionalZoneDataDTO:
+        self, functional_zone_id: int, functional_zone: FunctionalZonePatch
+    ) -> FunctionalZoneDTO:
         """Update functional zone by only given attributes."""
 
     @abc.abstractmethod

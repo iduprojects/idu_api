@@ -2,11 +2,11 @@ from pydantic import BaseModel, Field
 
 from idu_api.urban_api.dto import ScenarioUrbanObjectDTO, UrbanObjectDTO
 from idu_api.urban_api.schemas.geometries import Geometry
-from idu_api.urban_api.schemas.object_geometries import ObjectGeometries, ScenarioObjectGeometry
+from idu_api.urban_api.schemas.object_geometries import ObjectGeometry, ScenarioObjectGeometry
 from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic
-from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsData, PhysicalObjectsTypes, ScenarioPhysicalObject
-from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
-from idu_api.urban_api.schemas.services import ScenarioService, ServicesData
+from idu_api.urban_api.schemas.physical_objects import PhysicalObject, PhysicalObjectType, ScenarioPhysicalObject
+from idu_api.urban_api.schemas.service_types import ServiceType, UrbanFunctionBasic
+from idu_api.urban_api.schemas.services import ScenarioService, Service
 from idu_api.urban_api.schemas.short_models import ShortLivingBuilding, ShortTerritory
 from idu_api.urban_api.schemas.territories import TerritoryType
 
@@ -15,17 +15,17 @@ class UrbanObject(BaseModel):
     """Urban object with all its attributes."""
 
     urban_object_id: int = Field(..., description="urban object id", examples=[1])
-    physical_object: PhysicalObjectsData
-    object_geometry: ObjectGeometries
-    service: ServicesData | None
+    physical_object: PhysicalObject
+    object_geometry: ObjectGeometry
+    service: Service | None
 
     @classmethod
     def from_dto(cls, dto: UrbanObjectDTO) -> "UrbanObject":
         urban_object = cls(
             urban_object_id=dto.urban_object_id,
-            physical_object=PhysicalObjectsData(
+            physical_object=PhysicalObject(
                 physical_object_id=dto.physical_object_id,
-                physical_object_type=PhysicalObjectsTypes(
+                physical_object_type=PhysicalObjectType(
                     physical_object_type_id=dto.physical_object_type_id,
                     name=dto.physical_object_type_name,
                     physical_object_function=(
@@ -50,7 +50,7 @@ class UrbanObject(BaseModel):
                 created_at=dto.physical_object_created_at,
                 updated_at=dto.physical_object_updated_at,
             ),
-            object_geometry=ObjectGeometries(
+            object_geometry=ObjectGeometry(
                 object_geometry_id=dto.object_geometry_id,
                 territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
                 address=dto.address,
@@ -61,9 +61,9 @@ class UrbanObject(BaseModel):
                 updated_at=dto.object_geometry_updated_at,
             ),
             service=(
-                ServicesData(
+                Service(
                     service_id=dto.service_id,
-                    service_type=ServiceTypes(
+                    service_type=ServiceType(
                         service_type_id=dto.service_type_id,
                         urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
                         name=dto.service_type_name,
@@ -110,7 +110,7 @@ class ScenarioUrbanObject(BaseModel):
             public_urban_object_id=dto.public_urban_object_id,
             physical_object=ScenarioPhysicalObject(
                 physical_object_id=dto.physical_object_id,
-                physical_object_type=PhysicalObjectsTypes(
+                physical_object_type=PhysicalObjectType(
                     physical_object_type_id=dto.physical_object_type_id,
                     name=dto.physical_object_type_name,
                     physical_object_function=(
@@ -150,7 +150,7 @@ class ScenarioUrbanObject(BaseModel):
             service=(
                 ScenarioService(
                     service_id=dto.service_id,
-                    service_type=ServiceTypes(
+                    service_type=ServiceType(
                         service_type_id=dto.service_type_id,
                         urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
                         name=dto.service_type_name,

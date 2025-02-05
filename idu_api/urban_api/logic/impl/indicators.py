@@ -65,10 +65,8 @@ class IndicatorsServiceImpl(IndicatorsService):
     async def get_indicators_by_group_id(self, indicators_group_id: int) -> list[IndicatorDTO]:
         return await get_indicators_by_group_id_from_db(self._conn, indicators_group_id)
 
-    async def update_indicators_group(
-        self, indicators_group: IndicatorsGroupPost, indicators_group_id: int
-    ) -> IndicatorsGroupDTO:
-        return await update_indicators_group_from_db(self._conn, indicators_group, indicators_group_id)
+    async def update_indicators_group(self, indicators_group: IndicatorsGroupPost) -> IndicatorsGroupDTO:
+        return await update_indicators_group_from_db(self._conn, indicators_group)
 
     async def get_indicators_by_parent(
         self,
@@ -88,8 +86,8 @@ class IndicatorsServiceImpl(IndicatorsService):
     async def add_indicator(self, indicator: IndicatorsPost) -> IndicatorDTO:
         return await add_indicator_to_db(self._conn, indicator)
 
-    async def put_indicator(self, indicator_id: int, indicator: IndicatorsPut) -> IndicatorDTO:
-        return await put_indicator_to_db(self._conn, indicator_id, indicator)
+    async def put_indicator(self, indicator: IndicatorsPut) -> IndicatorDTO:
+        return await put_indicator_to_db(self._conn, indicator)
 
     async def patch_indicator(self, indicator_id: int, indicator: IndicatorsPatch) -> IndicatorDTO:
         return await patch_indicator_to_db(self._conn, indicator_id, indicator)

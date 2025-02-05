@@ -1,20 +1,17 @@
 """Projects services internal logic is defined here."""
 
 from collections import defaultdict
-from datetime import datetime, timezone
 
-from geoalchemy2.functions import ST_Intersects, ST_Union, ST_Within
+from geoalchemy2.functions import ST_Intersects, ST_Within
 from sqlalchemy import delete, insert, literal, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
     object_geometries_data,
-    projects_data,
     projects_object_geometries_data,
     projects_services_data,
     projects_territory_data,
     projects_urban_objects_data,
-    scenarios_data,
     service_types_dict,
     services_data,
     territories_data,
@@ -28,12 +25,17 @@ from idu_api.urban_api.dto import (
     ServiceDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
-from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
-from idu_api.urban_api.logic.impl.helpers.projects_urban_objects import get_scenario_urban_object_by_id_from_db
-from idu_api.urban_api.schemas import ScenarioServicePost, ServicesDataPatch, ServicesDataPut
+from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario, get_project_by_scenario_id
+from idu_api.urban_api.logic.impl.helpers.projects_urban_objects import get_scenario_urban_object_by_ids_from_db
+from idu_api.urban_api.logic.impl.helpers.utils import (
+    check_existence,
+    extract_values_from_model,
+    get_all_context_territories,
+)
+from idu_api.urban_api.schemas import ScenarioServicePost, ServicePatch, ServicePut
 
 
-async def get_services_by_scenario_id(
+async def get_services_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
     user_id: str,
@@ -42,15 +44,7 @@ async def get_services_by_scenario_id(
 ) -> list[ScenarioServiceDTO]:
     """Get services by scenario identifier."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
+    project = await get_project_by_scenario_id(conn, scenario_id, user_id)
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -75,13 +69,19 @@ async def get_services_by_scenario_id(
             service_types_dict.c.infrastructure_type,
             service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.name.label("territory_type_name"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
         )
         .select_from(
-            urban_objects_data.join(
+            urban_objects_data.join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
                 object_geometries_data,
                 object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
             )
-            .join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
             .join(
                 service_types_dict,
                 service_types_dict.c.service_type_id == services_data.c.service_type_id,
@@ -99,42 +99,8 @@ async def get_services_by_scenario_id(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
             ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
         )
+        .distinct()
     )
-
-    # Условия фильтрации для public объектов
-    if service_type_id is not None:
-        public_urban_objects_query = public_urban_objects_query.where(
-            services_data.c.service_type_id == service_type_id
-        )
-    if urban_function_id is not None:
-        public_urban_objects_query = public_urban_objects_query.where(
-            service_types_dict.c.urban_function_id == urban_function_id
-        )
-
-    # Получаем все объекты из public.urban_objects_data
-    public_objects = []
-    for row in (await conn.execute(public_urban_objects_query)).mappings().all():
-        public_objects.append(
-            {
-                "service_id": row.service_id,
-                "service_type_id": row.service_type_id,
-                "service_type_name": row.service_type_name,
-                "urban_function_id": row.urban_function_id,
-                "urban_function_name": row.urban_function_name,
-                "service_type_capacity_modeled": row.service_type_capacity_modeled,
-                "service_type_code": row.service_type_code,
-                "infrastructure_type": row.infrastructure_type,
-                "service_type_properties": row.service_type_properties,
-                "territory_type_id": row.territory_type_id,
-                "territory_type_name": row.territory_type_name,
-                "name": row.name,
-                "capacity_real": row.capacity_real,
-                "properties": row.properties,
-                "created_at": row.created_at,
-                "updated_at": row.updated_at,
-                "is_scenario_object": False,
-            }
-        )
 
     # Шаг 3: Собрать все записи из user_projects.urban_objects_data для данного сценария
     scenario_urban_objects_query = (
@@ -161,6 +127,8 @@ async def get_services_by_scenario_id(
             service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
         )
         .select_from(
             projects_urban_objects_data.outerjoin(
@@ -174,6 +142,13 @@ async def get_services_by_scenario_id(
             .outerjoin(
                 object_geometries_data,
                 object_geometries_data.c.object_geometry_id == projects_urban_objects_data.c.public_object_geometry_id,
+            )
+            .outerjoin(
+                territories_data,
+                or_(
+                    territories_data.c.territory_id == projects_object_geometries_data.c.territory_id,
+                    territories_data.c.territory_id == object_geometries_data.c.territory_id,
+                ),
             )
             .outerjoin(services_data, services_data.c.service_id == projects_urban_objects_data.c.public_service_id)
             .outerjoin(
@@ -195,24 +170,55 @@ async def get_services_by_scenario_id(
                 urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
             )
         )
-        .where(projects_urban_objects_data.c.scenario_id == scenario_id)
-        .where(projects_urban_objects_data.c.public_urban_object_id.is_(None))
+        .where(
+            projects_urban_objects_data.c.scenario_id == scenario_id,
+            projects_urban_objects_data.c.public_urban_object_id.is_(None),
+        )
+        .distinct()
     )
 
-    # Условия фильтрации для объектов user_projects
-    if service_type_id:
-        scenario_urban_objects_query = scenario_urban_objects_query.where(
-            (projects_services_data.c.service_type_id == service_type_id)
-            | (services_data.c.service_type_id == service_type_id)
+    if service_type_id is not None and urban_function_id is not None:
+        raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)
+    if service_type_id is not None:
+        public_urban_objects_query = public_urban_objects_query.where(
+            service_types_dict.c.service_type_id == service_type_id
         )
-    if urban_function_id is not None:
         scenario_urban_objects_query = scenario_urban_objects_query.where(
-            service_types_dict.c.urban_function_id == urban_function_id
+            service_types_dict.c.service_type_id == service_type_id
+        )
+    elif urban_function_id is not None:
+        urban_functions_cte = (
+            select(
+                urban_functions_dict.c.urban_function_id,
+                urban_functions_dict.c.parent_urban_function_id,
+            )
+            .where(urban_functions_dict.c.urban_function_id == urban_function_id)
+            .cte(recursive=True)
+        )
+        urban_functions_cte = urban_functions_cte.union_all(
+            select(
+                urban_functions_dict.c.urban_function_id,
+                urban_functions_dict.c.parent_urban_function_id,
+            ).join(
+                urban_functions_cte,
+                urban_functions_dict.c.parent_urban_function_id == urban_functions_cte.c.urban_function_id,
+            )
+        )
+        public_urban_objects_query = public_urban_objects_query.where(
+            urban_functions_dict.c.urban_function_id.in_(select(urban_functions_cte))
+        )
+        scenario_urban_objects_query = scenario_urban_objects_query.where(
+            urban_functions_dict.c.urban_function_id.in_(select(urban_functions_cte))
         )
 
-    # Получаем все объекты из user_projects.urban_objects_data
+    rows = (await conn.execute(public_urban_objects_query)).mappings().all()
+    public_objects = []
+    for row in rows:
+        public_objects.append({**row, "is_scenario_object": False})
+
+    rows = (await conn.execute(scenario_urban_objects_query)).mappings().all()
     scenario_objects = []
-    for row in (await conn.execute(scenario_urban_objects_query)).mappings().all():
+    for row in rows:
         is_scenario_service = row.service_id is not None and row.public_service_id is None
         if row.service_id is not None and row.public_service_id is not None:
             scenario_objects.append(
@@ -228,6 +234,8 @@ async def get_services_by_scenario_id(
                     "service_type_properties": row.service_type_properties,
                     "territory_type_id": row.territory_type_id,
                     "territory_type_name": row.territory_type_name,
+                    "territory_id": row.territory_id,
+                    "territory_name": row.territory_name,
                     "name": row.name if is_scenario_service else row.public_name,
                     "capacity_real": row.capacity_real if is_scenario_service else row.public_capacity_real,
                     "properties": row.properties if is_scenario_service else row.public_properties,
@@ -237,92 +245,37 @@ async def get_services_by_scenario_id(
                 }
             )
 
-    grouped_objects = defaultdict(dict)
+    grouped_objects = defaultdict(lambda: {"territories": []})
     for obj in public_objects + scenario_objects:
         service_id = obj["service_id"]
-        is_scenario_geometry = obj["is_scenario_object"]
+        is_scenario_service = obj["is_scenario_object"]
+        key = service_id if not is_scenario_service else f"scenario_{service_id}"
 
-        # Проверка и добавление сервиса
-        existing_entry = grouped_objects.get(service_id)
-        if existing_entry is None:
-            grouped_objects[service_id].update(obj)
-        elif existing_entry.get("is_scenario_object") != is_scenario_geometry:
-            grouped_objects[-service_id].update(obj)
+        if key not in grouped_objects:
+            grouped_objects[key].update({k: v for k, v in obj.items() if k in ScenarioServiceDTO.fields()})
+
+        territory = {"territory_id": obj["territory_id"], "name": obj["territory_name"]}
+        grouped_objects[key]["territories"].append(territory)
 
     return [ScenarioServiceDTO(**row) for row in grouped_objects.values()]
 
 
-async def get_context_services_by_scenario_id_from_db(
+async def get_context_services_from_db(
     conn: AsyncConnection,
-    scenario_id: int,
+    project_id: int,
     user_id: str,
     service_type_id: int | None,
     urban_function_id: int | None,
 ) -> list[ServiceDTO]:
     """Get list of services for 'context' of the project territory."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
-        raise AccessDeniedError(project_id, "project")
-
-    context_territories = select(
-        territories_data.c.territory_id,
-        territories_data.c.geometry,
-    ).where(territories_data.c.territory_id.in_(project.properties["context"]))
-    unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-    all_descendants = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_descendants", recursive=True)
-    )
-    all_descendants = all_descendants.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_descendants,
-                territories_data.c.parent_id == all_descendants.c.territory_id,
-            )
-        )
-    )
-    all_ancestors = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_ancestors", recursive=True)
-    )
-    all_ancestors = all_ancestors.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_ancestors,
-                territories_data.c.territory_id == all_ancestors.c.parent_id,
-            )
-        )
-    )
-    all_related_territories = (
-        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
-    )
+    context = await get_all_context_territories(conn, project_id, user_id)
 
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .where(
-            object_geometries_data.c.territory_id.in_(select(all_related_territories)),
-            ST_Intersects(object_geometries_data.c.geometry, unified_geometry),
+            object_geometries_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
+            ST_Intersects(object_geometries_data.c.geometry, context["geometry"]),
         )
         .subquery()
     )
@@ -339,13 +292,19 @@ async def get_context_services_by_scenario_id_from_db(
             service_types_dict.c.infrastructure_type,
             service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.name.label("territory_type_name"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
         )
         .select_from(
-            urban_objects_data.join(
+            urban_objects_data.join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
                 object_geometries_data,
                 object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
             )
-            .join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
             .join(
                 service_types_dict,
                 service_types_dict.c.service_type_id == services_data.c.service_type_id,
@@ -363,15 +322,42 @@ async def get_context_services_by_scenario_id_from_db(
         .distinct()
     )
 
-    # Условия фильтрации для public объектов
+    if service_type_id is not None and urban_function_id is not None:
+        raise EntityNotFoundByParams("service type and urban function", service_type_id, urban_function_id)
     if service_type_id is not None:
-        statement = statement.where(services_data.c.service_type_id == service_type_id)
-    if urban_function_id is not None:
-        statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
+        statement = statement.where(service_types_dict.c.service_type_id == service_type_id)
+    elif urban_function_id is not None:
+        urban_functions_cte = (
+            select(
+                urban_functions_dict.c.urban_function_id,
+                urban_functions_dict.c.parent_urban_function_id,
+            )
+            .where(urban_functions_dict.c.urban_function_id == urban_function_id)
+            .cte(recursive=True)
+        )
+        urban_functions_cte = urban_functions_cte.union_all(
+            select(
+                urban_functions_dict.c.urban_function_id,
+                urban_functions_dict.c.parent_urban_function_id,
+            ).join(
+                urban_functions_cte,
+                urban_functions_dict.c.parent_urban_function_id == urban_functions_cte.c.urban_function_id,
+            )
+        )
+        statement = statement.where(urban_functions_dict.c.urban_function_id.in_(select(urban_functions_cte)))
 
     result = (await conn.execute(statement)).mappings().all()
 
-    return [ServiceDTO(**row) for row in result]
+    grouped_data = defaultdict(lambda: {"territories": []})
+    for row in result:
+        key = row.service_id
+        if key not in grouped_data:
+            grouped_data[key].update({k: v for k, v in row.items() if k in ServiceDTO.fields()})
+
+        territory = {"territory_id": row.territory_id, "name": row.territory_name}
+        grouped_data[key]["territories"].append(territory)
+
+    return [ServiceDTO(**row) for row in grouped_data.values()]
 
 
 async def add_service_to_db(
@@ -379,15 +365,7 @@ async def add_service_to_db(
 ) -> ScenarioUrbanObjectDTO:
     """Create scenario service object."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
+    await check_scenario(conn, scenario_id, user_id, to_edit=True)
 
     physical_object_column = (
         projects_urban_objects_data.c.physical_object_id
@@ -406,7 +384,7 @@ async def add_service_to_db(
     )
     urban_objects = (await conn.execute(statement)).mappings().all()
     is_from_public = False
-    if not list(urban_objects):
+    if not urban_objects:
         is_from_public = True
         if not service.is_scenario_physical_object and not service.is_scenario_geometry:
             statement = select(urban_objects_data).where(
@@ -414,33 +392,31 @@ async def add_service_to_db(
                 urban_objects_data.c.object_geometry_id == service.object_geometry_id,
             )
             urban_objects = (await conn.execute(statement)).mappings().all()
-        if not list(urban_objects):
+        if not urban_objects:
             raise EntityNotFoundByParams(
                 "urban object", service.physical_object_id, service.object_geometry_id, scenario_id
             )
 
-    statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service.service_type_id)
-    service_type = (await conn.execute(statement)).one_or_none()
-    if service_type is None:
+    if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service.service_type_id}):
         raise EntityNotFoundById(service.service_type_id, "service type")
 
     if service.territory_type_id is not None:
-        statement = select(territory_types_dict).where(
-            territory_types_dict.c.territory_type_id == service.territory_type_id
-        )
-        territory_type = (await conn.execute(statement)).one_or_none()
-        if territory_type is None:
+        if not await check_existence(
+            conn, territory_types_dict, conditions={"territory_type_id": service.territory_type_id}
+        ):
             raise EntityNotFoundById(service.territory_type_id, "territory type")
 
     statement = (
         insert(projects_services_data)
         .values(
-            public_service_id=None,
-            service_type_id=service.service_type_id,
-            territory_type_id=service.territory_type_id,
-            name=service.name,
-            capacity_real=service.capacity_real,
-            properties=service.properties,
+            **service.model_dump(
+                exclude={
+                    "physical_object_id",
+                    "object_geometry_id",
+                    "is_scenario_physical_object",
+                    "is_scenario_geometry",
+                }
+            )
         )
         .returning(services_data.c.service_id)
     )
@@ -489,7 +465,7 @@ async def add_service_to_db(
     urban_object_id = (await conn.execute(statement)).scalar_one()
     await conn.commit()
 
-    return (await get_scenario_urban_object_by_id_from_db(conn, [urban_object_id]))[0]
+    return (await get_scenario_urban_object_by_ids_from_db(conn, [urban_object_id]))[0]
 
 
 async def get_scenario_service_by_id_from_db(conn: AsyncConnection, service_id: int) -> ScenarioServiceDTO:
@@ -514,9 +490,31 @@ async def get_scenario_service_by_id_from_db(conn: AsyncConnection, service_id: 
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
             literal(True).label("is_scenario_object"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
         )
         .select_from(
-            projects_services_data.join(
+            projects_urban_objects_data.join(
+                projects_services_data,
+                projects_services_data.c.service_id == projects_urban_objects_data.c.service_id,
+            )
+            .outerjoin(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == projects_urban_objects_data.c.public_object_geometry_id,
+            )
+            .outerjoin(
+                projects_object_geometries_data,
+                projects_object_geometries_data.c.object_geometry_id
+                == projects_urban_objects_data.c.object_geometry_id,
+            )
+            .outerjoin(
+                territories_data,
+                or_(
+                    territories_data.c.territory_id == projects_object_geometries_data.c.territory_id,
+                    territories_data.c.territory_id == object_geometries_data.c.territory_id,
+                ),
+            )
+            .outerjoin(
                 service_types_dict,
                 service_types_dict.c.service_type_id == projects_services_data.c.service_type_id,
             )
@@ -524,7 +522,7 @@ async def get_scenario_service_by_id_from_db(conn: AsyncConnection, service_id: 
                 territory_types_dict,
                 territory_types_dict.c.territory_type_id == projects_services_data.c.territory_type_id,
             )
-            .join(
+            .outerjoin(
                 urban_functions_dict,
                 urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
             )
@@ -532,16 +530,19 @@ async def get_scenario_service_by_id_from_db(conn: AsyncConnection, service_id: 
         .where(projects_services_data.c.service_id == service_id)
         .distinct()
     )
-    result = (await conn.execute(statement)).mappings().one_or_none()
+    result = (await conn.execute(statement)).mappings().all()
     if result is None:
         raise EntityNotFoundById(service_id, "scenario service")
 
-    return ScenarioServiceDTO(**result)
+    territories = [{"territory_id": row.territory_id, "name": row.territory_name} for row in result]
+    service = {k: v for k, v in result[0].items() if k in ScenarioServiceDTO.fields()}
+
+    return ScenarioServiceDTO(**service, territories=territories)
 
 
 async def put_service_to_db(
     conn: AsyncConnection,
-    service: ServicesDataPut,
+    service: ServicePut,
     scenario_id: int,
     service_id: int,
     is_scenario_object: bool,
@@ -549,23 +550,23 @@ async def put_service_to_db(
 ) -> ScenarioServiceDTO:
     """Update scenario service by all its attributes."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
+    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    if is_scenario_object:
-        statement = select(projects_services_data.c.service_id).where(projects_services_data.c.service_id == service_id)
-    else:
-        statement = select(services_data.c.service_id).where(services_data.c.service_id == service_id)
-    requested_service = (await conn.execute(statement)).scalar_one_or_none()
-    if requested_service is None:
+    if not await check_existence(
+        conn,
+        projects_services_data if is_scenario_object else services_data,
+        conditions={"service_id": service_id},
+    ):
         raise EntityNotFoundById(service_id, "service")
+
+    if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service.service_type_id}):
+        raise EntityNotFoundById(service.service_type_id, "service type")
+
+    if service.territory_type_id is not None:
+        if not await check_existence(
+            conn, territory_types_dict, conditions={"territory_type_id": service.territory_type_id}
+        ):
+            raise EntityNotFoundById(service.territory_type_id, "territory type")
 
     if not is_scenario_object:
         statement = (
@@ -585,47 +586,17 @@ async def put_service_to_db(
         if public_service is not None:
             raise EntityAlreadyExists("scenario service", service_id)
 
-    statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service.service_type_id)
-    service_type = (await conn.execute(statement)).one_or_none()
-    if service_type is None:
-        raise EntityNotFoundById(service.service_type_id, "service type")
-
-    if service.territory_type_id is not None:
-        statement = select(territory_types_dict).where(
-            territory_types_dict.c.territory_type_id == service.territory_type_id
-        )
-        territory_type = (await conn.execute(statement)).one_or_none()
-        if territory_type is None:
-            raise EntityNotFoundById(service.territory_type_id, "territory type")
-
     if is_scenario_object:
         statement = (
             update(projects_services_data)
             .where(projects_services_data.c.service_id == service_id)
-            .values(
-                service_type_id=service.service_type_id,
-                territory_type_id=service.territory_type_id,
-                name=service.name,
-                capacity_real=service.capacity_real,
-                properties=service.properties,
-                updated_at=datetime.now(timezone.utc),
-            )
+            .values(**extract_values_from_model(service, to_update=True))
             .returning(projects_services_data.c.service_id)
         )
         updated_service_id = (await conn.execute(statement)).scalar_one()
     else:
         statement = (
-            insert(projects_services_data)
-            .values(
-                public_service_id=service_id,
-                service_type_id=service.service_type_id,
-                territory_type_id=service.territory_type_id,
-                name=service.name,
-                capacity_real=service.capacity_real,
-                properties=service.properties,
-                updated_at=datetime.now(timezone.utc),
-            )
-            .returning(projects_services_data.c.service_id)
+            insert(projects_services_data).values(**service.model_dump()).returning(projects_services_data.c.service_id)
         )
         updated_service_id = (await conn.execute(statement)).scalar_one()
 
@@ -697,7 +668,7 @@ async def put_service_to_db(
 
 async def patch_service_to_db(
     conn: AsyncConnection,
-    service: ServicesDataPatch,
+    service: ServicePatch,
     scenario_id: int,
     service_id: int,
     is_scenario_object: bool,
@@ -705,15 +676,7 @@ async def patch_service_to_db(
 ) -> ScenarioServiceDTO:
     """Update scenario service by only given attributes."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
+    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
 
     if is_scenario_object:
         statement = select(projects_services_data).where(projects_services_data.c.service_id == service_id)
@@ -722,6 +685,16 @@ async def patch_service_to_db(
     requested_service = (await conn.execute(statement)).mappings().one_or_none()
     if requested_service is None:
         raise EntityNotFoundById(service_id, "service")
+
+    if service.service_type_id is not None:
+        if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service.service_type_id}):
+            raise EntityNotFoundById(service.service_type_id, "service type")
+
+    if service.territory_type_id is not None:
+        if not await check_existence(
+            conn, territory_types_dict, conditions={"territory_type_id": service.territory_type_id}
+        ):
+            raise EntityNotFoundById(service.territory_type_id, "territory type")
 
     if not is_scenario_object:
         statement = (
@@ -741,28 +714,13 @@ async def patch_service_to_db(
         if public_service is not None:
             raise EntityAlreadyExists("scenario service", service_id)
 
-    statement = select(service_types_dict).where(service_types_dict.c.service_type_id == service.service_type_id)
-    service_type = (await conn.execute(statement)).one_or_none()
-    if service_type is None:
-        raise EntityNotFoundById(service.service_type_id, "service type")
-
-    if service.territory_type_id is not None:
-        statement = select(territory_types_dict).where(
-            territory_types_dict.c.territory_type_id == service.territory_type_id
-        )
-        territory_type = (await conn.execute(statement)).one_or_none()
-        if territory_type is None:
-            raise EntityNotFoundById(service.territory_type_id, "territory type")
-
-    values_to_update = {}
-    for k, v in service.model_dump(exclude_unset=True).items():
-        values_to_update.update({k: v})
+    values = extract_values_from_model(service, exclude_unset=True, to_update=True)
 
     if is_scenario_object:
         statement = (
             update(projects_services_data)
             .where(projects_services_data.c.service_id == service_id)
-            .values(updated_at=datetime.now(timezone.utc), **values_to_update)
+            .values(**values)
             .returning(projects_services_data.c.service_id)
         )
         updated_service_id = (await conn.execute(statement)).scalar_one()
@@ -771,11 +729,11 @@ async def patch_service_to_db(
             insert(projects_services_data)
             .values(
                 public_service_id=service_id,
-                service_type_id=values_to_update.get("service_type_id", requested_service.service_type_id),
-                territory_type_id=values_to_update.get("territory_type_id", requested_service.territory_type_id),
-                name=values_to_update.get("name", requested_service.name),
-                capacity_real=values_to_update.get("capacity_real", requested_service.capacity_real),
-                properties=values_to_update.get("properties", requested_service.properties),
+                service_type_id=values.get("service_type_id", requested_service.service_type_id),
+                territory_type_id=values.get("territory_type_id", requested_service.territory_type_id),
+                name=values.get("name", requested_service.name),
+                capacity_real=values.get("capacity_real", requested_service.capacity_real),
+                properties=values.get("properties", requested_service.properties),
             )
             .returning(projects_services_data.c.service_id)
         )
@@ -847,7 +805,7 @@ async def patch_service_to_db(
     return await get_scenario_service_by_id_from_db(conn, updated_service_id)
 
 
-async def delete_service_in_db(
+async def delete_service_from_db(
     conn: AsyncConnection,
     scenario_id: int,
     service_id: int,
@@ -856,22 +814,13 @@ async def delete_service_in_db(
 ) -> dict:
     """Delete scenario service."""
 
-    statement = select(scenarios_data.c.project_id).where(scenarios_data.c.scenario_id == scenario_id)
-    project_id = (await conn.execute(statement)).scalar_one_or_none()
-    if project_id is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
+    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
 
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id:
-        raise AccessDeniedError(project_id, "project")
-
-    if is_scenario_object:
-        statement = select(projects_services_data.c.service_id).where(projects_services_data.c.service_id == service_id)
-    else:
-        statement = select(services_data.c.service_id).where(services_data.c.service_id == service_id)
-    requested_service = (await conn.execute(statement)).scalar_one_or_none()
-    if requested_service is None:
+    if not await check_existence(
+        conn,
+        projects_services_data if is_scenario_object else services_data,
+        conditions={"service_id": service_id},
+    ):
         raise EntityNotFoundById(service_id, "service")
 
     if is_scenario_object:
@@ -925,4 +874,4 @@ async def delete_service_in_db(
             )
     await conn.commit()
 
-    return {"result": "ok"}
+    return {"status": "ok"}

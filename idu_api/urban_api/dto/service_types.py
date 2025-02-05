@@ -5,7 +5,7 @@ from typing import Any, Literal, Self
 
 
 @dataclass(frozen=True)
-class ServiceTypesDTO:
+class ServiceTypeDTO:
     service_type_id: int
     urban_function_id: int | None
     urban_function_name: str | None
@@ -35,4 +35,4 @@ class ServiceTypesHierarchyDTO:
     level: int
     list_label: str
     code: str
-    children: list[Self | ServiceTypesDTO]
+    children: list[Self | ServiceTypeDTO]

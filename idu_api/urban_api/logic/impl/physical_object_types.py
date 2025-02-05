@@ -24,8 +24,8 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectFunctionPatch,
     PhysicalObjectFunctionPost,
     PhysicalObjectFunctionPut,
-    PhysicalObjectsTypesPatch,
-    PhysicalObjectsTypesPost,
+    PhysicalObjectTypePatch,
+    PhysicalObjectTypePost,
 )
 
 
@@ -41,11 +41,11 @@ class PhysicalObjectTypesServiceImpl(PhysicalObjectTypesService):
     async def get_physical_object_types(self) -> list[PhysicalObjectTypeDTO]:
         return await get_physical_object_types_from_db(self._conn)
 
-    async def add_physical_object_type(self, physical_object_type: PhysicalObjectsTypesPost) -> PhysicalObjectTypeDTO:
+    async def add_physical_object_type(self, physical_object_type: PhysicalObjectTypePost) -> PhysicalObjectTypeDTO:
         return await add_physical_object_type_to_db(self._conn, physical_object_type)
 
     async def patch_physical_object_type(
-        self, physical_object_type_id: int, physical_object_type: PhysicalObjectsTypesPatch
+        self, physical_object_type_id: int, physical_object_type: PhysicalObjectTypePatch
     ) -> PhysicalObjectTypeDTO:
         return await patch_physical_object_type_to_db(self._conn, physical_object_type_id, physical_object_type)
 
@@ -66,11 +66,9 @@ class PhysicalObjectTypesServiceImpl(PhysicalObjectTypesService):
         return await add_physical_object_function_to_db(self._conn, physical_object_function)
 
     async def put_physical_object_function(
-        self, physical_object_function_id: int, physical_object_function: PhysicalObjectFunctionPut
+        self, physical_object_function: PhysicalObjectFunctionPut
     ) -> PhysicalObjectFunctionDTO:
-        return await put_physical_object_function_to_db(
-            self._conn, physical_object_function_id, physical_object_function
-        )
+        return await put_physical_object_function_to_db(self._conn, physical_object_function)
 
     async def patch_physical_object_function(
         self, physical_object_function_id: int, physical_object_function: PhysicalObjectFunctionPatch

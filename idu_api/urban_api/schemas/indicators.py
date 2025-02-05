@@ -1,6 +1,6 @@
 """Indicators and indicators values schemas are defined here."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Any, Literal
 
@@ -11,7 +11,7 @@ from idu_api.urban_api.dto import (
     IndicatorsGroupDTO,
     IndicatorValueDTO,
     MeasurementUnitDTO,
-    ProjectIndicatorValueDTO,
+    ScenarioIndicatorValueDTO,
 )
 from idu_api.urban_api.schemas.short_models import (
     MeasurementUnitBasic,
@@ -97,9 +97,11 @@ class Indicator(BaseModel):
     level: int = Field(..., description="number of indicator functions above in a tree + 1", examples=[1])
     list_label: str = Field(..., description="indicator marker in lists", examples=["1.1.1"])
     parent_id: int | None = Field(..., description="indicator parent identifier", examples=[1])
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the indicator was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the indicator was created"
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the indicator was last updated"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the indicator was last updated"
     )
 
     @classmethod
@@ -198,10 +200,11 @@ class IndicatorValue(BaseModel):
         ],
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the indicator value was created"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the indicator value was created"
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the indicator value was last updated"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="the time when the indicator value was last updated",
     )
 
     @field_validator("date_type", mode="before")
@@ -334,8 +337,8 @@ class IndicatorValuePut(BaseModel):
         return value_type
 
 
-class ProjectIndicatorValue(BaseModel):
-    """Project indicator value with all its attributes."""
+class ScenarioIndicatorValue(BaseModel):
+    """Scenario indicator value with all its attributes."""
 
     indicator_value_id: int = Field(..., description="indicator value identifier", examples=[1])
     indicator: ShortIndicatorInfo
@@ -351,14 +354,15 @@ class ProjectIndicatorValue(BaseModel):
         examples=[{"attribute_name": "attribute_value"}],
     )
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the indicator value was created"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the indicator value was created"
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the indicator value was last updated"
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="the time when the indicator value was last updated",
     )
 
     @classmethod
-    def from_dto(cls, dto: ProjectIndicatorValueDTO) -> "ProjectIndicatorValue":
+    def from_dto(cls, dto: ScenarioIndicatorValueDTO) -> "ScenarioIndicatorValue":
         """
         Construct from DTO.
         """
@@ -397,8 +401,8 @@ class ProjectIndicatorValue(BaseModel):
         )
 
 
-class ProjectIndicatorValuePost(BaseModel):
-    """Project indicator value schema for POST requests."""
+class ScenarioIndicatorValuePost(BaseModel):
+    """Scenario indicator value schema for POST requests."""
 
     indicator_id: int = Field(..., description="indicator identifier", examples=[1])
     scenario_id: int = Field(..., description="scenario identifier for which indicator value was saved", examples=[1])
@@ -418,8 +422,8 @@ class ProjectIndicatorValuePost(BaseModel):
     )
 
 
-class ProjectIndicatorValuePut(BaseModel):
-    """Project indicator value schema for PUT requests."""
+class ScenarioIndicatorValuePut(BaseModel):
+    """Scenario indicator value schema for PUT requests."""
 
     indicator_id: int = Field(..., description="indicator identifier", examples=[1])
     scenario_id: int = Field(..., description="scenario identifier for which indicator value was saved", examples=[1])
@@ -439,8 +443,8 @@ class ProjectIndicatorValuePut(BaseModel):
     )
 
 
-class ProjectIndicatorValuePatch(BaseModel):
-    """Project indicator value schema for PATCH requests."""
+class ScenarioIndicatorValuePatch(BaseModel):
+    """Scenario indicator value schema for PATCH requests."""
 
     value: float | None = Field(None, description="indicator value for territory at time", examples=[23.5])
     comment: str | None = Field(None, description="comment for indicator value", examples=["--"])

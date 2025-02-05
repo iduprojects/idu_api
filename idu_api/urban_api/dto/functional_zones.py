@@ -16,7 +16,7 @@ class FunctionalZoneTypeDTO:
 
 
 @dataclass
-class FunctionalZoneDataDTO:  # pylint: disable=too-many-instance-attributes
+class FunctionalZoneDTO:  # pylint: disable=too-many-instance-attributes
     functional_zone_id: int
     territory_id: int
     territory_name: str
@@ -47,8 +47,8 @@ class FunctionalZoneDataDTO:  # pylint: disable=too-many-instance-attributes
 
 
 @dataclass
-class ProjectProfileDTO:  # pylint: disable=too-many-instance-attributes
-    profile_id: int
+class ScenarioFunctionalZoneDTO:  # pylint: disable=too-many-instance-attributes
+    functional_zone_id: int
     scenario_id: int
     scenario_name: str
     functional_zone_type_id: int

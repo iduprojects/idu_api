@@ -2,6 +2,7 @@
 
 import itertools
 import traceback
+from http.client import HTTPException
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -29,7 +30,7 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
             return await call_next(request)
         except Exception as exc:  # pylint: disable=broad-except
             error_status = 500
-            if isinstance(exc, IduApiError):
+            if isinstance(exc, (IduApiError, HTTPException)):
                 error_status = getattr(exc, "status_code", 500)
 
             if self._debug[0]:

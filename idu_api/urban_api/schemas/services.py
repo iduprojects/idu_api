@@ -1,6 +1,6 @@
 """Services schemas are defined here."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -11,10 +11,9 @@ from idu_api.urban_api.dto import (
     ServiceDTO,
     ServicesCountCapacityDTO,
     ServiceWithGeometryDTO,
-    ServiceWithTerritoriesDTO,
 )
 from idu_api.urban_api.schemas.geometries import Geometry
-from idu_api.urban_api.schemas.service_types import ServiceTypes, UrbanFunctionBasic
+from idu_api.urban_api.schemas.service_types import ServiceType, UrbanFunctionBasic
 from idu_api.urban_api.schemas.territories import ShortTerritory, TerritoryType
 
 
@@ -23,32 +22,35 @@ class ServicesOrderByField(str, Enum):
     UPDATED_AT = "updated_at"
 
 
-class ServicesData(BaseModel):
+class Service(BaseModel):
     """Service with all its attributes."""
 
     service_id: int = Field(..., examples=[1])
-    service_type: ServiceTypes
+    service_type: ServiceType
     territory_type: TerritoryType | None
     name: str | None = Field(None, description="service name", examples=["--"])
     capacity_real: int | None = Field(None, examples=[1])
+    territories: list[ShortTerritory] | None = None
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="service additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the service was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the service was created"
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the service was last updated"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the service was last updated"
     )
 
     @classmethod
-    def from_dto(cls, dto: ServiceDTO) -> "ServicesData":
+    def from_dto(cls, dto: ServiceDTO) -> "Service":
         """
         Construct from DTO.
         """
         return cls(
             service_id=dto.service_id,
-            service_type=ServiceTypes(
+            service_type=ServiceType(
                 service_type_id=dto.service_type_id,
                 urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
                 name=dto.service_type_name,
@@ -62,66 +64,20 @@ class ServicesData(BaseModel):
                 if dto.territory_type_id is not None
                 else None
             ),
-            name=dto.name,
-            capacity_real=dto.capacity_real,
-            properties=dto.properties,
-            created_at=dto.created_at,
-            updated_at=dto.updated_at,
-        )
-
-
-class ServiceWithTerritories(BaseModel):
-    """Service with all its attributes and parent territory."""
-
-    service_id: int = Field(..., examples=[1])
-    service_type: ServiceTypes
-    territory_type: TerritoryType | None
-    name: str | None = Field(..., description="service name", examples=["--"])
-    capacity_real: int | None = Field(..., examples=[1])
-    properties: dict[str, Any] = Field(
-        default_factory=dict,
-        description="service additional properties",
-        examples=[{"additional_attribute_name": "additional_attribute_value"}],
-    )
-    territories: list[ShortTerritory]
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the service was created")
-    updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the service was last updated"
-    )
-
-    @classmethod
-    def from_dto(cls, dto: ServiceWithTerritoriesDTO) -> "ServiceWithTerritories":
-        """
-        Construct from DTO.
-        """
-        return cls(
-            service_id=dto.service_id,
-            service_type=ServiceTypes(
-                service_type_id=dto.service_type_id,
-                urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
-                name=dto.service_type_name,
-                capacity_modeled=dto.service_type_capacity_modeled,
-                code=dto.service_type_code,
-                infrastructure_type=dto.infrastructure_type,
-                properties=dto.service_type_properties,
-            ),
-            territory_type=(
-                TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
-                if dto.territory_type_id is not None
+            territories=(
+                [ShortTerritory(id=territory["territory_id"], name=territory["name"]) for territory in dto.territories]
+                if dto.territories is not None
                 else None
             ),
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
-            territories=[
-                ShortTerritory(id=territory["territory_id"], name=territory["name"]) for territory in dto.territories
-            ],
             created_at=dto.created_at,
             updated_at=dto.updated_at,
         )
 
 
-class ServicesDataPost(BaseModel):
+class ServicePost(BaseModel):
     physical_object_id: int = Field(..., examples=[1])
     object_geometry_id: int = Field(..., examples=[1])
     service_type_id: int = Field(..., examples=[1])
@@ -151,7 +107,7 @@ class ScenarioServicePost(BaseModel):
     )
 
 
-class ServicesDataPut(BaseModel):
+class ServicePut(BaseModel):
     service_type_id: int = Field(..., examples=[1])
     territory_type_id: int | None = Field(..., examples=[1])
     name: str | None = Field(..., description="service name", examples=["--"])
@@ -163,7 +119,7 @@ class ServicesDataPut(BaseModel):
     )
 
 
-class ServicesDataPatch(BaseModel):
+class ServicePatch(BaseModel):
     service_type_id: int | None = Field(None, examples=[1])
     territory_type_id: int | None = Field(None, examples=[1])
     name: str | None = Field(None, description="service name", examples=["--"])
@@ -185,10 +141,11 @@ class ServicesDataPatch(BaseModel):
         return values
 
 
-class ServicesDataWithGeometry(BaseModel):
+class ServiceWithGeometry(BaseModel):
     service_id: int = Field(..., examples=[1])
-    service_type: ServiceTypes
+    service_type: ServiceType
     territory_type: TerritoryType | None = None
+    territory: ShortTerritory
     name: str | None = Field(..., description="service name", examples=["--"])
     capacity_real: int | None = Field(..., examples=[1])
     properties: dict[str, Any] = Field(
@@ -201,19 +158,21 @@ class ServicesDataWithGeometry(BaseModel):
     osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
     geometry: Geometry
     centre_point: Geometry
-    created_at: datetime = Field(default_factory=datetime.utcnow, description="the time when the service was created")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the service was created"
+    )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="the time when the service was last updated"
+        default_factory=lambda: datetime.now(timezone.utc), description="the time when the service was last updated"
     )
 
     @classmethod
-    def from_dto(cls, dto: ServiceWithGeometryDTO) -> "ServicesDataWithGeometry":
+    def from_dto(cls, dto: ServiceWithGeometryDTO) -> "ServiceWithGeometry":
         """
         Construct from DTO.
         """
         service = cls(
             service_id=dto.service_id,
-            service_type=ServiceTypes(
+            service_type=ServiceType(
                 service_type_id=dto.service_type_id,
                 urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
                 name=dto.service_type_name,
@@ -227,6 +186,7 @@ class ServicesDataWithGeometry(BaseModel):
                 if dto.territory_type_id is not None
                 else None
             ),
+            territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
             name=dto.name,
             capacity_real=dto.capacity_real,
             properties=dto.properties,
@@ -251,7 +211,7 @@ class ServicesCountCapacity(BaseModel):
         return cls(territory_id=dto.territory_id, count=dto.count, capacity=dto.capacity)
 
 
-class ScenarioService(ServicesData):
+class ScenarioService(Service):
     """Service with all its attributes."""
 
     is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
@@ -263,7 +223,7 @@ class ScenarioService(ServicesData):
         """
         return cls(
             service_id=dto.service_id,
-            service_type=ServiceTypes(
+            service_type=ServiceType(
                 service_type_id=dto.service_type_id,
                 urban_function=UrbanFunctionBasic(id=dto.urban_function_id, name=dto.urban_function_name),
                 name=dto.service_type_name,
@@ -275,6 +235,11 @@ class ScenarioService(ServicesData):
             territory_type=(
                 TerritoryType(territory_type_id=dto.territory_type_id, name=dto.territory_type_name)
                 if dto.territory_type_id is not None
+                else None
+            ),
+            territories=(
+                [ShortTerritory(id=territory["territory_id"], name=territory["name"]) for territory in dto.territories]
+                if dto.territories is not None
                 else None
             ),
             name=dto.name,

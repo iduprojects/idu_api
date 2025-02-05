@@ -5,11 +5,11 @@ from typing import Any, Literal, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from idu_api.urban_api.dto import ServiceTypesDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from idu_api.urban_api.schemas.short_models import UrbanFunctionBasic
 
 
-class ServiceTypes(BaseModel):
+class ServiceType(BaseModel):
     service_type_id: int = Field(..., examples=[1])
     urban_function: UrbanFunctionBasic
     name: str = Field(..., description="service type unit name", examples=["Школа"])
@@ -32,7 +32,7 @@ class ServiceTypes(BaseModel):
         return infrastructure_type
 
     @classmethod
-    def from_dto(cls, dto: ServiceTypesDTO) -> "ServiceTypes":
+    def from_dto(cls, dto: ServiceTypeDTO) -> "ServiceType":
         """
         Construct from DTO.
         """
@@ -50,7 +50,7 @@ class ServiceTypes(BaseModel):
         )
 
 
-class ServiceTypesPost(BaseModel):
+class ServiceTypePost(BaseModel):
     urban_function_id: int = Field(..., description="urban function id, if set", examples=[1])
     name: str = Field(..., description="service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
@@ -65,7 +65,7 @@ class ServiceTypesPost(BaseModel):
     )
 
 
-class ServiceTypesPut(BaseModel):
+class ServiceTypePut(BaseModel):
     urban_function_id: int = Field(..., description="urban function id, if set", examples=[1])
     name: str = Field(..., description="service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(..., description="default capacity", examples=[1])
@@ -80,7 +80,7 @@ class ServiceTypesPut(BaseModel):
     )
 
 
-class ServiceTypesPatch(BaseModel):
+class ServiceTypePatch(BaseModel):
     urban_function_id: int | None = Field(None, description="urban function id, if set", examples=[1])
     name: str | None = Field(None, description="service type unit name", examples=["Школа"])
     capacity_modeled: int | None = Field(None, description="default capacity", examples=[1])
@@ -151,8 +151,8 @@ class UrbanFunctionPatch(BaseModel):
     parent_id: int | None = Field(None, description="Urban function parent id, if set", examples=[1])
     code: str | None = Field(None, description="urban function code", examples=["1"])
 
-    @model_validator(mode="before")
     @classmethod
+    @model_validator(mode="before")
     def check_empty_request(cls, values):
         """Ensure the request body is not empty."""
 
@@ -170,7 +170,7 @@ class ServiceTypesHierarchy(BaseModel):
     level: int = Field(..., description="number of urban functions above in a tree + [1]", examples=[1])
     list_label: str = Field(..., description="urban function list label", examples=["1.1.1"])
     code: str = Field(..., description="urban function code", examples=["1"])
-    children: list[Self | ServiceTypes]
+    children: list[Self | ServiceType]
 
     @classmethod
     def from_dto(cls, dto: ServiceTypesHierarchyDTO) -> "ServiceTypesHierarchy":
@@ -188,7 +188,7 @@ class ServiceTypesHierarchy(BaseModel):
                 (
                     ServiceTypesHierarchy.from_dto(child)
                     if isinstance(child, ServiceTypesHierarchyDTO)
-                    else ServiceTypes.from_dto(child)
+                    else ServiceType.from_dto(child)
                 )
                 for child in dto.children
             ],
