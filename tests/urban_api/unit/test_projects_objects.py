@@ -82,7 +82,7 @@ async def test_get_project_by_id_from_db(mock_conn: MockConnection):
                 territories_data.c.territory_id == projects_data.c.territory_id,
             ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
         )
-        .where(projects_data.c.project_id == project_id)
+        .where(projects_data.c.project_id == project_id, scenarios_data.c.is_based.is_(True))
     )
 
     # Act

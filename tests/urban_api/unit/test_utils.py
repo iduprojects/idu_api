@@ -116,21 +116,24 @@ def test_extract_values_from_model(
     patch_result = extract_values_from_model(territory_patch_req, True, True)
 
     # Assert
-    assert isinstance(expected_post_result, dict), "Result should be a dictionary."
-    assert isinstance(expected_patch_result, dict), "Result should be a dictionary."
-    assert isinstance(expected_post_result, dict), "Result should be a dictionary."
+    assert isinstance(post_result, dict), "Result should be a dictionary."
+    assert isinstance(put_result, dict), "Result should be a dictionary."
+    assert isinstance(patch_result, dict), "Result should be a dictionary."
+    assert post_result.keys() == expected_post_result.keys(), "Expected set of keys not found."
+    assert put_result.keys() == expected_put_result.keys(), "Expected set of keys not found."
+    assert patch_result.keys() == expected_patch_result.keys(), "Expected set of keys not found."
     for field in ("geometry", "centre_point"):
         if field in post_result:
             assert str(post_result[field]) == str(expected_post_result[field]), f"Post {field} mismatch."
         if field in put_result:
             assert str(put_result[field]) == str(expected_put_result[field]), f"Put {field} mismatch."
     for key in expected_post_result:
-        if key not in ("geometry", "centre_point"):
+        if key not in ("geometry", "centre_point", "updated_at"):
             assert post_result[key] == expected_post_result[key], f"Post {key} mismatch."
     for key in expected_put_result:
-        if key not in ("geometry", "centre_point"):
+        if key not in ("geometry", "centre_point", "updated_at"):
             assert put_result[key] == expected_put_result[key], f"Put {key} mismatch."
-    assert patch_result == expected_patch_result, "Expected result not found."
+    assert patch_result == expected_patch_result, "Expected patch result not found."
 
 
 @pytest.mark.asyncio

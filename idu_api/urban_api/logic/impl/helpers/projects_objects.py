@@ -89,7 +89,7 @@ async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user
                 territories_data.c.territory_id == projects_data.c.territory_id,
             ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
         )
-        .where(projects_data.c.project_id == project_id)
+        .where(projects_data.c.project_id == project_id, scenarios_data.c.is_based.is_(True))
     )
     result = (await conn.execute(statement)).mappings().one_or_none()
 
@@ -144,6 +144,7 @@ async def get_project_territory_by_id_from_db(
 
     return ProjectTerritoryDTO(**result)
 
+
 async def get_all_projects_from_db(conn: AsyncConnection) -> list[ProjectDTO]:
     """Get all available projects."""
 
@@ -158,6 +159,7 @@ async def get_all_projects_from_db(conn: AsyncConnection) -> list[ProjectDTO]:
 
     result = (await conn.execute(statement)).mappings().all()
     return [ProjectDTO(**item) for item in result]
+
 
 async def get_projects_from_db(
     conn: AsyncConnection,
