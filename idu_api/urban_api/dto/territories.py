@@ -12,12 +12,19 @@ from idu_api.urban_api.dto.normatives import NormativeDTO
 
 @dataclass(frozen=True)
 class TerritoryTypeDTO:
-    """
-    Territory type DTO used to transfer territory type data
-    """
+    """Territory type DTO used to transfer territory type data."""
 
     territory_type_id: int | None
     name: str
+
+
+@dataclass(frozen=True)
+class TargetCityTypeDTO:
+    """Target city type DTO used to transfer target city type data."""
+
+    target_city_type_id: int | None
+    name: str
+    description: str
 
 
 @dataclass
@@ -34,7 +41,11 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
     level: int
     properties: dict[str, Any] | None
     centre_point: geom.Point
-    admin_center: int | None
+    admin_center_id: int | None
+    admin_center_name: str | None
+    target_city_type_id: int | None
+    target_city_type_name: str | None
+    target_city_type_description: str | None
     okato_code: str | None
     oktmo_code: str | None
     is_city: bool
@@ -59,6 +70,15 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
             "id": territory.pop("parent_id"),
             "name": territory.pop("parent_name"),
         }
+        territory["admin_center"] = {
+            "id": territory.pop("admin_center_id"),
+            "name": territory.pop("admin_center_name"),
+        }
+        territory["target_city_type"] = {
+            "id": territory.pop("target_city_type_id"),
+            "name": territory.pop("target_city_type_name"),
+            "description": territory.pop("target_city_type_description"),
+        }
         return territory
 
 
@@ -74,7 +94,11 @@ class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attribut
     name: str
     level: int
     properties: dict[str, Any]
-    admin_center: int | None
+    admin_center_id: int | None
+    admin_center_name: str | None
+    target_city_type_id: int | None
+    target_city_type_name: str | None
+    target_city_type_description: str | None
     okato_code: str | None
     oktmo_code: str | None
     is_city: bool

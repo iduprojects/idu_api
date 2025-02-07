@@ -188,7 +188,7 @@ async def get_urban_functions_by_parent_id_from_db(
     ).select_from(
         urban_functions_dict.outerjoin(
             urban_functions_parents,
-            urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_urban_function_id,
+            urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_id,
         ),
     )
 
@@ -199,13 +199,12 @@ async def get_urban_functions_by_parent_id_from_db(
             parent_id,
             "urban_function_recursive",
             "urban_function_id",
-            "parent_urban_function_id",
         )
     else:
         statement = statement.where(
-            urban_functions_dict.c.parent_urban_function_id == parent_id
+            urban_functions_dict.c.parent_id == parent_id
             if parent_id is not None
-            else urban_functions_dict.c.parent_urban_function_id.is_(None)
+            else urban_functions_dict.c.parent_id.is_(None)
         )
 
     requested_urban_functions = statement.cte("requested_urban_functions")
@@ -228,7 +227,7 @@ async def get_urban_function_by_id_from_db(conn: AsyncConnection, urban_function
         .select_from(
             urban_functions_dict.outerjoin(
                 urban_functions_parents,
-                urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_urban_function_id,
+                urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_id,
             ),
         )
         .where(urban_functions_dict.c.urban_function_id == urban_function_id)
@@ -258,7 +257,7 @@ async def add_urban_function_to_db(
 
     statement = (
         insert(urban_functions_dict)
-        .values(**urban_function.model_dump(exclude={"parent_id"}), parent_urban_function_id=urban_function.parent_id)
+        .values(**urban_function.model_dump(exclude={"parent_id"}), parent_id=urban_function.parent_id)
         .returning(urban_functions_dict.c.urban_function_id)
     )
     urban_function_id = (await conn.execute(statement)).scalar_one()
@@ -288,17 +287,13 @@ async def put_urban_function_to_db(
         statement = (
             update(urban_functions_dict)
             .where(urban_functions_dict.c.name == urban_function.name)
-            .values(
-                **urban_function.model_dump(exclude={"parent_id"}), parent_urban_function_id=urban_function.parent_id
-            )
+            .values(**urban_function.model_dump())
             .returning(urban_functions_dict.c.urban_function_id)
         )
     else:
         statement = (
             insert(urban_functions_dict)
-            .values(
-                **urban_function.model_dump(exclude={"parent_id"}), parent_urban_function_id=urban_function.parent_id
-            )
+            .values(**urban_function.model_dump())
             .returning(urban_functions_dict.c.urban_function_id)
         )
 
@@ -334,11 +329,6 @@ async def patch_urban_function_to_db(
             raise EntityAlreadyExists("urban function", urban_function.name)
 
     values = extract_values_from_model(urban_function, exclude_unset=True)
-
-    if "parent_id" in values:
-        values.update({"parent_urban_function_id": values["parent_id"]})
-        del values["parent_id"]
-
     statement = (
         update(urban_functions_dict)
         .where(urban_functions_dict.c.urban_function_id == urban_function_id)
@@ -399,7 +389,7 @@ async def get_service_types_hierarchy_from_db(
 
     def build_filtered_hierarchy(parent_id: int = None) -> list[ServiceTypesHierarchyDTO]:
         children = []
-        for uf in [uf for uf in urban_functions if uf.parent_urban_function_id == parent_id]:
+        for uf in [uf for uf in urban_functions if uf.parent_id == parent_id]:
             filtered_children = build_filtered_hierarchy(uf.urban_function_id)
 
             relevant_service_types = [

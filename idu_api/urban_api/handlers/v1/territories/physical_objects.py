@@ -7,10 +7,9 @@ from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import PhysicalObject, PhysicalObjectType, PhysicalObjectWithGeometry
-from idu_api.urban_api.schemas.enums import Ordering
+from idu_api.urban_api.schemas.enums import OrderByField, Ordering
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.schemas.pages import Page
-from idu_api.urban_api.schemas.physical_objects import PhysicalObjectsOrderByField
 from idu_api.urban_api.utils.pagination import paginate
 
 from .routers import territories_router
@@ -74,7 +73,7 @@ async def get_physical_objects_by_territory_id(
         True, description="to get from child territories (unsafe for high level territories)"
     ),
     cities_only: bool = Query(False, description="to get only for cities"),
-    order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
@@ -159,7 +158,7 @@ async def get_physical_objects_with_geometry_by_territory_id(
         True, description="to get from child territories (unsafe for high level territories)"
     ),
     cities_only: bool = Query(False, description="to get only for cities"),
-    order_by: PhysicalObjectsOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(

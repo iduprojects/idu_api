@@ -175,9 +175,7 @@ class AsyncMinioClient:
                 raise exc
 
 
-def get_minio_client(app_config: UrbanAPIConfig = ...) -> AsyncMinioClient:
-    if app_config is ...:
-        app_config = UrbanAPIConfig.from_file_or_default()
+def get_minio_client_from_config(app_config: UrbanAPIConfig) -> AsyncMinioClient:
     minio_client = AsyncMinioClient(
         host=app_config.fileserver.host,
         port=app_config.fileserver.port,
@@ -190,3 +188,7 @@ def get_minio_client(app_config: UrbanAPIConfig = ...) -> AsyncMinioClient:
         retries=app_config.fileserver.retries,
     )
     return minio_client
+
+
+def get_minio_client() -> AsyncMinioClient:
+    return get_minio_client_from_config(UrbanAPIConfig.from_file_or_default())

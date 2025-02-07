@@ -37,6 +37,14 @@ class TerritoryTypeBasic(BaseModel):
     name: str
 
 
+class TargetCityTypeBasic(BaseModel):
+    """Basic target city type model to encapsulate in other models."""
+
+    id: int
+    name: str
+    description: str
+
+
 class MeasurementUnitBasic(BaseModel):
     """Basic measurement unit model to encapsulate in other models."""
 

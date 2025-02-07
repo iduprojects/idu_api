@@ -19,7 +19,7 @@ class ServiceTypeDTO:
 @dataclass(frozen=True)
 class UrbanFunctionDTO:
     urban_function_id: int
-    parent_urban_function_id: int | None
+    parent_id: int | None
     parent_urban_function_name: str | None
     name: str
     level: int
@@ -30,7 +30,7 @@ class UrbanFunctionDTO:
 @dataclass(frozen=True)
 class ServiceTypesHierarchyDTO:
     urban_function_id: int
-    parent_urban_function_id: int | None
+    parent_id: int | None
     name: str
     level: int
     list_label: str

@@ -20,13 +20,23 @@ class Ordering(str, Enum):
     DESC = "desc"
 
 
-class NormativeType(Enum):
+class OrderByField(str, Enum):
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+
+
+class NormativeType(str, Enum):
     SELF = "self"
     PARENT = "parent"
     GLOBAL = "global"
 
 
-class InfrastructureType(Enum):
+class InfrastructureType(str, Enum):
     BASIC = "basic"
     ADDITIONAL = "additional"
     COMFORT = "comfort"
+
+
+class ProjectType(str, Enum):
+    COMMON = "common"
+    CITY = "city"

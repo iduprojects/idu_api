@@ -23,6 +23,7 @@ from idu_api.urban_api.dto import (
     ServicesCountCapacityDTO,
     ServiceTypeDTO,
     ServiceWithGeometryDTO,
+    TargetCityTypeDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
     TerritoryWithIndicatorsDTO,
@@ -77,13 +78,19 @@ from idu_api.urban_api.logic.impl.helpers.territories_services import (
     get_services_capacity_by_territory_id_from_db,
     get_services_with_geometry_by_territory_id_from_db,
 )
-from idu_api.urban_api.logic.impl.helpers.territories_types import add_territory_type_to_db, get_territory_types_from_db
+from idu_api.urban_api.logic.impl.helpers.territories_types import (
+    add_target_city_type_to_db,
+    add_territory_type_to_db,
+    get_target_city_types_from_db,
+    get_territory_types_from_db,
+)
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import (
     HexagonPost,
     NormativeDelete,
     NormativePatch,
     NormativePost,
+    TargetCityTypePost,
     TerritoryPatch,
     TerritoryPost,
     TerritoryPut,
@@ -109,6 +116,12 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
 
     async def add_territory_type(self, territory_type: TerritoryTypePost) -> TerritoryTypeDTO:
         return await add_territory_type_to_db(self._conn, territory_type)
+
+    async def get_target_city_types(self) -> list[TargetCityTypeDTO]:
+        return await get_target_city_types_from_db(self._conn)
+
+    async def add_target_city_type(self, target_city_type: TargetCityTypePost) -> TargetCityTypeDTO:
+        return await add_target_city_type_to_db(self._conn, target_city_type)
 
     async def get_territories_by_ids(self, territory_ids: list[int]) -> list[TerritoryDTO]:
         return await get_territories_by_ids(self._conn, territory_ids)

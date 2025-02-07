@@ -25,6 +25,23 @@ Territory types:
 - name string(200)
 """
 
+target_city_types_dict_id_seq = Sequence("target_city_types_dict_id_seq")
+
+target_city_types_dict = Table(
+    "target_city_types_dict",
+    metadata,
+    Column("target_city_type_id", Integer, primary_key=True, server_default=target_city_types_dict_id_seq.next_value()),
+    Column("name", String(200), nullable=False, unique=True),
+    Column("description", String(2048), nullable=False),
+)
+
+"""
+Target city types:
+- target_city_type_id int 
+- name string(200)
+- description string(200)
+"""
+
 territories_data_id_seq = Sequence("territories_data_id_seq")
 
 territories_data = Table(
@@ -46,7 +63,8 @@ territories_data = Table(
         Geometry("POINT", spatial_index=False, from_text="ST_GeomFromEWKT", name="geometry", nullable=False),
         nullable=False,
     ),
-    Column("admin_center", ForeignKey("territories_data.territory_id"), nullable=True),
+    Column("admin_center_id", ForeignKey("territories_data.territory_id"), nullable=True),
+    Column("target_city_type_id", ForeignKey(target_city_types_dict.c.target_city_type_id), nullable=True),
     Column("okato_code", String(20)),
     Column("oktmo_code", String(20)),
     Column("is_city", Boolean, nullable=False, server_default=false()),
@@ -64,7 +82,8 @@ Territories:
 - level int
 - properties jsonb
 - centre_point geometry point
-- admin_center int
+- admin_center_id foreign key int
+- target_city_type_id foreign key int
 - okato_code string(20)
 - oktmo_code string(20)
 - is_city bool

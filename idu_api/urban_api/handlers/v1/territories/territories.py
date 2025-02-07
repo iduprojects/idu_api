@@ -14,10 +14,9 @@ from idu_api.urban_api.schemas import (
     TerritoryPut,
     TerritoryWithoutGeometry,
 )
-from idu_api.urban_api.schemas.enums import Ordering
+from idu_api.urban_api.schemas.enums import OrderByField, Ordering
 from idu_api.urban_api.schemas.geometries import Feature, GeoJSONResponse, Geometry
 from idu_api.urban_api.schemas.pages import Page
-from idu_api.urban_api.schemas.territories import TerritoriesOrderByField
 from idu_api.urban_api.utils.pagination import paginate
 
 from .routers import territories_router
@@ -160,7 +159,7 @@ async def get_territories_by_parent_id(
     name: str | None = Query(None, description="to filter territories by name substring (case-insensitive)"),
     cities_only: bool = Query(False, description="to get only cities"),
     created_at: date | None = Query(None, description="to filter by created date"),
-    order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
@@ -180,7 +179,7 @@ async def get_territories_by_parent_id(
     - **name** (str | None, Query): Filters results by a case-insensitive substring match.
     - **cities_only** (bool, Query): If True, retrieves data only for cities (default: false).
     - **created_at** (date | None, Query): Returns territories created at the specified date.
-    - **order_by** (TerritoriesOrderByField, Query): Defines the sorting attribute - territory_id (default), created_at or updated_at.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - territory_id (default), created_at or updated_at.
     - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
     - **page** (int, Query): Specifies the page number for retrieving territories (default: 1).
     - **page_size** (int, Query): Defines the number of territories per page (default: 10).
@@ -302,7 +301,7 @@ async def get_territory_without_geometry_by_parent_id(
     name: str | None = Query(None, description="to filter territories by name substring (case-insensitive)"),
     cities_only: bool = Query(False, description="to get only for cities"),
     created_at: date | None = Query(None, description="to filter by created date"),
-    order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
@@ -322,7 +321,7 @@ async def get_territory_without_geometry_by_parent_id(
     - **name** (str | None, Query): Filters results by a case-insensitive substring match.
     - **cities_only** (bool, Query): If True, retrieves data only for cities (default: false).
     - **created_at** (date | None, Query): Returns territories created at the specified date.
-    - **order_by** (TerritoriesOrderByField, Query): Defines the sorting attribute - territory_id (default), created_at or updated_at.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - territory_id (default), created_at or updated_at.
     - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
     - **page** (int, Query): Specifies the page number for retrieving territories (default: 1).
     - **page_size** (int, Query): Defines the number of territories per page (default: 10).
@@ -374,7 +373,7 @@ async def get_all_territories_without_geometry_by_parent_id(
     name: str | None = Query(None, description="to filter territories by name substring (case-insensitive)"),
     cities_only: bool = Query(False, description="to get only for cities"),
     created_at: date | None = Query(None, description="to filter by created date"),
-    order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
@@ -394,7 +393,7 @@ async def get_all_territories_without_geometry_by_parent_id(
     - **name** (str | None, Query): Filters results by a case-insensitive substring match.
     - **cities_only** (bool, Query): If True, retrieves data only for cities (default: false).
     - **created_at** (date | None, Query): Returns territories created at the specified date.
-    - **order_by** (TerritoriesOrderByField, Query): Defines the sorting attribute - territory_id (default), created_at or updated_at.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - territory_id (default), created_at or updated_at.
     - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
 
     ### Returns:

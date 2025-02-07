@@ -24,9 +24,8 @@ from idu_api.urban_api.schemas import (
     ProjectTerritory,
     Scenario,
 )
-from idu_api.urban_api.schemas.enums import Ordering
+from idu_api.urban_api.schemas.enums import OrderByField, Ordering, ProjectType
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
-from idu_api.urban_api.schemas.territories import TerritoriesOrderByField
 from idu_api.urban_api.utils.auth_client import get_user
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client
 from idu_api.urban_api.utils.pagination import paginate
@@ -143,11 +142,15 @@ async def get_scenarios_by_project_id(
 async def get_projects(
     request: Request,
     only_own: bool = Query(False, description="if True, return only user's own projects"),
-    is_regional: bool = Query(False, description="filter to get only regional projects or not"),
-    territory_id: int | None = Query(None, description="to filter by territory"),
+    is_regional: bool = Query(False, description="to get regional projects"),
+    project_type: ProjectType = Query(  # should be Optional, but swagger is generated wrongly then
+        None,
+        description="to get only certain project types, should be skipped to get all projects",
+    ),
+    territory_id: int | None = Query(None, description="to filter by region"),
     name: str | None = Query(None, description="to filter projects by name substring (case-insensitive)"),
     created_at: date | None = Query(None, description="to get projects created after created_at date"),
-    order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
@@ -158,13 +161,17 @@ async def get_projects(
     """
     ## Get a list of projects.
 
+    **WARNING:** You cannot set both `project_type` and `is_regional = True` at the same time.
+
     ### Parameters:
-    - **only_own** (bool, Query): If True, returns only images for the user's projects (default: false).
-    - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).
+    - **only_own** (bool, Query): If True, returns only the user's projects (default: false).
+    - **is_regional** (bool, Query): If True, returns regional projects, else returns only common projects (default: false).
+    - **project_type** (ProjectType | None, Query): If "city", returns cities projects, else if "common" returns only common projects (default: None).
+      NOTE: Skip to get all projects (non-regional).
     - **territory_id** (int | None, Query): Filters projects by a specific territory.
     - **name** (str | None, Query): Filters projects by a case-insensitive substring match.
     - **created_at** (date | None, Query): Returns projects created after the specified date.
-    - **order_by** (TerritoriesOrderByField, Query): Defines the sorting attribute - project_id (default), created_at or updated_at.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - project_id (default), created_at or updated_at.
     - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
     - **page** (int, Query): Specifies the page number for retrieving images (default: 1).
     - **page_size** (int, Query): Defines the number of project images per page (default: 10).
@@ -173,6 +180,7 @@ async def get_projects(
     - **Page[Project]**: A paginated list of projects.
 
     ### Errors:
+    - **400 Bad Request**: If `project_type` is set and `is_regional` is set to True.
     - **401 Unauthorized**: If authentication is required to view user-specific projects.
 
     ### Constraints:
@@ -180,18 +188,26 @@ async def get_projects(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
+    if project_type is not None and is_regional:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, choose either regional projects or certain project type.",
+        )
+
     if only_own and user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required to view own projects",
         )
 
+    project_type_value = project_type.value if project_type is not None else None
     order_by_value = order_by.value if order_by is not None else None
 
     projects = await user_project_service.get_projects(
         user.id if user is not None else None,
         only_own,
         is_regional,
+        project_type_value,
         territory_id,
         name,
         created_at,
@@ -215,7 +231,11 @@ async def get_projects(
 async def get_projects_territories(
     request: Request,
     only_own: bool = Query(False, description="if True, return only user's own projects"),
-    territory_id: int | None = Query(None, description="to filter by territory"),
+    project_type: ProjectType = Query(  # should be Optional, but swagger is generated wrongly then
+        None,
+        description="to get only certain project types, should be skipped to get all projects",
+    ),
+    territory_id: int | None = Query(None, description="to filter by region"),
     centers_only: bool = Query(False, description="display only centers"),
     user: UserDTO = Depends(get_user),
 ) -> GeoJSONResponse[Feature[Geometry, Project]]:
@@ -224,6 +244,8 @@ async def get_projects_territories(
 
     ### Parameters:
     - **only_own** (bool, Query): If True, returns only territories for the user's projects (default: false).
+    - **project_type** (ProjectType | None, Query): If "city", returns cities projects, else if "common" returns only common projects (default: None).
+      NOTE: Skip to get all projects (non-regional).
     - **territory_id** (int | None, Query): Filters results by a specific territory.
     - **centers_only** (bool, Query): If True, retrieves only center points of project territories (default: true).
 
@@ -244,8 +266,10 @@ async def get_projects_territories(
             detail="Authentication required to view own projects",
         )
 
+    project_type_value = project_type.value if project_type is not None else None
+
     projects = await user_project_service.get_projects_territories(
-        user.id if user is not None else None, only_own, territory_id
+        user.id if user is not None else None, only_own, project_type_value, territory_id
     )
 
     return await GeoJSONResponse.from_list([p.to_geojson_dict() for p in projects], centers_only=centers_only)
@@ -259,10 +283,14 @@ async def get_preview_project_images(
     request: Request,
     only_own: bool = Query(False, description="if True, return only user's own projects"),
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
+    project_type: ProjectType = Query(  # should be Optional, but swagger is generated wrongly then
+        None,
+        description="to get only certain project types, should be skipped to get all projects",
+    ),
     territory_id: int | None = Query(None, description="to filter by territory identifier", gt=0),
     name: str | None = Query(None, description="to filter projects by name substring (case-insensitive)"),
     created_at: date | None = Query(None, description="to get projects created after created_at date"),
-    order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
@@ -276,13 +304,17 @@ async def get_preview_project_images(
     """
     ## Get preview images for projects as a ZIP archive.
 
+    **WARNING:** You cannot set both `project_type` and `is_regional = True` at the same time.
+
     ### Parameters:
     - **only_own** (bool, Query): If True, returns only images for the user's projects (default: false).
     - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).
+    - **project_type** (ProjectType | None, Query): If "city", returns cities projects, else if "common" returns only common projects (default: None).
+      NOTE: Skip to get all projects (non-regional).
     - **territory_id** (int | None, Query): Filters projects by a specific territory.
     - **name** (str | None, Query): Filters projects by a case-insensitive substring match.
     - **created_at** (date | None, Query): Returns projects created after the specified date.
-    - **order_by** (TerritoriesOrderByField, Query): Defines the sorting attribute - project_id (default), created_at or updated_at.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - project_id (default), created_at or updated_at.
     - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
     - **page** (int, Query): Specifies the page number for retrieving images (default: 1).
     - **page_size** (int, Query): Defines the number of project images per page (default: 10).
@@ -291,6 +323,7 @@ async def get_preview_project_images(
     - **StreamingResponse**: A ZIP archive containing preview images of projects.
 
     ### Errors:
+    - **400 Bad Request**: If `project_type` is set and `is_regional` is set to True.
     - **401 Unauthorized**: If authentication is required to view user-specific project images.
     - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
 
@@ -299,12 +332,19 @@ async def get_preview_project_images(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
+    if project_type is not None and is_regional:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, choose either regional projects or certain project type.",
+        )
+
     if only_own and user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required to view own projects",
         )
 
+    project_type_value = project_type.value if project_type is not None else None
     order_by_value = order_by.value if order_by is not None else None
 
     zip_buffer = await user_project_service.get_preview_projects_images(
@@ -312,6 +352,7 @@ async def get_preview_project_images(
         user.id if user is not None else None,
         only_own,
         is_regional,
+        project_type_value,
         territory_id,
         name,
         created_at,
@@ -337,10 +378,14 @@ async def get_preview_project_images_url(
     request: Request,
     only_own: bool = Query(False, description="if True, return only user's own projects"),
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
+    project_type: ProjectType = Query(  # should be Optional, but swagger is generated wrongly then
+        None,
+        description="to get only certain project types, should be skipped to get all projects",
+    ),
     territory_id: int | None = Query(None, description="to filter by territory identifier", gt=0),
     name: str | None = Query(None, description="to filter projects by name substring (case-insensitive)"),
     created_at: date | None = Query(None, description="to get projects created after created_at date"),
-    order_by: TerritoriesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
@@ -354,13 +399,17 @@ async def get_preview_project_images_url(
     """
     ## Get URLs for preview images of projects.
 
+    **WARNING:** You cannot set both `project_type` and `is_regional = True` at the same time.
+
     ### Parameters:
-    - **only_own** (bool, Query): If True, returns only images for the user's projects (default: false).
+    - **only_own** (bool, Query): If True, returns only images url for the user's projects (default: false).
     - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).
+    - **project_type** (ProjectType | None, Query): If "city", returns cities projects, else if "common" returns only common projects (default: None).
+      NOTE: Skip to get all projects (non-regional).
     - **territory_id** (int | None, Query): Filters projects by a specific territory.
     - **name** (str | None, Query): Filters projects by a case-insensitive substring match.
     - **created_at** (date | None, Query): Returns projects created after the specified date.
-    - **order_by** (TerritoriesOrderByField, Query): Defines the sorting attribute - project_id (default), created_at or updated_at.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - project_id (default), created_at or updated_at.
     - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
     - **page** (int, Query): Specifies the page number for retrieving images (default: 1).
     - **page_size** (int, Query): Defines the number of project images per page (default: 10).
@@ -377,12 +426,19 @@ async def get_preview_project_images_url(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
+    if project_type is not None and is_regional:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, choose either regional projects or certain project type.",
+        )
+
     if only_own and user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required to view own projects",
         )
 
+    project_type_value = project_type.value if project_type is not None else None
     order_by_value = order_by.value if order_by is not None else None
 
     images = await user_project_service.get_preview_projects_images_url(
@@ -390,6 +446,7 @@ async def get_preview_project_images_url(
         user.id if user is not None else None,
         only_own,
         is_regional,
+        project_type_value,
         territory_id,
         name,
         created_at,
@@ -419,6 +476,7 @@ async def add_project(request: Request, project: ProjectPost, user: UserDTO = De
     - **Project**: The created project with related base scenario and region short information.
 
     ### Errors:
+    - **400 Bad Request**: If the user try to create a regional project.
     - **403 Forbidden**: If the user does not have access rights.
     - **404 Not Found**: If the related entity does not exist.
 

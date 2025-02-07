@@ -1,7 +1,6 @@
 """Services schemas are defined here."""
 
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
@@ -15,11 +14,6 @@ from idu_api.urban_api.dto import (
 from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.service_types import ServiceType, UrbanFunctionBasic
 from idu_api.urban_api.schemas.territories import ShortTerritory, TerritoryType
-
-
-class ServicesOrderByField(str, Enum):
-    CREATED_AT = "created_at"
-    UPDATED_AT = "updated_at"
 
 
 class Service(BaseModel):

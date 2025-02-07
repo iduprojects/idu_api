@@ -9,7 +9,7 @@ from sqlalchemy import cast, func, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from idu_api.common.db.entities import territories_data, territory_types_dict
+from idu_api.common.db.entities import target_city_types_dict, territories_data, territory_types_dict
 from idu_api.urban_api.dto import PageDTO, TerritoryDTO, TerritoryWithoutGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
 from idu_api.urban_api.logic.impl.helpers.utils import (
@@ -33,6 +33,7 @@ async def get_territories_by_ids(conn: AsyncConnection, ids: list[int]) -> list[
         raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
     territories_data_parents = territories_data.alias("territories_data_parents")
+    admin_centers = territories_data.alias("admin_centers")
     statement = (
         select(
             territories_data.c.territory_id,
@@ -45,7 +46,11 @@ async def get_territories_by_ids(conn: AsyncConnection, ids: list[int]) -> list[
             territories_data.c.level,
             territories_data.c.properties,
             cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
-            territories_data.c.admin_center,
+            territories_data.c.admin_center_id,
+            admin_centers.c.name.label("admin_center_name"),
+            territories_data.c.target_city_type_id,
+            target_city_types_dict.c.name.label("target_city_type_name"),
+            target_city_types_dict.c.description.label("target_city_type_description"),
             territories_data.c.okato_code,
             territories_data.c.oktmo_code,
             territories_data.c.is_city,
@@ -55,15 +60,23 @@ async def get_territories_by_ids(conn: AsyncConnection, ids: list[int]) -> list[
         .select_from(
             territories_data.join(
                 territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-            ).outerjoin(
-                territories_data_parents,
-                territories_data.c.parent_id == territories_data_parents.c.territory_id,
             )
+            .outerjoin(
+                target_city_types_dict,
+                target_city_types_dict.c.target_city_type_id == territories_data.c.target_city_type_id,
+            )
+            .outerjoin(
+                territories_data_parents,
+                territories_data_parents.c.territory_id == territories_data.c.parent_id,
+            )
+            .outerjoin(admin_centers, admin_centers.c.territory_id == territories_data.c.admin_center_id)
         )
         .where(territories_data.c.territory_id.in_(ids))
     )
 
     results = (await conn.execute(statement)).mappings().all()
+    if len(results) == 0 and len(ids) == 1:
+        raise EntityNotFoundById(ids[0], "territory")
     if len(ids) > len(results):
         raise EntitiesNotFoundByIds("territory")
 
@@ -74,8 +87,6 @@ async def get_territory_by_id(conn: AsyncConnection, territory_id: int) -> Terri
     """Get territory object by id."""
 
     results = await get_territories_by_ids(conn, [territory_id])
-    if len(results) == 0:
-        raise EntityNotFoundById(territory_id, "territory")
 
     return results[0]
 
@@ -85,7 +96,17 @@ async def add_territory_to_db(conn: AsyncConnection, territory: TerritoryPost) -
 
     if territory.parent_id is not None:
         if not await check_existence(conn, territories_data, conditions={"territory_id": territory.parent_id}):
-            raise EntityNotFoundById(territory.parent_id, "territory")
+            raise EntityNotFoundById(territory.parent_id, "parent territory")
+
+    if territory.admin_center_id is not None:
+        if not await check_existence(conn, territories_data, conditions={"territory_id": territory.admin_center_id}):
+            raise EntityNotFoundById(territory.admin_center_id, "admin center")
+
+    if territory.target_city_type_id is not None:
+        if not await check_existence(
+            conn, target_city_types_dict, conditions={"target_city_type_id": territory.target_city_type_id}
+        ):
+            raise EntityNotFoundById(territory.target_city_type_id, "target city type")
 
     if not await check_existence(
         conn, territory_types_dict, conditions={"territory_type_id": territory.territory_type_id}
@@ -112,7 +133,17 @@ async def put_territory_to_db(
 
     if territory.parent_id is not None:
         if not await check_existence(conn, territories_data, conditions={"territory_id": territory.parent_id}):
-            raise EntityNotFoundById(territory.parent_id, "territory")
+            raise EntityNotFoundById(territory.parent_id, "parent territory")
+
+    if territory.admin_center_id is not None:
+        if not await check_existence(conn, territories_data, conditions={"territory_id": territory.admin_center_id}):
+            raise EntityNotFoundById(territory.admin_center_id, "admin center")
+
+    if territory.target_city_type_id is not None:
+        if not await check_existence(
+            conn, target_city_types_dict, conditions={"target_city_type_id": territory.target_city_type_id}
+        ):
+            raise EntityNotFoundById(territory.target_city_type_id, "target city type")
 
     if not await check_existence(
         conn, territory_types_dict, conditions={"territory_type_id": territory.territory_type_id}
@@ -139,13 +170,22 @@ async def patch_territory_to_db(
 
     if territory.parent_id is not None:
         if not await check_existence(conn, territories_data, conditions={"territory_id": territory.parent_id}):
-            raise EntityNotFoundById(territory.parent_id, "territory")
+            raise EntityNotFoundById(territory.parent_id, "parent territory")
 
-    if territory.territory_type_id is not None:
+    if territory.admin_center_id is not None:
+        if not await check_existence(conn, territories_data, conditions={"territory_id": territory.admin_center_id}):
+            raise EntityNotFoundById(territory.admin_center_id, "admin center")
+
+    if territory.target_city_type_id is not None:
         if not await check_existence(
-            conn, territory_types_dict, conditions={"territory_type_id": territory.territory_type_id}
+            conn, target_city_types_dict, conditions={"target_city_type_id": territory.target_city_type_id}
         ):
-            raise EntityNotFoundById(territory.territory_type_id, "territory type")
+            raise EntityNotFoundById(territory.target_city_type_id, "target city type")
+
+    if not await check_existence(
+        conn, territory_types_dict, conditions={"territory_type_id": territory.territory_type_id}
+    ):
+        raise EntityNotFoundById(territory.territory_type_id, "territory type")
 
     values = extract_values_from_model(territory, exclude_unset=True, to_update=True)
     statement = update(territories_data).where(territories_data.c.territory_id == territory_id).values(**values)
@@ -175,6 +215,7 @@ async def get_territories_by_parent_id_from_db(
             raise EntityNotFoundById(parent_id, "territory")
 
     territories_data_parents = territories_data.alias("territories_data_parents")
+    admin_centers = territories_data.alias("admin_centers")
     statement = select(
         territories_data.c.territory_id,
         territories_data.c.territory_type_id,
@@ -186,7 +227,11 @@ async def get_territories_by_parent_id_from_db(
         territories_data.c.level,
         territories_data.c.properties,
         cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
-        territories_data.c.admin_center,
+        territories_data.c.admin_center_id,
+        admin_centers.c.name.label("admin_center_name"),
+        territories_data.c.target_city_type_id,
+        target_city_types_dict.c.name.label("target_city_type_name"),
+        target_city_types_dict.c.description.label("target_city_type_description"),
         territories_data.c.okato_code,
         territories_data.c.oktmo_code,
         territories_data.c.is_city,
@@ -195,10 +240,16 @@ async def get_territories_by_parent_id_from_db(
     ).select_from(
         territories_data.join(
             territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-        ).outerjoin(
-            territories_data_parents,
-            territories_data.c.parent_id == territories_data_parents.c.territory_id,
         )
+        .outerjoin(
+            target_city_types_dict,
+            target_city_types_dict.c.target_city_type_id == territories_data.c.target_city_type_id,
+        )
+        .outerjoin(
+            territories_data_parents,
+            territories_data_parents.c.territory_id == territories_data.c.parent_id,
+        )
+        .outerjoin(admin_centers, admin_centers.c.territory_id == territories_data.c.admin_center_id)
     )
 
     if get_all_levels:
@@ -264,6 +315,7 @@ async def get_territories_without_geometry_by_parent_id_from_db(
             raise EntityNotFoundById(parent_id, "territory")
 
     territories_data_parents = territories_data.alias("territories_data_parents")
+    admin_centers = territories_data.alias("admin_centers")
     statement = select(
         territories_data.c.territory_id,
         territories_data.c.territory_type_id,
@@ -273,7 +325,11 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         territories_data.c.name,
         territories_data.c.level,
         territories_data.c.properties,
-        territories_data.c.admin_center,
+        territories_data.c.admin_center_id,
+        admin_centers.c.name.label("admin_center_name"),
+        territories_data.c.target_city_type_id,
+        target_city_types_dict.c.name.label("target_city_type_name"),
+        target_city_types_dict.c.description.label("target_city_type_description"),
         territories_data.c.okato_code,
         territories_data.c.oktmo_code,
         territories_data.c.is_city,
@@ -282,10 +338,16 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     ).select_from(
         territories_data.join(
             territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-        ).outerjoin(
-            territories_data_parents,
-            territories_data.c.parent_id == territories_data_parents.c.territory_id,
         )
+        .outerjoin(
+            target_city_types_dict,
+            target_city_types_dict.c.target_city_type_id == territories_data.c.target_city_type_id,
+        )
+        .outerjoin(
+            territories_data_parents,
+            territories_data_parents.c.territory_id == territories_data.c.parent_id,
+        )
+        .outerjoin(admin_centers, admin_centers.c.territory_id == territories_data.c.admin_center_id)
     )
 
     if get_all_levels:
@@ -347,7 +409,7 @@ async def get_common_territory_for_geometry(conn: AsyncConnection, geometry: Geo
     if territory_id is None:
         return None
 
-    return (await get_territories_by_ids(conn, [territory_id]))[0]
+    return await get_territory_by_id(conn, territory_id)
 
 
 async def get_intersecting_territories_for_geometry(

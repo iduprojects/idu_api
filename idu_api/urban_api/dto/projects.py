@@ -20,6 +20,7 @@ class ProjectDTO:
     name: str
     description: str | None
     is_regional: bool
+    is_city: bool
     public: bool
     properties: dict[str, Any]
     created_at: datetime
@@ -58,6 +59,7 @@ class ProjectWithTerritoryDTO:
     name: str
     description: str | None
     is_regional: bool
+    is_city: bool
     public: bool
     properties: dict[str, Any]
     created_at: datetime

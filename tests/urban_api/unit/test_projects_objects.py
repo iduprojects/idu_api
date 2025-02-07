@@ -152,6 +152,7 @@ async def test_get_projects_from_db(mock_verify_params, mock_conn: MockConnectio
     filters = {
         "only_own": False,
         "is_regional": False,
+        "project_type": "common",
         "territory_id": 1,
         "name": "mock_string",
         "created_at": datetime.now(timezone.utc),
@@ -176,6 +177,7 @@ async def test_get_projects_from_db(mock_verify_params, mock_conn: MockConnectio
             scenarios_data.c.is_based.is_(True),
             projects_data.c.is_regional.is_(filters["is_regional"]),
             or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)),
+            projects_data.c.is_city.is_(False),
             projects_data.c.territory_id == filters["territory_id"],
             projects_data.c.name.ilike(f'%{filters["name"]}%'),
             func.date(projects_data.c.created_at) >= filters["created_at"],
@@ -231,9 +233,32 @@ async def test_get_projects_territories_from_db(mock_conn: MockConnection):
             or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)),
         )
     )
+    statement_with_filters = (
+        select(
+            projects_data,
+            territories_data.c.name.label("territory_name"),
+            cast(ST_AsGeoJSON(projects_territory_data.c.geometry, decimal_places), JSONB).label("geometry"),
+            cast(ST_AsGeoJSON(projects_territory_data.c.centre_point, decimal_places), JSONB).label("centre_point"),
+            scenarios_data.c.scenario_id,
+            scenarios_data.c.name.label("scenario_name"),
+        )
+        .select_from(
+            projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+            .join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+            .join(projects_territory_data, projects_territory_data.c.project_id == projects_data.c.project_id)
+        )
+        .where(
+            scenarios_data.c.is_based.is_(True),
+            projects_data.c.is_regional.is_(False),
+            projects_data.c.user_id == user_id,
+            projects_data.c.is_city.is_(False),
+            projects_data.c.territory_id == 1,
+        )
+    )
 
     # Act
-    result = await get_projects_territories_from_db(mock_conn, user_id, False, None)
+    await get_projects_territories_from_db(mock_conn, user_id, True, "common", 1)
+    result = await get_projects_territories_from_db(mock_conn, user_id, False, None, None)
     geojson_result = await GeoJSONResponse.from_list([r.to_geojson_dict() for r in result])
 
     # Assert
@@ -244,7 +269,8 @@ async def test_get_projects_territories_from_db(mock_conn: MockConnection):
     assert isinstance(
         Project(**geojson_result.features[0].properties), Project
     ), "Couldn't create pydantic model from geojson properties."
-    mock_conn.execute_mock.assert_called_once_with(str(statement))
+    mock_conn.execute_mock.assert_any_call(str(statement))
+    mock_conn.execute_mock.assert_any_call(str(statement_with_filters))
 
 
 @pytest.mark.asyncio
@@ -259,6 +285,7 @@ async def test_get_preview_projects_images_from_minio(
     filters = {
         "only_own": False,
         "is_regional": False,
+        "project_type": "common",
         "territory_id": 1,
         "name": "mock_string",
         "created_at": datetime.now(timezone.utc),
@@ -272,6 +299,7 @@ async def test_get_preview_projects_images_from_minio(
         .where(
             projects_data.c.is_regional.is_(filters["is_regional"]),
             or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)),
+            projects_data.c.is_city.is_(False),
             projects_data.c.territory_id == filters["territory_id"],
             projects_data.c.name.ilike(f'%{filters["name"]}%'),
             func.date(projects_data.c.created_at) >= filters["created_at"],
@@ -310,6 +338,7 @@ async def test_get_preview_projects_images_url_from_minio(
     filters = {
         "only_own": False,
         "is_regional": False,
+        "project_type": "common",
         "territory_id": 1,
         "name": "mock_string",
         "created_at": datetime.now(timezone.utc),
@@ -323,6 +352,7 @@ async def test_get_preview_projects_images_url_from_minio(
         .where(
             projects_data.c.is_regional.is_(filters["is_regional"]),
             or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)),
+            projects_data.c.is_city.is_(False),
             projects_data.c.territory_id == filters["territory_id"],
             projects_data.c.name.ilike(f'%{filters["name"]}%'),
             func.date(projects_data.c.created_at) >= filters["created_at"],
@@ -487,7 +517,8 @@ async def test_add_project_to_db(mock_conn: MockConnection, project_post_req: Pr
             name=project_post_req.name,
             description=project_post_req.description,
             public=project_post_req.public,
-            is_regional=project_post_req.is_regional,
+            is_regional=False,
+            is_city=project_post_req.is_city,
             properties=project_post_req.properties,
         )
         .returning(projects_data.c.project_id)
@@ -497,7 +528,7 @@ async def test_add_project_to_db(mock_conn: MockConnection, project_post_req: Pr
         .values(
             project_id=1,
             functional_zone_type_id=None,
-            name="base scenario for user project",
+            name="Исходный пользовательский сценарий",
             is_based=True,
             parent_id=1,
         )
@@ -528,8 +559,9 @@ async def test_add_project_to_db(mock_conn: MockConnection, project_post_req: Pr
     ), "Expected insertion into user_projects.projects_territory_data table not found."
     mock_conn.execute_mock.assert_any_call(str(statement_for_base_scenario))
     assert any(
-        "INSERT INTO user_projects.profiles_data" in str(args[0]) for args in mock_conn.execute_mock.call_args_list
-    ), "Expected insertion into user_projects.profiles_data table not found."
+        "INSERT INTO user_projects.functional_zones_data" in str(args[0])
+        for args in mock_conn.execute_mock.call_args_list
+    ), "Expected insertion into user_projects.functional_zones_data table not found."
     assert any(
         "INSERT INTO user_projects.object_geometries_data" in str(args[0])
         for args in mock_conn.execute_mock.call_args_list

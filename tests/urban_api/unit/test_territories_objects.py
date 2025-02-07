@@ -12,6 +12,7 @@ from sqlalchemy import cast, func, insert, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db.entities import (
+    target_city_types_dict,
     territories_data,
     territory_types_dict,
 )
@@ -45,6 +46,7 @@ async def test_get_territories_by_ids(mock_conn: MockConnection):
     not_found_ids = [1, 2]
     too_many_ids = list(range(OBJECTS_NUMBER_LIMIT + 1))
     territories_data_parents = territories_data.alias("territories_data_parents")
+    admin_centers = territories_data.alias("admin_centers")
     statement = (
         select(
             territories_data.c.territory_id,
@@ -57,7 +59,11 @@ async def test_get_territories_by_ids(mock_conn: MockConnection):
             territories_data.c.level,
             territories_data.c.properties,
             cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
-            territories_data.c.admin_center,
+            territories_data.c.admin_center_id,
+            admin_centers.c.name.label("admin_center_name"),
+            territories_data.c.target_city_type_id,
+            target_city_types_dict.c.name.label("target_city_type_name"),
+            target_city_types_dict.c.description.label("target_city_type_description"),
             territories_data.c.okato_code,
             territories_data.c.oktmo_code,
             territories_data.c.is_city,
@@ -67,10 +73,16 @@ async def test_get_territories_by_ids(mock_conn: MockConnection):
         .select_from(
             territories_data.join(
                 territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-            ).outerjoin(
-                territories_data_parents,
-                territories_data.c.parent_id == territories_data_parents.c.territory_id,
             )
+            .outerjoin(
+                target_city_types_dict,
+                target_city_types_dict.c.target_city_type_id == territories_data.c.target_city_type_id,
+            )
+            .outerjoin(
+                territories_data_parents,
+                territories_data_parents.c.territory_id == territories_data.c.parent_id,
+            )
+            .outerjoin(admin_centers, admin_centers.c.territory_id == territories_data.c.admin_center_id)
         )
         .where(territories_data.c.territory_id.in_(ids))
     )
@@ -95,12 +107,22 @@ async def test_add_territory_to_db(mock_conn: MockConnection, territory_post_req
 
     # Arrange
     async def check_parent_territory(conn, table, conditions):
-        if table == territories_data:
+        if table == territories_data and conditions == {"territory_id": territory_post_req.parent_id}:
+            return False
+        return True
+
+    async def check_admin_center(conn, table, conditions):
+        if table == territories_data and conditions == {"territory_id": territory_post_req.admin_center_id}:
             return False
         return True
 
     async def check_territory_type(conn, table, conditions):
         if table == territory_types_dict:
+            return False
+        return True
+
+    async def check_target_city_type(conn, table, conditions):
+        if table == target_city_types_dict:
             return False
         return True
 
@@ -113,7 +135,8 @@ async def test_add_territory_to_db(mock_conn: MockConnection, territory_post_req
             territory_type_id=territory_post_req.territory_type_id,
             parent_id=territory_post_req.parent_id,
             properties=territory_post_req.properties,
-            admin_center=territory_post_req.admin_center,
+            admin_center_id=territory_post_req.admin_center_id,
+            target_city_type_id=territory_post_req.target_city_type_id,
             okato_code=territory_post_req.okato_code,
             oktmo_code=territory_post_req.oktmo_code,
             is_city=territory_post_req.is_city,
@@ -128,10 +151,21 @@ async def test_add_territory_to_db(mock_conn: MockConnection, territory_post_req
     ):
         with pytest.raises(EntityNotFoundById):
             await add_territory_to_db(mock_conn, territory_post_req)
-
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.territories_objects.check_existence",
+        new=AsyncMock(side_effect=check_admin_center),
+    ):
+        with pytest.raises(EntityNotFoundById):
+            await add_territory_to_db(mock_conn, territory_post_req)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.territories_objects.check_existence",
         new=AsyncMock(side_effect=check_territory_type),
+    ):
+        with pytest.raises(EntityNotFoundById):
+            await add_territory_to_db(mock_conn, territory_post_req)
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.territories_objects.check_existence",
+        new=AsyncMock(side_effect=check_target_city_type),
     ):
         with pytest.raises(EntityNotFoundById):
             await add_territory_to_db(mock_conn, territory_post_req)
@@ -162,8 +196,18 @@ async def test_put_territory_to_db(mock_conn: MockConnection, territory_put_req:
             return False
         return True
 
+    async def check_admin_center(conn, table, conditions):
+        if table == territories_data and conditions == {"territory_id": territory_put_req.admin_center_id}:
+            return False
+        return True
+
     async def check_territory_type(conn, table, conditions):
         if table == territory_types_dict:
+            return False
+        return True
+
+    async def check_target_city_type(conn, table, conditions):
+        if table == target_city_types_dict:
             return False
         return True
 
@@ -177,7 +221,8 @@ async def test_put_territory_to_db(mock_conn: MockConnection, territory_put_req:
             territory_type_id=territory_put_req.territory_type_id,
             parent_id=territory_put_req.parent_id,
             properties=territory_put_req.properties,
-            admin_center=territory_put_req.admin_center,
+            admin_center_id=territory_put_req.admin_center_id,
+            target_city_type_id=territory_put_req.target_city_type_id,
             okato_code=territory_put_req.okato_code,
             oktmo_code=territory_put_req.oktmo_code,
             is_city=territory_put_req.is_city,
@@ -200,7 +245,19 @@ async def test_put_territory_to_db(mock_conn: MockConnection, territory_put_req:
             await put_territory_to_db(mock_conn, territory_id, territory_put_req)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.territories_objects.check_existence",
+        new=AsyncMock(side_effect=check_admin_center),
+    ):
+        with pytest.raises(EntityNotFoundById):
+            await put_territory_to_db(mock_conn, territory_id, territory_put_req)
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.territories_objects.check_existence",
         new=AsyncMock(side_effect=check_territory_type),
+    ):
+        with pytest.raises(EntityNotFoundById):
+            await put_territory_to_db(mock_conn, territory_id, territory_put_req)
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.territories_objects.check_existence",
+        new=AsyncMock(side_effect=check_target_city_type),
     ):
         with pytest.raises(EntityNotFoundById):
             await put_territory_to_db(mock_conn, territory_id, territory_put_req)
@@ -230,8 +287,18 @@ async def test_patch_territory_to_db(mock_conn: MockConnection, territory_patch_
             return False
         return True
 
+    async def check_admin_center(conn, table, conditions):
+        if table == territories_data and conditions == {"territory_id": territory_patch_req.admin_center_id}:
+            return False
+        return True
+
     async def check_territory_type(conn, table, conditions):
         if table == territory_types_dict:
+            return False
+        return True
+
+    async def check_target_city_type(conn, table, conditions):
+        if table == target_city_types_dict:
             return False
         return True
 
@@ -256,7 +323,19 @@ async def test_patch_territory_to_db(mock_conn: MockConnection, territory_patch_
             await patch_territory_to_db(mock_conn, territory_id, territory_patch_req)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.territories_objects.check_existence",
+        new=AsyncMock(side_effect=check_admin_center),
+    ):
+        with pytest.raises(EntityNotFoundById):
+            await patch_territory_to_db(mock_conn, territory_id, territory_patch_req)
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.territories_objects.check_existence",
         new=AsyncMock(side_effect=check_territory_type),
+    ):
+        with pytest.raises(EntityNotFoundById):
+            await patch_territory_to_db(mock_conn, territory_id, territory_patch_req)
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.territories_objects.check_existence",
+        new=AsyncMock(side_effect=check_target_city_type),
     ):
         with pytest.raises(EntityNotFoundById):
             await patch_territory_to_db(mock_conn, territory_id, territory_patch_req)
@@ -285,6 +364,7 @@ async def test_get_territories_by_parent_id_from_db(mock_conn: MockConnection):
     }
     limit, offset = 10, 0
     territories_data_parents = territories_data.alias("territories_data_parents")
+    admin_centers = territories_data.alias("admin_centers")
     statement = select(
         territories_data.c.territory_id,
         territories_data.c.territory_type_id,
@@ -296,7 +376,11 @@ async def test_get_territories_by_parent_id_from_db(mock_conn: MockConnection):
         territories_data.c.level,
         territories_data.c.properties,
         cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
-        territories_data.c.admin_center,
+        territories_data.c.admin_center_id,
+        admin_centers.c.name.label("admin_center_name"),
+        territories_data.c.target_city_type_id,
+        target_city_types_dict.c.name.label("target_city_type_name"),
+        target_city_types_dict.c.description.label("target_city_type_description"),
         territories_data.c.okato_code,
         territories_data.c.oktmo_code,
         territories_data.c.is_city,
@@ -305,10 +389,16 @@ async def test_get_territories_by_parent_id_from_db(mock_conn: MockConnection):
     ).select_from(
         territories_data.join(
             territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-        ).outerjoin(
-            territories_data_parents,
-            territories_data.c.parent_id == territories_data_parents.c.territory_id,
         )
+        .outerjoin(
+            target_city_types_dict,
+            target_city_types_dict.c.target_city_type_id == territories_data.c.target_city_type_id,
+        )
+        .outerjoin(
+            territories_data_parents,
+            territories_data_parents.c.territory_id == territories_data.c.parent_id,
+        )
+        .outerjoin(admin_centers, admin_centers.c.territory_id == territories_data.c.admin_center_id)
     )
     recursive_statement = build_recursive_query(
         statement, territories_data, parent_id, "territories_recursive", "territory_id"
@@ -398,6 +488,7 @@ async def test_get_territories_without_geometry_by_parent_id_from_db(mock_conn: 
     }
     limit, offset = 10, 0
     territories_data_parents = territories_data.alias("territories_data_parents")
+    admin_centers = territories_data.alias("admin_centers")
     statement = select(
         territories_data.c.territory_id,
         territories_data.c.territory_type_id,
@@ -407,7 +498,11 @@ async def test_get_territories_without_geometry_by_parent_id_from_db(mock_conn: 
         territories_data.c.name,
         territories_data.c.level,
         territories_data.c.properties,
-        territories_data.c.admin_center,
+        territories_data.c.admin_center_id,
+        admin_centers.c.name.label("admin_center_name"),
+        territories_data.c.target_city_type_id,
+        target_city_types_dict.c.name.label("target_city_type_name"),
+        target_city_types_dict.c.description.label("target_city_type_description"),
         territories_data.c.okato_code,
         territories_data.c.oktmo_code,
         territories_data.c.is_city,
@@ -416,10 +511,16 @@ async def test_get_territories_without_geometry_by_parent_id_from_db(mock_conn: 
     ).select_from(
         territories_data.join(
             territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-        ).outerjoin(
-            territories_data_parents,
-            territories_data.c.parent_id == territories_data_parents.c.territory_id,
         )
+        .outerjoin(
+            target_city_types_dict,
+            target_city_types_dict.c.target_city_type_id == territories_data.c.target_city_type_id,
+        )
+        .outerjoin(
+            territories_data_parents,
+            territories_data_parents.c.territory_id == territories_data.c.parent_id,
+        )
+        .outerjoin(admin_centers, admin_centers.c.territory_id == territories_data.c.admin_center_id)
     )
     recursive_statement = build_recursive_query(
         statement, territories_data, parent_id, "territories_recursive", "territory_id"

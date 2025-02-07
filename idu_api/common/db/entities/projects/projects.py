@@ -2,7 +2,7 @@
 
 from typing import Callable
 
-from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, Text, func, text
+from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, Sequence, String, Table, Text, false, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db import metadata
@@ -27,6 +27,7 @@ projects_data = Table(
     Column("description", String(4096), nullable=True),
     Column("public", Boolean, nullable=False),
     Column("is_regional", Boolean, nullable=False),
+    Column("is_city", Boolean, nullable=False, server_default=false()),
     Column("properties", JSONB(astext_type=Text()), nullable=False, server_default=text("'{}'::jsonb")),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
@@ -42,6 +43,7 @@ Project data:
 - description string(4086)
 - public bool
 - is_regional bool
+- is_city bool
 - properties jsonb
 - created_at timestamp
 - updated_at timestamp
