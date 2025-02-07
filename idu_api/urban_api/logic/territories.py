@@ -22,6 +22,7 @@ from idu_api.urban_api.dto import (
     ServicesCountCapacityDTO,
     ServiceTypeDTO,
     ServiceWithGeometryDTO,
+    TargetCityTypeDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
     TerritoryWithIndicatorsDTO,
@@ -33,6 +34,7 @@ from idu_api.urban_api.schemas import (
     NormativeDelete,
     NormativePatch,
     NormativePost,
+    TargetCityTypePost,
     TerritoryPatch,
     TerritoryPost,
     TerritoryPut,
@@ -53,6 +55,14 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
     @abc.abstractmethod
     async def add_territory_type(self, territory_type: TerritoryTypePost) -> TerritoryTypeDTO:
         """Create territory type object."""
+
+    @abc.abstractmethod
+    async def get_target_city_types(self) -> list[TargetCityTypeDTO]:
+        """Get all target city type objects."""
+
+    @abc.abstractmethod
+    async def add_target_city_type(self, target_city_type: TargetCityTypePost) -> TargetCityTypeDTO:
+        """Create target city type object."""
 
     @abc.abstractmethod
     async def get_territories_by_ids(self, territory_ids: list[int]) -> list[TerritoryDTO]:

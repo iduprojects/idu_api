@@ -275,16 +275,16 @@ async def test_get_urban_functions_by_parent_id_from_db(mock_conn: MockConnectio
     ).select_from(
         urban_functions_dict.outerjoin(
             urban_functions_parents,
-            urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_urban_function_id,
+            urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_id,
         ),
     )
-    cte_statement = statement.where(urban_functions_dict.c.parent_urban_function_id == parent_id)
+    cte_statement = statement.where(urban_functions_dict.c.parent_id == parent_id)
     cte_statement = cte_statement.cte(name="urban_function_recursive", recursive=True)
     recursive_part = statement.join(
-        cte_statement, urban_functions_dict.c.parent_urban_function_id == cte_statement.c.urban_function_id
+        cte_statement, urban_functions_dict.c.parent_id == cte_statement.c.urban_function_id
     )
     recursive_statement = select(cte_statement.union_all(recursive_part))
-    statement = statement.where(urban_functions_dict.c.parent_urban_function_id == parent_id)
+    statement = statement.where(urban_functions_dict.c.parent_id == parent_id)
     requested_urban_functions = statement.cte("requested_urban_functions")
     statement = select(requested_urban_functions)
     recursive_statement = select(recursive_statement.cte("requested_urban_functions"))
@@ -320,7 +320,7 @@ async def test_get_urban_function_by_id_from_db(mock_conn: MockConnection):
         .select_from(
             urban_functions_dict.outerjoin(
                 urban_functions_parents,
-                urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_urban_function_id,
+                urban_functions_parents.c.urban_function_id == urban_functions_dict.c.parent_id,
             ),
         )
         .where(urban_functions_dict.c.urban_function_id == urban_function_id)
@@ -352,10 +352,7 @@ async def test_add_urban_function_to_db(mock_conn: MockConnection, urban_functio
 
     statement = (
         insert(urban_functions_dict)
-        .values(
-            **urban_function_post_req.model_dump(exclude={"parent_id"}),
-            parent_urban_function_id=urban_function_post_req.parent_id,
-        )
+        .values(**urban_function_post_req.model_dump())
         .returning(urban_functions_dict.c.urban_function_id)
     )
 
@@ -399,18 +396,14 @@ async def test_put_urban_function_to_db(mock_conn: MockConnection, urban_functio
     statement_insert = (
         insert(urban_functions_dict)
         .values(
-            **urban_function_put_req.model_dump(exclude={"parent_id"}),
-            parent_urban_function_id=urban_function_put_req.parent_id,
+            **urban_function_put_req.model_dump(),
         )
         .returning(urban_functions_dict.c.urban_function_id)
     )
     statement_update = (
         update(urban_functions_dict)
         .where(urban_functions_dict.c.name == urban_function_put_req.name)
-        .values(
-            **urban_function_put_req.model_dump(exclude={"parent_id"}),
-            parent_urban_function_id=urban_function_put_req.parent_id,
-        )
+        .values(**urban_function_put_req.model_dump())
         .returning(urban_functions_dict.c.urban_function_id)
     )
 
@@ -461,10 +454,7 @@ async def test_patch_urban_function_to_db(mock_conn: MockConnection, urban_funct
     statement = (
         update(urban_functions_dict)
         .where(urban_functions_dict.c.urban_function_id == urban_function_id)
-        .values(
-            **urban_function_patch_req.model_dump(exclude={"parent_id"}, exclude_unset=True),
-            parent_urban_function_id=urban_function_patch_req.parent_id,
-        )
+        .values(**urban_function_patch_req.model_dump(exclude_unset=True))
     )
 
     # Act

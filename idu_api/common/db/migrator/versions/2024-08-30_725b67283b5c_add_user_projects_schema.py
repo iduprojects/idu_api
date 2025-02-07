@@ -165,7 +165,7 @@ def upgrade() -> None:
         schema="user_projects",
     )
     op.create_table(
-        "projects_functional_zones",
+        "profiles_data",
         sa.Column("scenario_id", sa.Integer(), nullable=False),
         sa.Column("profile_type_id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(length=200), nullable=False),

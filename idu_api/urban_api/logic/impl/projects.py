@@ -153,6 +153,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         user_id: str | None,
         only_own: bool,
         is_regional: bool,
+        project_type: Literal["common", "city"] | None,
         territory_id: int | None,
         name: str | None,
         created_at: date | None,
@@ -165,6 +166,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             user_id,
             only_own,
             is_regional,
+            project_type,
             territory_id,
             name,
             created_at,
@@ -177,9 +179,10 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         self,
         user_id: str | None,
         only_own: bool,
+        project_type: Literal["common", "city"] | None,
         territory_id: int | None,
     ) -> list[ProjectWithTerritoryDTO]:
-        return await get_projects_territories_from_db(self._conn, user_id, only_own, territory_id)
+        return await get_projects_territories_from_db(self._conn, user_id, only_own, project_type, territory_id)
 
     async def get_preview_projects_images(
         self,
@@ -187,6 +190,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         user_id: str | None,
         only_own: bool,
         is_regional: bool,
+        project_type: Literal["common", "city"] | None,
         territory_id: int | None,
         name: str | None,
         created_at: date | None,
@@ -201,6 +205,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             user_id,
             only_own,
             is_regional,
+            project_type,
             territory_id,
             name,
             created_at,
@@ -217,6 +222,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         user_id: str | None,
         only_own: bool,
         is_regional: bool,
+        project_type: Literal["common", "city"] | None,
         territory_id: int | None,
         name: str | None,
         created_at: date | None,
@@ -231,6 +237,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             user_id,
             only_own,
             is_regional,
+            project_type,
             territory_id,
             name,
             created_at,

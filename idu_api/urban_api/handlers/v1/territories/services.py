@@ -7,10 +7,9 @@ from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import Service, ServicesCountCapacity, ServiceType, ServiceWithGeometry
-from idu_api.urban_api.schemas.enums import Ordering
+from idu_api.urban_api.schemas.enums import OrderByField, Ordering
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.schemas.pages import Page
-from idu_api.urban_api.schemas.services import ServicesOrderByField
 from idu_api.urban_api.utils.pagination import paginate
 
 from .routers import territories_router
@@ -74,7 +73,7 @@ async def get_services_by_territory_id(
         True, description="to get from child territories (unsafe for high level territories)"
     ),
     cities_only: bool = Query(False, description="to get only cities or not"),
-    order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
@@ -96,7 +95,7 @@ async def get_services_by_territory_id(
     - **include_child_territories** (bool, Query): If True, includes data from child territories (default: True).
       Note: This can be unsafe for high-level territories due to potential performance issues.
     - **cities_only** (bool, Query): If True, retrieves data only for cities (default: false).
-    - **order_by** (TerritoriesOrderByField, Query): Defines the sorting attribute - service_id (default), created_at or updated_at.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - service_id (default), created_at or updated_at.
     - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
     - **page** (int, Query): Specifies the page number for retrieving services (default: 1).
     - **page_size** (int, Query): Defines the number of services per page (default: 10).
@@ -159,7 +158,7 @@ async def get_services_with_geometry_by_territory_id(
         True, description="to get from child territories (unsafe for high level territories)"
     ),
     cities_only: bool = Query(False, description="to get only for cities"),
-    order_by: ServicesOrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
         None, description="Attribute to set ordering (created_at or updated_at)"
     ),
     ordering: Ordering = Query(
@@ -181,7 +180,7 @@ async def get_services_with_geometry_by_territory_id(
     - **include_child_territories** (bool, Query): If True, includes data from child territories (default: True).
       Note: This can be unsafe for high-level territories due to potential performance issues.
     - **cities_only** (bool, Query): If True, retrieves data only for cities (default: false).
-    - **order_by** (TerritoriesOrderByField, Query): Defines the sorting attribute - service_id (default), created_at or updated_at.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - service_id (default), created_at or updated_at.
     - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
     - **page** (int, Query): Specifies the page number for retrieving services (default: 1).
     - **page_size** (int, Query): Defines the number of services per page (default: 10).

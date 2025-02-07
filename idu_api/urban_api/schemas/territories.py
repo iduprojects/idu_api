@@ -1,24 +1,19 @@
 """Territory schemas are defined here."""
 
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from idu_api.urban_api.dto import TerritoryDTO, TerritoryTypeDTO, TerritoryWithoutGeometryDTO
+from idu_api.urban_api.dto import TargetCityTypeDTO, TerritoryDTO, TerritoryTypeDTO, TerritoryWithoutGeometryDTO
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
 from idu_api.urban_api.schemas.short_models import (
     ShortIndicatorValueInfo,
     ShortNormativeInfo,
     ShortTerritory,
+    TargetCityTypeBasic,
     TerritoryTypeBasic,
 )
-
-
-class TerritoriesOrderByField(str, Enum):
-    CREATED_AT = "created_at"
-    UPDATED_AT = "updated_at"
 
 
 class TerritoryType(BaseModel):
@@ -39,6 +34,34 @@ class TerritoryTypePost(BaseModel):
     name: str = Field(..., description="territory type unit name", examples=["Город"])
 
 
+class TargetCityType(BaseModel):
+    """Target city type with all its attributes."""
+
+    target_city_type_id: int = Field(..., description="target city type identifier", examples=[1])
+    name: str = Field(..., description="target city type unit name", examples=["Административный центр"])
+    description: str = Field(
+        ...,
+        description="target city type unit description",
+        examples=["Статус адинистративного центра субъекта Российской Федерации"],
+    )
+
+    @classmethod
+    def from_dto(cls, dto: TargetCityTypeDTO) -> "TargetCityType":
+        """Construct from DTO."""
+        return cls(target_city_type_id=dto.target_city_type_id, name=dto.name, description=dto.description)
+
+
+class TargetCityTypePost(BaseModel):
+    """Schema of target city type for POST request."""
+
+    name: str = Field(..., description="target city type unit name", examples=["Административный центр"])
+    description: str = Field(
+        ...,
+        description="target city type unit description",
+        examples=["Статус адинистративного центра субъекта Российской Федерации"],
+    )
+
+
 class Territory(BaseModel):
     """Territory with all its attributes."""
 
@@ -54,7 +77,8 @@ class Territory(BaseModel):
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
     centre_point: Geometry
-    admin_center: int | None = Field(..., examples=[1])
+    admin_center: ShortTerritory | None
+    target_city_type: TargetCityTypeBasic | None
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
     is_city: bool = Field(..., description="boolean parameter to determine cities")
@@ -78,7 +102,23 @@ class Territory(BaseModel):
             level=dto.level,
             properties=dto.properties,
             centre_point=Geometry.from_shapely_geometry(dto.centre_point),
-            admin_center=dto.admin_center,
+            admin_center=(
+                ShortTerritory(
+                    id=dto.admin_center_id,
+                    name=dto.admin_center_name,
+                )
+                if dto.admin_center_id is not None
+                else None
+            ),
+            target_city_type=(
+                TargetCityTypeBasic(
+                    id=dto.target_city_type_id,
+                    name=dto.target_city_type_name,
+                    description=dto.target_city_type_description,
+                )
+                if dto.target_city_type_id is not None
+                else None
+            ),
             okato_code=dto.okato_code,
             oktmo_code=dto.oktmo_code,
             is_city=dto.is_city,
@@ -100,7 +140,8 @@ class TerritoryPost(GeometryValidationModel):
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
     centre_point: Geometry | None = None
-    admin_center: int | None = Field(None, examples=[1])
+    admin_center_id: int | None = Field(None, examples=[1])
+    target_city_type_id: int | None = Field(None, examples=[1])
     okato_code: str | None = Field(None, examples=["1"])
     oktmo_code: str | None = Field(None, examples=["1"])
     is_city: bool = Field(..., description="boolean parameter to determine cities")
@@ -119,7 +160,8 @@ class TerritoryPut(GeometryValidationModel):
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
     centre_point: Geometry
-    admin_center: int | None = Field(..., examples=[1])
+    admin_center_id: int | None = Field(..., examples=[1])
+    target_city_type_id: int | None = Field(..., examples=[1])
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
     is_city: bool = Field(..., description="boolean parameter to determine cities")
@@ -138,7 +180,8 @@ class TerritoryPatch(GeometryValidationModel):
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
     centre_point: Geometry | None = None
-    admin_center: int | None = Field(None, examples=[1])
+    admin_center_id: int | None = Field(None, examples=[1])
+    target_city_type_id: int | None = Field(None, examples=[1])
     okato_code: str | None = Field(None, examples=["1"])
     oktmo_code: str | None = Field(None, examples=["1"])
     is_city: bool = Field(None, description="boolean parameter to determine cities")
@@ -165,7 +208,8 @@ class TerritoryWithoutGeometry(BaseModel):
         description="territory additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    admin_center: int | None = Field(..., examples=[1])
+    admin_center: ShortTerritory | None
+    target_city_type: TargetCityTypeBasic | None
     okato_code: str | None = Field(..., examples=["1"])
     oktmo_code: str | None = Field(..., examples=["1"])
     is_city: bool = Field(..., description="boolean parameter to determine cities")
@@ -186,7 +230,23 @@ class TerritoryWithoutGeometry(BaseModel):
             name=dto.name,
             level=dto.level,
             properties=dto.properties,
-            admin_center=dto.admin_center,
+            admin_center=(
+                ShortTerritory(
+                    id=dto.admin_center_id,
+                    name=dto.admin_center_name,
+                )
+                if dto.admin_center_id is not None
+                else None
+            ),
+            target_city_type=(
+                TargetCityTypeBasic(
+                    id=dto.target_city_type_id,
+                    name=dto.target_city_type_name,
+                    description=dto.target_city_type_description,
+                )
+                if dto.target_city_type_id is not None
+                else None
+            ),
             okato_code=dto.okato_code,
             oktmo_code=dto.oktmo_code,
             is_city=dto.is_city,

@@ -31,6 +31,7 @@ def project_req() -> Project:
         description="Test Project Description",
         public=True,
         is_regional=False,
+        is_city=False,
         properties={},
     )
 
@@ -44,7 +45,7 @@ def project_post_req() -> ProjectPost:
         territory_id=1,
         description="Test Project Description",
         public=True,
-        is_regional=False,
+        is_city=False,
         territory=ProjectTerritoryPost(
             geometry=Geometry(
                 type="Polygon",

@@ -133,7 +133,9 @@ def test_extract_values_from_model(
     for key in expected_put_result:
         if key not in ("geometry", "centre_point", "updated_at"):
             assert put_result[key] == expected_put_result[key], f"Put {key} mismatch."
-    assert patch_result == expected_patch_result, "Expected patch result not found."
+    for key in expected_patch_result:
+        if key != "updated_at":
+            assert patch_result[key] == expected_patch_result[key], f"Patch {key} mismatch."
 
 
 @pytest.mark.asyncio

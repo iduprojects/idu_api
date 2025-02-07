@@ -166,6 +166,7 @@ async def get_projects_from_db(
     user_id: str | None,
     only_own: bool,
     is_regional: bool,
+    project_type: Literal["common", "city"] | None,
     territory_id: int | None,
     name: str | None,
     created_at: date | None,
@@ -198,6 +199,11 @@ async def get_projects_from_db(
     else:
         statement = statement.where(projects_data.c.public.is_(True))
 
+    if project_type == "common":
+        statement = statement.where(projects_data.c.is_city.is_(False))
+    elif project_type == "city":
+        statement = statement.where(projects_data.c.is_city.is_(True))
+
     if territory_id is not None:
         statement = statement.where(projects_data.c.territory_id == territory_id)
     if name is not None:
@@ -228,6 +234,7 @@ async def get_projects_territories_from_db(
     conn: AsyncConnection,
     user_id: str | None,
     only_own: bool,
+    project_type: Literal["common", "city"] | None,
     territory_id: int | None,
 ) -> list[ProjectWithTerritoryDTO]:
     """Get all public and user's project territories."""
@@ -256,6 +263,11 @@ async def get_projects_territories_from_db(
     else:
         statement = statement.where(projects_data.c.public.is_(True))
 
+    if project_type == "common":
+        statement = statement.where(projects_data.c.is_city.is_(False))
+    elif project_type == "city":
+        statement = statement.where(projects_data.c.is_city.is_(True))
+
     if territory_id is not None:
         statement = statement.where(projects_data.c.territory_id == territory_id)
 
@@ -270,6 +282,7 @@ async def get_preview_projects_images_from_minio(
     user_id: str | None,
     only_own: bool,
     is_regional: bool,
+    project_type: Literal["common", "city"] | None,
     territory_id: int | None,
     name: str | None,
     created_at: date | None,
@@ -294,6 +307,12 @@ async def get_preview_projects_images_from_minio(
         statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
     else:
         statement = statement.where(projects_data.c.public.is_(True))
+
+    if project_type == "common":
+        statement = statement.where(projects_data.c.is_city.is_(False))
+    elif project_type == "city":
+        statement = statement.where(projects_data.c.is_city.is_(True))
+
     if territory_id is not None:
         statement = statement.where(projects_data.c.territory_id == territory_id)
     if name is not None:
@@ -333,6 +352,7 @@ async def get_preview_projects_images_url_from_minio(
     user_id: str | None,
     only_own: bool,
     is_regional: bool,
+    project_type: Literal["common", "city"] | None,
     territory_id: int | None,
     name: str | None,
     created_at: date | None,
@@ -357,6 +377,12 @@ async def get_preview_projects_images_url_from_minio(
         statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
     else:
         statement = statement.where(projects_data.c.public.is_(True))
+
+    if project_type == "common":
+        statement = statement.where(projects_data.c.is_city.is_(False))
+    elif project_type == "city":
+        statement = statement.where(projects_data.c.is_city.is_(True))
+
     if territory_id is not None:
         statement = statement.where(projects_data.c.territory_id == territory_id)
     if name is not None:
@@ -559,7 +585,7 @@ async def add_project_to_db(
 
     statement_for_project = (
         insert(projects_data)
-        .values(**project.model_dump(exclude={"territory"}), user_id=user_id)
+        .values(**project.model_dump(exclude={"territory"}), user_id=user_id, is_regional=False)
         .returning(projects_data.c.project_id)
     )
     project_id = (await conn.execute(statement_for_project)).scalar_one()

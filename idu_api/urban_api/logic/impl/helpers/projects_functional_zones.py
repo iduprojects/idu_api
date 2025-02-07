@@ -62,7 +62,7 @@ async def get_functional_zones_by_scenario_id_from_db(
 
     statement = (
         select(
-            projects_functional_zones.c.profile_id.label("functional_zone_id"),
+            projects_functional_zones.c.functional_zone_id,
             projects_functional_zones.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
             projects_functional_zones.c.functional_zone_type_id,
@@ -187,7 +187,7 @@ async def get_functional_zone_by_ids(conn: AsyncConnection, ids: list[int]) -> l
 
     statement = (
         select(
-            projects_functional_zones.c.profile_id.label("functional_zone_id"),
+            projects_functional_zones.c.functional_zone_id,
             projects_functional_zones.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
             projects_functional_zones.c.functional_zone_type_id,
@@ -211,7 +211,7 @@ async def get_functional_zone_by_ids(conn: AsyncConnection, ids: list[int]) -> l
                 == projects_functional_zones.c.functional_zone_type_id,
             )
         )
-        .where(projects_functional_zones.c.profile_id.in_(ids))
+        .where(projects_functional_zones.c.functional_zone_id.in_(ids))
     )
 
     result = (await conn.execute(statement)).mappings().all()
@@ -245,7 +245,9 @@ async def add_scenario_functional_zones_to_db(
     ]
 
     statement = (
-        insert(projects_functional_zones).values(insert_values).returning(projects_functional_zones.c.profile_id)
+        insert(projects_functional_zones)
+        .values(insert_values)
+        .returning(projects_functional_zones.c.functional_zone_id)
     )
     functional_zone_ids = (await conn.execute(statement)).scalars().all()
 
@@ -265,7 +267,9 @@ async def put_scenario_functional_zone_to_db(
 
     await check_scenario(conn, scenario_id, user_id, to_edit=True)
 
-    if not await check_existence(conn, projects_functional_zones, conditions={"profile_id": functional_zone_id}):
+    if not await check_existence(
+        conn, projects_functional_zones, conditions={"functional_zone_id": functional_zone_id}
+    ):
         raise EntityNotFoundById(functional_zone_id, "scenario functional zone")
 
     if not await check_existence(
@@ -278,7 +282,7 @@ async def put_scenario_functional_zone_to_db(
     values = extract_values_from_model(functional_zone, to_update=True)
     statement = (
         update(projects_functional_zones)
-        .where(projects_functional_zones.c.profile_id == functional_zone_id)
+        .where(projects_functional_zones.c.functional_zone_id == functional_zone_id)
         .values(**values)
     )
 
@@ -299,7 +303,9 @@ async def patch_scenario_functional_zone_to_db(
 
     await check_scenario(conn, scenario_id, user_id, to_edit=True)
 
-    if not await check_existence(conn, projects_functional_zones, conditions={"profile_id": functional_zone_id}):
+    if not await check_existence(
+        conn, projects_functional_zones, conditions={"functional_zone_id": functional_zone_id}
+    ):
         raise EntityNotFoundById(functional_zone_id, "scenario functional zone")
 
     if functional_zone.functional_zone_type_id is not None:
@@ -314,7 +320,7 @@ async def patch_scenario_functional_zone_to_db(
 
     statement = (
         update(projects_functional_zones)
-        .where(projects_functional_zones.c.profile_id == functional_zone_id)
+        .where(projects_functional_zones.c.functional_zone_id == functional_zone_id)
         .values(**values)
     )
 

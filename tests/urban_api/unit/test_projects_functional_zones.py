@@ -94,7 +94,7 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_check: AsyncMock
     user_id = "mock_sting"
     statement = (
         select(
-            projects_functional_zones.c.profile_id.label("functional_zone_id"),
+            projects_functional_zones.c.functional_zone_id,
             projects_functional_zones.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
             projects_functional_zones.c.functional_zone_type_id,
@@ -244,7 +244,7 @@ async def test_get_functional_zone_by_ids(mock_conn: MockConnection):
     too_many_ids = list(range(OBJECTS_NUMBER_LIMIT + 1))
     statement = (
         select(
-            projects_functional_zones.c.profile_id.label("functional_zone_id"),
+            projects_functional_zones.c.functional_zone_id,
             projects_functional_zones.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
             projects_functional_zones.c.functional_zone_type_id,
@@ -268,7 +268,7 @@ async def test_get_functional_zone_by_ids(mock_conn: MockConnection):
                 == projects_functional_zones.c.functional_zone_type_id,
             )
         )
-        .where(projects_functional_zones.c.profile_id.in_(ids))
+        .where(projects_functional_zones.c.functional_zone_id.in_(ids))
     )
 
     # Act
@@ -303,7 +303,7 @@ async def test_add_scenario_functional_zones_to_db(
     insert_statement = (
         insert(projects_functional_zones)
         .values([{"scenario_id": scenario_id, **extract_values_from_model(scenario_functional_zone_post_req)}])
-        .returning(projects_functional_zones.c.profile_id)
+        .returning(projects_functional_zones.c.functional_zone_id)
     )
 
     # Act
@@ -348,7 +348,7 @@ async def test_put_scenario_functional_zone_to_db(
     user_id = "mock_string"
     update_statement = (
         update(projects_functional_zones)
-        .where(projects_functional_zones.c.profile_id == functional_zone_id)
+        .where(projects_functional_zones.c.functional_zone_id == functional_zone_id)
         .values(
             name=scenario_functional_zone_put_req.name,
             functional_zone_type_id=scenario_functional_zone_put_req.functional_zone_type_id,
@@ -414,7 +414,7 @@ async def test_patch_scenario_functional_zone_to_db(
     user_id = "test_user"
     update_statement = (
         update(projects_functional_zones)
-        .where(projects_functional_zones.c.profile_id == functional_zone_id)
+        .where(projects_functional_zones.c.functional_zone_id == functional_zone_id)
         .values(
             **scenario_functional_zone_patch_req.model_dump(exclude_unset=True), updated_at=datetime.now(timezone.utc)
         )

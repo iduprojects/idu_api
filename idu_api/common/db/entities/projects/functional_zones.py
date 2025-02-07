@@ -12,12 +12,12 @@ from idu_api.common.db.entities.projects.scenarios import scenarios_data
 
 func: Callable
 
-profiles_data_id_seq = Sequence("profiles_data_id_seq")
+functional_zones_data_id_seq = Sequence("functional_zones_data_id_seq", schema="user_projects")
 
 projects_functional_zones = Table(
-    "profiles_data",
+    "functional_zones_data",
     metadata,
-    Column("profile_id", Integer, primary_key=True, server_default=profiles_data_id_seq.next_value()),
+    Column("functional_zone_id", Integer, primary_key=True, server_default=functional_zones_data_id_seq.next_value()),
     Column(
         "scenario_id",
         Integer,

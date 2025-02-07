@@ -115,6 +115,8 @@ from .services import (
     ServiceWithGeometry,
 )
 from .territories import (
+    TargetCityType,
+    TargetCityTypePost,
     Territory,
     TerritoryPatch,
     TerritoryPost,
@@ -244,4 +246,6 @@ __all__ = [
     "UrbanObjectPatch",
     "ScenarioUrbanObject",
     "OkResponse",
+    "TargetCityType",
+    "TargetCityTypePost",
 ]

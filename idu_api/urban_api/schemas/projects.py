@@ -62,9 +62,10 @@ class Project(BaseModel):
     name: str = Field(..., description="project name", examples=["--"])
     territory: ShortTerritory
     base_scenario: ShortScenario
-    description: str | None = Field(None, description="project description", examples=["--"])
+    description: str | None = Field(..., description="project description", examples=["--"])
     public: bool = Field(..., description="project publicity", examples=[True])
     is_regional: bool = Field(..., description="boolean parameter for regional projects", examples=[False])
+    is_city: bool = Field(..., description="boolean parameter to determine city project")
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="project's additional properties",
@@ -84,6 +85,7 @@ class Project(BaseModel):
             description=dto.description,
             public=dto.public,
             is_regional=dto.is_regional,
+            is_city=dto.is_city,
             properties=dto.properties,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
@@ -95,9 +97,9 @@ class ProjectPost(BaseModel):
 
     name: str = Field(..., description="project name", examples=["--"])
     territory_id: int = Field(..., description="project region identifier", examples=[1])
+    is_city: bool = Field(..., description="boolean parameter to determine city project")
     description: str | None = Field(None, description="project description", examples=["--"])
     public: bool = Field(..., description="project publicity", examples=[True])
-    is_regional: bool = Field(..., description="boolean parameter for regional projects", examples=[False])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="project's additional properties",

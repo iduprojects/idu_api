@@ -121,10 +121,10 @@ class UrbanFunction(BaseModel):
             urban_function_id=dto.urban_function_id,
             parent_urban_function=(
                 UrbanFunctionBasic(
-                    id=dto.parent_urban_function_id,
+                    id=dto.parent_id,
                     name=dto.parent_urban_function_name,
                 )
-                if dto.parent_urban_function_id is not None
+                if dto.parent_id is not None
                 else None
             ),
             name=dto.name,
@@ -163,7 +163,7 @@ class UrbanFunctionPatch(BaseModel):
 
 class ServiceTypesHierarchy(BaseModel):
     urban_function_id: int = Field(..., examples=[1])
-    parent_urban_function_id: int | None = Field(
+    parent_id: int | None = Field(
         ..., description="parent urban function identifier (null if it is top-level urban function)", examples=[1]
     )
     name: str = Field(..., description="urban function unit name", examples=["Образование"])
@@ -179,7 +179,7 @@ class ServiceTypesHierarchy(BaseModel):
         """
         return cls(
             urban_function_id=dto.urban_function_id,
-            parent_urban_function_id=dto.parent_urban_function_id,
+            parent_id=dto.parent_id,
             name=dto.name,
             level=dto.level,
             list_label=dto.list_label,

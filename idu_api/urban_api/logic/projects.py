@@ -65,6 +65,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         user_id: str | None,
         only_own: bool,
         is_regional: bool,
+        project_type: Literal["common", "city"] | None,
         territory_id: int | None,
         name: str | None,
         created_at: date | None,
@@ -82,6 +83,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         self,
         user_id: str | None,
         only_own: bool,
+        project_type: Literal["common", "city"] | None,
         territory_id: int | None,
     ) -> list[ProjectWithTerritoryDTO]:
         """Get all public and user's projects territories."""
@@ -93,6 +95,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         user_id: str | None,
         only_own: bool,
         is_regional: bool,
+        project_type: Literal["common", "city"] | None,
         territory_id: int | None,
         name: str | None,
         created_at: date | None,
@@ -110,6 +113,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         user_id: str | None,
         only_own: bool,
         is_regional: bool,
+        project_type: Literal["common", "city"] | None,
         territory_id: int | None,
         name: str | None,
         created_at: date | None,

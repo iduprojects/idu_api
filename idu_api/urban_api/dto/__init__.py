@@ -44,6 +44,7 @@ from .services import (
     ShortServiceDTO,
 )
 from .territories import (
+    TargetCityTypeDTO,
     TerritoryDTO,
     TerritoryTypeDTO,
     TerritoryWithIndicatorDTO,
@@ -107,4 +108,5 @@ __all__ = [
     "ScenarioUrbanObjectDTO",
     "FunctionalZoneSourceDTO",
     "ProjectWithTerritoryDTO",
+    "TargetCityTypeDTO",
 ]

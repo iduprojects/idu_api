@@ -25,6 +25,6 @@ from idu_api.common.db.entities.projects.urban_objects import projects_urban_obj
 from idu_api.common.db.entities.service_types import service_types_dict, urban_functions_dict
 from idu_api.common.db.entities.service_types_normatives import service_types_normatives_data
 from idu_api.common.db.entities.services import services_data
-from idu_api.common.db.entities.territories import territories_data, territory_types_dict
+from idu_api.common.db.entities.territories import target_city_types_dict, territories_data, territory_types_dict
 from idu_api.common.db.entities.territory_indicators import territory_indicators_data
 from idu_api.common.db.entities.urban_objects import urban_objects_data

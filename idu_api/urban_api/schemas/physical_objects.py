@@ -1,7 +1,6 @@
 """Physical object schemas are defined here."""
 
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
@@ -15,11 +14,6 @@ from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationMod
 from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic, PhysicalObjectType
 from idu_api.urban_api.schemas.short_models import ShortLivingBuilding
 from idu_api.urban_api.schemas.territories import ShortTerritory
-
-
-class PhysicalObjectsOrderByField(str, Enum):
-    CREATED_AT = "created_at"
-    UPDATED_AT = "updated_at"
 
 
 class PhysicalObject(BaseModel):
