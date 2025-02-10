@@ -237,7 +237,7 @@ async def get_all_territories_by_parent_id(
     name: str | None = Query(None, description="to filter territories by name substring (case-insensitive)"),
     cities_only: bool = Query(False, description="to get only for cities"),
     created_at: date | None = Query(None, description="to filter by created date"),
-    centers_only: bool | None = Query(None, description="display only centers"),
+    centers_only: bool = Query(False, description="display only centers"),
 ) -> GeoJSONResponse[Feature[FeatureGeometry, TerritoryWithoutGeometry]]:
     """
     ## Get all territories as a GeoJSON collection by parent identifier.
@@ -252,7 +252,7 @@ async def get_all_territories_by_parent_id(
     - **name** (str | None, Query): Filters results by a case-insensitive substring match.
     - **cities_only** (bool, Query): If True, retrieves data only for cities (default: false).
     - **created_at** (date | None, Query): Returns territories created at the specified date.
-    - **centers_only** (bool | None, Query): If True, retrieves only center points of territories (default: false).
+    - **centers_only** (bool, Query): If True, retrieves only center points of territories (default: false).
 
     ### Returns:
     - **GeoJSONResponse[Feature[FeatureGeometry, TerritoryWithoutGeometry]]**: A GeoJSON response containing territories.

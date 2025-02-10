@@ -180,7 +180,7 @@ async def copy_scenario_to_db(
     new_scenario_id = (
         await conn.execute(
             insert(scenarios_data)
-            .values(**scenario.model_dump(), parent_id=1, is_based=False)
+            .values(**scenario.model_dump(), parent_id=parent_scenario_id, is_based=False)
             .returning(scenarios_data.c.scenario_id)
         )
     ).scalar_one()

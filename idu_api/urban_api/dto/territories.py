@@ -73,12 +73,12 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
         territory["admin_center"] = {
             "id": territory.pop("admin_center_id"),
             "name": territory.pop("admin_center_name"),
-        }
+        } if territory["admin_center_id"] is not None else None
         territory["target_city_type"] = {
             "id": territory.pop("target_city_type_id"),
             "name": territory.pop("target_city_type_name"),
             "description": territory.pop("target_city_type_description"),
-        }
+        } if territory["target_city_type_id"] is not None else None
         return territory
 
 
