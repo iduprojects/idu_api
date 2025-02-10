@@ -5,8 +5,8 @@ from datetime import date
 from typing import Literal
 
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
-from sqlalchemy.ext.asyncio import AsyncConnection
 
+from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.dto import (
     FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
@@ -105,45 +105,55 @@ Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString
 class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-public-methods
     """Service to manipulate territories entities.
 
-    Based on async SQLAlchemy connection.
+    Based on async `PostgresConnectionManager`.
     """
 
-    def __init__(self, conn: AsyncConnection):
-        self._conn = conn
+    def __init__(self, connection_manager: PostgresConnectionManager):
+        self._connection_manager = connection_manager
 
     async def get_territory_types(self) -> list[TerritoryTypeDTO]:
-        return await get_territory_types_from_db(self._conn)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_territory_types_from_db(conn)
 
     async def add_territory_type(self, territory_type: TerritoryTypePost) -> TerritoryTypeDTO:
-        return await add_territory_type_to_db(self._conn, territory_type)
+        async with self._connection_manager.get_connection() as conn:
+            return await add_territory_type_to_db(conn, territory_type)
 
     async def get_target_city_types(self) -> list[TargetCityTypeDTO]:
-        return await get_target_city_types_from_db(self._conn)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_target_city_types_from_db(conn)
 
     async def add_target_city_type(self, target_city_type: TargetCityTypePost) -> TargetCityTypeDTO:
-        return await add_target_city_type_to_db(self._conn, target_city_type)
+        async with self._connection_manager.get_connection() as conn:
+            return await add_target_city_type_to_db(conn, target_city_type)
 
     async def get_territories_by_ids(self, territory_ids: list[int]) -> list[TerritoryDTO]:
-        return await get_territories_by_ids(self._conn, territory_ids)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_territories_by_ids(conn, territory_ids)
 
     async def get_territory_by_id(self, territory_id: int) -> TerritoryDTO:
-        return await get_territory_by_id(self._conn, territory_id)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_territory_by_id(conn, territory_id)
 
     async def add_territory(self, territory: TerritoryPost) -> TerritoryDTO:
-        return await add_territory_to_db(self._conn, territory)
+        async with self._connection_manager.get_connection() as conn:
+            return await add_territory_to_db(conn, territory)
 
     async def put_territory(self, territory_id: int, territory: TerritoryPut) -> TerritoryDTO:
-        return await put_territory_to_db(self._conn, territory_id, territory)
+        async with self._connection_manager.get_connection() as conn:
+            return await put_territory_to_db(conn, territory_id, territory)
 
     async def patch_territory(self, territory_id: int, territory: TerritoryPatch) -> TerritoryDTO:
-        return await patch_territory_to_db(self._conn, territory_id, territory)
+        async with self._connection_manager.get_connection() as conn:
+            return await patch_territory_to_db(conn, territory_id, territory)
 
     async def get_service_types_by_territory_id(
         self, territory_id: int, include_child_territories: bool, cities_only: bool
     ) -> list[ServiceTypeDTO]:
-        return await get_service_types_by_territory_id_from_db(
-            self._conn, territory_id, include_child_territories, cities_only
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_service_types_by_territory_id_from_db(
+                conn, territory_id, include_child_territories, cities_only
+            )
 
     async def get_services_by_territory_id(
         self,
@@ -157,18 +167,19 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[ServiceDTO] | PageDTO[ServiceDTO]:
-        return await get_services_by_territory_id_from_db(
-            self._conn,
-            territory_id,
-            service_type_id,
-            urban_function_id,
-            name,
-            include_child_territories,
-            cities_only,
-            order_by,
-            ordering,
-            paginate,
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_services_by_territory_id_from_db(
+                conn,
+                territory_id,
+                service_type_id,
+                urban_function_id,
+                name,
+                include_child_territories,
+                cities_only,
+                order_by,
+                ordering,
+                paginate,
+            )
 
     async def get_services_with_geometry_by_territory_id(
         self,
@@ -182,26 +193,29 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[ServiceWithGeometryDTO] | PageDTO[ServiceWithGeometryDTO]:
-        return await get_services_with_geometry_by_territory_id_from_db(
-            self._conn,
-            territory_id,
-            service_type_id,
-            urban_function_id,
-            name,
-            include_child_territories,
-            cities_only,
-            order_by,
-            ordering,
-            paginate,
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_services_with_geometry_by_territory_id_from_db(
+                conn,
+                territory_id,
+                service_type_id,
+                urban_function_id,
+                name,
+                include_child_territories,
+                cities_only,
+                order_by,
+                ordering,
+                paginate,
+            )
 
     async def get_services_capacity_by_territory_id(
         self, territory_id: int, level: int, service_type_id: int | None
     ) -> list[ServicesCountCapacityDTO]:
-        return await get_services_capacity_by_territory_id_from_db(self._conn, territory_id, level, service_type_id)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_services_capacity_by_territory_id_from_db(conn, territory_id, level, service_type_id)
 
     async def get_indicators_by_territory_id(self, territory_id: int) -> list[IndicatorDTO]:
-        return await get_indicators_by_territory_id_from_db(self._conn, territory_id)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_indicators_by_territory_id_from_db(conn, territory_id)
 
     async def get_indicator_values_by_territory_id(
         self,
@@ -216,19 +230,20 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         include_child_territories: bool,
         cities_only: bool,
     ) -> list[IndicatorValueDTO]:
-        return await get_indicator_values_by_territory_id_from_db(
-            self._conn,
-            territory_id,
-            indicator_ids,
-            indicators_group_id,
-            start_date,
-            end_date,
-            value_type,
-            information_source,
-            last_only,
-            include_child_territories,
-            cities_only,
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_indicator_values_by_territory_id_from_db(
+                conn,
+                territory_id,
+                indicator_ids,
+                indicators_group_id,
+                start_date,
+                end_date,
+                value_type,
+                information_source,
+                last_only,
+                include_child_territories,
+                cities_only,
+            )
 
     async def get_indicator_values_by_parent_id(
         self,
@@ -241,17 +256,18 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         information_source: str | None,
         last_only: bool,
     ) -> list[TerritoryWithIndicatorsDTO]:
-        return await get_indicator_values_by_parent_id_from_db(
-            self._conn,
-            parent_id,
-            indicator_ids,
-            indicators_group_id,
-            start_date,
-            end_date,
-            value_type,
-            information_source,
-            last_only,
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_indicator_values_by_parent_id_from_db(
+                conn,
+                parent_id,
+                indicator_ids,
+                indicators_group_id,
+                start_date,
+                end_date,
+                value_type,
+                information_source,
+                last_only,
+            )
 
     async def get_normatives_by_territory_id(
         self,
@@ -260,39 +276,46 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         include_child_territories,
         cities_only,
     ) -> list[NormativeDTO]:
-        return await get_normatives_by_territory_id_from_db(
-            self._conn, territory_id, year, include_child_territories, cities_only
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_normatives_by_territory_id_from_db(
+                conn, territory_id, year, include_child_territories, cities_only
+            )
 
     async def add_normatives_to_territory(
         self, territory_id: int, normatives: list[NormativePost]
     ) -> list[NormativeDTO]:
-        return await add_normatives_to_territory_to_db(self._conn, territory_id, normatives)
+        async with self._connection_manager.get_connection() as conn:
+            return await add_normatives_to_territory_to_db(conn, territory_id, normatives)
 
     async def put_normatives_by_territory_id(
         self, territory_id: int, normatives: list[NormativePost]
     ) -> list[NormativeDTO]:
-        return await put_normatives_by_territory_id_in_db(self._conn, territory_id, normatives)
+        async with self._connection_manager.get_connection() as conn:
+            return await put_normatives_by_territory_id_in_db(conn, territory_id, normatives)
 
     async def patch_normatives_by_territory_id(
         self, territory_id: int, normatives: list[NormativePatch]
     ) -> list[NormativeDTO]:
-        return await patch_normatives_by_territory_id_in_db(self._conn, territory_id, normatives)
+        async with self._connection_manager.get_connection() as conn:
+            return await patch_normatives_by_territory_id_in_db(conn, territory_id, normatives)
 
     async def delete_normatives_by_territory_id(self, territory_id: int, normatives: list[NormativeDelete]) -> dict:
-        return await delete_normatives_by_territory_id_in_db(self._conn, territory_id, normatives)
+        async with self._connection_manager.get_connection() as conn:
+            return await delete_normatives_by_territory_id_in_db(conn, territory_id, normatives)
 
     async def get_normatives_values_by_parent_id(
         self, parent_id: int | None, year: int
     ) -> list[TerritoryWithNormativesDTO]:
-        return await get_normatives_values_by_parent_id_from_db(self._conn, parent_id, year)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_normatives_values_by_parent_id_from_db(conn, parent_id, year)
 
     async def get_physical_object_types_by_territory_id(
         self, territory_id: int, include_child_territories: bool, cities_only: bool
     ) -> list[PhysicalObjectTypeDTO]:
-        return await get_physical_object_types_by_territory_id_from_db(
-            self._conn, territory_id, include_child_territories, cities_only
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_physical_object_types_by_territory_id_from_db(
+                conn, territory_id, include_child_territories, cities_only
+            )
 
     async def get_physical_objects_by_territory_id(
         self,
@@ -306,18 +329,19 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[PhysicalObjectDTO] | PageDTO[PhysicalObjectDTO]:
-        return await get_physical_objects_by_territory_id_from_db(
-            self._conn,
-            territory_id,
-            physical_object_type_id,
-            physical_object_function_id,
-            name,
-            include_child_territories,
-            cities_only,
-            order_by,
-            ordering,
-            paginate,
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_physical_objects_by_territory_id_from_db(
+                conn,
+                territory_id,
+                physical_object_type_id,
+                physical_object_function_id,
+                name,
+                include_child_territories,
+                cities_only,
+                order_by,
+                ordering,
+                paginate,
+            )
 
     async def get_physical_objects_with_geometry_by_territory_id(
         self,
@@ -331,18 +355,19 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         ordering: Literal["asc", "desc"],
         paginate: bool = False,
     ) -> list[PhysicalObjectWithGeometryDTO] | PageDTO[PhysicalObjectWithGeometryDTO]:
-        return await get_physical_objects_with_geometry_by_territory_id_from_db(
-            self._conn,
-            territory_id,
-            physical_object_type_id,
-            physical_object_function_id,
-            name,
-            include_child_territories,
-            cities_only,
-            order_by,
-            ordering,
-            paginate,
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_physical_objects_with_geometry_by_territory_id_from_db(
+                conn,
+                territory_id,
+                physical_object_type_id,
+                physical_object_function_id,
+                name,
+                include_child_territories,
+                cities_only,
+                order_by,
+                ordering,
+                paginate,
+            )
 
     async def get_living_buildings_with_geometry_by_territory_id(
         self,
@@ -350,16 +375,18 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         include_child_territories: bool,
         cities_only: bool,
     ) -> PageDTO[LivingBuildingWithGeometryDTO]:
-        return await get_living_buildings_with_geometry_by_territory_id_from_db(
-            self._conn, territory_id, include_child_territories, cities_only
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_living_buildings_with_geometry_by_territory_id_from_db(
+                conn, territory_id, include_child_territories, cities_only
+            )
 
     async def get_functional_zones_sources_by_territory_id(
         self, territory_id: int, include_child_territories: bool, cities_only: bool
     ) -> list[FunctionalZoneSourceDTO]:
-        return await get_functional_zones_sources_by_territory_id_from_db(
-            self._conn, territory_id, include_child_territories, cities_only
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_functional_zones_sources_by_territory_id_from_db(
+                conn, territory_id, include_child_territories, cities_only
+            )
 
     async def get_functional_zones_by_territory_id(
         self,
@@ -370,22 +397,24 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         include_child_territories: bool,
         cities_only: bool,
     ) -> list[FunctionalZoneDTO]:
-        return await get_functional_zones_by_territory_id_from_db(
-            self._conn,
-            territory_id,
-            year,
-            source,
-            functional_zone_type_id,
-            include_child_territories,
-            cities_only,
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_functional_zones_by_territory_id_from_db(
+                conn,
+                territory_id,
+                year,
+                source,
+                functional_zone_type_id,
+                include_child_territories,
+                cities_only,
+            )
 
     async def delete_all_functional_zones_for_territory(
         self, territory_id: int, include_child_territories: bool, cities_only: bool
     ) -> dict:
-        return await delete_all_functional_zones_for_territory_from_db(
-            self._conn, territory_id, include_child_territories, cities_only
-        )
+        async with self._connection_manager.get_connection() as conn:
+            return await delete_all_functional_zones_for_territory_from_db(
+                conn, territory_id, include_child_territories, cities_only
+            )
 
     async def get_territories_by_parent_id(
         self,
@@ -399,18 +428,19 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         ordering: Literal["asc", "desc"] | None,
         paginate: bool,
     ) -> list[TerritoryDTO] | PageDTO[TerritoryDTO]:
-        return await get_territories_by_parent_id_from_db(
-            self._conn,
-            parent_id,
-            get_all_levels,
-            territory_type_id,
-            name,
-            cities_only,
-            created_at,
-            order_by,
-            ordering,
-            paginate,
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_territories_by_parent_id_from_db(
+                conn,
+                parent_id,
+                get_all_levels,
+                territory_type_id,
+                name,
+                cities_only,
+                created_at,
+                order_by,
+                ordering,
+                paginate,
+            )
 
     async def get_territories_without_geometry_by_parent_id(
         self,
@@ -424,34 +454,40 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         ordering: Literal["asc", "desc"] | None,
         paginate: bool,
     ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
-        return await get_territories_without_geometry_by_parent_id_from_db(
-            self._conn,
-            parent_id,
-            get_all_levels,
-            territory_type_id,
-            name,
-            cities_only,
-            created_at,
-            order_by,
-            ordering,
-            paginate,
-        )
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_territories_without_geometry_by_parent_id_from_db(
+                conn,
+                parent_id,
+                get_all_levels,
+                territory_type_id,
+                name,
+                cities_only,
+                created_at,
+                order_by,
+                ordering,
+                paginate,
+            )
 
     async def get_common_territory_for_geometry(self, geometry: Geom) -> TerritoryDTO | None:
-        return await get_common_territory_for_geometry(self._conn, geometry)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_common_territory_for_geometry(conn, geometry)
 
     async def get_intersecting_territories_for_geometry(
         self,
         parent_territory: int,
         geometry: Geom,
     ) -> list[TerritoryDTO]:
-        return await get_intersecting_territories_for_geometry(self._conn, parent_territory, geometry)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_intersecting_territories_for_geometry(conn, parent_territory, geometry)
 
     async def get_hexagons_by_territory_id(self, territory_id: int) -> list[HexagonDTO]:
-        return await get_hexagons_by_territory_id_from_db(self._conn, territory_id)
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_hexagons_by_territory_id_from_db(conn, territory_id)
 
     async def add_hexagons_by_territory_id(self, territory_id: int, hexagons: list[HexagonPost]) -> list[HexagonDTO]:
-        return await add_hexagons_by_territory_id_to_db(self._conn, territory_id, hexagons)
+        async with self._connection_manager.get_connection() as conn:
+            return await add_hexagons_by_territory_id_to_db(conn, territory_id, hexagons)
 
     async def delete_hexagons_by_territory_id(self, territory_id: int) -> dict:
-        return await delete_hexagons_by_territory_id_from_db(self._conn, territory_id)
+        async with self._connection_manager.get_connection() as conn:
+            return await delete_hexagons_by_territory_id_from_db(conn, territory_id)

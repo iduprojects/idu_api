@@ -5,14 +5,13 @@ from typing import Any, Protocol
 
 import structlog
 from fastapi import FastAPI, Request
-from sqlalchemy.ext.asyncio import AsyncConnection
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 
 
-class DependencyInitializer(Protocol):  # pylint: disablt=too-few-public-methods
-    def __call__(self, conn: AsyncConnection, **kwargs: Any) -> Any: ...
+class DependencyInitializer(Protocol):  # pylint: disable=too-few-public-methods
+    def __call__(self, conn: PostgresConnectionManager, **kwargs: Any) -> Any: ...
 
 
 class PassServicesDependenciesMiddleware(BaseHTTPMiddleware):
@@ -42,7 +41,6 @@ class PassServicesDependenciesMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         logger: structlog.stdlib.BoundLogger = request.state.logger
-        async with self._connection_manager.get_connection() as conn:
-            for dependency, init in self._dependencies.items():
-                setattr(request.state, dependency, init(conn, logger=logger))
-            return await call_next(request)
+        for dependency, init in self._dependencies.items():
+            setattr(request.state, dependency, init(self._connection_manager, logger=logger))
+        return await call_next(request)

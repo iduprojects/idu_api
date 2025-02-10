@@ -1,4 +1,5 @@
 """Connection manager class and get_connection function are defined here."""
+from itertools import cycle
 
 from asyncio import Lock
 from contextlib import asynccontextmanager
@@ -8,56 +9,45 @@ import structlog
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
+from idu_api.urban_api.config import DBConfig
 
-class PostgresConnectionManager:  # pylint: disable=too-many-instance-attributes
+
+class PostgresConnectionManager:
     """Connection manager for PostgreSQL database"""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(
         self,
-        host: str,
-        port: int,
-        database: str,
-        user: str,
-        password: str,
+        master: DBConfig,
+        replicas: list[DBConfig],
         logger: structlog.stdlib.BoundLogger,
-        pool_size: int = 10,
-        application_name: str | None = None,
         engine_options: dict[str, Any] | None = None,
+        application_name: str | None = None,
     ) -> None:
         """Initialize connection manager entity."""
-        self._engine: AsyncEngine | None = None
-        self._host = host
-        self._port = port
-        self._database = database
-        self._user = user
-        self._password = password
-        self._pool_size = pool_size
-        self._application_name = application_name
+        self._master_engine: AsyncEngine | None = None
+        self._replica_engines: list[AsyncEngine] = []
+        self._master = master
+        self._replicas = replicas
         self._lock = Lock()
         self._logger = logger
         self._engine_options = engine_options or {}
+        self._application_name = application_name
+        # Iterator for round-robin through replicas
+        self._replica_cycle = None
 
-    async def update(  # pylint: disable=too-many-arguments
+    async def update(
         self,
-        host: str | None = None,
-        port: int | None = None,
-        database: str | None = None,
-        user: str | None = None,
-        password: str | None = None,
+        master: DBConfig | None = None,
+        replicas: list[DBConfig] | None = None,
         logger: structlog.stdlib.BoundLogger | None = None,
-        pool_size: int | None = None,
         application_name: str | None = None,
         engine_options: dict[str, Any] | None = None,
     ) -> None:
         """Initialize connection manager entity."""
         async with self._lock:
-            self._host = host or self._host
-            self._port = port or self._port
-            self._database = database or self._database
-            self._user = user or self._user
-            self._password = password or self._password
+            self._master = master or self._master
+            self._replicas = replicas or self._replicas
             self._logger = logger or self._logger
-            self._pool_size = pool_size or self._pool_size
             self._application_name = application_name or self._application_name
             self._engine_options = engine_options or self._engine_options
 
@@ -66,54 +56,116 @@ class PostgresConnectionManager:  # pylint: disable=too-many-instance-attributes
 
     @property
     def initialized(self) -> bool:
-        return self._engine is not None
+        return self._master_engine is not None
 
     async def refresh(self) -> None:
         """(Re-)create connection engine."""
-        if self._engine is not None:
-            await self._engine.dispose()
-            self._engine = None
+        await self.shutdown()
 
         await self._logger.ainfo(
-            "creating postgres connection pool",
-            max_size=self._pool_size,
-            user=self._user,
-            host=self._host,
-            port=self._port,
-            database=self._database,
+            "creating postgres master connection pool",
+            max_size=self._master.pool_size,
+            user=self._master.user,
+            host=self._master.host,
+            port=self._master.port,
+            database=self._master.database,
         )
-        self._engine = create_async_engine(
-            f"postgresql+asyncpg://{self._user}:{self._password}@{self._host}:{self._port}/{self._database}",
+        self._master_engine = create_async_engine(
+            f"postgresql+asyncpg://{self._master.user}:{self._master.password}@{self._master.host}"
+            f":{self._master.port}/{self._master.database}",
             future=True,
-            pool_size=max(1, self._pool_size - 5),
+            pool_size=max(1, self._master.pool_size - 5),
             max_overflow=5,
             **self._engine_options,
         )
         try:
-            async with self._engine.connect() as conn:
+            async with self._master_engine.connect() as conn:
                 cur = await conn.execute(select(1))
                 assert cur.fetchone()[0] == 1
         except Exception as exc:
-            self._engine = None
+            self._master_engine = None
             raise RuntimeError("something wrong with database connection, aborting") from exc
+
+        if len(self._replicas) > 0:
+            for replica in self._replicas:
+                await self._logger.ainfo(
+                    "creating postgres readonly connection pool",
+                    max_size=replica.pool_size,
+                    user=replica.user,
+                    host=replica.host,
+                    port=replica.port,
+                    database=replica.database,
+                )
+                replica_engine = create_async_engine(
+                    f"postgresql+asyncpg://{replica.user}:{replica.password}@{replica.host}:{replica.port}/{replica.database}",
+                    future=True,
+                    pool_size=max(1, self._master.pool_size - 5),
+                    max_overflow=5,
+                    **self._engine_options,
+                )
+                try:
+                    async with replica_engine.connect() as conn:
+                        cur = await conn.execute(select(1))
+                        assert cur.fetchone()[0] == 1
+                        self._replica_engines.append(replica_engine)
+                except Exception as exc:
+                    await replica_engine.dispose()
+                    await self._logger.awarning("error connecting to replica", host=replica.host, error=repr(exc))
+
+        if self._replica_engines:
+            self._replica_cycle = cycle(self._replica_engines)
+        else:
+            self._replica_cycle = None
+            await self._logger.awarning("no available replicas, read queries will go to the master")
 
     async def shutdown(self) -> None:
         """Dispose connection pool and deinitialize."""
-        if self._engine is not None:
+        if self._master_engine is not None:
             async with self._lock:
-                if self._engine is not None:
-                    await self._engine.dispose()
-                self._engine = None
+                if self._master_engine is not None:
+                    await self._master_engine.dispose()
+                self._master_engine = None
+        for engine in self._replica_engines:
+            await engine.dispose()
+        self._replica_engines.clear()
 
     @asynccontextmanager
     async def get_connection(self) -> AsyncIterator[AsyncConnection]:
-        """Get an async connection to the database."""
-        if self._engine is None:
+        """Get an async connection to the database with read-write ability."""
+        if not self.initialized:
             async with self._lock:
-                if self._engine is None:
+                if self._master_engine is None:
                     await self.refresh()
-        async with self._engine.connect() as conn:
+        async with self._master_engine.connect() as conn:
             if self._application_name is not None:
                 await conn.execute(text(f'SET application_name TO "{self._application_name}"'))
                 await conn.commit()
             yield conn
+
+    @asynccontextmanager
+    async def get_ro_connection(self) -> AsyncIterator[AsyncConnection]:
+        """Get an async connection to the database which can be read-only and will attempt to use replica instances
+        of the database."""
+        if not self.initialized:
+            async with self._lock:
+                if self._master_engine is None:
+                    await self.refresh()
+
+        # If there are no replicas or cycle is not set up, use master
+        if not self._replica_engines or self._replica_cycle is None:
+            async with self.get_connection() as conn:
+                yield conn
+            return
+
+        # Select the next replica (round-robin)
+        engine = next(self._replica_cycle)
+        try:
+            async with engine.connect() as conn:
+                if self._application_name is not None:
+                    await conn.execute(text(f'SET application_name TO "{self._application_name}"'))
+                    await conn.commit()
+                yield conn
+        except Exception as exc:  # pylint: disable=broad-except
+            await self._logger.awarning("error connecting to replica, falling back to master", error=repr(exc), error_type=type(exc))
+            async with self.get_connection() as conn:
+                yield conn
