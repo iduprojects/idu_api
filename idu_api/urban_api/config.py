@@ -89,16 +89,17 @@ class UrbanAPIConfig:
     def to_order_dict(self) -> OrderedDict:
         """OrderDict transformer."""
 
-        def to_ordered_dict_recursive(obj) -> OrderedDict:
-            """Recursive OrderDict transformer."""
-
+        def to_ordered_dict_recursive(obj):
             if isinstance(obj, (dict, OrderedDict)):
                 return OrderedDict((k, to_ordered_dict_recursive(v)) for k, v in obj.items())
-            if hasattr(obj, "__dataclass_fields__"):
+            elif isinstance(obj, list):
+                return [to_ordered_dict_recursive(item) for item in obj]
+            elif hasattr(obj, "__dataclass_fields__"):
                 return OrderedDict(
                     (field, to_ordered_dict_recursive(getattr(obj, field))) for field in obj.__dataclass_fields__
                 )
-            return obj
+            else:
+                return obj
 
         return OrderedDict(
             [
@@ -107,6 +108,7 @@ class UrbanAPIConfig:
                 ("auth", to_ordered_dict_recursive(self.auth)),
                 ("fileserver", to_ordered_dict_recursive(self.fileserver)),
                 ("external", to_ordered_dict_recursive(self.external)),
+                ("logging", to_ordered_dict_recursive(self.logging)),
             ]
         )
 

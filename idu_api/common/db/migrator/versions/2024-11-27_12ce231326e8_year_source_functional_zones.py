@@ -19,7 +19,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # add columns `year` and `source` to `public.functional_zones_data` and `projects_functional_zones`
+    # add columns `year` and `source` to `public.functional_zones_data` and `profiles_data`
     op.add_column(
         "functional_zones_data",
         sa.Column("year", sa.Integer(), nullable=True),
@@ -29,12 +29,12 @@ def upgrade() -> None:
         sa.Column("source", sa.String(length=200), nullable=True),
     )
     op.add_column(
-        "projects_functional_zones",
+        "profiles_data",
         sa.Column("year", sa.Integer(), nullable=True),
         schema="user_projects",
     )
     op.add_column(
-        "projects_functional_zones",
+        "profiles_data",
         sa.Column("source", sa.String(length=200), nullable=True),
         schema="user_projects",
     )
@@ -44,5 +44,5 @@ def downgrade() -> None:
     # drop columns
     op.drop_column("functional_zones_data", "year")
     op.drop_column("functional_zones_data", "source")
-    op.drop_column("projects_functional_zones", "year", schema="user_projects")
-    op.drop_column("projects_functional_zones", "source", schema="user_projects")
+    op.drop_column("profiles_data", "year", schema="user_projects")
+    op.drop_column("profiles_data", "source", schema="user_projects")

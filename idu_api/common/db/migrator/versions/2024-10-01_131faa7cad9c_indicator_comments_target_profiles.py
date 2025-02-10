@@ -46,12 +46,12 @@ def upgrade() -> None:
             )
         )
     )
-    op.execute(sa.text(dedent("""DELETE FROM user_projects.projects_functional_zones""")))
+    op.execute(sa.text(dedent("""DELETE FROM user_projects.profiles_data""")))
 
     # constraints
     op.drop_constraint(
         "profiles_data_fk_target_profile_id__target_profiles_dict",
-        "projects_functional_zones",
+        "profiles_data",
         "foreignkey",
         schema="user_projects",
     )
@@ -63,7 +63,7 @@ def upgrade() -> None:
     )
     op.create_foreign_key(
         "profiles_data_fk_func_zone_type_id__func_zone_type_dict",
-        "projects_functional_zones",
+        "profiles_data",
         "functional_zone_types_dict",
         ["target_profile_id"],
         ["functional_zone_type_id"],
@@ -136,12 +136,12 @@ def downgrade() -> None:
             )
         )
     )
-    op.execute(sa.text(dedent("""DELETE FROM user_projects.projects_functional_zones""")))
+    op.execute(sa.text(dedent("""DELETE FROM user_projects.profiles_data""")))
 
     # constraints
     op.drop_constraint(
         "profiles_data_fk_func_zone_type_id__func_zone_type_dict",
-        "projects_functional_zones",
+        "profiles_data",
         "foreignkey",
         schema="user_projects",
     )
@@ -153,7 +153,7 @@ def downgrade() -> None:
     )
     op.create_foreign_key(
         "profiles_data_fk_target_profile_id__target_profiles_dict",
-        "projects_functional_zones",
+        "profiles_data",
         "target_profiles_dict",
         ["target_profile_id"],
         ["target_profile_id"],
