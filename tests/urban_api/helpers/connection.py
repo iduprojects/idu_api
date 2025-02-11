@@ -1,14 +1,19 @@
 """Mock AsyncConnection implementation is defined here."""
 
 from datetime import date, datetime
+from typing import AsyncIterator
 from unittest.mock import AsyncMock, MagicMock
 
+import structlog
 import pytest
 from geoalchemy2.types import Geometry
 from sqlalchemy import Column, Enum, Table
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql import Insert, Select, Update
+from sqlalchemy.ext.asyncio import AsyncConnection
 
+from idu_api.common.db.connection import PostgresConnectionManager
+from idu_api.urban_api.config import DBConfig
 from idu_api.urban_api.schemas.enums import NormativeType
 
 __all__ = [
@@ -16,6 +21,7 @@ __all__ = [
     "MockConnection",
     "MockRow",
     "mock_conn",
+    "connection",
 ]
 
 
@@ -244,3 +250,19 @@ class MockConnection:
 @pytest.fixture
 def mock_conn():
     return MockConnection()
+
+
+@pytest.fixture(scope="session")
+async def connection(database: DBConfig, logger: structlog.stdlib.BoundLogger) -> AsyncIterator[AsyncConnection]:
+    connection_manager = PostgresConnectionManager(
+        host=database.addr,
+        port=database.port,
+        database=database.name,
+        user=database.user,
+        password=database.password,
+        logger=logger,
+        pool_size=1,
+        application_name="urban-api_integration_tests",
+    )
+    async with connection_manager.get_connection() as conn:
+        yield conn

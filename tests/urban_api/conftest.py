@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from idu_api.urban_api.config import AppConfig, DBConfig, UrbanAPIConfig
 from tests.urban_api.helpers import *
 
-load_dotenv(dotenv_path="urban_api/.env")
+load_dotenv(dotenv_path=".env")
 
 
 @pytest.fixture(scope="session")
@@ -40,9 +40,6 @@ def config(database) -> UrbanAPIConfig:
     s = socket.socket()
     s.bind(("", 0))
     port = s.getsockname()[1]
-    while not is_port_free(port):
-        s.bind(("", 0))
-        port = s.getsockname()[1]
     config = UrbanAPIConfig.load(os.environ["CONFIG_PATH"])
     config = UrbanAPIConfig(
         app=AppConfig(
@@ -76,21 +73,27 @@ def urban_api_host(config) -> Iterator[str]:  # pylint: disable=redefined-outer-
             # fmt: on
         ]
     ) as process:
-        max_attempts = 30
         try:
+            max_attempts = 30
             for _ in range(max_attempts):
-                time.sleep(0.5)
-                with httpx.Client() as client:
-                    if client.get(f"{host}/health_check/ping").is_success:
-                        break
+                time.sleep(1)
+                try:
+                    with httpx.Client() as client:
+                        if client.get(f"{host}/health_check/ping").is_success:
+                            yield host
+                            break
+                except httpx.ConnectError:
+                    continue
             else:
                 pytest.fail("Failed to start urban_api server")
-            yield host
         finally:
             if os.path.exists(temp_yaml_config_path):
                 os.remove(temp_yaml_config_path)
             process.terminate()
-            process.wait()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
 
 
 def run_migrations(database: DBConfig):  # pylint: disable=redefined-outer-name
@@ -103,10 +106,5 @@ def run_migrations(database: DBConfig):  # pylint: disable=redefined-outer-name
     try:
         alembic_cfg.set_main_option("sqlalchemy.url", dsn)
         command.upgrade(alembic_cfg, "head")
-    except Exception:  # pylint: disable=broad-except
-        pytest.fail("Error on migration preparation")
-
-
-def is_port_free(port: int) -> bool:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        return s.connect_ex(("localhost", port)) != 0
+    except Exception as e:  # pylint: disable=broad-except
+        pytest.fail(f"Error on migration preparation: {str(e)}")

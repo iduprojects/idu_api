@@ -11,7 +11,7 @@ services:
       - ./pg_data:/var/lib/postgresql/data
     healthcheck:
       test: pg_isready -d postgres
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 3
       start_period: 5s
@@ -38,7 +38,6 @@ services:
       retries: 3
       start_period: 5s
     command: server --console-address ":9001" /data
-
 
   migrator:
     container_name: migrator

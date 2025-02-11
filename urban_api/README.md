@@ -10,25 +10,21 @@ This is a Digital Territories Platform API to access and manipulate basic territ
   run `poetry install`. You may also want to use `venv` before that.
 2. Prepare a PostgreSQL Server to store the database.
 3. Go to ./test_fastapi/db and run `alembic upgrade head` to apply migrations. Do not forget to set environment variables
-  `DB_ADDR`, `DB_PORT`, `DB_NAME`, `DB_USER` and `DB_PASS` (or list them in .env file) if they are different from
-  default values.
+  `addr`, `port`, `name`, `user` and `password` in urban-api.config.yaml if they are different from default values.
 
 ### launching
 
-Run backend locally with `poetry launch_urban_api` or `poetry launch_urban_api --debug`.
+Run backend locally with `poetry launch_urban_api` or `make run-urban-api`.
 
 You can open [localhost:8000](http://localhost:8000) (or different host/port if you configured it) to get a redirect to Swagger UI with endpoints list.
-
-To get an access token (for example, you can import this into Postman):
-
-`curl -X POST -d client_id=<client_id> -d client_secret=<secret> -d username=<user> -d password=<password> -d grant_type=password http://localhost:8080/realms/<realm>/protocol/openid-connect/token`
 
 
 ## Running in docker 
 
-1. Create .env file by copying and editing env.example (repeat the same thing with db.env).
-2. Run the command `docker-compose up -d --build`
-3. You can open [localhost:8000](http://localhost:8000) (or different host/port if you configured it) to get a redirect to Swagger UI with endpoints list.
+1. Create urban-api.config.yaml by copying and editing urban-api.config.yaml.example.
+2. Create .env file by copying and editing env.example (repeat the same thing with db.env).
+3. Run the command `docker-compose up -d --build`
+4. You can open [localhost:8000](http://localhost:8000) (or different host/port if you configured it) to get a redirect to Swagger UI with endpoints list.
 
 
 ## logging

@@ -18,3 +18,4 @@ from .service_types import *
 from .services import *
 from .territories import *
 from .urban_objects import *
+from .logging import *

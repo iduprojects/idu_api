@@ -50,7 +50,7 @@ def main(config_path: str):
         pool_size=1,
         application_name="duty_regenerate_projects_previews",
     )
-    minio_client = get_minio_client(config)
+    minio_client = get_minio_client()
 
     asyncio.run(async_main(connection_manager, minio_client, logger))
 
