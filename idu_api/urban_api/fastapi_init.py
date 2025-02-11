@@ -78,7 +78,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
 
     add_pagination(application)
 
-    connection_manager = PostgresConnectionManager("", 0, "", "", "", ..., 0, "")
+    connection_manager = PostgresConnectionManager(..., [], ...)
     auth_client = AuthenticationClient(0, 0, False, "")
 
     def ignore_kwargs(func: Callable) -> Callable:
@@ -131,13 +131,9 @@ async def lifespan(application: FastAPI):
         if middleware.cls == PassServicesDependenciesMiddleware:
             connection_manager: PostgresConnectionManager = middleware.kwargs["connection_manager"]
             await connection_manager.update(
-                host=app_config.db.addr,
-                port=app_config.db.port,
-                database=app_config.db.name,
-                user=app_config.db.user,
-                password=app_config.db.password,
+                master=app_config.db.master,
+                replicas=app_config.db.replicas,
                 logger=logger,
-                pool_size=app_config.db.pool_size,
                 application_name=app_config.app.name,
             )
             await connection_manager.refresh()

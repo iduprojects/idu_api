@@ -2,16 +2,24 @@ app:
   host: 0.0.0.0
   port: 8000
   debug: false
-  name: urban_api
+  name: urban_api (0.36.0)
 db:
-  addr: localhost
-  port: 5432
-  name: urban_db
-  user: postgres
-  password: postgres
-  pool_size: 15
+  master:
+    host: localhost
+    port: 5432
+    database: urban_db
+    user: postgres
+    password: postgres
+    pool_size: 15
+  replicas:
+  - host: localhost
+    port: 5433
+    database: urban_db
+    user: readonly
+    password: readonly
+    pool_size: 8
 auth:
-  url: http://10.32.1.100:8086/introspect
+  url: http://localhost:8086/introspect
   validate: false
   cache_size: 100
   cache_ttl: 1800
@@ -26,10 +34,10 @@ fileserver:
   read_timeout: 20
   retries: 3
 external:
-  hextech_api: http://localhost:8100
   gen_planner_api: http://localhost:8101
+  hextech_api: http://localhost:8100
 logging:
   level: INFO
   files:
-    - filename: logs/info.log
-      level: INFO
+  - filename: logs/info.log
+    level: INFO

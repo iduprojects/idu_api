@@ -1,12 +1,14 @@
+"""Duty script to regenerate previews for all projects"""
+
 import asyncio
 import click
 import structlog
 from idu_api.common.db.connection.manager import PostgresConnectionManager
-from idu_api.urban_api.config import UrbanAPIConfig
+from idu_api.urban_api.config import DBConfig, UrbanAPIConfig
 from idu_api.urban_api.dto.projects import ProjectDTO
 from idu_api.urban_api.logic.impl.projects import UserProjectServiceImpl
 from idu_api.urban_api.logic.projects import UserProjectService
-from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client
+from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client_from_config
 
 
 async def regenerate_preview(service: UserProjectService, minio_client: AsyncMinioClient, project: ProjectDTO):
@@ -14,18 +16,21 @@ async def regenerate_preview(service: UserProjectService, minio_client: AsyncMin
     await service.upload_project_image(minio_client, project.project_id, project.user_id, image_buf.read())
 
 
-async def async_main(connection_manager: PostgresConnectionManager, minio_client: AsyncMinioClient, logger: structlog.stdlib.BoundLogger):
+async def async_main(
+    connection_manager: PostgresConnectionManager, minio_client: AsyncMinioClient, logger: structlog.stdlib.BoundLogger
+):
     async with connection_manager.get_connection() as conn:
         service = UserProjectServiceImpl(conn, logger)
 
         projects = await service.get_all_projects()
-        
+
         for project in projects:
             try:
                 await regenerate_preview(service, minio_client, project)
                 logger.info("regenerated project preview", project_id=project.project_id)
-            except Exception as exc:
+            except Exception as exc:  # pylint: disable=broad-except
                 logger.warning("could not regenerate preview", project_id=project.project_id, error=repr(exc))
+
 
 @click.command("regenerate-projects-previews")
 @click.option(
@@ -41,20 +46,22 @@ def main(config_path: str):
     config = UrbanAPIConfig.load(config_path)
     logger = structlog.getLogger("regenerate-project-previews")
     connection_manager = PostgresConnectionManager(
-        host=config.db.addr,
-        port=config.db.port,
-        database=config.db.name,
-        user=config.db.user,
-        password=config.db.password,
+        master=DBConfig(
+            host=config.db.master.host,
+            port=config.db.master.port,
+            database=config.db.master.database,
+            user=config.db.master.user,
+            password=config.db.master.password,
+            pool_size=1,
+        ),
+        replicas=[],
         logger=logger,
-        pool_size=1,
         application_name="duty_regenerate_projects_previews",
     )
-    minio_client = get_minio_client(config)
+    minio_client = get_minio_client_from_config(config)
 
     asyncio.run(async_main(connection_manager, minio_client, logger))
 
 
-
 if __name__ == "__main__":
-    main()
+    main()  # pylint: disable=no-value-for-parameter
