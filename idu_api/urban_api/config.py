@@ -4,7 +4,7 @@ import os
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TextIO
+from typing import Any, TextIO
 
 import yaml
 
@@ -26,12 +26,23 @@ class AppConfig:
 
 @dataclass
 class DBConfig:
-    addr: str
+    host: str
     port: int
-    name: str
+    database: str
     user: str
     password: str
     pool_size: int
+
+
+@dataclass
+class MultipleDBsConfig:
+    master: DBConfig
+    replicas: list[DBConfig] | None
+
+    def __post_init__(self):
+        _dict_to_dataclass(self, "master", DBConfig)
+        if self.replicas is not None:
+            _list_dict_to_dataclasses(self, "replicas", DBConfig)
 
 
 @dataclass
@@ -80,7 +91,7 @@ class LoggingConfig:
 @dataclass
 class UrbanAPIConfig:
     app: AppConfig
-    db: DBConfig
+    db: MultipleDBsConfig
     auth: AuthConfig
     fileserver: FileServerConfig
     external: ExternalServicesConfig
@@ -89,17 +100,18 @@ class UrbanAPIConfig:
     def to_order_dict(self) -> OrderedDict:
         """OrderDict transformer."""
 
-        def to_ordered_dict_recursive(obj):
+        def to_ordered_dict_recursive(obj) -> OrderedDict:
+            """Recursive OrderDict transformer."""
+
             if isinstance(obj, (dict, OrderedDict)):
                 return OrderedDict((k, to_ordered_dict_recursive(v)) for k, v in obj.items())
-            elif isinstance(obj, list):
+            if isinstance(obj, list):
                 return [to_ordered_dict_recursive(item) for item in obj]
-            elif hasattr(obj, "__dataclass_fields__"):
+            if hasattr(obj, "__dataclass_fields__"):
                 return OrderedDict(
                     (field, to_ordered_dict_recursive(getattr(obj, field))) for field in obj.__dataclass_fields__
                 )
-            else:
-                return obj
+            return obj
 
         return OrderedDict(
             [
@@ -133,23 +145,35 @@ class UrbanAPIConfig:
 
         return cls(
             app=AppConfig(host="0.0.0.0", port=8000, debug=False, name="urban_api"),
-            db=DBConfig(
-                addr="localhost", port=5432, name="urban_db", user="postgres", password="postgres", pool_size=15
+            db=MultipleDBsConfig(
+                master=DBConfig(
+                    host="localhost", port=5432, database="urban_db", user="postgres", password="postgres", pool_size=15
+                ),
+                replicas=[
+                    DBConfig(
+                        host="localhost",
+                        port=5433,
+                        user="readonly",
+                        password="readonly",
+                        database="urban_db",
+                        pool_size=8,
+                    )
+                ]
             ),
-            auth=AuthConfig(url="", validate=False, cache_size=100, cache_ttl=1800),
+            auth=AuthConfig(url="http://localhost:8086/introspect", validate=False, cache_size=100, cache_ttl=1800),
             fileserver=FileServerConfig(
-                host="",
+                host="localhost",
                 port=9000,
-                projects_bucket="",
+                projects_bucket="projects.images",
                 access_key="",
                 secret_key="",
-                region_name="",
+                region_name="us-west-rack-2",
                 connect_timeout=5,
                 read_timeout=20,
                 retries=3,
             ),
-            external=ExternalServicesConfig(gen_planner_api="", hextech_api=""),
-            logging=LoggingConfig(level="INFO"),
+            external=ExternalServicesConfig(hextech_api="http://localhost:8100", gen_planner_api="http://localhost:8101"),
+            logging=LoggingConfig(level="INFO", files=[FileLogger(filename="logs/info.log", level="INFO")]),
         )
 
     @classmethod
@@ -165,7 +189,7 @@ class UrbanAPIConfig:
 
             return cls(
                 app=AppConfig(**data.get("app", {})),
-                db=DBConfig(**data.get("db", {})),
+                db=MultipleDBsConfig(**data.get("db", {})),
                 auth=AuthConfig(**data.get("auth", {})),
                 fileserver=FileServerConfig(**data.get("fileserver", {})),
                 external=ExternalServicesConfig(**data.get("external", {})),
@@ -192,3 +216,16 @@ class UrbanAPIConfig:
             for param, value in other_subconfig.__dict__.items():
                 if param in current_subconfig.__dict__:
                     setattr(current_subconfig, param, value)
+
+
+def _list_dict_to_dataclasses(config_entry: Any, field_name: str, need_type: type) -> None:
+    list_dict = getattr(config_entry, field_name)
+    for i in range(len(list_dict)):  # pylint: disable=consider-using-enumerate
+        if isinstance(list_dict[i], dict):
+            list_dict[i] = need_type(**list_dict[i])
+
+
+def _dict_to_dataclass(config_entry: Any, field_name: str, need_type: type) -> None:
+    value = getattr(config_entry, field_name)
+    if isinstance(value, dict):
+        setattr(config_entry, field_name, need_type(**value))
