@@ -10,7 +10,7 @@ import structlog
 from geojson_pydantic import Feature, FeatureCollection
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-_BaseGeomTypes = geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString
+_BaseGeomTypes = geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString | geom.MultiLineString
 
 _logger: structlog.stdlib.BoundLogger = structlog.get_logger("geometry_schemas")
 
@@ -186,3 +186,20 @@ class GeoJSONResponse(FeatureCollection):
             feature_collection.append(Feature(type="Feature", geometry=geometry, properties=properties))
 
         return cls(features=feature_collection)
+
+    def update_geometries(self, new_geoms: list[_BaseGeomTypes]) -> "GeoJSONResponse":
+        """
+        Updates the geometries in each Feature, accepting a list of new Shapely geometries.
+        The number of new geometries must match the number of features.
+        """
+        if len(new_geoms) != len(self.features):
+            raise ValueError(
+                f"Number of new geometries ({len(new_geoms)}) does not match the number of features ({len(self.features)})"
+            )
+
+        updated_features = [
+            feature.copy(update={"geometry": Geometry.from_shapely_geometry(new_geom)})
+            for feature, new_geom in zip(self.features, new_geoms)
+        ]
+
+        return GeoJSONResponse(features=updated_features)

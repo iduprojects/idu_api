@@ -64,9 +64,7 @@ def downgrade() -> None:
     # columns
     op.drop_column("profiles_data", "target_profile_id", schema="user_projects")
     op.drop_column("scenarios_data", "target_profile_id", schema="user_projects")
-    op.add_column(
-        "profiles_data", sa.Column("profile_type_id", sa.Integer(), nullable=False), schema="user_projects"
-    )
+    op.add_column("profiles_data", sa.Column("profile_type_id", sa.Integer(), nullable=False), schema="user_projects")
 
     # tables
     op.drop_table("target_profiles_dict", schema="user_projects")

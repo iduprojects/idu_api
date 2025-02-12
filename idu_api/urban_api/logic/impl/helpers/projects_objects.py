@@ -514,7 +514,7 @@ async def add_project_to_db(
     """Create project object, its territory and base scenario."""
 
     given_geometry = select(
-        ST_GeomFromText(str(project.territory.geometry.as_shapely_geometry()), text("4326"))
+        ST_GeomFromText(project.territory.geometry.as_shapely_geometry().wkt, text("4326"))
     ).scalar_subquery()
 
     buffer_meters = 3000

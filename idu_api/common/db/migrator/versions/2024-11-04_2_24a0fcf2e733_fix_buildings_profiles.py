@@ -59,9 +59,7 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
         schema="user_projects",
     )
-    op.drop_constraint(
-        "profiles_data_fk_scenario_id__scenarios_data", "profiles_data", schema="user_projects"
-    )
+    op.drop_constraint("profiles_data_fk_scenario_id__scenarios_data", "profiles_data", schema="user_projects")
     op.create_foreign_key(
         "profiles_data_fk_scenario_id__scenarios_data",
         "profiles_data",
@@ -97,9 +95,7 @@ def downgrade() -> None:
     op.drop_column("profiles_data", "properties", schema="user_projects")
     op.drop_column("profiles_data", "created_at", schema="user_projects")
     op.drop_column("profiles_data", "updated_at", schema="user_projects")
-    op.drop_constraint(
-        "profiles_data_fk_scenario_id__scenarios_data", "profiles_data", schema="user_projects"
-    )
+    op.drop_constraint("profiles_data_fk_scenario_id__scenarios_data", "profiles_data", schema="user_projects")
     op.create_foreign_key(
         "profiles_data_fk_scenario_id__scenarios_data",
         "profiles_data",

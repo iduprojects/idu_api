@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 from idu_api.urban_api.config import AppConfig, DBConfig, UrbanAPIConfig
 from tests.urban_api.helpers import *
 
-load_dotenv(dotenv_path=".env")
+load_dotenv(dotenv_path="urban_api/.env")
 
 
 @pytest.fixture(scope="session")

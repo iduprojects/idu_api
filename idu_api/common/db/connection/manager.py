@@ -1,8 +1,8 @@
 """Connection manager class and get_connection function are defined here."""
-from itertools import cycle
 
 from asyncio import Lock
 from contextlib import asynccontextmanager
+from itertools import cycle
 from typing import Any, AsyncIterator
 
 import structlog
@@ -120,9 +120,9 @@ class PostgresConnectionManager:
 
     async def shutdown(self) -> None:
         """Dispose connection pool and deinitialize."""
-        if self._master_engine is not None:
+        if self.initialized:
             async with self._lock:
-                if self._master_engine is not None:
+                if self.initialized:
                     await self._master_engine.dispose()
                 self._master_engine = None
         for engine in self._replica_engines:
@@ -134,7 +134,7 @@ class PostgresConnectionManager:
         """Get an async connection to the database with read-write ability."""
         if not self.initialized:
             async with self._lock:
-                if self._master_engine is None:
+                if not self.initialized:
                     await self.refresh()
         async with self._master_engine.connect() as conn:
             if self._application_name is not None:
@@ -148,7 +148,7 @@ class PostgresConnectionManager:
         of the database."""
         if not self.initialized:
             async with self._lock:
-                if self._master_engine is None:
+                if not self.initialized:
                     await self.refresh()
 
         # If there are no replicas or cycle is not set up, use master
@@ -160,12 +160,19 @@ class PostgresConnectionManager:
         # Select the next replica (round-robin)
         engine = next(self._replica_cycle)
         try:
-            async with engine.connect() as conn:
-                if self._application_name is not None:
-                    await conn.execute(text(f'SET application_name TO "{self._application_name}"'))
-                    await conn.commit()
-                yield conn
-        except Exception as exc:  # pylint: disable=broad-except
-            await self._logger.awarning("error connecting to replica, falling back to master", error=repr(exc), error_type=type(exc))
+            conn = await engine.connect()
+            if self._application_name is not None:
+                await conn.execute(text(f'SET application_name TO "{self._application_name}"'))
+                await conn.commit()
+        except Exception as exc:
+            await self._logger.awarning(
+                "error connecting to replica, falling back to master", error=repr(exc), error_type=type(exc)
+            )
             async with self.get_connection() as conn:
                 yield conn
+            return
+
+        try:
+            yield conn
+        finally:
+            await conn.close()
