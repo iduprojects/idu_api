@@ -46,8 +46,6 @@ services:
       dockerfile: migrations.Dockerfile
     env_file:
       - ./.env
-    environment:
-      - DEBUG
     depends_on:
       database:
         condition: service_healthy
@@ -62,8 +60,6 @@ services:
       - ${EXPORT_API_PORT:-8000}:${PORT:-8000}
     env_file:
       - ./.env
-    environment:
-      - DEBUG
     volumes:
       - ./logs:/app/logs
     depends_on:

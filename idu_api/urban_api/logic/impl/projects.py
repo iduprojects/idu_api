@@ -61,12 +61,11 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     delete_project_from_db,
     get_all_projects_from_db,
-    get_full_project_image_from_minio,
-    get_full_project_image_url_from_minio,
-    get_preview_project_image_from_minio,
     get_preview_projects_images_from_minio,
     get_preview_projects_images_url_from_minio,
     get_project_by_id_from_db,
+    get_project_image_from_minio,
+    get_project_image_url_from_minio,
     get_project_territory_by_id_from_db,
     get_projects_from_db,
     get_projects_territories_from_db,
@@ -309,23 +308,27 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         async with self._connection_manager.get_connection() as conn:
             return await upload_project_image_to_minio(conn, minio_client, project_id, user_id, file, self._logger)
 
-    async def get_full_project_image(
-        self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
+    async def get_project_image(
+        self,
+        minio_client: AsyncMinioClient,
+        project_id: int,
+        user_id: str | None,
+        image_type: Literal["origin", "preview"],
     ) -> io.BytesIO:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_full_project_image_from_minio(conn, minio_client, project_id, user_id, self._logger)
+            return await get_project_image_from_minio(conn, minio_client, project_id, user_id, image_type, self._logger)
 
-    async def get_preview_project_image(
-        self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
-    ) -> io.BytesIO:
-        async with self._connection_manager.get_ro_connection() as conn:
-            return await get_preview_project_image_from_minio(conn, minio_client, project_id, user_id, self._logger)
-
-    async def get_full_project_image_url(
-        self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
+    async def get_project_image_url(
+        self,
+        minio_client: AsyncMinioClient,
+        project_id: int,
+        user_id: str | None,
+        image_type: Literal["origin", "preview"],
     ) -> str:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_full_project_image_url_from_minio(conn, minio_client, project_id, user_id, self._logger)
+            return await get_project_image_url_from_minio(
+                conn, minio_client, project_id, user_id, image_type, self._logger
+            )
 
     async def get_scenarios_by_project_id(self, project_id: int, user_id: str | None) -> list[ScenarioDTO]:
         async with self._connection_manager.get_ro_connection() as conn:

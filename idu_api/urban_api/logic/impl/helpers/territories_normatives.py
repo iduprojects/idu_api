@@ -1,9 +1,9 @@
 """Territories normatives internal logic is defined here."""
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import RowMapping, and_, cast, delete, insert, literal, select, update
+from sqlalchemy import RowMapping, and_, cast, delete, func, insert, literal, select, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -29,6 +29,8 @@ from idu_api.urban_api.logic.impl.helpers.utils import (
 )
 from idu_api.urban_api.schemas import NormativeDelete, NormativePatch, NormativePost
 
+func: Callable
+
 ####################################################################################
 #                           Main business-logic                                    #
 ####################################################################################
@@ -37,7 +39,8 @@ from idu_api.urban_api.schemas import NormativeDelete, NormativePatch, Normative
 async def get_normatives_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
-    year: int,
+    year: int | None,
+    last_only: bool,
     include_child_territories: bool,
     cities_only: bool,
 ) -> list[NormativeDTO]:
@@ -46,80 +49,40 @@ async def get_normatives_by_territory_id_from_db(
     territories = await _get_territories(conn, territory_id, include_child_territories)
     territory_ids = [territory.territory_id for territory in territories["all"]]
     territory_ancestors = _get_territory_ancestors(territories)
+    top_ancestor = next((t for t in territories["ancestors"] if t.parent_id is None), None)
 
-    normatives = await _get_normatives(conn, territory_ids, year)
+    normatives = await _get_normatives(conn, territory_ids, year, last_only)
     unique_normative_keys = _get_unique_normative_keys(normatives)
+    years = {normative.year for normative in normatives}
 
     result = []
     for territory in territories["requested"]:
         for key in unique_normative_keys:
             service_type_id, urban_function_id = key
-
-            self_normative = next(
-                (
-                    n
-                    for n in normatives
-                    if n.territory_id == territory.territory_id
-                    and n.service_type_id == service_type_id
-                    and n.urban_function_id == urban_function_id
-                ),
-                None,
-            )
-
-            if self_normative is not None:
-                result.append(
-                    NormativeDTO(
-                        **{k: v for k, v in self_normative.items() if k != "territory_id"},
-                        territory_id=territory.territory_id,
-                        territory_name=territory.name,
-                        normative_type="self",
+            if not last_only:
+                for curr_year in years:
+                    requested_normative = _set_normative(
+                        territory,
+                        territory_ancestors,
+                        top_ancestor,
+                        normatives,
+                        service_type_id,
+                        urban_function_id,
+                        year=curr_year,
                     )
-                )
-                continue
-
-            for ancestor in territory_ancestors[territory.territory_id]:
-                parent_normative = next(
-                    (
-                        n
-                        for n in normatives
-                        if n.territory_id == ancestor.territory_id
-                        and n.service_type_id == service_type_id
-                        and n.urban_function_id == urban_function_id
-                    ),
-                    None,
-                )
-                if parent_normative is not None:
-                    result.append(
-                        NormativeDTO(
-                            **{k: v for k, v in parent_normative.items() if k != "territory_id"},
-                            territory_id=territory.territory_id,
-                            territory_name=territory.name,
-                            normative_type="parent",
-                        )
-                    )
-                    break
-
+                    if requested_normative is not None:
+                        result.append(requested_normative)
             else:
-                top_ancestor = next(t for t in territories["ancestors"] if t.parent_id is None)
-                global_normative = next(
-                    (
-                        n
-                        for n in normatives
-                        if n.territory_id == top_ancestor.territory_id
-                        and n.service_type_id == service_type_id
-                        and n.urban_function_id == urban_function_id
-                    ),
-                    None,
+                requested_normative = _set_normative(
+                    territory,
+                    territory_ancestors,
+                    top_ancestor,
+                    normatives,
+                    service_type_id,
+                    urban_function_id,
                 )
-                if global_normative is not None:
-                    result.append(
-                        NormativeDTO(
-                            **{k: v for k, v in global_normative.items() if k != "territory_id"},
-                            territory_id=territory.territory_id,
-                            territory_name=territory.name,
-                            normative_type="global",
-                        )
-                    )
+                if requested_normative is not None:
+                    result.append(requested_normative)
 
     if cities_only:
         cities_ids = [territory.territory_id for territory in territories["requested"] if territory.is_city]
@@ -198,7 +161,7 @@ async def add_normatives_to_territory_to_db(
         raise EntitiesNotFoundByIds("service type")
 
     statement = select(urban_functions_dict.c.urban_function_id).where(
-        service_types_dict.c.urban_function_id.in_(urban_function_ids)
+        urban_functions_dict.c.urban_function_id.in_(urban_function_ids)
     )
     urban_functions = (await conn.execute(statement)).scalars().all()
     if len(urban_function_ids) > len(urban_functions):
@@ -453,7 +416,8 @@ async def delete_normatives_by_territory_id_in_db(
 async def get_normatives_values_by_parent_id_from_db(
     conn: AsyncConnection,
     parent_id: int | None,
-    year: int,
+    year: int | None,
+    last_only: bool,
 ) -> list[TerritoryWithNormativesDTO]:
     """Get list of normatives with values for territory by parent id and year."""
 
@@ -472,81 +436,42 @@ async def get_normatives_values_by_parent_id_from_db(
     child_territories = list((await conn.execute(statement)).mappings().all())
     ancestors = list(await _get_ancestors(conn, child_territories[0].territory_id))
     territory_ids = [territory.territory_id for territory in ancestors + child_territories]
+    top_ancestor = next((t for t in ancestors if t.parent_id is None), None)
 
-    normatives = await _get_normatives(conn, territory_ids, year)
+    normatives = await _get_normatives(conn, territory_ids, year, last_only)
     unique_normative_keys = _get_unique_normative_keys(normatives)
+    years = {normative.year for normative in normatives}
 
     result = []
     for territory in child_territories:
         territory_normatives = []
         for key in unique_normative_keys:
             service_type_id, urban_function_id = key
-
-            self_normative = next(
-                (
-                    n
-                    for n in normatives
-                    if n.territory_id == territory.territory_id
-                    and n.service_type_id == service_type_id
-                    and n.urban_function_id == urban_function_id
-                ),
-                None,
-            )
-
-            if self_normative is not None:
-                territory_normatives.append(
-                    NormativeDTO(
-                        **{k: v for k, v in self_normative.items() if k != "territory_id"},
-                        territory_id=territory.territory_id,
-                        territory_name=territory.name,
-                        normative_type="self",
+            if not last_only:
+                for curr_year in years:
+                    requested_normative = _set_normative(
+                        territory,
+                        ancestors,
+                        top_ancestor,
+                        normatives,
+                        service_type_id,
+                        urban_function_id,
+                        year=curr_year,
                     )
-                )
-                continue
-
-            for ancestor in ancestors:
-                parent_normative = next(
-                    (
-                        n
-                        for n in normatives
-                        if n.territory_id == ancestor.territory_id
-                        and n.service_type_id == service_type_id
-                        and n.urban_function_id == urban_function_id
-                    ),
-                    None,
-                )
-                if parent_normative is not None:
-                    territory_normatives.append(
-                        NormativeDTO(
-                            **{k: v for k, v in parent_normative.items() if k != "territory_id"},
-                            territory_id=territory.territory_id,
-                            territory_name=territory.name,
-                            normative_type="parent",
-                        )
-                    )
-                    break
-
+                    if requested_normative is not None:
+                        territory_normatives.append(requested_normative)
             else:
-                top_ancestor = next(t for t in ancestors if t.parent_id is None)
-                global_normative = next(
-                    (
-                        n
-                        for n in normatives
-                        if n.territory_id == top_ancestor.territory_id
-                        and n.service_type_id == service_type_id
-                        and n.urban_function_id == urban_function_id
-                    ),
-                    None,
+                requested_normative = _set_normative(
+                    territory,
+                    ancestors,
+                    top_ancestor,
+                    normatives,
+                    service_type_id,
+                    urban_function_id,
                 )
-                if global_normative is not None:
-                    territory_normatives.append(
-                        NormativeDTO(
-                            **{k: v for k, v in global_normative.items() if k != "territory_id"},
-                            territory_id=territory.territory_id,
-                            territory_name=territory.name,
-                            normative_type="global",
-                        )
-                    )
+                if requested_normative is not None:
+                    territory_normatives.append(requested_normative)
+
         result.append(
             TerritoryWithNormativesDTO(
                 **{k: v for k, v in territory.items() if k != "parent_id"},
@@ -682,8 +607,44 @@ def _get_territory_ancestors(territories: dict[str, list[RowMapping]]) -> dict[i
     return territory_ancestors
 
 
-async def _get_normatives(conn: AsyncConnection, territory_ids: list[int], year: int) -> list:
+async def _get_normatives(
+    conn: AsyncConnection, territory_ids: list[int], year: int | None, last_only: bool
+) -> list[RowMapping]:
     """Get all normatives for the given territory IDs and year."""
+
+    select_from = service_types_normatives_data.outerjoin(
+        service_types_dict,
+        service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id,
+    ).outerjoin(
+        urban_functions_dict,
+        urban_functions_dict.c.urban_function_id == service_types_normatives_data.c.urban_function_id,
+    )
+
+    if last_only:
+        subquery = (
+            select(
+                service_types_normatives_data.c.service_type_id,
+                service_types_normatives_data.c.urban_function_id,
+                service_types_normatives_data.c.territory_id,
+                func.max(service_types_normatives_data.c.year).label("max_year"),
+            )
+            .where(service_types_normatives_data.c.territory_id.in_(territory_ids))
+            .group_by(
+                service_types_normatives_data.c.service_type_id,
+                service_types_normatives_data.c.urban_function_id,
+                service_types_normatives_data.c.territory_id,
+            )
+            .subquery()
+        )
+        select_from = select_from.join(
+            subquery,
+            (
+                (service_types_normatives_data.c.service_type_id == subquery.c.service_type_id)
+                | (service_types_normatives_data.c.urban_function_id == subquery.c.urban_function_id)
+            )
+            & (service_types_normatives_data.c.territory_id == subquery.c.territory_id)
+            & (service_types_normatives_data.c.year == subquery.c.max_year),
+        )
 
     statement = (
         select(
@@ -702,18 +663,10 @@ async def _get_normatives(conn: AsyncConnection, territory_ids: list[int], year:
             service_types_normatives_data.c.created_at,
             service_types_normatives_data.c.updated_at,
         )
-        .select_from(
-            service_types_normatives_data.outerjoin(
-                service_types_dict,
-                service_types_dict.c.service_type_id == service_types_normatives_data.c.service_type_id,
-            ).outerjoin(
-                urban_functions_dict,
-                urban_functions_dict.c.urban_function_id == service_types_normatives_data.c.urban_function_id,
-            )
-        )
+        .select_from(select_from)
         .where(
             service_types_normatives_data.c.territory_id.in_(territory_ids),
-            service_types_normatives_data.c.year == year,
+            service_types_normatives_data.c.year == year if year is not None else True,
         )
     )
     result = (await conn.execute(statement)).mappings().all()
@@ -730,3 +683,80 @@ def _get_unique_normative_keys(normatives: Sequence[RowMapping]) -> set[tuple[in
         keys.add(key)
 
     return keys
+
+
+def _set_normative(
+    territory: RowMapping,
+    ancestors: dict[int, list[RowMapping]] | list[RowMapping],
+    top_ancestor: RowMapping,
+    normatives: list[RowMapping],
+    service_type_id: int | None,
+    urban_function_id: int | None,
+    year: int | None = None,
+) -> NormativeDTO | None:
+    """Get normative by unique pair of service_type_id and urban_function_id for given territory
+    with setting normative type (self, parent of global)."""
+
+    self_normative = next(
+        (
+            n
+            for n in normatives
+            if n.territory_id == territory.territory_id
+            and n.service_type_id == service_type_id
+            and n.urban_function_id == urban_function_id
+            and (year is None or n.year == year)
+        ),
+        None,
+    )
+    if self_normative is not None:
+        return NormativeDTO(
+            **{k: v for k, v in self_normative.items() if k != "territory_id"},
+            territory_id=territory.territory_id,
+            territory_name=territory.name,
+            normative_type="self",
+        )
+
+    if isinstance(ancestors, dict):
+        ancestors = ancestors[territory.territory_id]
+    for ancestor in ancestors:
+        parent_normative = next(
+            (
+                n
+                for n in normatives
+                if n.territory_id == ancestor.territory_id
+                and n.service_type_id == service_type_id
+                and n.urban_function_id == urban_function_id
+                and (year is None or n.year == year)
+            ),
+            None,
+        )
+        if parent_normative is not None:
+            return NormativeDTO(
+                **{k: v for k, v in parent_normative.items() if k != "territory_id"},
+                territory_id=territory.territory_id,
+                territory_name=territory.name,
+                normative_type="parent",
+            )
+        break
+    else:
+        if top_ancestor is not None:
+            global_normative = next(
+                (
+                    n
+                    for n in normatives
+                    if n.territory_id == top_ancestor.territory_id
+                    and n.service_type_id == service_type_id
+                    and n.urban_function_id == urban_function_id
+                    and (year is None or n.year == year)
+                ),
+                None,
+            )
+            if global_normative is not None:
+                return NormativeDTO(
+                    **{k: v for k, v in global_normative.items() if k != "territory_id"},
+                    territory_id=territory.territory_id,
+                    territory_name=territory.name,
+                    normative_type="global",
+                )
+
+    return None

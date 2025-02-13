@@ -14,7 +14,7 @@ from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_cli
 
 
 async def regenerate_preview(service: UserProjectService, minio_client: AsyncMinioClient, project: ProjectDTO):
-    image_buf = await service.get_full_project_image(minio_client, project.project_id, project.user_id)
+    image_buf = await service.get_project_image(minio_client, project.project_id, project.user_id, image_type="origin")
     await service.upload_project_image(minio_client, project.project_id, project.user_id, image_buf.read())
 
 

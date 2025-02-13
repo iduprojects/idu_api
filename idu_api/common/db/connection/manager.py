@@ -9,7 +9,7 @@ import structlog
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
-from idu_api.urban_api.config import DBConfig
+from idu_api.common.db.config import DBConfig
 
 
 class PostgresConnectionManager:

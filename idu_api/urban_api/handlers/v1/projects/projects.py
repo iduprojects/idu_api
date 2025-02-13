@@ -278,6 +278,7 @@ async def get_projects_territories(
 @projects_router.get(
     "/projects_preview",
     status_code=status.HTTP_200_OK,
+    deprecated=True,
 )
 async def get_preview_project_images(
     request: Request,
@@ -304,7 +305,10 @@ async def get_preview_project_images(
     """
     ## Get preview images for projects as a ZIP archive.
 
-    **WARNING:** You cannot set both `project_type` and `is_regional = True` at the same time.
+    **WARNING 1:** You cannot set both `project_type` and `is_regional = True` at the same time.
+
+    **WARNING 2:** This method has been deprecated since version 0.37.1 and will be removed in version 1.0.
+    This is due to big sizes of image previews.
 
     ### Parameters:
     - **only_own** (bool, Query): If True, returns only images for the user's projects (default: false).
@@ -374,7 +378,7 @@ async def get_preview_project_images(
     response_model=list[MinioImageURL],
     status_code=status.HTTP_200_OK,
 )
-async def get_preview_project_images_url(
+async def get_project_previews_url(
     request: Request,
     only_own: bool = Query(False, description="if True, return only user's own projects"),
     is_regional: bool = Query(False, description="filter to get only regional projects or not"),
@@ -397,7 +401,7 @@ async def get_preview_project_images_url(
     user: UserDTO = Depends(get_user),
 ) -> list[MinioImageURL]:
     """
-    ## Get URLs for preview images of projects.
+    ## Get URLs for images of projects.
 
     **WARNING:** You cannot set both `project_type` and `is_regional = True` at the same time.
 
@@ -612,11 +616,12 @@ async def upload_project_image(
     file: UploadFile = File(...),
     user: UserDTO = Depends(get_user),
     minio_client: AsyncMinioClient = Depends(get_minio_client),
-) -> MinioImagesURL:
+) -> MinioImageURL:
     """
     ## Upload an image for a project to MinIO file server.
 
-    **NOTE:** This method also creates preview image (300x300) and uploads it to the MinIO file server.
+    **NOTE:** This method also creates preview image (resizing main image to max 1600px on the larger side)
+    and uploads it to the MinIO file server.
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
@@ -639,9 +644,9 @@ async def upload_project_image(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is not an image")
 
-    images_url = await user_project_service.upload_project_image(minio_client, project_id, user.id, await file.read())
+    image_url = await user_project_service.upload_project_image(minio_client, project_id, user.id, await file.read())
 
-    return MinioImagesURL(**images_url)
+    return MinioImagesURL(**image_url)
 
 
 @projects_router.get(
@@ -655,13 +660,13 @@ async def get_full_project_image(
     minio_client: AsyncMinioClient = Depends(get_minio_client),
 ) -> StreamingResponse:
     """
-    ## Get the full image of a project.
+    ## Get the original image of a project.
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
 
     ### Returns:
-    - **StreamingResponse**: The full-sized image of the project in JPEG format (bytes).
+    - **StreamingResponse**: The original full-sized image of the project in JPEG format (bytes).
 
     ### Errors:
     - **403 Forbidden**: If the user does not have access rights.
@@ -673,8 +678,8 @@ async def get_full_project_image(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    image_stream = await user_project_service.get_full_project_image(
-        minio_client, project_id, user.id if user is not None else None
+    image_stream = await user_project_service.get_project_image(
+        minio_client, project_id, user.id if user is not None else None, image_type="origin"
     )
 
     return StreamingResponse(image_stream, media_type="image/jpeg")
@@ -697,7 +702,7 @@ async def get_preview_project_image(
     - **project_id** (int, Path): Unique identifier of the project.
 
     ### Returns:
-    - **StreamingResponse**: A preview version of the project image in PNG format (bytes).
+    - **StreamingResponse**: A preview version of the project image in JPEG format (bytes).
 
     ### Errors:
     - **403 Forbidden**: If the user does not have access rights.
@@ -709,11 +714,11 @@ async def get_preview_project_image(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    image_stream = await user_project_service.get_preview_project_image(
-        minio_client, project_id, user.id if user is not None else None
+    image_stream = await user_project_service.get_project_image(
+        minio_client, project_id, user.id if user is not None else None, image_type="preview"
     )
 
-    return StreamingResponse(image_stream, media_type="image/png")
+    return StreamingResponse(image_stream, media_type="image/jpeg")
 
 
 @projects_router.get(
@@ -728,13 +733,13 @@ async def get_full_project_image_url(
     minio_client: AsyncMinioClient = Depends(get_minio_client),
 ) -> str:
     """
-    ## Get the URL for the full image of a project.
+    ## Get the URL for the original image of a project.
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
 
     ### Returns:
-    - **str**: A URL pointing to the full project image.
+    - **str**: A URL pointing to the original project image.
 
     ### Errors:
     - **403 Forbidden**: If the user does not have access rights.
@@ -746,8 +751,43 @@ async def get_full_project_image_url(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    return await user_project_service.get_full_project_image_url(
-        minio_client, project_id, user.id if user is not None else None
+    return await user_project_service.get_project_image_url(
+        minio_client, project_id, user.id if user is not None else None, image_type="origin"
+    )
+
+
+@projects_router.get(
+    "/projects/{project_id}/preview_url",
+    response_model=str,
+    status_code=status.HTTP_200_OK,
+)
+async def get_preview_project_image_url(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    user: UserDTO = Depends(get_user),
+    minio_client: AsyncMinioClient = Depends(get_minio_client),
+) -> str:
+    """
+    ## Get the URL for the preview image of a project.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+
+    ### Returns:
+    - **str**: A URL pointing to the preview project image.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the project owner or the project must be publicly available.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    return await user_project_service.get_project_image_url(
+        minio_client, project_id, user.id if user is not None else None, image_type="preview"
     )
 
 
@@ -862,7 +902,7 @@ async def get_user_preview_project_images_url(
     ## Get URLs for preview images of user's projects.
 
     **WARNING:** This method has been deprecated since version 0.34.0 and will be removed in version 1.0.
-    Instead, use method **GET /projects_preview_url** with parameter `only_own = True`.
+    Instead, use method **GET /projects_images_url** with parameter `only_own = True`.
 
     ### Parameters:
     - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).

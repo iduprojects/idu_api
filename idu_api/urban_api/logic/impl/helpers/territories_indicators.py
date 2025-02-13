@@ -81,7 +81,7 @@ async def get_indicator_values_by_territory_id_from_db(
         measurement_units_dict.c.measurement_unit_id,
         measurement_units_dict.c.name.label("measurement_unit_name"),
         territories_data.c.name.label("territory_name"),
-    )
+    ).distinct()
 
     if last_only:
         subquery = (
@@ -89,11 +89,6 @@ async def get_indicator_values_by_territory_id_from_db(
                 territory_indicators_data.c.indicator_id,
                 territory_indicators_data.c.value_type,
                 func.max(func.date(territory_indicators_data.c.date_value)).label("max_date"),
-            )
-            .select_from(
-                territory_indicators_data.join(
-                    territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id
-                )
             )
             .where(territory_indicators_data.c.territory_id == territory_id)
             .group_by(
@@ -223,7 +218,7 @@ async def get_indicator_values_by_parent_id_from_db(
         indicators_dict.c.list_label,
         measurement_units_dict.c.measurement_unit_id,
         measurement_units_dict.c.name.label("measurement_unit_name"),
-    )
+    ).distinct()
 
     if indicator_ids is not None:
         ids = {int(i.strip()) for i in indicator_ids.split(",") if i.strip()}

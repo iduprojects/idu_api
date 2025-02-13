@@ -65,11 +65,11 @@ config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 async def check_project(conn: AsyncConnection, project_id: int, user_id: str, to_edit: bool = False) -> None:
     """Check project existence and user access."""
 
-    statement_for_project = select(projects_data).where(projects_data.c.project_id == project_id)
-    result_for_project = (await conn.execute(statement_for_project)).mappings().one_or_none()
-    if result_for_project is None:
+    statement = select(projects_data).where(projects_data.c.project_id == project_id)
+    result = (await conn.execute(statement)).mappings().one_or_none()
+    if result is None:
         raise EntityNotFoundById(project_id, "project")
-    if result_for_project.user_id != user_id and (not result_for_project.public or to_edit):
+    if result.user_id != user_id and (not result.public or to_edit):
         raise AccessDeniedError(project_id, "project")
 
 
@@ -149,11 +149,19 @@ async def get_all_projects_from_db(conn: AsyncConnection) -> list[ProjectDTO]:
     """Get all available projects."""
 
     statement = (
-        select(projects_data, territories_data.c.name.label("territory_name"))
-        .select_from(
-            projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+        select(
+            projects_data,
+            territories_data.c.name.label("territory_name"),
+            scenarios_data.c.scenario_id,
+            scenarios_data.c.name.label("scenario_name"),
         )
-        .where()
+        .select_from(
+            projects_data.join(
+                territories_data,
+                territories_data.c.territory_id == projects_data.c.territory_id,
+            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+        )
+        .where(scenarios_data.c.is_based.is_(True), projects_data.c.is_regional.is_(False))
         .order_by(projects_data.c.project_id)
     )
 
@@ -333,14 +341,14 @@ async def get_preview_projects_images_from_minio(
 
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    results = await minio_client.get_files([f"projects/{project_id}/preview.png" for project_id in project_ids], logger)
+    results = await minio_client.get_files([f"projects/{project_id}/preview.jpg" for project_id in project_ids], logger)
     images = {project_id: image for project_id, image in zip(project_ids, results) if image is not None}
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zip_file:
         for project_id, image_stream in images.items():
             if image_stream:
-                zip_file.writestr(f"preview_{project_id}.png", image_stream.read())
+                zip_file.writestr(f"preview_{project_id}.jpg", image_stream.read())
     zip_buffer.seek(0)
 
     return zip_buffer
@@ -404,7 +412,7 @@ async def get_preview_projects_images_url_from_minio(
     project_ids = (await conn.execute(statement)).scalars().all()
 
     results = await minio_client.generate_presigned_urls(
-        [f"projects/{project_id}/preview.png" for project_id in project_ids], logger
+        [f"projects/{project_id}/preview.jpg" for project_id in project_ids], logger
     )
 
     return [{"project_id": project_id, "url": url} for project_id, url in zip(project_ids, results) if url is not None]
@@ -465,14 +473,14 @@ async def get_user_preview_projects_images_from_minio(
         statement = statement.where(projects_data.c.territory_id == territory_id)
     project_ids = (await conn.execute(statement)).scalars().all()
 
-    results = await minio_client.get_files([f"projects/{project_id}/preview.png" for project_id in project_ids], logger)
+    results = await minio_client.get_files([f"projects/{project_id}/preview.jpg" for project_id in project_ids], logger)
     images = {project_id: image for project_id, image in zip(project_ids, results) if image is not None}
 
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zip_file:
         for project_id, image_stream in images.items():
             if image_stream:
-                zip_file.writestr(f"preview_{project_id}.png", image_stream.read())
+                zip_file.writestr(f"preview_{project_id}.jpg", image_stream.read())
     zip_buffer.seek(0)
 
     return zip_buffer
@@ -502,7 +510,7 @@ async def get_user_preview_projects_images_url_from_minio(
     project_ids = (await conn.execute(statement)).scalars().all()
 
     results = await minio_client.generate_presigned_urls(
-        [f"projects/{project_id}/preview.png" for project_id in project_ids], logger
+        [f"projects/{project_id}/preview.jpg" for project_id in project_ids], logger
     )
 
     return [{"project_id": project_id, "url": url} for project_id, url in zip(project_ids, results) if url is not None]
@@ -897,8 +905,8 @@ async def upload_project_image_to_minio(
     user_id: str,
     file: bytes,
     logger: structlog.stdlib.BoundLogger,
-) -> dict:
-    """Create project image preview and upload it (full and preview) to minio bucket."""
+) -> dict[str, str]:
+    """Upload original and resized project image to minio bucket."""
 
     await check_project(conn, project_id, user_id, to_edit=True)
 
@@ -907,46 +915,37 @@ async def upload_project_image_to_minio(
     except Exception as exc:
         raise InvalidImageError(project_id) from exc
 
-    preview_image = image.copy()
-    width, height = preview_image.size
-    target_width = 300
-    target_height = 300
-
-    target_aspect_ratio = target_width / target_height
-    current_aspect_ratio = width / height
-
-    if current_aspect_ratio > target_aspect_ratio:
-        new_width = int(height * target_aspect_ratio)
-        left = (width - new_width) / 2
-        top = 0
-        right = left + new_width
-        bottom = height
-    else:
-        new_height = int(width / target_aspect_ratio)
-        left = 0
-        top = (height - new_height) / 2
-        right = width
-        bottom = top + new_height
-
-    img_cropped = preview_image.crop((left, top, right, bottom))
-    preview_image = img_cropped.resize((target_width, target_height))
-
+    # Convert RGBA to RGB for JPEG compatibility
     if image.mode == "RGBA":
         image = image.convert("RGB")
 
+    preview_image = image.copy()
+
+    # Resize main image to max 1600px on the larger side
+    width, height = image.size
+    max_dimension = 1600
+
+    if width > max_dimension or height > max_dimension:
+        ratio = min(max_dimension / width, max_dimension / height)
+        new_size = (int(width * ratio), int(height * ratio))
+        preview_image = preview_image.resize(new_size, Image.Resampling.LANCZOS)
+
+    # Save and prepare for upload
     image_stream = io.BytesIO()
     image.save(image_stream, format="JPEG")
     image_stream.seek(0)
 
     preview_stream = io.BytesIO()
-    preview_image.save(preview_stream, format="PNG")
+    preview_image.save(preview_stream, format="JPEG", quality=85)
     preview_stream.seek(0)
 
+    # Upload to MinIO
     await minio_client.upload_file(image_stream.getvalue(), f"projects/{project_id}/image.jpg", logger)
-    await minio_client.upload_file(preview_stream.getvalue(), f"projects/{project_id}/preview.png", logger)
+    await minio_client.upload_file(preview_stream.getvalue(), f"projects/{project_id}/preview.jpg", logger)
 
+    # Generate URLs
     image_url, preview_url = await minio_client.generate_presigned_urls(
-        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.png"], logger
+        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.jpg"], logger
     )
 
     return {
@@ -955,43 +954,35 @@ async def upload_project_image_to_minio(
     }
 
 
-async def get_full_project_image_from_minio(
+async def get_project_image_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
     project_id: int,
     user_id: str,
+    image_type: Literal["origin", "preview"],
     logger: structlog.stdlib.BoundLogger,
 ) -> io.BytesIO:
     """Get full image for given project."""
 
     await check_project(conn, project_id, user_id)
 
-    return (await minio_client.get_files([f"projects/{project_id}/image.jpg"], logger))[0]
+    object_name = f"projects/{project_id}/image.jpg" if image_type == "origin" else f"projects/{project_id}/preview.jpg"
+
+    return (await minio_client.get_files([object_name], logger))[0]
 
 
-async def get_preview_project_image_from_minio(
+async def get_project_image_url_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
     project_id: int,
     user_id: str,
-    logger: structlog.stdlib.BoundLogger,
-) -> io.BytesIO:
-    """Get preview image for given project."""
-
-    await check_project(conn, project_id, user_id)
-
-    return (await minio_client.get_files([f"projects/{project_id}/preview.png"], logger))[0]
-
-
-async def get_full_project_image_url_from_minio(
-    conn: AsyncConnection,
-    minio_client: AsyncMinioClient,
-    project_id: int,
-    user_id: str,
+    image_type: Literal["origin", "preview"],
     logger: structlog.stdlib.BoundLogger,
 ) -> str:
     """Get full image url for given project."""
 
     await check_project(conn, project_id, user_id)
 
-    return (await minio_client.generate_presigned_urls([f"projects/{project_id}/image.jpg"], logger))[0]
+    object_name = f"projects/{project_id}/image.jpg" if image_type == "origin" else f"projects/{project_id}/preview.jpg"
+
+    return (await minio_client.generate_presigned_urls([object_name], logger))[0]

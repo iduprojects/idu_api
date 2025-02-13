@@ -97,7 +97,7 @@ class ProjectPost(BaseModel):
 
     name: str = Field(..., description="project name", examples=["--"])
     territory_id: int = Field(..., description="project region identifier", examples=[1])
-    is_city: bool = Field(..., description="boolean parameter to determine city project")
+    is_city: bool = Field(False, description="boolean parameter to determine city project")
     description: str | None = Field(None, description="project description", examples=["--"])
     public: bool = Field(..., description="project publicity", examples=[True])
     properties: dict[str, Any] = Field(

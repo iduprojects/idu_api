@@ -175,22 +175,24 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Create project image preview and upload it (full and preview) to minio bucket."""
 
     @abc.abstractmethod
-    async def get_full_project_image(
-        self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
+    async def get_project_image(
+        self,
+        minio_client: AsyncMinioClient,
+        project_id: int,
+        user_id: str | None,
+        image_type: Literal["origin", "preview"],
     ) -> io.BytesIO:
-        """Get full image for given project."""
+        """Get image with given type for given project."""
 
     @abc.abstractmethod
-    async def get_preview_project_image(
-        self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
-    ) -> io.BytesIO:
-        """Get preview image for given project."""
-
-    @abc.abstractmethod
-    async def get_full_project_image_url(
-        self, minio_client: AsyncMinioClient, project_id: int, user_id: str | None
+    async def get_project_image_url(
+        self,
+        minio_client: AsyncMinioClient,
+        project_id: int,
+        user_id: str | None,
+        image_type: Literal["origin", "preview"],
     ) -> str:
-        """Get full image url for given project."""
+        """Get url for image with given type for given project."""
 
     @abc.abstractmethod
     async def get_scenarios_by_project_id(self, project_id: int, user_id: str | None) -> list[ScenarioDTO]:
