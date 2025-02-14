@@ -26,8 +26,6 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenar
 from idu_api.urban_api.logic.impl.helpers.utils import check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import ScenarioIndicatorValuePatch, ScenarioIndicatorValuePost, ScenarioIndicatorValuePut
 
-config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
-
 
 async def get_scenario_indicator_value_by_id_from_db(
     conn: AsyncConnection, indicator_value_id: int
@@ -385,6 +383,8 @@ async def update_all_indicators_values_by_scenario_id_to_db(
     """Update all indicators values for given scenario."""
 
     project = await get_project_by_scenario_id(conn, scenario_id, user_id)
+
+    config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 
     async with aiohttp.ClientSession() as session:
         params = {"scenario_id": scenario_id, "project_id": project.project_id, "background": "false"}

@@ -59,9 +59,6 @@ from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
 
-config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
-
-
 async def check_project(conn: AsyncConnection, project_id: int, user_id: str, to_edit: bool = False) -> None:
     """Check project existence and user access."""
 
@@ -772,6 +769,8 @@ async def add_project_to_db(
         )
 
     await conn.commit()
+
+    config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 
     async with aiohttp.ClientSession() as session:
         params = {"scenario_id": scenario_id, "project_id": project_id, "background": "true"}
