@@ -1,4 +1,3 @@
-import itertools
 import os
 import tempfile
 import typing as tp
@@ -98,7 +97,6 @@ def main(
     Urban api backend service main function, performs configuration
     via config and command line + environment variables overrides.
     """
-    additional_loggers = list(itertools.chain.from_iterable(additional_loggers))
     config = UrbanAPIConfig.load(config_path)
     logging_section = config.logging if logger_verbosity is None else LoggingConfig(level=logger_verbosity)
     config = UrbanAPIConfig(
@@ -114,12 +112,14 @@ def main(
         external=config.external,
         logging=logging_section,
     )
-    temp_yaml_config_path = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_yaml_config_path = temp_file.name
     config.dump(temp_yaml_config_path)
-    temp_envfile_path = os.path.join(tempfile.gettempdir(), os.urandom(24).hex())
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_envfile_path = temp_file.name
+    with open(temp_envfile_path, "w", encoding="utf-8") as env_file:
+        env_file.write(f"CONFIG_PATH={temp_yaml_config_path}\n")
     try:
-        with open(temp_envfile_path, "w", encoding="utf-8") as env_file:
-            env_file.write(f"CONFIG_PATH={temp_yaml_config_path}\n")
         uvicorn_config = {
             "host": config.app.host,
             "port": config.app.port,

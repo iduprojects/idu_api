@@ -45,7 +45,7 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithTerritoryDTO
-from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
 from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, extract_values_from_model
@@ -514,7 +514,7 @@ async def add_project_to_db(
     """Create project object, its territory and base scenario."""
 
     given_geometry = select(
-        ST_GeomFromText(str(project.territory.geometry.as_shapely_geometry()), text("4326"))
+        ST_GeomFromText(project.territory.geometry.as_shapely_geometry().wkt, text("4326"))
     ).scalar_subquery()
 
     buffer_meters = 3000
@@ -605,7 +605,9 @@ async def add_project_to_db(
                 scenarios_data.c.is_based.is_(True),
             )
         )
-    ).scalar_one()
+    ).scalar_one_or_none()
+    if parent_scenario_id is None:
+        raise EntityNotFoundByParams(project.territory_id, "scenario")
 
     scenario_id = (
         await conn.execute(

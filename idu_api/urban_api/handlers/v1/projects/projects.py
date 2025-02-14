@@ -191,7 +191,7 @@ async def get_projects(
     if project_type is not None and is_regional:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please, choose either regional projects or certain project type.",
+            detail="Please, choose either regional projects or certain project type",
         )
 
     if only_own and user is None:

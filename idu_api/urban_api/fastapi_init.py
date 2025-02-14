@@ -27,6 +27,7 @@ from idu_api.urban_api.middlewares.exception_handler import ExceptionHandlerMidd
 from idu_api.urban_api.middlewares.logging import LoggingMiddleware
 from idu_api.urban_api.utils.auth_client import AuthenticationClient
 from idu_api.urban_api.utils.logging import configure_logging
+from idu_api.urban_api.logic.impl.system import SystemServiceImpl
 
 from .handlers import list_of_routes
 from .version import LAST_UPDATE, VERSION
@@ -100,6 +101,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
         territories_service=ignore_kwargs(TerritoriesServiceImpl),
         urban_objects_service=ignore_kwargs(UrbanObjectsServiceImpl),
         user_project_service=UserProjectServiceImpl,
+        system_service=SystemServiceImpl,
     )
     application.add_middleware(
         LoggingMiddleware,

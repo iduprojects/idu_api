@@ -1,8 +1,10 @@
 """Duty script to regenerate previews for all projects"""
 
 import asyncio
+
 import click
 import structlog
+
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.config import DBConfig, UrbanAPIConfig
 from idu_api.urban_api.dto.projects import ProjectDTO
@@ -19,17 +21,15 @@ async def regenerate_preview(service: UserProjectService, minio_client: AsyncMin
 async def async_main(
     connection_manager: PostgresConnectionManager, minio_client: AsyncMinioClient, logger: structlog.stdlib.BoundLogger
 ):
-    async with connection_manager.get_connection() as conn:
-        service = UserProjectServiceImpl(conn, logger)
+    service = UserProjectServiceImpl(connection_manager, logger)
+    projects = await service.get_all_projects()
 
-        projects = await service.get_all_projects()
-
-        for project in projects:
-            try:
-                await regenerate_preview(service, minio_client, project)
-                logger.info("regenerated project preview", project_id=project.project_id)
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.warning("could not regenerate preview", project_id=project.project_id, error=repr(exc))
+    for project in projects:
+        try:
+            await regenerate_preview(service, minio_client, project)
+            logger.info("regenerated project preview", project_id=project.project_id)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("could not regenerate preview", project_id=project.project_id, error=repr(exc))
 
 
 @click.command("regenerate-projects-previews")
@@ -54,7 +54,7 @@ def main(config_path: str):
             password=config.db.master.password,
             pool_size=1,
         ),
-        replicas=[],
+        replicas=config.db.replicas,
         logger=logger,
         application_name="duty_regenerate_projects_previews",
     )

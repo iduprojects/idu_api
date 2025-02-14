@@ -1,12 +1,12 @@
 """All fixtures are defined here."""
 
-from .connection import mock_conn
+from .connection import *
 from .functional_zones import *
 from .geometries import *
 from .hexagons import *
 from .indicators import *
 from .living_buildings import *
-from .minio_client import mock_minio_client
+from .minio_client import *
 from .normatives import *
 from .object_geometries import *
 from .physical_object_types import *

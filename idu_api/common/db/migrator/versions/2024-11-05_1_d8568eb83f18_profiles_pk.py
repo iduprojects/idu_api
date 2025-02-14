@@ -22,9 +22,9 @@ def upgrade() -> None:
     op.execute(sa.schema.CreateSequence(sa.Sequence("profiles_data_id_seq", schema="user_projects")))
 
     op.add_column(
-        "projects_functional_zones",
+        "profiles_data",
         sa.Column(
-            "functional_zone_id",
+            "profile_id",
             sa.Integer(),
             server_default=sa.text("nextval('user_projects.profiles_data_id_seq')"),
             nullable=False,
@@ -33,14 +33,14 @@ def upgrade() -> None:
     )
     op.create_primary_key(
         "profiles_data_pk",
-        "projects_functional_zones",
-        ["functional_zone_id"],
+        "profiles_data",
+        ["profile_id"],
         schema="user_projects",
     )
 
 
 def downgrade() -> None:
-    op.drop_constraint("profiles_data_pk", "projects_functional_zones", schema="user_projects")
-    op.drop_column("projects_functional_zones", "functional_zone_id", schema="user_projects")
+    op.drop_constraint("profiles_data_pk", "profiles_data", schema="user_projects")
+    op.drop_column("profiles_data", "profile_id", schema="user_projects")
 
     op.execute(sa.schema.DropSequence(sa.Sequence("profiles_data_id_seq", schema="user_projects")))

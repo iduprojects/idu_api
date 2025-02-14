@@ -1,6 +1,5 @@
 """Territories handlers logic of getting entities from the database is defined here."""
 
-from collections.abc import Callable
 from datetime import date
 from typing import Literal
 
@@ -97,7 +96,6 @@ from idu_api.urban_api.schemas import (
     TerritoryTypePost,
 )
 
-func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString
 
 

@@ -5,35 +5,15 @@ import io
 import pytest
 from PIL import Image
 
-from idu_api.urban_api.schemas import Project, ProjectPatch, ProjectPost, ProjectPut, ProjectTerritoryPost
+from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut, ProjectTerritoryPost
 from idu_api.urban_api.schemas.geometries import Geometry
-from idu_api.urban_api.schemas.short_models import ShortScenario, ShortTerritory
 
 __all__ = [
-    "project_req",
     "project_image",
     "project_patch_req",
     "project_post_req",
     "project_put_req",
 ]
-
-
-@pytest.fixture
-def project_req() -> Project:
-    """GET request template for user projects data."""
-
-    return Project(
-        project_id=1,
-        user_id="Test User",
-        name="Test Project Name",
-        territory=ShortTerritory(id=1, name="Test Territory"),
-        base_scenario=ShortScenario(id=1, name="Test Scenario"),
-        description="Test Project Description",
-        public=True,
-        is_regional=False,
-        is_city=False,
-        properties={},
-    )
 
 
 @pytest.fixture

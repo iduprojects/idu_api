@@ -2,7 +2,7 @@ app:
   host: 0.0.0.0
   port: 8000
   debug: false
-  name: urban_api (0.36.0)
+  name: urban_api (0.37.0)
 db:
   master:
     host: localhost

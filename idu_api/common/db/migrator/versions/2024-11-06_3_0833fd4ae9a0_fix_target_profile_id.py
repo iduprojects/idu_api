@@ -21,21 +21,21 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # fix `target_profile_id` to `functional_zone_type_id`
     op.drop_constraint(
-        "profiles_data_fk_func_zone_type_id__func_zone_type_dict", "projects_functional_zones", schema="user_projects"
+        "profiles_data_fk_func_zone_type_id__func_zone_type_dict", "profiles_data", schema="user_projects"
     )
-    op.drop_column("projects_functional_zones", "target_profile_id", schema="user_projects")
+    op.drop_column("profiles_data", "target_profile_id", schema="user_projects")
     op.drop_constraint(
         "scenarios_data_fk_func_zone_type_id__func_zone_type_dict", "scenarios_data", schema="user_projects"
     )
     op.drop_column("scenarios_data", "target_profile_id", schema="user_projects")
     op.add_column(
-        "projects_functional_zones",
+        "profiles_data",
         sa.Column("functional_zone_type_id", sa.Integer(), nullable=False),
         schema="user_projects",
     )
     op.create_foreign_key(
         "profiles_data_fk_func_zone_type_id__func_zone_type_dict",
-        "projects_functional_zones",
+        "profiles_data",
         "functional_zone_types_dict",
         ["functional_zone_type_id"],
         ["functional_zone_type_id"],
@@ -59,19 +59,19 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # revert `functional_zone_type_id` back to `target_profile_id` in `projects_functional_zones`
+    # revert `functional_zone_type_id` back to `target_profile_id` in `profiles_data`
     op.drop_constraint(
-        "profiles_data_fk_func_zone_type_id__func_zone_type_dict", "projects_functional_zones", schema="user_projects"
+        "profiles_data_fk_func_zone_type_id__func_zone_type_dict", "profiles_data", schema="user_projects"
     )
-    op.drop_column("projects_functional_zones", "functional_zone_type_id", schema="user_projects")
+    op.drop_column("profiles_data", "functional_zone_type_id", schema="user_projects")
     op.add_column(
-        "projects_functional_zones",
+        "profiles_data",
         sa.Column("target_profile_id", sa.Integer(), nullable=True),
         schema="user_projects",
     )
     op.create_foreign_key(
         "profiles_data_fk_func_zone_type_id__func_zone_type_dict",
-        "projects_functional_zones",
+        "profiles_data",
         "functional_zone_types_dict",
         ["target_profile_id"],
         ["functional_zone_type_id"],

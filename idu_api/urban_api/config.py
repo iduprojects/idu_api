@@ -158,7 +158,7 @@ class UrbanAPIConfig:
                         database="urban_db",
                         pool_size=8,
                     )
-                ]
+                ],
             ),
             auth=AuthConfig(url="http://localhost:8086/introspect", validate=False, cache_size=100, cache_ttl=1800),
             fileserver=FileServerConfig(
@@ -172,7 +172,9 @@ class UrbanAPIConfig:
                 read_timeout=20,
                 retries=3,
             ),
-            external=ExternalServicesConfig(hextech_api="http://localhost:8100", gen_planner_api="http://localhost:8101"),
+            external=ExternalServicesConfig(
+                hextech_api="http://localhost:8100", gen_planner_api="http://localhost:8101"
+            ),
             logging=LoggingConfig(level="INFO", files=[FileLogger(filename="logs/info.log", level="INFO")]),
         )
 

@@ -41,30 +41,28 @@ def upgrade() -> None:
     )
     op.add_column("functional_zones_data", sa.Column("name", sa.String(200), nullable=True))
 
-    # fix `projects_functional_zones`
+    # fix `profiles_data`
     op.add_column(
-        "projects_functional_zones",
+        "profiles_data",
         sa.Column(
             "properties", postgresql.JSONB(astext_type=sa.Text()), server_default=sa.text("'{}'::jsonb"), nullable=False
         ),
         schema="user_projects",
     )
     op.add_column(
-        "projects_functional_zones",
+        "profiles_data",
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
         schema="user_projects",
     )
     op.add_column(
-        "projects_functional_zones",
+        "profiles_data",
         sa.Column("updated_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
         schema="user_projects",
     )
-    op.drop_constraint(
-        "profiles_data_fk_scenario_id__scenarios_data", "projects_functional_zones", schema="user_projects"
-    )
+    op.drop_constraint("profiles_data_fk_scenario_id__scenarios_data", "profiles_data", schema="user_projects")
     op.create_foreign_key(
         "profiles_data_fk_scenario_id__scenarios_data",
-        "projects_functional_zones",
+        "profiles_data",
         "scenarios_data",
         ["scenario_id"],
         ["scenario_id"],
@@ -72,7 +70,7 @@ def upgrade() -> None:
         referent_schema="user_projects",
         ondelete="CASCADE",
     )
-    op.alter_column("projects_functional_zones", "name", nullable=True, schema="user_projects")
+    op.alter_column("profiles_data", "name", nullable=True, schema="user_projects")
 
 
 def downgrade() -> None:
@@ -93,21 +91,19 @@ def downgrade() -> None:
     op.drop_column("functional_zones_data", "updated_at")
     op.drop_column("functional_zones_data", "name")
 
-    # revert changes to `projects_functional_zones`
-    op.drop_column("projects_functional_zones", "properties", schema="user_projects")
-    op.drop_column("projects_functional_zones", "created_at", schema="user_projects")
-    op.drop_column("projects_functional_zones", "updated_at", schema="user_projects")
-    op.drop_constraint(
-        "profiles_data_fk_scenario_id__scenarios_data", "projects_functional_zones", schema="user_projects"
-    )
+    # revert changes to `profiles_data`
+    op.drop_column("profiles_data", "properties", schema="user_projects")
+    op.drop_column("profiles_data", "created_at", schema="user_projects")
+    op.drop_column("profiles_data", "updated_at", schema="user_projects")
+    op.drop_constraint("profiles_data_fk_scenario_id__scenarios_data", "profiles_data", schema="user_projects")
     op.create_foreign_key(
         "profiles_data_fk_scenario_id__scenarios_data",
-        "projects_functional_zones",
+        "profiles_data",
         "scenarios_data",
         ["scenario_id"],
         ["scenario_id"],
         source_schema="user_projects",
         referent_schema="user_projects",
     )
-    op.execute(sa.text("""DELETE FROM user_projects.projects_functional_zones WHERE name IS NULL"""))
-    op.alter_column("projects_functional_zones", "name", nullable=False, schema="user_projects")
+    op.execute(sa.text("""DELETE FROM user_projects.profiles_data WHERE name IS NULL"""))
+    op.alter_column("profiles_data", "name", nullable=False, schema="user_projects")
