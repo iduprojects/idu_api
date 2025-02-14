@@ -1,7 +1,5 @@
 """Normatives territories-related handlers are defined here."""
 
-from datetime import date
-
 from fastapi import HTTPException, Path, Query, Request
 from geojson_pydantic import Feature
 from geojson_pydantic.geometries import Geometry
@@ -23,18 +21,22 @@ from .routers import territories_router
 async def get_territory_normatives(
     request: Request,
     territory_id: int = Path(..., description="territory identifier", gt=0),
-    year: int = Query(date.today().year, description="to filter by year, current year is used by default"),
+    year: int | None = Query(None, description="optional filter by year (default: None)"),
+    last_only: bool = Query(False, description="to get last normatives"),
     include_child_territories: bool = Query(False, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only for cities"),
 ) -> list[Normative]:
     """
     ## Get normatives for a given territory.
 
-    **WARNING:** Set `cities_only = True` only if you want to get entities from child territories.
+    **WARNING 1:** Set `cities_only = True` only if you want to get entities from child territories.
+
+    **WARNING 2:** Set `last_only = True` only if you don't specify `year`.
 
     ### Parameters:
     - **territory_id** (int, Path): Unique identifier of the territory.
-    - **year** (int, Query): Filters results by the specified year (default: current year).
+    - **year** (int | None, Query): Optional filter by the specified year (default: None).
+    - **last_only** (bool, Query): If True, retrieves only the most recent normatives (default: true).
     - **include_child_territories** (bool, Query): If True, includes data from child territories (default: false).
     - **cities_only** (bool, Query): If True, retrieves data only for cities (default: false).
 
@@ -42,7 +44,8 @@ async def get_territory_normatives(
     - **list[Normative]**: A list of normatives associated with the territory.
 
     ### Errors:
-    - **400 Bad Request**: If you set cities_only = true and include_child_territories = false.
+    - **400 Bad Request**: If `cities_only` is set to True and `include_child_territories` is set to False
+    or `last_only` is set to True and `year` is set.
     - **404 Not Found**: If the territory does not exist.
     """
     territories_service: TerritoriesService = request.state.territories_service
@@ -53,8 +56,14 @@ async def get_territory_normatives(
             detail="You can use cities_only parameter only with including child territories",
         )
 
+    if year is not None and last_only:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, choose either specific year or last_only",
+        )
+
     normatives = await territories_service.get_normatives_by_territory_id(
-        territory_id, year, include_child_territories, cities_only
+        territory_id, year, last_only, include_child_territories, cities_only
     )
 
     return [Normative.from_dto(normative) for normative in normatives]
@@ -196,25 +205,36 @@ async def get_normatives_values_by_parent_id(
     parent_id: int | None = Query(
         None, description="parent territory identifier, should be skipped to get top level territories", gt=0
     ),
-    year: int = Query(date.today().year, description="to filter by year, current year is used by default"),
+    year: int | None = Query(None, description="optional filter by year (default: None)"),
+    last_only: bool = Query(False, description="to get last normatives"),
     centers_only: bool = Query(False, description="display only centers"),
 ) -> GeoJSONResponse[Feature[Geometry, TerritoryWithNormatives]]:
     """
     ## Get normatives for child territories (only given territory's level + 1) in GeoJSON format.
 
+    **WARNING:** Set `last_only = True` only if you don't specify `year`.
+
     ### Parameters:
     - **parent_id** (int | None, Query): Unique identifier of the parent territory. If skipped, returns the highest level territories.
-    - **year** (int, Query): Filters results by the specified year (default: current year).
+    - **year** (int | None, Query): Optional filter by the specified year (default: None).
+    - **last_only** (bool, Query): If True, retrieves only the most recent normatives (default: true).
     - **centers_only** (bool, Query): If True, returns only center points of geometries (default: false).
 
     ### Returns:
     - **GeoJSONResponse[Feature[Geometry, TerritoryWithNormatives]]**: A GeoJSON response containing territories and their normatives.
 
     ### Errors:
+    - **400 Bad Request**: If `last_only` is set to True and `year` is set.
     - **404 Not Found**: If the parent territory does not exist.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    territories = await territories_service.get_normatives_values_by_parent_id(parent_id, year)
+    if year is not None and last_only:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, choose either specific year or last_only",
+        )
+
+    territories = await territories_service.get_normatives_values_by_parent_id(parent_id, year, last_only)
 
     return await GeoJSONResponse.from_list([territory.to_geojson_dict() for territory in territories], centers_only)

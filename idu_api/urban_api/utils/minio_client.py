@@ -89,14 +89,7 @@ class AsyncMinioClient:
         ) as client:
             try:
                 existence_map = await self.objects_exist(object_names)
-                final_names = [
-                    (
-                        name
-                        if existence_map.get(name, False)
-                        else "defaultImg.png" if "preview" in name else "defaultImg.jpg"
-                    )
-                    for name in object_names
-                ]
+                final_names = [name if existence_map.get(name, False) else "defaultImg.jpg" for name in object_names]
                 tasks, file_data_map = [], {}
                 for name in final_names:
                     file_data = io.BytesIO()
@@ -127,14 +120,7 @@ class AsyncMinioClient:
         ) as client:
             try:
                 existence_map = await self.objects_exist(object_names)
-                final_names = [
-                    (
-                        name
-                        if existence_map.get(name, False)
-                        else "defaultImg.png" if "preview" in name else "defaultImg.jpg"
-                    )
-                    for name in object_names
-                ]
+                final_names = [name if existence_map.get(name, False) else "defaultImg.jpg" for name in object_names]
                 tasks = [
                     client.generate_presigned_url(
                         "get_object", Params={"Bucket": self._bucket_name, "Key": name}, ExpiresIn=expires_in

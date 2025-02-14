@@ -14,6 +14,7 @@ from alembic import command
 from alembic.config import Config
 from dotenv import load_dotenv
 
+from idu_api.common.db.config import MultipleDBsConfig
 from idu_api.urban_api.config import AppConfig, DBConfig, UrbanAPIConfig
 from tests.urban_api.helpers import *
 
@@ -96,8 +97,11 @@ def urban_api_host(config) -> Iterator[str]:  # pylint: disable=redefined-outer-
                 process.kill()
 
 
-def run_migrations(database: DBConfig):  # pylint: disable=redefined-outer-name
-    dsn = f"postgresql+asyncpg://{database.user}:{database.password}@{database.addr}:{database.port}/{database.name}"
+def run_migrations(database: MultipleDBsConfig):  # pylint: disable=redefined-outer-name
+    dsn = (
+        f"postgresql+asyncpg://{database.master.user}:{database.master.password}"
+        f"@{database.master.host}:{database.master.port}/{database.master.database}"
+    )
     alembic_dir = Path(__file__).resolve().parent.parent.parent / "idu_api" / "common" / "db"
 
     alembic_cfg = Config(str(alembic_dir / "alembic.ini"))

@@ -172,7 +172,8 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
     async def get_normatives_by_territory_id(
         self,
         territory_id: int,
-        year: int,
+        year: int | None,
+        last_only: bool,
         include_child_territories,
         cities_only,
     ) -> list[NormativeDTO]:
@@ -202,7 +203,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
 
     @abc.abstractmethod
     async def get_normatives_values_by_parent_id(
-        self, parent_id: int | None, year: int
+        self, parent_id: int | None, year: int | None, last_only: bool
     ) -> list[TerritoryWithNormativesDTO]:
         """Get list of normatives with values for territory by parent id and year."""
 

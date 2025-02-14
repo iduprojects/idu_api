@@ -4,10 +4,11 @@ import os
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, TextIO
+from typing import TextIO
 
 import yaml
 
+from idu_api.common.db.config import DBConfig, MultipleDBsConfig
 from idu_api.urban_api.version import VERSION as api_version
 
 from .utils.logging import LoggingLevel
@@ -22,27 +23,6 @@ class AppConfig:
 
     def __post_init__(self):
         self.name = f"urban_api ({api_version})"
-
-
-@dataclass
-class DBConfig:
-    host: str
-    port: int
-    database: str
-    user: str
-    password: str
-    pool_size: int
-
-
-@dataclass
-class MultipleDBsConfig:
-    master: DBConfig
-    replicas: list[DBConfig] | None
-
-    def __post_init__(self):
-        _dict_to_dataclass(self, "master", DBConfig)
-        if self.replicas is not None:
-            _list_dict_to_dataclasses(self, "replicas", DBConfig)
 
 
 @dataclass
@@ -201,7 +181,7 @@ class UrbanAPIConfig:
             raise ValueError(f"Could not read app config file: {file}") from exc
 
     @classmethod
-    def from_file_or_default(cls, config_path: str = os.getenv("CONFIG_PATH")) -> "UrbanAPIConfig":
+    def from_file_or_default(cls, config_path: str | None = os.getenv("CONFIG_PATH")) -> "UrbanAPIConfig":
         """Try to load configuration from the path specified in the environment variable."""
 
         if not config_path:
@@ -218,16 +198,3 @@ class UrbanAPIConfig:
             for param, value in other_subconfig.__dict__.items():
                 if param in current_subconfig.__dict__:
                     setattr(current_subconfig, param, value)
-
-
-def _list_dict_to_dataclasses(config_entry: Any, field_name: str, need_type: type) -> None:
-    list_dict = getattr(config_entry, field_name)
-    for i in range(len(list_dict)):  # pylint: disable=consider-using-enumerate
-        if isinstance(list_dict[i], dict):
-            list_dict[i] = need_type(**list_dict[i])
-
-
-def _dict_to_dataclass(config_entry: Any, field_name: str, need_type: type) -> None:
-    value = getattr(config_entry, field_name)
-    if isinstance(value, dict):
-        setattr(config_entry, field_name, need_type(**value))

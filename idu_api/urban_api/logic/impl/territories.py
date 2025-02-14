@@ -270,13 +270,14 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def get_normatives_by_territory_id(
         self,
         territory_id: int,
-        year: int,
+        year: int | None,
+        last_only: bool,
         include_child_territories,
         cities_only,
     ) -> list[NormativeDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_normatives_by_territory_id_from_db(
-                conn, territory_id, year, include_child_territories, cities_only
+                conn, territory_id, year, last_only, include_child_territories, cities_only
             )
 
     async def add_normatives_to_territory(
@@ -302,10 +303,10 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             return await delete_normatives_by_territory_id_in_db(conn, territory_id, normatives)
 
     async def get_normatives_values_by_parent_id(
-        self, parent_id: int | None, year: int
+        self, parent_id: int | None, year: int | None, last_only: bool
     ) -> list[TerritoryWithNormativesDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_normatives_values_by_parent_id_from_db(conn, parent_id, year)
+            return await get_normatives_values_by_parent_id_from_db(conn, parent_id, year, last_only)
 
     async def get_physical_object_types_by_territory_id(
         self, territory_id: int, include_child_territories: bool, cities_only: bool

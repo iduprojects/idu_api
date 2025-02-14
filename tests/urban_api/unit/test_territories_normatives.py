@@ -134,10 +134,10 @@ async def test_get_normatives_by_territory_id_from_db(mock_conn: MockConnection)
     ) as mock_get_territory_ancestors:
         mock_get_territory_ancestors.return_value = {"1": []}
         await get_normatives_by_territory_id_from_db(
-            mock_conn, territory_id, year, include_child_territories=False, cities_only=False
+            mock_conn, territory_id, year, last_only=False, include_child_territories=False, cities_only=False
         )
         result = await get_normatives_by_territory_id_from_db(
-            mock_conn, territory_id, year, include_child_territories=True, cities_only=True
+            mock_conn, territory_id, year, last_only=False, include_child_territories=True, cities_only=True
         )
         result = process_normatives(result)
 
@@ -462,9 +462,9 @@ async def test_get_normatives_values_by_parent_id_from_db(mock_conn: MockConnect
     with patch("idu_api.urban_api.logic.impl.helpers.territories_normatives.check_existence") as mock_check_existence:
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
-            await get_normatives_values_by_parent_id_from_db(mock_conn, parent_id, year)
-    await get_normatives_values_by_parent_id_from_db(mock_conn, parent_id, year)
-    result = await get_normatives_values_by_parent_id_from_db(mock_conn, parent_id, year)
+            await get_normatives_values_by_parent_id_from_db(mock_conn, parent_id, year, last_only=False)
+    await get_normatives_values_by_parent_id_from_db(mock_conn, parent_id, year, last_only=False)
+    result = await get_normatives_values_by_parent_id_from_db(mock_conn, parent_id, year, last_only=False)
     for item in result:
         item.normatives = process_normatives(item.normatives)
     geojson_result = await GeoJSONResponse.from_list([r.to_geojson_dict() for r in result])

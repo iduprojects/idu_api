@@ -85,11 +85,6 @@ async def test_get_indicator_values_by_territory_id_from_db(mock_conn: MockConne
             territory_indicators_data.c.value_type,
             func.max(func.date(territory_indicators_data.c.date_value)).label("max_date"),
         )
-        .select_from(
-            territory_indicators_data.join(
-                territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id
-            )
-        )
         .where(territory_indicators_data.c.territory_id == territory_id)
         .group_by(
             territory_indicators_data.c.indicator_id,
@@ -106,7 +101,7 @@ async def test_get_indicator_values_by_territory_id_from_db(mock_conn: MockConne
         measurement_units_dict.c.measurement_unit_id,
         measurement_units_dict.c.name.label("measurement_unit_name"),
         territories_data.c.name.label("territory_name"),
-    )
+    ).distinct()
     base_select_from = (
         territory_indicators_data.join(
             indicators_dict,
@@ -279,7 +274,7 @@ async def test_get_indicator_values_by_parent_id_from_db(mock_conn: MockConnecti
             func.date(territory_indicators_data.c.date_value) <= filters["end_date"],
             territory_indicators_data.c.value_type == filters["value_type"],
             territory_indicators_data.c.information_source.ilike(f"%{filters['information_source']}%"),
-        )
+        ).distinct()
     )
     last_only_statement = (
         statement.add_columns(

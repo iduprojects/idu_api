@@ -111,6 +111,7 @@ async def get_scenario_indicators_values_by_scenario_id_from_db(
         )
         .where(projects_indicators_data.c.scenario_id == scenario_id)
         .order_by(projects_indicators_data.c.indicator_value_id)
+        .distinct()
     )
 
     if indicators_group_id is not None:

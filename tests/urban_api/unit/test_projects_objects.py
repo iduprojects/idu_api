@@ -23,13 +23,13 @@ from idu_api.common.db.entities import (
     scenarios_data,
     territories_data,
 )
+from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithTerritoryDTO
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     delete_project_from_db,
-    get_full_project_image_from_minio,
-    get_full_project_image_url_from_minio,
-    get_preview_project_image_from_minio,
+    get_project_image_from_minio,
+    get_project_image_url_from_minio,
     get_preview_projects_images_from_minio,
     get_preview_projects_images_url_from_minio,
     get_project_by_id_from_db,
@@ -308,7 +308,7 @@ async def test_get_preview_projects_images_from_minio(
         .offset(page_size * (page - 1))
         .limit(page_size)
     )
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.png", logger)
+    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
 
     # Act
     result = await get_preview_projects_images_from_minio(
@@ -323,7 +323,7 @@ async def test_get_preview_projects_images_from_minio(
     # Assert
     assert isinstance(result, io.BytesIO), "Result should be a io.BytesIO."
     mock_conn.execute_mock.assert_called_once_with(str(statement))
-    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/preview.png"])])
+    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
 
 
 @pytest.mark.asyncio
@@ -361,7 +361,7 @@ async def test_get_preview_projects_images_url_from_minio(
         .offset(page_size * (page - 1))
         .limit(page_size)
     )
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.png", logger)
+    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
 
     # Act
     result = await get_preview_projects_images_url_from_minio(
@@ -378,7 +378,7 @@ async def test_get_preview_projects_images_url_from_minio(
     assert isinstance(result, list), "Result should be a list."
     assert all(isinstance(elem, dict) for elem in result), "Each item should be a dictionary."
     mock_conn.execute_mock.assert_called_once_with(str(statement))
-    mock_minio_client.generate_presigned_urls_mock.assert_has_calls([call(["projects/1/preview.png"])])
+    mock_minio_client.generate_presigned_urls_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
 
 
 @pytest.mark.asyncio
@@ -452,7 +452,7 @@ async def test_get_user_preview_projects_images_from_minio(
         .offset(page_size * (page - 1))
         .limit(page_size)
     )
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.png", logger)
+    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
 
     # Act
     result = await get_user_preview_projects_images_from_minio(
@@ -462,7 +462,7 @@ async def test_get_user_preview_projects_images_from_minio(
     # Assert
     assert isinstance(result, io.BytesIO), "Result should be a io.BytesIO."
     mock_conn.execute_mock.assert_called_once_with(str(statement))
-    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/preview.png"])])
+    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
 
 
 @pytest.mark.asyncio
@@ -489,7 +489,7 @@ async def test_get_user_preview_projects_images_url_from_minio(
         .offset(page_size * (page - 1))
         .limit(page_size)
     )
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.png", logger)
+    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
 
     # Act
     result = await get_user_preview_projects_images_url_from_minio(
@@ -500,11 +500,11 @@ async def test_get_user_preview_projects_images_url_from_minio(
     assert isinstance(result, list), "Result should be a list."
     assert all(isinstance(elem, dict) for elem in result), "Each item should be a dictionary."
     mock_conn.execute_mock.assert_called_once_with(str(statement))
-    mock_minio_client.generate_presigned_urls_mock.assert_has_calls([call(["projects/1/preview.png"])])
+    mock_minio_client.generate_presigned_urls_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
 
 
 @pytest.mark.asyncio
-async def test_add_project_to_db(mock_conn: MockConnection, project_post_req: ProjectPost):
+async def test_add_project_to_db(config: UrbanAPIConfig, mock_conn: MockConnection, project_post_req: ProjectPost):
     """Test the add_project_to_db function."""
 
     # Arrange
@@ -537,7 +537,7 @@ async def test_add_project_to_db(mock_conn: MockConnection, project_post_req: Pr
     scenario_id = 1
     project_id = 1
     logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    api_url = "/hextech/indicators_saving/save_all"
+    api_url = f"{config.external.hextech_api}/hextech/indicators_saving/save_all"
     params = {
         "scenario_id": scenario_id,
         "project_id": project_id,
@@ -687,15 +687,15 @@ async def test_upload_project_image_to_minio(
     mock_minio_client.upload_file_mock.assert_has_calls(
         [
             call(f"projects/{project_id}/image.jpg"),
-            call(f"projects/{project_id}/preview.png"),
+            call(f"projects/{project_id}/preview.jpg"),
         ],
         any_order=False,
     )
     mock_minio_client.objects_exist_mock.assert_called_once_with(
-        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.png"]
+        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.jpg"]
     )
     mock_minio_client.generate_presigned_urls_mock.assert_called_once_with(
-        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.png"]
+        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.jpg"]
     )
     mock_check.assert_called_once_with(mock_conn, project_id, user_id, to_edit=True)
 
@@ -714,7 +714,7 @@ async def test_get_full_project_image_from_minio(
     await mock_minio_client.upload_file(project_image, f"projects/{project_id}/image.jpg", logger)
 
     # Act
-    result = await get_full_project_image_from_minio(mock_conn, mock_minio_client, project_id, user_id, logger)
+    result = await get_project_image_from_minio(mock_conn, mock_minio_client, project_id, user_id, "origin", logger)
 
     # Assert
     assert isinstance(result, io.BytesIO), "Result should be a io.BytesIO."
@@ -734,15 +734,15 @@ async def test_get_preview_project_image_from_minio(
     user_id = "mock_string"
     project_id = 1
     logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.png", logger)
+    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
 
     # Act
-    result = await get_preview_project_image_from_minio(mock_conn, mock_minio_client, project_id, user_id, logger)
+    result = await get_project_image_from_minio(mock_conn, mock_minio_client, project_id, user_id, "preview", logger)
 
     # Assert
     assert isinstance(result, io.BytesIO), "Result should be a io.BytesIO."
     mock_minio_client.get_files_mock.assert_called()
-    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/preview.png"])])
+    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
     mock_check.assert_called_once_with(mock_conn, project_id, user_id)
 
 
@@ -760,7 +760,7 @@ async def test_get_full_project_image_url_from_minio(
     await mock_minio_client.upload_file(project_image, f"projects/{project_id}/image.jpg", logger)
 
     # Act
-    result = await get_full_project_image_url_from_minio(mock_conn, mock_minio_client, project_id, user_id, logger)
+    result = await get_project_image_url_from_minio(mock_conn, mock_minio_client, project_id, user_id, "origin", logger)
 
     # Assert
     assert isinstance(result, str), "Result should be a string."

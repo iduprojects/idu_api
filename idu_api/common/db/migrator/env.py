@@ -17,7 +17,6 @@ from idu_api.urban_api.utils.dotenv import try_load_envfile
 
 try_load_envfile(os.environ.get("ENVFILE", ".env"))
 
-
 config = context.config
 section = config.config_ini_section
 

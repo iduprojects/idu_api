@@ -21,6 +21,7 @@ from idu_api.common.db.entities import (
     scenarios_data,
     territories_data,
 )
+from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto import HexagonWithIndicatorsDTO, ScenarioIndicatorValueDTO
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
@@ -136,6 +137,7 @@ async def test_get_scenario_indicators_values_by_scenario_id_from_db(mock_check:
             projects_indicators_data.c.territory_id == territory_id,
             projects_indicators_data.c.hexagon_id == hexagon_id,
         )
+        .distinct()
         .order_by(projects_indicators_data.c.indicator_value_id)
     )
 
@@ -463,7 +465,7 @@ async def test_get_hexagons_with_indicators_by_scenario_id_from_db(mock_check: A
 
 
 @pytest.mark.asyncio
-async def test_update_all_indicators_values_by_scenario_id_to_db(mock_conn: MockConnection):
+async def test_update_all_indicators_values_by_scenario_id_to_db(config: UrbanAPIConfig, mock_conn: MockConnection):
     """Test the update_all_indicators_values_by_scenario_id_to_db function."""
 
     # Arrange
@@ -471,7 +473,7 @@ async def test_update_all_indicators_values_by_scenario_id_to_db(mock_conn: Mock
     project_id = 1
     user_id = "mock_string"
     logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    api_url = "/hextech/indicators_saving/save_all"
+    api_url = f"{config.external.hextech_api}/hextech/indicators_saving/save_all"
     params = {"scenario_id": scenario_id, "project_id": project_id, "background": "false"}
     normal_api_url = normalize_url(merge_params(api_url, params))
 
