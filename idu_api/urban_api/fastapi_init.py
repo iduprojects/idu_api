@@ -19,6 +19,7 @@ from idu_api.urban_api.logic.impl.physical_objects import PhysicalObjectsService
 from idu_api.urban_api.logic.impl.projects import UserProjectServiceImpl
 from idu_api.urban_api.logic.impl.service_types import ServiceTypesServiceImpl
 from idu_api.urban_api.logic.impl.services import ServicesDataServiceImpl
+from idu_api.urban_api.logic.impl.system import SystemServiceImpl
 from idu_api.urban_api.logic.impl.territories import TerritoriesServiceImpl
 from idu_api.urban_api.logic.impl.urban_objects import UrbanObjectsServiceImpl
 from idu_api.urban_api.middlewares.authentication import AuthenticationMiddleware
@@ -27,7 +28,6 @@ from idu_api.urban_api.middlewares.exception_handler import ExceptionHandlerMidd
 from idu_api.urban_api.middlewares.logging import LoggingMiddleware
 from idu_api.urban_api.utils.auth_client import AuthenticationClient
 from idu_api.urban_api.utils.logging import configure_logging
-from idu_api.urban_api.logic.impl.system import SystemServiceImpl
 
 from .handlers import list_of_routes
 from .version import LAST_UPDATE, VERSION

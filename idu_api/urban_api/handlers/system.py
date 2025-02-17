@@ -1,8 +1,9 @@
 """System endpoints are defined here."""
+
 from typing import Any
 
 import fastapi
-from fastapi import Request, HTTPException
+from fastapi import HTTPException, Request
 from geojson_pydantic import Feature
 from starlette import status
 
@@ -59,7 +60,7 @@ async def fix_geometry(request: Request, geometry: AllPossibleGeometry):
     try:
         geom = await system_service.fix_geometry(geometry.as_shapely_geometry())
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     return Geometry.from_shapely_geometry(geom)
 
@@ -93,6 +94,6 @@ async def fix_geojson(request: Request, geojson: GeoJSONResponse[Feature[Geometr
         geoms = [feature.geometry.as_shapely_geometry() for feature in geojson.features]
         geoms = await system_service.fix_geojson(geoms)
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     return geojson.update_geometries(geoms)

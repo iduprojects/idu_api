@@ -50,15 +50,19 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
+            config=Config(
+                connect_timeout=self._connect_timeout,
+                read_timeout=self._read_timeout,
+                response_checksum_validation="when_required",
+            ),
         ) as client:
             try:
                 file_stream = io.BytesIO(file_data)
                 await self._upload_file(client, file_stream, object_name)
                 return object_name
             except RetryError as exc:
-                await logger.aerror("could not connect to MinIO file server")
-                raise ExternalServiceUnavailable("file server") from exc
+                await logger.aerror("could not connect to MinIO fileserver")
+                raise ExternalServiceUnavailable("fileserver") from exc
             except Exception as exc:
                 await logger.aexception("unexpected error in AsyncMinioClient")
                 raise exc
@@ -71,7 +75,11 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
+            config=Config(
+                connect_timeout=self._connect_timeout,
+                read_timeout=self._read_timeout,
+                response_checksum_validation="when_required",
+            ),
         ) as client:
             response = await client.list_objects_v2(Bucket=self._bucket_name, Prefix="")
             existing_objects = {obj["Key"] for obj in response.get("Contents", [])}
@@ -85,7 +93,11 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
+            config=Config(
+                connect_timeout=self._connect_timeout,
+                read_timeout=self._read_timeout,
+                response_checksum_validation="when_required",
+            ),
         ) as client:
             try:
                 existence_map = await self.objects_exist(object_names)
@@ -101,8 +113,8 @@ class AsyncMinioClient:
                     file_data.seek(0)
                 return [file_data_map[name] for name in final_names]
             except RetryError as exc:
-                await logger.aerror("could not connect to MinIO file server")
-                raise ExternalServiceUnavailable("file server") from exc
+                await logger.aerror("could not connect to MinIO fileserver")
+                raise ExternalServiceUnavailable("fileserver") from exc
             except Exception as exc:
                 await logger.aexception("unexpected error in AsyncMinioClient")
                 raise exc
@@ -116,7 +128,11 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
+            config=Config(
+                connect_timeout=self._connect_timeout,
+                read_timeout=self._read_timeout,
+                response_checksum_validation="when_required",
+            ),
         ) as client:
             try:
                 existence_map = await self.objects_exist(object_names)
@@ -129,8 +145,8 @@ class AsyncMinioClient:
                 ]
                 return await asyncio.gather(*tasks)
             except RetryError as exc:
-                await logger.aerror("could not connect to MinIO file server")
-                raise ExternalServiceUnavailable("file server") from exc
+                await logger.aerror("could not connect to MinIO fileserver")
+                raise ExternalServiceUnavailable("fileserver") from exc
             except Exception as exc:
                 await logger.aexception("unexpected error in AsyncMinioClient")
                 raise exc
@@ -149,13 +165,17 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
+            config=Config(
+                connect_timeout=self._connect_timeout,
+                read_timeout=self._read_timeout,
+                response_checksum_validation="when_required",
+            ),
         ) as s3:
             try:
                 await (await s3.Bucket(self._bucket_name)).objects.filter(Prefix=object_name).delete()
             except RetryError as exc:
-                await logger.aerror("could not connect to MinIO file server")
-                raise ExternalServiceUnavailable("file server") from exc
+                await logger.aerror("could not connect to MinIO fileserver")
+                raise ExternalServiceUnavailable("fileserver") from exc
             except Exception as exc:
                 await logger.aexception("unexpected error in AsyncMinioClient")
                 raise exc

@@ -59,6 +59,7 @@ from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
 
+
 async def check_project(conn: AsyncConnection, project_id: int, user_id: str, to_edit: bool = False) -> None:
     """Check project existence and user access."""
 

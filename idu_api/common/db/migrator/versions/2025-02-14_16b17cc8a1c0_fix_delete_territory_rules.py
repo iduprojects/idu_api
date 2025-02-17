@@ -9,9 +9,8 @@ Create Date: 2025-02-14 12:24:28.403969
 from textwrap import dedent
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "16b17cc8a1c0"
@@ -67,6 +66,7 @@ def upgrade() -> None:
         ["territory_id"],
         ondelete="CASCADE",
     )
+
 
 def downgrade() -> None:
     # revert trigger
