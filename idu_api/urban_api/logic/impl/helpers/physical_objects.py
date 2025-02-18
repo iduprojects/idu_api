@@ -4,14 +4,13 @@ from collections import defaultdict
 from typing import Callable
 
 from geoalchemy2 import Geography, Geometry
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
+from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 from sqlalchemy import cast, delete, func, insert, select, text, update
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
@@ -24,7 +23,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import (
-    LivingBuildingDTO,
+    BuildingDTO,
     ObjectGeometryDTO,
     PhysicalObjectDTO,
     PhysicalObjectWithGeometryDTO,
@@ -40,15 +39,15 @@ from idu_api.urban_api.exceptions.logic.common import (
 )
 from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_objects_by_ids_from_db
 from idu_api.urban_api.logic.impl.helpers.utils import (
-    DECIMAL_PLACES,
     OBJECTS_NUMBER_LIMIT,
+    SRID,
     check_existence,
     extract_values_from_model,
 )
 from idu_api.urban_api.schemas import (
-    LivingBuildingPatch,
-    LivingBuildingPost,
-    LivingBuildingPut,
+    BuildingPatch,
+    BuildingPost,
+    BuildingPut,
     PhysicalObjectPatch,
     PhysicalObjectPost,
     PhysicalObjectPut,
@@ -67,6 +66,8 @@ async def get_physical_objects_with_geometry_by_ids_from_db(
     if len(ids) > OBJECTS_NUMBER_LIMIT:
         raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
+
     statement = (
         select(
             physical_objects_data,
@@ -78,11 +79,10 @@ async def get_physical_objects_with_geometry_by_ids_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
         )
         .select_from(
             physical_objects_data.join(
@@ -104,8 +104,8 @@ async def get_physical_objects_with_geometry_by_ids_from_db(
                 == physical_object_types_dict.c.physical_object_function_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(physical_objects_data.c.physical_object_id.in_(ids))
@@ -126,8 +126,8 @@ async def get_physical_objects_around_from_db(
 
     buffered_geometry_cte = select(
         cast(
-            func.ST_Buffer(cast(ST_GeomFromText(str(geometry.wkt), text("4326")), Geography(srid=4326)), buffer_meters),
-            Geometry(srid=4326),
+            func.ST_Buffer(cast(ST_GeomFromWKB(geometry.wkb, text(str(SRID))), Geography(srid=SRID)), buffer_meters),
+            Geometry(srid=SRID),
         ).label("geometry"),
     ).cte("buffered_geometry_cte")
 
@@ -192,15 +192,16 @@ async def get_physical_objects_around_from_db(
 async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_object_id: int) -> PhysicalObjectDTO:
     """Get physical object by identifier."""
 
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
+
     statement = (
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_object_types_dict.c.physical_object_function_id,
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
         )
@@ -215,8 +216,8 @@ async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_obje
                 == physical_object_types_dict.c.physical_object_function_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
             .join(
                 urban_objects_data,
@@ -275,8 +276,8 @@ async def add_physical_object_with_geometry_to_db(
         insert(object_geometries_data)
         .values(
             territory_id=physical_object.territory_id,
-            geometry=ST_GeomFromText(physical_object.geometry.as_shapely_geometry().wkt, text("4326")),
-            centre_point=ST_GeomFromText(physical_object.centre_point.as_shapely_geometry().wkt, text("4326")),
+            geometry=ST_GeomFromWKB(physical_object.geometry.as_shapely_geometry().wkb, text(str(SRID))),
+            centre_point=ST_GeomFromWKB(physical_object.centre_point.as_shapely_geometry().wkb, text(str(SRID))),
             address=physical_object.address,
             osm_id=physical_object.osm_id,
         )
@@ -368,84 +369,80 @@ async def delete_physical_object_from_db(conn: AsyncConnection, physical_object_
     return {"status": "ok"}
 
 
-async def add_living_building_to_db(
+async def add_building_to_db(
     conn: AsyncConnection,
-    living_building: LivingBuildingPost,
+    building: BuildingPost,
 ) -> PhysicalObjectDTO:
     """Create living building object."""
 
     if not await check_existence(
-        conn, physical_objects_data, conditions={"physical_object_id": living_building.physical_object_id}
+        conn, physical_objects_data, conditions={"physical_object_id": building.physical_object_id}
     ):
-        raise EntityNotFoundById(living_building.physical_object_id, "physical object")
+        raise EntityNotFoundById(building.physical_object_id, "physical object")
 
-    if await check_existence(
-        conn, living_buildings_data, conditions={"physical_object_id": living_building.physical_object_id}
-    ):
-        raise EntityAlreadyExists("living building", living_building.physical_object_id)
+    if await check_existence(conn, buildings_data, conditions={"physical_object_id": building.physical_object_id}):
+        raise EntityAlreadyExists("living building", building.physical_object_id)
 
-    statement = insert(living_buildings_data).values(**living_building.model_dump())
+    statement = insert(buildings_data).values(**building.model_dump())
 
     await conn.execute(statement)
     await conn.commit()
 
-    return await get_physical_object_by_id_from_db(conn, living_building.physical_object_id)
+    return await get_physical_object_by_id_from_db(conn, building.physical_object_id)
 
 
-async def put_living_building_to_db(conn: AsyncConnection, living_building: LivingBuildingPut) -> PhysicalObjectDTO:
+async def put_building_to_db(conn: AsyncConnection, building: BuildingPut) -> PhysicalObjectDTO:
     """Update living building object by all its attributes."""
 
     if not await check_existence(
-        conn, physical_objects_data, conditions={"physical_object_id": living_building.physical_object_id}
+        conn, physical_objects_data, conditions={"physical_object_id": building.physical_object_id}
     ):
-        raise EntityNotFoundById(living_building.physical_object_id, "physical object")
+        raise EntityNotFoundById(building.physical_object_id, "physical object")
 
     if await check_existence(
         conn,
-        living_buildings_data,
-        conditions={"physical_object_id": living_building.physical_object_id},
+        buildings_data,
+        conditions={"physical_object_id": building.physical_object_id},
     ):
         statement = (
-            update(living_buildings_data)
-            .where(living_buildings_data.c.physical_object_id == living_building.physical_object_id)
-            .values(**living_building.model_dump())
+            update(buildings_data)
+            .where(buildings_data.c.physical_object_id == building.physical_object_id)
+            .values(**building.model_dump())
         )
     else:
-        statement = insert(living_buildings_data).values(**living_building.model_dump())
+        statement = insert(buildings_data).values(**building.model_dump())
 
     await conn.execute(statement)
     await conn.commit()
 
-    return await get_physical_object_by_id_from_db(conn, living_building.physical_object_id)
+    return await get_physical_object_by_id_from_db(conn, building.physical_object_id)
 
 
-async def patch_living_building_to_db(
-    conn: AsyncConnection, living_building: LivingBuildingPatch, living_building_id: int
-) -> PhysicalObjectDTO:
+async def patch_building_to_db(conn: AsyncConnection, building: BuildingPatch, building_id: int) -> PhysicalObjectDTO:
     """Update living building object by only given attributes."""
 
-    if not await check_existence(conn, living_buildings_data, conditions={"living_building_id": living_building_id}):
-        raise EntityNotFoundById(living_building_id, "living building")
+    if not await check_existence(conn, buildings_data, conditions={"building_id": building_id}):
+        raise EntityNotFoundById(building_id, "living building")
 
-    if living_building.physical_object_id is not None:
+    if building.physical_object_id is not None:
         if not await check_existence(
-            conn, physical_objects_data, conditions={"physical_object_id": living_building.physical_object_id}
+            conn, physical_objects_data, conditions={"physical_object_id": building.physical_object_id}
         ):
-            raise EntityNotFoundById(living_building.physical_object_id, "physical object")
+            raise EntityNotFoundById(building.physical_object_id, "physical object")
 
         if await check_existence(
             conn,
-            living_buildings_data,
-            conditions={"physical_object_id": living_building.physical_object_id},
-            not_conditions={"living_building_id": living_building_id},
+            buildings_data,
+            conditions={"physical_object_id": building.physical_object_id},
+            not_conditions={"building_id": building_id},
         ):
-            raise EntityAlreadyExists("living building", living_building.physical_object_id)
+            raise EntityAlreadyExists("living building", building.physical_object_id)
 
     statement = (
-        update(living_buildings_data)
-        .where(living_buildings_data.c.living_building_id == living_building_id)
-        .values(**living_building.model_dump(exclude_unset=True))
-        .returning(living_buildings_data.c.physical_object_id)
+        update(buildings_data)
+        .where(buildings_data.c.building_id == building_id)
+        .values(**building.model_dump(exclude_unset=True))
+        .returning(buildings_data.c.physical_object_id)
     )
 
     physical_object_id = (await conn.execute(statement)).scalar_one()
@@ -454,23 +451,23 @@ async def patch_living_building_to_db(
     return await get_physical_object_by_id_from_db(conn, physical_object_id)
 
 
-async def delete_living_building_from_db(conn: AsyncConnection, living_building_id: int) -> dict:
+async def delete_building_from_db(conn: AsyncConnection, building_id: int) -> dict:
     """Delete living building object."""
 
-    if not await check_existence(conn, living_buildings_data, conditions={"living_building_id": living_building_id}):
-        raise EntityNotFoundById(living_building_id, "living building")
+    if not await check_existence(conn, buildings_data, conditions={"building_id": building_id}):
+        raise EntityNotFoundById(building_id, "living building")
 
-    statement = delete(living_buildings_data).where(living_buildings_data.c.living_building_id == living_building_id)
+    statement = delete(buildings_data).where(buildings_data.c.building_id == building_id)
     await conn.execute(statement)
     await conn.commit()
 
     return {"status": "ok"}
 
 
-async def get_living_buildings_by_physical_object_id_from_db(
+async def get_buildings_by_physical_object_id_from_db(
     conn: AsyncConnection,
     physical_object_id: int,
-) -> list[LivingBuildingDTO]:
+) -> list[BuildingDTO]:
     """Get living building or list of living buildings by physical object id."""
 
     if not await check_existence(conn, physical_objects_data, conditions={"physical_object_id": physical_object_id}):
@@ -478,31 +475,28 @@ async def get_living_buildings_by_physical_object_id_from_db(
 
     statement = (
         select(
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties,
-            physical_objects_data.c.physical_object_id,
+            buildings_data,
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
         )
         .select_from(
-            living_buildings_data.join(
+            buildings_data.join(
                 physical_objects_data,
-                physical_objects_data.c.physical_object_id == living_buildings_data.c.physical_object_id,
+                physical_objects_data.c.physical_object_id == buildings_data.c.physical_object_id,
             ).join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
-        .where(living_buildings_data.c.physical_object_id == physical_object_id)
+        .where(buildings_data.c.physical_object_id == physical_object_id)
         .distinct()
     )
 
     result = (await conn.execute(statement)).mappings().all()
 
-    return [LivingBuildingDTO(**building) for building in result]
+    return [BuildingDTO(**building) for building in result]
 
 
 async def get_services_by_physical_object_id_from_db(
@@ -603,8 +597,8 @@ async def get_services_with_geometry_by_physical_object_id_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
         )
         .select_from(
             services_data.join(urban_objects_data, services_data.c.service_id == urban_objects_data.c.service_id)
@@ -653,8 +647,8 @@ async def get_physical_object_geometries_from_db(
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.created_at,
             object_geometries_data.c.updated_at,
         )

@@ -5,9 +5,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi_pagination.bases import CursorRawParams, RawParams
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, func, select
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import func, select
 
 from idu_api.common.db.entities import (
     object_geometries_data,
@@ -26,7 +25,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_services import (
     get_services_capacity_by_territory_id_from_db,
     get_services_with_geometry_by_territory_id_from_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, include_child_territories_cte
+from idu_api.urban_api.logic.impl.helpers.utils import include_child_territories_cte
 from idu_api.urban_api.schemas import Service, ServicesCountCapacity, ServiceType, ServiceWithGeometry
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection
@@ -48,22 +47,19 @@ async def test_get_service_types_by_territory_id_from_db(mock_conn: MockConnecti
     statement = (
         select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
         .select_from(
-            territories_data.join(
-                object_geometries_data,
-                object_geometries_data.c.territory_id == territories_data.c.territory_id,
-            )
+            urban_objects_data.join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
             .join(
-                urban_objects_data,
+                object_geometries_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(
-                services_data,
-                services_data.c.service_id == urban_objects_data.c.service_id,
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
             .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
             .join(
                 urban_functions_dict,
-                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+                service_types_dict.c.urban_function_id == urban_functions_dict.c.urban_function_id,
             )
         )
         .order_by(service_types_dict.c.service_type_id)
@@ -264,8 +260,8 @@ async def test_get_services_with_geometry_by_territory_id_from_db(mock_conn: Moc
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
         )
@@ -426,7 +422,7 @@ async def test_get_services_capacity_by_territory_id_from_db(mock_conn: MockConn
         select(
             level_territories.c.territory_id,
             func.count(services_data.c.service_id).label("count"),
-            func.coalesce(func.sum(services_data.c.capacity_real), 0).label("capacity"),
+            func.coalesce(func.sum(services_data.c.capacity), 0).label("capacity"),
         )
         .select_from(
             level_territories.outerjoin(

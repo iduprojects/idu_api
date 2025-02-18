@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 from typing import Any, TypeVar
 
-from geoalchemy2.functions import ST_GeomFromText, ST_Union
+from geoalchemy2.functions import ST_GeomFromWKB, ST_Union
 from pydantic import BaseModel
-from sqlalchemy import Table, select, text
+from sqlalchemy import ScalarSelect, Table, select, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.selectable import CTE, Select
 
@@ -17,8 +17,8 @@ OBJECTS_NUMBER_LIMIT = 25_000
 # The maximum number of objects that can be inserted to the database at a time.
 OBJECTS_NUMBER_TO_INSERT_LIMIT = 7_000
 
-# The number of decimal places for geometry obtained from the database.
-DECIMAL_PLACES = 15
+# Spatial Reference System Identifier (SRID) for geometry fields.
+SRID = 4326
 
 UrbanAPIModel = TypeVar("UrbanAPIModel", bound=BaseModel)
 
@@ -146,10 +146,7 @@ def include_child_territories_cte(territory_id: int, cities_only: bool = False) 
 
 
 def extract_values_from_model(
-    model: UrbanAPIModel,
-    exclude_unset: bool = False,
-    to_update: bool = False,
-    srid: str = "4326",
+    model: UrbanAPIModel, exclude_unset: bool = False, to_update: bool = False
 ) -> dict[str, Any]:
     """
     Extracts and processes values from a Pydantic model for database operations.
@@ -163,8 +160,6 @@ def extract_values_from_model(
                       If True, only fields with explicitly set values are included.
         to_update (bool): Flag to add 'updated_at' timestamp for update operations.
                   If True, adds a UTC timestamp to the returned dictionary.
-        srid (str): Spatial Reference System Identifier (SRID) for geometry fields.
-              Defaults to "4326" (WGS 84). Must be a valid SRID string.
 
     Returns:
         dict: Processed values ready for database insertion/update.
@@ -196,7 +191,9 @@ def extract_values_from_model(
 
             try:
                 # Convert to WKT format with SRID
-                values[field] = ST_GeomFromText(geo_value.as_shapely_geometry().wkt, text(srid))  # Safe SRID parameter
+                values[field] = ST_GeomFromWKB(
+                    geo_value.as_shapely_geometry().wkb, text(str(SRID))
+                )  # Safe SRID parameter
             except AttributeError as e:
                 raise TypeError(
                     f"Invalid type for {field}. Expected geometry object "
@@ -210,7 +207,7 @@ def extract_values_from_model(
     return values
 
 
-async def get_all_context_territories(conn, project_id: int, user_id: int) -> dict[str, Any]:
+async def get_context_territories_geometry(conn, project_id: int, user_id: int) -> tuple[ScalarSelect[Any], list[int]]:
     """
     Retrieve project territory relations including context territories, unified geometry,
     and all related territories (descendants and ancestors).
@@ -221,9 +218,9 @@ async def get_all_context_territories(conn, project_id: int, user_id: int) -> di
         user_id (int): ID of the user requesting the data.
 
     Returns:
-        Dictionary containing:
-        - unified_geometry: Subquery for unified geometry of context territories.
-        - all_related_territories: Subquery containing all related territory IDs.
+        Tuple containing:
+        - unified_geometry: CTE for unified geometry of context territories.
+        - context identifiers: List of context territory identifiers.
 
     Raises:
         EntityNotFoundById: If project ID does not exist.
@@ -239,76 +236,11 @@ async def get_all_context_territories(conn, project_id: int, user_id: int) -> di
     if project.user_id != user_id and not project.public:
         raise AccessDeniedError(project_id, "project")
 
-    # Get context territories from project properties
-    # Select basic information for territories listed in project's context
-    context_territories = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.geometry,
-        )
+    # Get union geometry of all context territories
+    unified_geometry = (
+        select(ST_Union(territories_data.c.geometry).label("geometry"))
         .where(territories_data.c.territory_id.in_(project.properties["context"]))
-        .subquery()
+        .scalar_subquery()
     )
 
-    # Create unified geometry from context territories
-    # Generate a single geometry combining all context territories using PostGIS ST_Union
-    unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-
-    # Find all descendant territories (recursive hierarchy)
-    # Base case: Start with context territories
-    all_descendants = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_descendants", recursive=True)
-    )
-
-    # Recursive case: Find child territories through parent_id relationships
-    all_descendants = all_descendants.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_descendants,
-                territories_data.c.parent_id == all_descendants.c.territory_id,
-            )
-        )
-    )
-
-    # Find all ancestor territories (recursive hierarchy)
-    # Base case: Start with context territories
-    all_ancestors = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_ancestors", recursive=True)
-    )
-
-    # Recursive case: Find parent territories through territory_id relationships
-    all_ancestors = all_ancestors.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_ancestors,
-                territories_data.c.territory_id == all_ancestors.c.parent_id,
-            )
-        )
-    )
-
-    # Combine all related territories (both descendants and ancestors)
-    # Create a unified list of all territory IDs from both hierarchies
-    all_related_territories = (
-        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
-    )
-
-    return {
-        "geometry": unified_geometry,
-        "territories": all_related_territories,
-    }
+    return unified_geometry, project.properties["context"]

@@ -3,6 +3,13 @@ Response and request schemas are defined here.
 """
 
 from .basic_responses import OkResponse
+from .buildings import (
+    Building,
+    BuildingPatch,
+    BuildingPost,
+    BuildingPut,
+    BuildingWithGeometry,
+)
 from .functional_zones import (
     FunctionalZone,
     FunctionalZonePatch,
@@ -36,13 +43,6 @@ from .indicators import (
     ScenarioIndicatorValuePatch,
     ScenarioIndicatorValuePost,
     ScenarioIndicatorValuePut,
-)
-from .living_buildings import (
-    LivingBuilding,
-    LivingBuildingPatch,
-    LivingBuildingPost,
-    LivingBuildingPut,
-    LivingBuildingWithGeometry,
 )
 from .minio import MinioImagesURL, MinioImageURL
 from .normatives import Normative, NormativeDelete, NormativePatch, NormativePost
@@ -190,11 +190,11 @@ __all__ = [
     "PhysicalObjectsTypesHierarchy",
     "PhysicalObjectTypePatch",
     "PhysicalObjectTypePost",
-    "LivingBuilding",
-    "LivingBuildingPatch",
-    "LivingBuildingPost",
-    "LivingBuildingPut",
-    "LivingBuildingWithGeometry",
+    "Building",
+    "BuildingPatch",
+    "BuildingPost",
+    "BuildingPut",
+    "BuildingWithGeometry",
     "FunctionalZone",
     "FunctionalZonePost",
     "FunctionalZonePut",

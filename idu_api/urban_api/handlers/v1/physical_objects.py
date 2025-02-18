@@ -5,10 +5,10 @@ from starlette import status
 
 from idu_api.urban_api.logic.physical_objects import PhysicalObjectsService
 from idu_api.urban_api.schemas import (
-    LivingBuilding,
-    LivingBuildingPatch,
-    LivingBuildingPost,
-    LivingBuildingPut,
+    Building,
+    BuildingPatch,
+    BuildingPost,
+    BuildingPut,
     ObjectGeometry,
     OkResponse,
     PhysicalObject,
@@ -177,15 +177,19 @@ async def delete_physical_object(
     "/living_buildings",
     response_model=PhysicalObject,
     status_code=status.HTTP_201_CREATED,
+    deprecated=True,
 )
-async def add_living_building(request: Request, living_building: LivingBuildingPost) -> PhysicalObject:
+async def add_living_building(request: Request, building: BuildingPost) -> PhysicalObject:
     """
     ## Create a new living building.
 
-    **WARNING:** There can only be one living building per physical object.
+    **WARNING 1:** There can only be one living building per physical object.
+
+    **WARNING 2:** This method has been deprecated since version 0.38.0 and will be removed in version 1.0.
+    Instead, use method **POST /buildings**.
 
     ### Parameters:
-    - **living_building** (LivingBuildingPost, Body): Data for the new living building.
+    - **building** (BuildingPost, Body): Data for the new living building.
 
     ### Returns:
     - **PhysicalObject**: The created living building.
@@ -196,25 +200,29 @@ async def add_living_building(request: Request, living_building: LivingBuildingP
     """
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
 
-    living_building_dto = await physical_objects_service.add_living_building(living_building)
+    building_dto = await physical_objects_service.add_building(building)
 
-    return PhysicalObject.from_dto(living_building_dto)
+    return PhysicalObject.from_dto(building_dto)
 
 
 @physical_objects_router.put(
     "/living_buildings",
     response_model=PhysicalObject,
     status_code=status.HTTP_200_OK,
+    deprecated=True,
 )
-async def put_living_building(request: Request, living_building: LivingBuildingPut) -> PhysicalObject:
+async def put_living_building(request: Request, building: BuildingPut) -> PhysicalObject:
     """
     ## Create or update a living building.
 
     **NOTE:** If a living building for given physical object already exists, it will be updated.
     Otherwise, a new living building will be created.
 
+    **WARNING:** This method has been deprecated since version 0.38.0 and will be removed in version 1.0.
+    Instead, use method **PUT /buildings**.
+
     ### Parameters:
-    - **living_building** (LivingBuildingPut, Body): Data for updating or creating a living building.
+    - **building** (BuildingPut, Body): Data for updating or creating a living building.
 
     ### Returns:
     - **PhysicalObject**: The updated or created living building.
@@ -224,27 +232,31 @@ async def put_living_building(request: Request, living_building: LivingBuildingP
     """
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
 
-    living_building_dto = await physical_objects_service.put_living_building(living_building)
+    building_dto = await physical_objects_service.put_building(building)
 
-    return PhysicalObject.from_dto(living_building_dto)
+    return PhysicalObject.from_dto(building_dto)
 
 
 @physical_objects_router.patch(
     "/living_buildings/{living_building_id}",
     response_model=PhysicalObject,
     status_code=status.HTTP_200_OK,
+    deprecated=True,
 )
 async def patch_living_building(
     request: Request,
-    living_building: LivingBuildingPatch,
-    living_building_id: int = Path(..., description="living building identifier", gt=0),
+    building: BuildingPatch,
+    building_id: int = Path(..., description="living building identifier", gt=0),
 ) -> PhysicalObject:
     """
     ## Partially update a living building.
 
+    **WARNING:** This method has been deprecated since version 0.38.0 and will be removed in version 1.0.
+    Instead, use method **PATCH /buildings/{building_id}**.
+
     ### Parameters:
-    - **living_building_id** (int, Path): Unique identifier of the living building.
-    - **living_building** (LivingBuildingPatch, Body): Fields to update in the living building.
+    - **building_id** (int, Path): Unique identifier of the living building.
+    - **building** (BuildingPatch, Body): Fields to update in the living building.
 
     ### Returns:
     - **PhysicalObject**: The updated living building with modified attributes.
@@ -255,25 +267,29 @@ async def patch_living_building(
     """
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
 
-    living_building_dto = await physical_objects_service.patch_living_building(living_building, living_building_id)
+    building_dto = await physical_objects_service.patch_building(building, building_id)
 
-    return PhysicalObject.from_dto(living_building_dto)
+    return PhysicalObject.from_dto(building_dto)
 
 
 @physical_objects_router.delete(
     "/living_buildings/{living_building_id}",
     response_model=OkResponse,
     status_code=status.HTTP_200_OK,
+    deprecated=True,
 )
 async def delete_living_building(
     request: Request,
-    living_building_id: int = Path(..., description="living building identifier", gt=0),
+    building_id: int = Path(..., description="living building identifier", gt=0),
 ) -> OkResponse:
     """
     ## Delete a living building by its identifier.
 
+    **WARNING:** This method has been deprecated since version 0.38.0 and will be removed in version 1.0.
+    Instead, use method **DELETE /buildings/{building_id}**.
+
     ### Parameters:
-    - **living_building_id** (int, Path): Unique identifier of the living building.
+    - **building_id** (int, Path): Unique identifier of the living building.
 
     ### Returns:
     - **OkResponse**: A confirmation message of the deletion.
@@ -283,21 +299,136 @@ async def delete_living_building(
     """
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
 
-    await physical_objects_service.delete_living_building(living_building_id)
+    await physical_objects_service.delete_building(building_id)
+
+    return OkResponse()
+
+
+@physical_objects_router.post(
+    "/buildings",
+    response_model=PhysicalObject,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_building(request: Request, building: BuildingPost) -> PhysicalObject:
+    """
+    ## Create a new building.
+
+    **WARNING:** There can only be one building per physical object.
+
+    ### Parameters:
+    - **building** (BuildingPost, Body): Data for the new building.
+
+    ### Returns:
+    - **PhysicalObject**: The created building.
+
+    ## Errors:
+    - **404 Not Found**: If the physical object does not exist.
+    - **409 Conflict**: If a building already exists for this physical object.
+    """
+    physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
+
+    building_dto = await physical_objects_service.add_building(building)
+
+    return PhysicalObject.from_dto(building_dto)
+
+
+@physical_objects_router.put(
+    "/buildings",
+    response_model=PhysicalObject,
+    status_code=status.HTTP_200_OK,
+)
+async def put_building(request: Request, building: BuildingPut) -> PhysicalObject:
+    """
+    ## Create or update a building.
+
+    **NOTE:** If a building for given physical object already exists, it will be updated.
+    Otherwise, a new building will be created.
+
+    ### Parameters:
+    - **building** (BuildingPut, Body): Data for updating or creating a building.
+
+    ### Returns:
+    - **PhysicalObject**: The updated or created building.
+
+    ## Errors:
+    - **404 Not Found**: If the physical object does not exist.
+    """
+    physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
+
+    building_dto = await physical_objects_service.put_building(building)
+
+    return PhysicalObject.from_dto(building_dto)
+
+
+@physical_objects_router.patch(
+    "/buildings/{building_id}",
+    response_model=PhysicalObject,
+    status_code=status.HTTP_200_OK,
+)
+async def patch_building(
+    request: Request,
+    building: BuildingPatch,
+    building_id: int = Path(..., description="living building identifier", gt=0),
+) -> PhysicalObject:
+    """
+    ## Partially update a building.
+
+    ### Parameters:
+    - **building_id** (int, Path): Unique identifier of the building.
+    - **building** (BuildingPatch, Body): Fields to update in the building.
+
+    ### Returns:
+    - **PhysicalObject**: The updated building with modified attributes.
+
+    ## Errors:
+    - **404 Not Found**: If the building (or related entity) does not exist.
+    - **409 Conflict**: If a building already exists for given physical object.
+    """
+    physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
+
+    building_dto = await physical_objects_service.patch_building(building, building_id)
+
+    return PhysicalObject.from_dto(building_dto)
+
+
+@physical_objects_router.delete(
+    "/buildings/{building_id}",
+    response_model=OkResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def delete_building(
+    request: Request,
+    building_id: int = Path(..., description="living building identifier", gt=0),
+) -> OkResponse:
+    """
+    ## Delete a building by its identifier.
+
+    ### Parameters:
+    - **building_id** (int, Path): Unique identifier of the building.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ## Errors:
+    - **404 Not Found**: If the building does not exist.
+    """
+    physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
+
+    await physical_objects_service.delete_building(building_id)
 
     return OkResponse()
 
 
 @physical_objects_router.get(
     "/physical_objects/{physical_object_id}/living_buildings",
-    response_model=list[LivingBuilding],
+    response_model=list[Building],
     status_code=status.HTTP_200_OK,
     deprecated=True,
 )
-async def get_living_buildings_by_physical_object_id(
+async def get_buildings_by_physical_object_id(
     request: Request,
     physical_object_id: int = Path(..., description="physical object identifier", gt=0),
-) -> list[LivingBuilding]:
+) -> list[Building]:
     """
     ## Get all living buildings within a given physical object.
 
@@ -308,16 +439,16 @@ async def get_living_buildings_by_physical_object_id(
     - **physical_object_id** (int, Path): Unique identifier of the physical object.
 
     ### Returns:
-    - **list[LivingBuilding]**: A list of living buildings inside the specified physical object.
+    - **list[Building]**: A list of living buildings inside the specified physical object.
 
     ## Errors:
     - **404 Not Found**: If the physical object does not exist.
     """
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
 
-    buildings = await physical_objects_service.get_living_buildings_by_physical_object_id(physical_object_id)
+    buildings = await physical_objects_service.get_buildings_by_physical_object_id(physical_object_id)
 
-    return [LivingBuilding.from_dto(building) for building in buildings]
+    return [Building.from_dto(building) for building in buildings]
 
 
 @physical_objects_router.get(

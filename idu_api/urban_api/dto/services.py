@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any
 
 import shapely.geometry as geom
+from shapely.wkb import loads as wkb_loads
 
 Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
 
@@ -24,7 +25,8 @@ class ServiceDTO:  # pylint: disable=too-many-instance-attributes
     territory_type_id: int | None
     territory_type_name: str | None
     name: str | None
-    capacity_real: int | None
+    capacity: int | None
+    is_capacity_real: bool | None
     territories: list[dict[str, Any]]
     properties: dict[str, Any]
     created_at: datetime
@@ -51,7 +53,8 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     territory_id: int
     territory_name: str
     name: str | None
-    capacity_real: int | None
+    capacity: int | None
+    is_capacity_real: bool | None
     properties: dict[str, Any]
     object_geometry_id: int
     address: str | None
@@ -62,12 +65,12 @@ class ServiceWithGeometryDTO:  # pylint: disable=too-many-instance-attributes
     updated_at: datetime
 
     def __post_init__(self) -> None:
-        if isinstance(self.centre_point, dict):
-            self.centre_point = geom.shape(self.centre_point)
+        if isinstance(self.centre_point, bytes):
+            self.centre_point = wkb_loads(self.centre_point)
         if self.geometry is None:
             self.geometry = self.centre_point
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)
 
     def to_geojson_dict(self) -> dict[str, Any]:
         service = asdict(self)
@@ -110,7 +113,8 @@ class ShortServiceDTO:
     territory_type_id: int | None
     territory_type_name: str | None
     name: str | None
-    capacity_real: int | None
+    capacity: int | None
+    is_capacity_real: bool | None
     properties: dict[str, Any]
 
 

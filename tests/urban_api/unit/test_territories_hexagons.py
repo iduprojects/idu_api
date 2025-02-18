@@ -3,9 +3,8 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, delete, insert, select, text
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB
+from sqlalchemy import delete, insert, select, text
 
 from idu_api.common.db.entities import hexagons_data, territories_data
 from idu_api.urban_api.dto import HexagonDTO
@@ -22,8 +21,8 @@ from idu_api.urban_api.logic.impl.helpers.territories_hexagons import (
     get_hexagons_by_territory_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.utils import (
-    DECIMAL_PLACES,
     OBJECTS_NUMBER_LIMIT,
+    SRID,
 )
 from idu_api.urban_api.schemas import Hexagon, HexagonAttributes, HexagonPost
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
@@ -46,8 +45,8 @@ async def test_get_hexagons_by_ids(mock_conn: MockConnection):
         select(
             hexagons_data.c.hexagon_id,
             hexagons_data.c.territory_id,
-            cast(ST_AsGeoJSON(hexagons_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(hexagons_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(hexagons_data.c.geometry).label("geometry"),
+            ST_AsEWKB(hexagons_data.c.centre_point).label("centre_point"),
             hexagons_data.c.properties,
             territories_data.c.name.label("territory_name"),
         )
@@ -81,8 +80,8 @@ async def test_get_hexagons_by_territory_id_from_db(mock_conn: MockConnection):
         select(
             hexagons_data.c.hexagon_id,
             hexagons_data.c.territory_id,
-            cast(ST_AsGeoJSON(hexagons_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(hexagons_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(hexagons_data.c.geometry).label("geometry"),
+            ST_AsEWKB(hexagons_data.c.centre_point).label("centre_point"),
             hexagons_data.c.properties,
             territories_data.c.name.label("territory_name"),
         )
@@ -130,8 +129,8 @@ async def test_add_hexagons_by_territory_id_to_db(mock_conn: MockConnection, hex
     insert_values = [
         {
             "territory_id": territory_id,
-            "geometry": ST_GeomFromText(hexagon_post_req.geometry.as_shapely_geometry().wkt, text("4326")),
-            "centre_point": ST_GeomFromText(hexagon_post_req.centre_point.as_shapely_geometry().wkt, text("4326")),
+            "geometry": ST_GeomFromWKB(hexagon_post_req.geometry.as_shapely_geometry().wkb, text(str(SRID))),
+            "centre_point": ST_GeomFromWKB(hexagon_post_req.centre_point.as_shapely_geometry().wkb, text(str(SRID))),
             "properties": hexagon_post_req.properties,
         }
     ]

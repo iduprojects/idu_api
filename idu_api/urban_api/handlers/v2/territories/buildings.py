@@ -4,7 +4,7 @@ from fastapi import HTTPException, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
-from idu_api.urban_api.schemas import LivingBuildingWithGeometry
+from idu_api.urban_api.schemas import BuildingWithGeometry
 from idu_api.urban_api.schemas.pages import CursorPage
 from idu_api.urban_api.utils.pagination import paginate
 
@@ -13,7 +13,7 @@ from .routers import territories_router
 
 @territories_router.get(
     "/territory/{territory_id}/living_buildings_with_geometry",
-    response_model=CursorPage[LivingBuildingWithGeometry],
+    response_model=CursorPage[BuildingWithGeometry],
     status_code=status.HTTP_200_OK,
     deprecated=True,
 )
@@ -22,7 +22,7 @@ async def get_living_buildings_with_geometry_by_territory_id(
     territory_id: int = Path(..., description="territory id", gt=0),
     include_child_territories: bool = Query(True, description="to get from child territories"),
     cities_only: bool = Query(False, description="to get only for cities"),
-) -> CursorPage[LivingBuildingWithGeometry]:
+) -> CursorPage[BuildingWithGeometry]:
     """
     ## Get living buildings with geometry for a given territory.
 
@@ -41,7 +41,7 @@ async def get_living_buildings_with_geometry_by_territory_id(
     - **page_size** (int, Query): Defines the number of physical objects per page (default: 10).
 
     ### Returns:
-    - **CursorPage[LivingBuildingWithGeometry]**: A paginated list of living buildings with geometry, including cursor-based pagination data.
+    - **CursorPage[BuildingWithGeometry]**: A paginated list of living buildings with geometry, including cursor-based pagination data.
 
     ### Errors:
     - **400 Bad Request**: If `cities_only` is set to True and `include_child_territories` is set to False.
@@ -62,6 +62,6 @@ async def get_living_buildings_with_geometry_by_territory_id(
     return paginate(
         buildings.items,
         buildings.total,
-        transformer=lambda x: [LivingBuildingWithGeometry.from_dto(item) for item in x],
+        transformer=lambda x: [BuildingWithGeometry.from_dto(item) for item in x],
         additional_data=buildings.cursor_data,
     )

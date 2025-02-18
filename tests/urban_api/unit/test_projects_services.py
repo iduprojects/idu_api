@@ -31,7 +31,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_services import (
     patch_service_to_db,
     put_service_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import get_all_context_territories
+from idu_api.urban_api.logic.impl.helpers.utils import get_context_territories_geometry
 from idu_api.urban_api.schemas import (
     ScenarioService,
     ScenarioServicePost,
@@ -61,11 +61,11 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
         .where(projects_urban_objects_data.c.public_urban_object_id.isnot(None))
-    ).alias("public_urban_object_ids")
+    ).cte(name="public_urban_object_ids")
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == 1)
-    ).alias("project_geometry")
+    ).scalar_subquery()
 
     public_urban_objects_query = (
         select(
@@ -109,20 +109,21 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
             ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
             service_types_dict.c.service_type_id == service_type_id,
         )
-        .distinct()
     )
 
     scenario_urban_objects_query = (
         select(
             projects_services_data.c.service_id,
             projects_services_data.c.name,
-            projects_services_data.c.capacity_real,
+            projects_services_data.c.capacity,
+            projects_services_data.c.is_capacity_real,
             projects_services_data.c.properties,
             projects_services_data.c.created_at,
             projects_services_data.c.updated_at,
             services_data.c.service_id.label("public_service_id"),
             services_data.c.name.label("public_name"),
-            services_data.c.capacity_real.label("public_capacity_real"),
+            services_data.c.capacity.label("public_capacity"),
+            services_data.c.is_capacity_real.label("public_is_capacity_real"),
             services_data.c.properties.label("public_properties"),
             services_data.c.created_at.label("public_created_at"),
             services_data.c.updated_at.label("public_updated_at"),
@@ -184,7 +185,6 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
             projects_urban_objects_data.c.public_urban_object_id.is_(None),
             service_types_dict.c.service_type_id == service_type_id,
         )
-        .distinct()
     )
 
     # Act
@@ -201,22 +201,28 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
 
 
 @pytest.mark.asyncio
-async def test_get_context_physical_objects_from_db(mock_conn: MockConnection):
-    """Test the get_context_physical_objects_from_db function."""
+async def test_get_context_services_from_db(mock_conn: MockConnection):
+    """Test the get_context_services_from_db function."""
 
     # Arrange
     project_id = 1
     user_id = "mock_string"
     service_type_id = 1
     urban_function_id = None
-    context = await get_all_context_territories(mock_conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
-        .where(
-            object_geometries_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
-            ST_Intersects(object_geometries_data.c.geometry, context["geometry"]),
+        .select_from(
+            object_geometries_data.join(
+                urban_objects_data,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
-        .subquery()
+        .where(
+            object_geometries_data.c.territory_id.in_(context_ids)
+            | ST_Intersects(object_geometries_data.c.geometry, context_geom)
+        )
+        .cte(name="objects_intersecting")
     )
     statement = (
         select(
@@ -239,6 +245,10 @@ async def test_get_context_physical_objects_from_db(mock_conn: MockConnection):
                 object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
             )
             .join(
+                objects_intersecting,
+                objects_intersecting.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
                 territories_data,
                 territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
@@ -255,11 +265,7 @@ async def test_get_context_physical_objects_from_db(mock_conn: MockConnection):
                 urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
             )
         )
-        .where(
-            object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting)),
-            service_types_dict.c.service_type_id == service_type_id,
-        )
-        .distinct()
+        .where(service_types_dict.c.service_type_id == service_type_id)
     )
 
     # Act
@@ -280,13 +286,7 @@ async def test_get_scenario_service_by_id_from_db(mock_conn: MockConnection):
     service_id = 1
     statement = (
         select(
-            projects_services_data.c.service_id,
-            projects_services_data.c.name,
-            projects_services_data.c.capacity_real,
-            projects_services_data.c.properties,
-            projects_services_data.c.created_at,
-            projects_services_data.c.updated_at,
-            service_types_dict.c.service_type_id,
+            projects_services_data,
             service_types_dict.c.urban_function_id,
             urban_functions_dict.c.name.label("urban_function_name"),
             service_types_dict.c.name.label("service_type_name"),
@@ -294,7 +294,6 @@ async def test_get_scenario_service_by_id_from_db(mock_conn: MockConnection):
             service_types_dict.c.code.label("service_type_code"),
             service_types_dict.c.infrastructure_type,
             service_types_dict.c.properties.label("service_type_properties"),
-            territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
             literal(True).label("is_scenario_object"),
             territories_data.c.territory_id,

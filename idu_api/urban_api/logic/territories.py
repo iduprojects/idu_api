@@ -7,12 +7,12 @@ from typing import Literal, Protocol
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 
 from idu_api.urban_api.dto import (
+    BuildingWithGeometryDTO,
     FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
     HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
-    LivingBuildingWithGeometryDTO,
     NormativeDTO,
     PageDTO,
     PhysicalObjectDTO,
@@ -245,12 +245,12 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         optional physical object type and physical object function and for cities only."""
 
     @abc.abstractmethod
-    async def get_living_buildings_with_geometry_by_territory_id(
+    async def get_buildings_with_geometry_by_territory_id(
         self,
         territory_id: int,
         include_child_territories: bool,
         cities_only: bool,
-    ) -> PageDTO[LivingBuildingWithGeometryDTO]:
+    ) -> PageDTO[BuildingWithGeometryDTO]:
         """Get living buildings with geometry by territory id."""
 
     @abc.abstractmethod

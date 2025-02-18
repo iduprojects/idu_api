@@ -4,7 +4,7 @@ from fastapi import HTTPException, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.territories import TerritoriesService
-from idu_api.urban_api.schemas import LivingBuildingWithGeometry
+from idu_api.urban_api.schemas import BuildingWithGeometry
 from idu_api.urban_api.schemas.pages import Page
 from idu_api.urban_api.utils.pagination import paginate
 
@@ -13,18 +13,18 @@ from .routers import territories_router
 
 @territories_router.get(
     "/territory/{territory_id}/living_buildings_with_geometry",
-    response_model=Page[LivingBuildingWithGeometry],
+    response_model=Page[BuildingWithGeometry],
     status_code=status.HTTP_200_OK,
     deprecated=True,
 )
-async def get_living_buildings_with_geometry_by_territory_id(
+async def get_buildings_with_geometry_by_territory_id(
     request: Request,
     territory_id: int = Path(..., description="territory identifier", gt=0),
     include_child_territories: bool = Query(
         True, description="to get from child territories (unsafe for high level territories)"
     ),
     cities_only: bool = Query(False, description="to get only for cities"),
-) -> Page[LivingBuildingWithGeometry]:
+) -> Page[BuildingWithGeometry]:
     """
     ## Get living buildings with geometry for a given territory.
 
@@ -43,7 +43,7 @@ async def get_living_buildings_with_geometry_by_territory_id(
     - **page_size** (int, Query): Defines the number of living buildings per page (default: 10).
 
     ### Returns:
-    - **Page[LivingBuildingWithGeometry]**: A paginated list of living buildings with geometry.
+    - **Page[BuildingWithGeometry]**: A paginated list of living buildings with geometry.
 
     ### Errors:
     - **400 Bad Request**: If `cities_only` is set to True and `include_child_territories` is set to False.
@@ -57,12 +57,12 @@ async def get_living_buildings_with_geometry_by_territory_id(
             detail="You can use cities_only parameter only with including child territories",
         )
 
-    buildings = await territories_service.get_living_buildings_with_geometry_by_territory_id(
+    buildings = await territories_service.get_buildings_with_geometry_by_territory_id(
         territory_id, include_child_territories, cities_only
     )
 
     return paginate(
         buildings.items,
         buildings.total,
-        transformer=lambda x: [LivingBuildingWithGeometry.from_dto(item) for item in x],
+        transformer=lambda x: [BuildingWithGeometry.from_dto(item) for item in x],
     )

@@ -27,7 +27,8 @@ def service_post_req() -> ServicePost:
         service_type_id=1,
         territory_type_id=1,
         name="Test Service",
-        capacity_real=100,
+        capacity=100,
+        is_capacity_real=True,
         properties={},
     )
 
@@ -44,7 +45,8 @@ def scenario_service_post_req() -> ScenarioServicePost:
         service_type_id=1,
         territory_type_id=1,
         name="Test Service",
-        capacity_real=100,
+        capacity=100,
+        is_capacity_real=True,
         properties={},
     )
 
@@ -57,7 +59,8 @@ def service_put_req() -> ServicePut:
         service_type_id=1,
         territory_type_id=1,
         name="Updated Service",
-        capacity_real=100,
+        capacity=100,
+        is_capacity_real=True,
         properties={"updated_key": "updated_value"},
     )
 
@@ -70,6 +73,7 @@ def service_patch_req() -> ServicePatch:
         service_type_id=1,
         territory_type_id=1,
         name="Patched Service",
-        capacity_real=100,
+        capacity=100,
+        is_capacity_real=True,
         properties={"patched_key": "patched_value"},
     )

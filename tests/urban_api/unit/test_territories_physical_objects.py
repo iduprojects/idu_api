@@ -4,12 +4,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi_pagination.bases import CursorRawParams, RawParams
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, select
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import select
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
@@ -24,7 +23,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_physical_objects import (
     get_physical_objects_by_territory_id_from_db,
     get_physical_objects_with_geometry_by_territory_id_from_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, include_child_territories_cte
+from idu_api.urban_api.logic.impl.helpers.utils import include_child_territories_cte
 from idu_api.urban_api.schemas import PhysicalObject, PhysicalObjectType, PhysicalObjectWithGeometry
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection
@@ -44,23 +43,23 @@ async def test_get_physical_object_types_by_territory_id_from_db(mock_conn: Mock
     statement = (
         select(physical_object_types_dict, physical_object_functions_dict.c.name.label("physical_object_function_name"))
         .select_from(
-            territories_data.join(
-                object_geometries_data,
-                object_geometries_data.c.territory_id == territories_data.c.territory_id,
-            )
-            .join(
-                urban_objects_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            )
-            .join(
+            urban_objects_data.join(
                 physical_objects_data,
                 physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
             )
             .join(
-                physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
+                object_geometries_data,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
-            .outerjoin(
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
+            .join(
+                physical_object_types_dict,
+                physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+            .join(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
@@ -111,15 +110,15 @@ async def test_get_physical_objects_by_territory_id_from_db(mock_conn: MockConne
     physical_object_type_id = 1
     name = "mock_string"
     limit, offset = 10, 0
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     statement = (
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_object_types_dict.c.physical_object_function_id,
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
         )
@@ -146,8 +145,8 @@ async def test_get_physical_objects_by_territory_id_from_db(mock_conn: MockConne
                 == physical_object_types_dict.c.physical_object_function_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .distinct()
@@ -277,6 +276,7 @@ async def test_get_physical_objects_with_geometry_by_territory_id_from_db(mock_c
     physical_object_type_id = 1
     name = "mock_string"
     limit, offset = 10, 0
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     statement = (
         select(
             physical_objects_data,
@@ -286,11 +286,10 @@ async def test_get_physical_objects_with_geometry_by_territory_id_from_db(mock_c
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
         )
@@ -314,8 +313,8 @@ async def test_get_physical_objects_with_geometry_by_territory_id_from_db(mock_c
                 == physical_object_types_dict.c.physical_object_function_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .distinct()

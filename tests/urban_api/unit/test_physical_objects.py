@@ -5,20 +5,19 @@ from unittest.mock import AsyncMock, call, patch
 
 import pytest
 from geoalchemy2.functions import (
-    ST_AsGeoJSON,
+    ST_AsEWKB,
     ST_Buffer,
     ST_CoveredBy,
     ST_Covers,
-    ST_GeomFromText,
+    ST_GeomFromWKB,
     ST_Intersects,
 )
 from geoalchemy2.types import Geography, Geometry
 from shapely.geometry import LineString, MultiLineString, MultiPoint, MultiPolygon, Point, Polygon
 from sqlalchemy import cast, delete, insert, select, text, update
-from sqlalchemy.dialects.postgresql import JSONB
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
@@ -31,7 +30,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import (
-    LivingBuildingDTO,
+    BuildingDTO,
     ObjectGeometryDTO,
     PhysicalObjectDTO,
     PhysicalObjectWithGeometryDTO,
@@ -41,29 +40,29 @@ from idu_api.urban_api.dto import (
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, TooManyObjectsError
 from idu_api.urban_api.logic.impl.helpers.physical_objects import (
-    add_living_building_to_db,
+    add_building_to_db,
     add_physical_object_to_object_geometry_to_db,
     add_physical_object_with_geometry_to_db,
-    delete_living_building_from_db,
+    delete_building_from_db,
     delete_physical_object_from_db,
-    get_living_buildings_by_physical_object_id_from_db,
+    get_buildings_by_physical_object_id_from_db,
     get_physical_object_by_id_from_db,
     get_physical_object_geometries_from_db,
     get_physical_objects_around_from_db,
     get_physical_objects_with_geometry_by_ids_from_db,
     get_services_by_physical_object_id_from_db,
     get_services_with_geometry_by_physical_object_id_from_db,
-    patch_living_building_to_db,
+    patch_building_to_db,
     patch_physical_object_to_db,
-    put_living_building_to_db,
+    put_building_to_db,
     put_physical_object_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, OBJECTS_NUMBER_LIMIT
+from idu_api.urban_api.logic.impl.helpers.utils import OBJECTS_NUMBER_LIMIT, SRID
 from idu_api.urban_api.schemas import (
-    LivingBuilding,
-    LivingBuildingPatch,
-    LivingBuildingPost,
-    LivingBuildingPut,
+    Building,
+    BuildingPatch,
+    BuildingPost,
+    BuildingPut,
     ObjectGeometry,
     PhysicalObject,
     PhysicalObjectPatch,
@@ -91,6 +90,7 @@ async def test_get_physical_objects_with_geometry_by_ids_from_db(mock_conn: Mock
     # Arrange
     ids = [1]
     too_many_ids = list(range(OBJECTS_NUMBER_LIMIT + 1))
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     statement = (
         select(
             physical_objects_data,
@@ -102,11 +102,10 @@ async def test_get_physical_objects_with_geometry_by_ids_from_db(mock_conn: Mock
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
         )
         .select_from(
             physical_objects_data.join(
@@ -128,8 +127,8 @@ async def test_get_physical_objects_with_geometry_by_ids_from_db(mock_conn: Mock
                 == physical_object_types_dict.c.physical_object_function_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(physical_objects_data.c.physical_object_id.in_(ids))
@@ -161,10 +160,8 @@ async def test_get_physical_objects_around_from_db(mock_conn: MockConnection, sh
     buffer_meters = 500
     buffered_geometry_cte = select(
         cast(
-            ST_Buffer(
-                cast(ST_GeomFromText(str(shapely_geometry.wkt), text("4326")), Geography(srid=4326)), buffer_meters
-            ),
-            Geometry(srid=4326),
+            ST_Buffer(cast(ST_GeomFromWKB(shapely_geometry.wkb, text(str(SRID))), Geography(srid=SRID)), buffer_meters),
+            Geometry(srid=SRID),
         ).label("geometry"),
     ).cte("buffered_geometry_cte")
     fine_territories_cte = (
@@ -233,15 +230,15 @@ async def test_get_physical_object_by_id_from_db(mock_conn: MockConnection):
 
     # Arrange
     physical_object_id = 1
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     statement = (
         select(
             physical_objects_data,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_object_types_dict.c.physical_object_function_id,
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
         )
@@ -256,8 +253,8 @@ async def test_get_physical_object_by_id_from_db(mock_conn: MockConnection):
                 == physical_object_types_dict.c.physical_object_function_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
             .join(
                 urban_objects_data,
@@ -315,11 +312,11 @@ async def test_add_physical_object_with_geometry_to_db(
         insert(object_geometries_data)
         .values(
             territory_id=physical_object_with_geometry_post_req.territory_id,
-            geometry=ST_GeomFromText(
-                physical_object_with_geometry_post_req.geometry.as_shapely_geometry().wkt, text("4326")
+            geometry=ST_GeomFromWKB(
+                physical_object_with_geometry_post_req.geometry.as_shapely_geometry().wkb, text(str(SRID))
             ),
-            centre_point=ST_GeomFromText(
-                physical_object_with_geometry_post_req.centre_point.as_shapely_geometry().wkt, text("4326")
+            centre_point=ST_GeomFromWKB(
+                physical_object_with_geometry_post_req.centre_point.as_shapely_geometry().wkb, text(str(SRID))
             ),
             address=physical_object_with_geometry_post_req.address,
             osm_id=physical_object_with_geometry_post_req.osm_id,
@@ -468,8 +465,8 @@ async def test_delete_physical_object_from_db(mock_conn: MockConnection):
 
 
 @pytest.mark.asyncio
-async def test_add_living_building_to_db(mock_conn: MockConnection, living_building_post_req: LivingBuildingPost):
-    """Test the add_living_building_to_db function."""
+async def test_add_building_to_db(mock_conn: MockConnection, building_post_req: BuildingPost):
+    """Test the add_building_to_db function."""
 
     # Arrange
     async def check_physical_object(conn, table, conditions, not_conditions=None):
@@ -477,31 +474,29 @@ async def test_add_living_building_to_db(mock_conn: MockConnection, living_build
             return False
         return True
 
-    async def check_living_building(conn, table, conditions, not_conditions=None):
-        if table == living_buildings_data:
+    async def check_building(conn, table, conditions, not_conditions=None):
+        if table == buildings_data:
             return False
         return True
 
     statement_insert = (
-        insert(living_buildings_data)
-        .values(**living_building_post_req.model_dump())
-        .returning(living_buildings_data.c.living_building_id)
+        insert(buildings_data).values(**building_post_req.model_dump()).returning(buildings_data.c.building_id)
     )
 
     # Act
     with pytest.raises(EntityAlreadyExists):
-        await add_living_building_to_db(mock_conn, living_building_post_req)
+        await add_building_to_db(mock_conn, building_post_req)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.physical_objects.check_existence",
         new=AsyncMock(side_effect=check_physical_object),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_living_building_to_db(mock_conn, living_building_post_req)
+            await add_building_to_db(mock_conn, building_post_req)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.physical_objects.check_existence",
-        new=AsyncMock(side_effect=check_living_building),
+        new=AsyncMock(side_effect=check_building),
     ):
-        result = await add_living_building_to_db(mock_conn, living_building_post_req)
+        result = await add_building_to_db(mock_conn, building_post_req)
 
     # Assert
     assert isinstance(result, PhysicalObjectDTO), "Result should be a PhysicalObjectDTO."
@@ -511,8 +506,8 @@ async def test_add_living_building_to_db(mock_conn: MockConnection, living_build
 
 
 @pytest.mark.asyncio
-async def test_put_living_building_to_db(mock_conn: MockConnection, living_building_put_req: LivingBuildingPut):
-    """Test the put_living_building_to_db function."""
+async def test_put_building_to_db(mock_conn: MockConnection, building_put_req: BuildingPut):
+    """Test the put_building_to_db function."""
 
     # Arrange
     async def check_physical_object(conn, table, conditions, not_conditions=None):
@@ -520,16 +515,16 @@ async def test_put_living_building_to_db(mock_conn: MockConnection, living_build
             return False
         return True
 
-    async def check_living_building(conn, table, conditions, not_conditions=None):
-        if table == living_buildings_data:
+    async def check_building(conn, table, conditions, not_conditions=None):
+        if table == buildings_data:
             return False
         return True
 
-    statement_insert = insert(living_buildings_data).values(**living_building_put_req.model_dump())
+    statement_insert = insert(buildings_data).values(**building_put_req.model_dump())
     statement_update = (
-        update(living_buildings_data)
-        .where(living_buildings_data.c.physical_object_id == living_building_put_req.physical_object_id)
-        .values(**living_building_put_req.model_dump())
+        update(buildings_data)
+        .where(buildings_data.c.physical_object_id == building_put_req.physical_object_id)
+        .values(**building_put_req.model_dump())
     )
 
     # Act
@@ -538,13 +533,13 @@ async def test_put_living_building_to_db(mock_conn: MockConnection, living_build
         new=AsyncMock(side_effect=check_physical_object),
     ):
         with pytest.raises(EntityNotFoundById):
-            await put_living_building_to_db(mock_conn, living_building_put_req)
+            await put_building_to_db(mock_conn, building_put_req)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.physical_objects.check_existence",
-        new=AsyncMock(side_effect=check_living_building),
+        new=AsyncMock(side_effect=check_building),
     ):
-        await put_living_building_to_db(mock_conn, living_building_put_req)
-    result = await put_living_building_to_db(mock_conn, living_building_put_req)
+        await put_building_to_db(mock_conn, building_put_req)
+    result = await put_building_to_db(mock_conn, building_put_req)
 
     # Assert
     assert isinstance(result, PhysicalObjectDTO), "Result should be a PhysicalObjectDTO."
@@ -555,56 +550,54 @@ async def test_put_living_building_to_db(mock_conn: MockConnection, living_build
 
 
 @pytest.mark.asyncio
-async def test_patch_living_building_to_db(mock_conn: MockConnection, living_building_patch_req: LivingBuildingPatch):
-    """Test the patch_living_building_to_db function."""
+async def test_patch_building_to_db(mock_conn: MockConnection, building_patch_req: BuildingPatch):
+    """Test the patch_building_to_db function."""
 
     # Arrange
-    living_building_id = 1
+    building_id = 1
 
     async def check_physical_object(conn, table, conditions, not_conditions=None):
         if table == physical_objects_data:
             return False
         return True
 
-    async def check_living_building_id(conn, table, conditions, not_conditions=None):
-        if table == living_buildings_data and conditions == {"living_building_id": living_building_id}:
+    async def check_building_id(conn, table, conditions, not_conditions=None):
+        if table == buildings_data and conditions == {"building_id": building_id}:
             return False
         return True
 
-    async def check_living_building(conn, table, conditions, not_conditions=None):
-        if table == living_buildings_data and conditions == {
-            "physical_object_id": living_building_patch_req.physical_object_id
-        }:
+    async def check_building(conn, table, conditions, not_conditions=None):
+        if table == buildings_data and conditions == {"physical_object_id": building_patch_req.physical_object_id}:
             return False
         return True
 
     statement_update = (
-        update(living_buildings_data)
-        .where(living_buildings_data.c.living_building_id == living_building_id)
-        .values(**living_building_patch_req.model_dump(exclude_unset=True))
-        .returning(living_buildings_data.c.physical_object_id)
+        update(buildings_data)
+        .where(buildings_data.c.building_id == building_id)
+        .values(**building_patch_req.model_dump(exclude_unset=True))
+        .returning(buildings_data.c.physical_object_id)
     )
 
     # Act
     with pytest.raises(EntityAlreadyExists):
-        await patch_living_building_to_db(mock_conn, living_building_patch_req, living_building_id)
+        await patch_building_to_db(mock_conn, building_patch_req, building_id)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.physical_objects.check_existence",
-        new=AsyncMock(side_effect=check_living_building_id),
+        new=AsyncMock(side_effect=check_building_id),
     ):
         with pytest.raises(EntityNotFoundById):
-            await patch_living_building_to_db(mock_conn, living_building_patch_req, living_building_id)
+            await patch_building_to_db(mock_conn, building_patch_req, building_id)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.physical_objects.check_existence",
         new=AsyncMock(side_effect=check_physical_object),
     ):
         with pytest.raises(EntityNotFoundById):
-            await patch_living_building_to_db(mock_conn, living_building_patch_req, living_building_id)
+            await patch_building_to_db(mock_conn, building_patch_req, building_id)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.physical_objects.check_existence",
-        new=AsyncMock(side_effect=check_living_building),
+        new=AsyncMock(side_effect=check_building),
     ):
-        result = await patch_living_building_to_db(mock_conn, living_building_patch_req, living_building_id)
+        result = await patch_building_to_db(mock_conn, building_patch_req, building_id)
 
     # Assert
     assert isinstance(result, PhysicalObjectDTO), "Result should be a PhysicalObjectDTO."
@@ -614,21 +607,19 @@ async def test_patch_living_building_to_db(mock_conn: MockConnection, living_bui
 
 
 @pytest.mark.asyncio
-async def test_delete_living_building_from_db(mock_conn: MockConnection):
+async def test_delete_building_from_db(mock_conn: MockConnection):
     """Test the delete_physical_object_in_db function."""
 
     # Arrange
-    living_building_id = 1
-    statement_delete = delete(living_buildings_data).where(
-        living_buildings_data.c.living_building_id == living_building_id
-    )
+    building_id = 1
+    statement_delete = delete(buildings_data).where(buildings_data.c.building_id == building_id)
 
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.physical_objects.check_existence") as mock_check_existence:
-        result = await delete_living_building_from_db(mock_conn, living_building_id)
+        result = await delete_building_from_db(mock_conn, building_id)
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
-            await delete_living_building_from_db(mock_conn, living_building_id)
+            await delete_building_from_db(mock_conn, building_id)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
@@ -637,46 +628,43 @@ async def test_delete_living_building_from_db(mock_conn: MockConnection):
 
 
 @pytest.mark.asyncio
-async def test_get_living_buildings_by_physical_object_id_from_db(mock_conn: MockConnection):
-    """Test the get_living_buildings_by_physical_object_id_from_db function."""
+async def test_get_buildings_by_physical_object_id_from_db(mock_conn: MockConnection):
+    """Test the get_buildings_by_physical_object_id_from_db function."""
 
     # Arrange
     physical_object_id = 1
     statement = (
         select(
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties,
-            physical_objects_data.c.physical_object_id,
+            buildings_data,
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
         )
         .select_from(
-            living_buildings_data.join(
+            buildings_data.join(
                 physical_objects_data,
-                physical_objects_data.c.physical_object_id == living_buildings_data.c.physical_object_id,
+                physical_objects_data.c.physical_object_id == buildings_data.c.physical_object_id,
             ).join(
                 physical_object_types_dict,
                 physical_objects_data.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
             )
         )
-        .where(living_buildings_data.c.physical_object_id == physical_object_id)
+        .where(buildings_data.c.physical_object_id == physical_object_id)
         .distinct()
     )
 
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.physical_objects.check_existence") as mock_check_existence:
-        result = await get_living_buildings_by_physical_object_id_from_db(mock_conn, physical_object_id)
+        result = await get_buildings_by_physical_object_id_from_db(mock_conn, physical_object_id)
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
-            await get_living_buildings_by_physical_object_id_from_db(mock_conn, physical_object_id)
+            await get_buildings_by_physical_object_id_from_db(mock_conn, physical_object_id)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
-    assert all(isinstance(obj, LivingBuildingDTO) for obj in result), "Each item should be a LivingBuildingDTO."
-    assert isinstance(LivingBuilding.from_dto(result[0]), LivingBuilding), "Couldn't create pydantic model from DTO."
+    assert all(isinstance(obj, BuildingDTO) for obj in result), "Each item should be a BuildingDTO."
+    assert isinstance(Building.from_dto(result[0]), Building), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_called_once_with(str(statement))
 
 
@@ -768,8 +756,8 @@ async def test_get_services_with_geometry_by_physical_object_id_from_db(mock_con
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
         )
         .select_from(
             services_data.join(urban_objects_data, services_data.c.service_id == urban_objects_data.c.service_id)
@@ -832,8 +820,8 @@ async def test_get_physical_object_geometries_from_db(mock_conn: MockConnection)
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.created_at,
             object_geometries_data.c.updated_at,
         )

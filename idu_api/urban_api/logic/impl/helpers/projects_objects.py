@@ -12,11 +12,11 @@ import structlog
 from geoalchemy2 import Geography, Geometry
 from geoalchemy2.functions import (
     ST_Area,
-    ST_AsGeoJSON,
+    ST_AsEWKB,
     ST_Buffer,
     ST_Centroid,
     ST_GeometryType,
-    ST_GeomFromText,
+    ST_GeomFromWKB,
     ST_Intersection,
     ST_Intersects,
     ST_IsEmpty,
@@ -24,7 +24,6 @@ from geoalchemy2.functions import (
 )
 from PIL import Image
 from sqlalchemy import cast, delete, func, insert, literal, or_, select, text, update
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -48,7 +47,7 @@ from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, Proj
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, extract_values_from_model
+from idu_api.urban_api.logic.impl.helpers.utils import SRID, extract_values_from_model
 from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
@@ -114,8 +113,8 @@ async def get_project_territory_by_id_from_db(
             projects_data.c.user_id.label("project_user_id"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(projects_territory_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_territory_data.c.centre_point).label("centre_point"),
             projects_territory_data.c.properties,
             scenarios_data.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
@@ -249,8 +248,8 @@ async def get_projects_territories_from_db(
         select(
             projects_data,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(projects_territory_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_territory_data.c.centre_point).label("centre_point"),
             scenarios_data.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
         )
@@ -520,7 +519,7 @@ async def add_project_to_db(
     """Create project object, its territory and base scenario."""
 
     given_geometry = select(
-        ST_GeomFromText(project.territory.geometry.as_shapely_geometry().wkt, text("4326"))
+        ST_GeomFromWKB(project.territory.geometry.as_shapely_geometry().wkb, text(str(SRID))).label("geometry")
     ).scalar_subquery()
 
     buffer_meters = 3000
@@ -529,39 +528,33 @@ async def add_project_to_db(
             ST_Buffer(
                 cast(
                     given_geometry,
-                    Geography(srid=4326),
+                    Geography(srid=SRID),
                 ),
                 buffer_meters,
             ),
-            Geometry(srid=4326),
+            Geometry(srid=SRID),
         ).label("geometry")
-    ).alias("buffered_project_geometry")
+    ).scalar_subquery()
 
-    territories_cte = (
+    base_cte = (
         select(
             territories_data.c.territory_id,
             territories_data.c.name,
-            territories_data.c.parent_id,
+            territories_data.c.is_city,
             territories_data.c.level,
             territories_data.c.geometry,
-            territories_data.c.is_city,
         )
         .where(territories_data.c.territory_id == project.territory_id)
-        .cte(recursive=True)
+        .cte(name="territories_cte", recursive=True)
     )
-    territories_cte = territories_cte.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.name,
-            territories_data.c.parent_id,
-            territories_data.c.level,
-            territories_data.c.geometry,
-            territories_data.c.is_city,
-        ).join(
-            territories_cte,
-            territories_data.c.parent_id == territories_cte.c.territory_id,
-        )
-    )
+    recursive_query = select(
+        territories_data.c.territory_id,
+        territories_data.c.name,
+        territories_data.c.is_city,
+        territories_data.c.level,
+        territories_data.c.geometry,
+    ).where(territories_data.c.parent_id == base_cte.c.territory_id)
+    territories_cte = base_cte.union_all(recursive_query)
     cities_level = (
         select(territories_cte.c.level)
         .where(territories_cte.c.is_city.is_(True))
@@ -579,7 +572,7 @@ async def add_project_to_db(
     )
     context_territories = select(territories_cte.c.territory_id).where(
         territories_cte.c.level == (cities_level.c.level - 1),
-        ST_Intersects(territories_cte.c.geometry, select(buffered_project_geometry).scalar_subquery()),
+        ST_Intersects(territories_cte.c.geometry, buffered_project_geometry),
     )
     project.properties.update(
         {
@@ -629,17 +622,9 @@ async def add_project_to_db(
         )
     ).scalar_one()
 
-    # 1. Find all territories that are only partially included in the transferred geometry
-    territories_intersecting_only = (
-        select(territories_cte.c.territory_id).where(
-            ST_Intersects(territories_cte.c.geometry, given_geometry),
-            ~ST_Within(territories_cte.c.geometry, given_geometry),
-        )
-    ).cte("territories_intersecting_only")
-
     # TODO: get geometries and urban objects from regional scenario
 
-    # 2. Find all objects for territories from the first step (partially included at given percent)
+    # 1. Find all objects for territories from the first step (partially included at given percent)
     # where the geometry is not completely included in the passed
     area_percent = 0.01
     objects_intersecting = (
@@ -659,7 +644,6 @@ async def add_project_to_db(
             )
         )
         .where(
-            object_geometries_data.c.territory_id.in_(select(territories_intersecting_only)),
             ST_Intersects(object_geometries_data.c.geometry, given_geometry),
             ~ST_Within(object_geometries_data.c.geometry, given_geometry),
             ST_Area(ST_Intersection(object_geometries_data.c.geometry, given_geometry))
@@ -669,7 +653,7 @@ async def add_project_to_db(
         .distinct()
     ).cte("objects_intersecting")
 
-    # 3. Crop and insert geometries from the second step
+    # 2. Crop and insert geometries from the first step
     insert_geometries = (
         insert(projects_object_geometries_data)
         .from_select(
@@ -698,7 +682,7 @@ async def add_project_to_db(
     inserted_geometries = (await conn.execute(insert_geometries)).mappings().all()
     id_mapping = {row.public_object_geometry_id: row.object_geometry_id for row in inserted_geometries}
 
-    # 4. Insert cropped geometries from third step to `projects_urban_objects_data`
+    # 3. Insert cropped geometries from the second step to `projects_urban_objects_data`
     urban_objects_select = select(
         urban_objects_data.c.urban_object_id.label("public_urban_object_id"),
         urban_objects_data.c.physical_object_id.label("public_physical_object_id"),
@@ -732,7 +716,7 @@ async def add_project_to_db(
             )
         )
 
-    # 5. Find all functional zones for the project
+    # 4. Find all functional zones for the project
     # TODO: If we get at least one urban object from regional scenario
     # or we haven't got any functional zones for the project territory from public schema,
     # it's needed to generate new functional zones else get it from public schema
@@ -744,7 +728,7 @@ async def add_project_to_db(
         functional_zones_data.c.source,
         functional_zones_data.c.properties,
     ).where(
-        functional_zones_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
+        functional_zones_data.c.territory_id.in_(select(territories_data.c.territory_id)),
         ST_Intersects(functional_zones_data.c.geometry, given_geometry),
         ST_GeometryType(ST_Intersection(functional_zones_data.c.geometry, given_geometry)).in_(
             ("ST_Polygon", "ST_MultiPolygon")

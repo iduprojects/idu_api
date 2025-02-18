@@ -1,11 +1,11 @@
 """All fixtures are defined here."""
 
+from .buildings import *
 from .connection import *
 from .functional_zones import *
 from .geometries import *
 from .hexagons import *
 from .indicators import *
-from .living_buildings import *
 from .minio_client import *
 from .normatives import *
 from .object_geometries import *

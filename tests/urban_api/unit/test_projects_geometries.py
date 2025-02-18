@@ -4,16 +4,15 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from geoalchemy2.functions import ST_AsGeoJSON, ST_Centroid, ST_GeomFromText, ST_Intersection, ST_Intersects, ST_Within
-from sqlalchemy import cast, delete, insert, literal, or_, select, text, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB, ST_Centroid, ST_GeomFromWKB, ST_Intersection, ST_Intersects, ST_Within
+from sqlalchemy import case, delete, insert, literal, or_, select, text, update
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_types_dict,
     physical_objects_data,
-    projects_living_buildings_data,
+    projects_buildings_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
     projects_services_data,
@@ -38,7 +37,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
     patch_object_geometry_to_db,
     put_object_geometry_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, get_all_context_territories
+from idu_api.urban_api.logic.impl.helpers.utils import SRID, get_context_territories_geometry
 from idu_api.urban_api.schemas import (
     AllObjects,
     GeometryAttributes,
@@ -70,11 +69,11 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
         .where(projects_urban_objects_data.c.public_urban_object_id.isnot(None))
-    ).alias("public_urban_object_ids")
+    ).cte(name="public_urban_object_ids")
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == 1)
-    ).alias("project_geometry")
+    ).scalar_subquery()
 
     public_urban_objects_query = (
         select(
@@ -83,8 +82,8 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.created_at,
             object_geometries_data.c.updated_at,
         )
@@ -109,7 +108,6 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
             physical_objects_data.c.physical_object_id == physical_object_id,
             services_data.c.service_id == service_id,
         )
-        .distinct()
     )
 
     scenario_urban_objects_query = (
@@ -119,19 +117,15 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
             territories_data.c.name.label("territory_name"),
             projects_object_geometries_data.c.address,
             projects_object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "centre_point"
-            ),
+            ST_AsEWKB(projects_object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_object_geometries_data.c.centre_point).label("centre_point"),
             projects_object_geometries_data.c.created_at,
             projects_object_geometries_data.c.updated_at,
             object_geometries_data.c.object_geometry_id.label("public_object_geometry_id"),
             object_geometries_data.c.address.label("public_address"),
             object_geometries_data.c.osm_id.label("public_osm_id"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("public_geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "public_centre_point"
-            ),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("public_geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("public_centre_point"),
             object_geometries_data.c.created_at.label("public_created_at"),
             object_geometries_data.c.updated_at.label("public_updated_at"),
         )
@@ -171,7 +165,6 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
             physical_objects_data.c.physical_object_id == physical_object_id,
             services_data.c.service_id == service_id,
         )
-        .distinct()
     )
 
     # Act
@@ -199,16 +192,20 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
     user_id = "mock_string"
     physical_object_type_id = 1
     service_type_id = 1
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
+    project_building_columns = [
+        col for col in projects_buildings_data.c if col.name not in ("physical_object_id", "properties")
+    ]
 
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
         .where(projects_urban_objects_data.c.public_urban_object_id.isnot(None))
-    ).alias("public_urban_object_ids")
+    ).cte(name="public_urban_object_ids")
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == 1)
-    ).alias("project_geometry")
+    ).scalar_subquery()
 
     public_urban_objects_query = (
         select(
@@ -217,19 +214,19 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             object_geometries_data.c.object_geometry_id,
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             services_data.c.service_id,
             services_data.c.name.label("service_name"),
-            services_data.c.capacity_real,
+            services_data.c.capacity,
+            services_data.c.is_capacity_real,
             services_data.c.properties.label("service_properties"),
             service_types_dict.c.service_type_id,
             service_types_dict.c.name.label("service_type_name"),
@@ -259,8 +256,8 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
                 territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
             .join(
                 territories_data,
@@ -287,32 +284,36 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
             projects_urban_objects_data.c.public_service_id,
             projects_physical_objects_data.c.name.label("physical_object_name"),
             projects_physical_objects_data.c.properties.label("physical_object_properties"),
-            projects_living_buildings_data.c.living_building_id,
-            projects_living_buildings_data.c.living_area,
-            projects_living_buildings_data.c.properties.label("living_building_properties"),
+            *project_building_columns,
+            projects_buildings_data.c.properties.label("building_properties"),
             projects_object_geometries_data.c.territory_id,
             projects_object_geometries_data.c.address,
             projects_object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "centre_point"
-            ),
+            ST_AsEWKB(projects_object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_object_geometries_data.c.centre_point).label("centre_point"),
             projects_services_data.c.name.label("service_name"),
-            projects_services_data.c.capacity_real,
+            projects_services_data.c.capacity,
+            projects_services_data.c.is_capacity_real,
             projects_services_data.c.properties.label("service_properties"),
             physical_objects_data.c.name.label("public_physical_object_name"),
             physical_objects_data.c.properties.label("public_physical_object_properties"),
-            living_buildings_data.c.living_building_id.label("public_living_building_id"),
-            living_buildings_data.c.living_area.label("public_living_area"),
-            living_buildings_data.c.properties.label("public_living_building_properties"),
+            buildings_data.c.building_id.label("public_building_id"),
+            buildings_data.c.properties.label("public_building_properties"),
+            buildings_data.c.floors.label("public_floors"),
+            buildings_data.c.building_area_official.label("public_building_area_official"),
+            buildings_data.c.building_area_modeled.label("public_building_area_modeled"),
+            buildings_data.c.project_type.label("public_project_type"),
+            buildings_data.c.floor_type.label("public_floor_type"),
+            buildings_data.c.wall_material.label("public_wall_material"),
+            buildings_data.c.built_year.label("public_built_year"),
+            buildings_data.c.exploitation_start_year.label("public_exploitation_start_year"),
             object_geometries_data.c.address.label("public_address"),
             object_geometries_data.c.osm_id.label("public_osm_id"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("public_geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "public_centre_point"
-            ),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("public_geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("public_centre_point"),
             services_data.c.name.label("public_service_name"),
-            services_data.c.capacity_real.label("public_capacity_real"),
+            services_data.c.capacity.label("public_capacity"),
+            services_data.c.is_capacity_real.label("public_is_capacity_real"),
             services_data.c.properties.label("public_service_properties"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
@@ -376,13 +377,12 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
                 ),
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
             .outerjoin(
-                projects_living_buildings_data,
-                projects_living_buildings_data.c.physical_object_id
-                == projects_physical_objects_data.c.physical_object_id,
+                projects_buildings_data,
+                projects_buildings_data.c.physical_object_id == projects_physical_objects_data.c.physical_object_id,
             )
         )
         .where(
@@ -418,20 +418,7 @@ async def test_get_context_geometries_from_db(mock_conn: MockConnection):
     # Arrange
     project_id = 1
     user_id = "mock_string"
-    physical_object_id = 1
-    service_id = 1
-
-    context = await get_all_context_territories(mock_conn, project_id, user_id)
-
-    objects_intersecting = (
-        select(object_geometries_data.c.object_geometry_id)
-        .where(
-            object_geometries_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
-            ST_Intersects(object_geometries_data.c.geometry, context["geometry"]),
-        )
-        .subquery()
-    )
-
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
     statement = (
         select(
             object_geometries_data.c.object_geometry_id,
@@ -439,44 +426,45 @@ async def test_get_context_geometries_from_db(mock_conn: MockConnection):
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(
-                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, context["geometry"]), DECIMAL_PLACES),
-                JSONB,
+            ST_AsEWKB(
+                case(
+                    (
+                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
+                        ST_Intersection(object_geometries_data.c.geometry, context_geom),
+                    ),
+                    else_=object_geometries_data.c.geometry,
+                )
             ).label("geometry"),
-            cast(
-                ST_AsGeoJSON(
-                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context["geometry"])), DECIMAL_PLACES
-                ),
-                JSONB,
+            ST_AsEWKB(
+                case(
+                    (
+                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
+                        ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context_geom)),
+                    ),
+                    else_=object_geometries_data.c.centre_point,
+                )
             ).label("centre_point"),
             object_geometries_data.c.created_at,
             object_geometries_data.c.updated_at,
         )
         .select_from(
-            object_geometries_data.join(
+            urban_objects_data.join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            ).join(
                 territories_data,
                 territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
-            .join(
-                urban_objects_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            )
-            .join(
-                physical_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            )
-            .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
         )
         .where(
-            object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting)),
-            physical_objects_data.c.physical_object_id == physical_object_id,
-            services_data.c.service_id == service_id,
+            object_geometries_data.c.territory_id.in_(context_ids)
+            | ST_Intersects(object_geometries_data.c.geometry, context_geom)
         )
         .distinct()
     )
 
     # Act
-    result = await get_context_geometries_from_db(mock_conn, project_id, user_id, physical_object_id, service_id)
+    result = await get_context_geometries_from_db(mock_conn, project_id, user_id, None, None)
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
     # Assert
@@ -497,18 +485,22 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
     user_id = "mock_string"
     physical_object_type_id = 1
     service_type_id = 1
-
-    context = await get_all_context_territories(mock_conn, project_id, user_id)
-
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
-        .where(
-            object_geometries_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
-            ST_Intersects(object_geometries_data.c.geometry, context["geometry"]),
+        .select_from(
+            object_geometries_data.join(
+                urban_objects_data,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
-        .subquery()
+        .where(
+            object_geometries_data.c.territory_id.in_(context_ids)
+            | ST_Intersects(object_geometries_data.c.geometry, context_geom)
+        )
+        .cte(name="objects_intersecting")
     )
-
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     statement = (
         select(
             physical_objects_data.c.physical_object_id,
@@ -516,27 +508,35 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             object_geometries_data.c.object_geometry_id,
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(
-                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, context["geometry"]), DECIMAL_PLACES),
-                JSONB,
+            ST_AsEWKB(
+                case(
+                    (
+                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
+                        ST_Intersection(object_geometries_data.c.geometry, context_geom),
+                    ),
+                    else_=object_geometries_data.c.geometry,
+                )
             ).label("geometry"),
-            cast(
-                ST_AsGeoJSON(
-                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context["geometry"])), DECIMAL_PLACES
-                ),
-                JSONB,
+            ST_AsEWKB(
+                case(
+                    (
+                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
+                        ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context_geom)),
+                    ),
+                    else_=object_geometries_data.c.centre_point,
+                )
             ).label("centre_point"),
             services_data.c.service_id,
             services_data.c.name.label("service_name"),
-            services_data.c.capacity_real,
+            services_data.c.capacity,
+            services_data.c.is_capacity_real,
             services_data.c.properties.label("service_properties"),
             service_types_dict.c.service_type_id,
             service_types_dict.c.name.label("service_type_name"),
@@ -544,17 +544,21 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
             territory_types_dict.c.name.label("territory_type_name"),
         )
         .select_from(
-            object_geometries_data.join(
-                territories_data,
-                territories_data.c.territory_id == object_geometries_data.c.territory_id,
-            )
-            .join(
-                urban_objects_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            )
-            .join(
+            urban_objects_data.join(
                 physical_objects_data,
                 physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+            )
+            .join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(
+                objects_intersecting,
+                objects_intersecting.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
             .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
             .join(
@@ -570,16 +574,14 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
                 territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(
-            object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting)),
-            physical_objects_data.c.physical_object_type_id == physical_object_type_id,
-            services_data.c.service_type_id == service_type_id,
+            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
+            service_types_dict.c.service_type_id == service_type_id,
         )
-        .distinct()
     )
 
     # Act
@@ -612,10 +614,8 @@ async def test_get_scenario_object_geometry_by_id_from_db(mock_conn: MockConnect
             territories_data.c.name.label("territory_name"),
             projects_object_geometries_data.c.address,
             projects_object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "centre_point"
-            ),
+            ST_AsEWKB(projects_object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_object_geometries_data.c.centre_point).label("centre_point"),
             projects_object_geometries_data.c.created_at,
             projects_object_geometries_data.c.updated_at,
             literal(True).label("is_scenario_object"),
@@ -666,9 +666,9 @@ async def test_put_scenario_object_geometry_to_db(
         .where(projects_object_geometries_data.c.object_geometry_id == object_geometry_id)
         .values(
             territory_id=object_geometries_put_req.territory_id,
-            geometry=ST_GeomFromText(object_geometries_put_req.geometry.as_shapely_geometry().wkt, text("4326")),
-            centre_point=ST_GeomFromText(
-                object_geometries_put_req.centre_point.as_shapely_geometry().wkt, text("4326")
+            geometry=ST_GeomFromWKB(object_geometries_put_req.geometry.as_shapely_geometry().wkb, text(str(SRID))),
+            centre_point=ST_GeomFromWKB(
+                object_geometries_put_req.centre_point.as_shapely_geometry().wkb, text(str(SRID))
             ),
             address=object_geometries_put_req.address,
             osm_id=object_geometries_put_req.osm_id,

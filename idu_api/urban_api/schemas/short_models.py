@@ -182,16 +182,23 @@ class UrbanFunctionBasic(BaseModel):
     name: str
 
 
-class ShortLivingBuilding(BaseModel):
-    """Living building without info about physical objects."""
+class ShortBuilding(BaseModel):
+    """Building without info about physical objects."""
 
     id: int = Field(..., examples=[1])
-    living_area: float | None = Field(..., examples=[300.0])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
+    floors: int | None = Field(..., examples=[1])
+    building_area_official: float | None = Field(..., examples=[1.0])
+    building_area_modeled: float | None = Field(..., examples=[1.0])
+    project_type: str | None = Field(..., examples=["example"])
+    floor_type: str | None = Field(..., examples=["example"])
+    wall_material: str | None = Field(..., examples=["example"])
+    built_year: int | None = Field(..., examples=[1])
+    exploitation_start_year: int | None = Field(..., examples=[1])
 
 
 class ShortPhysicalObject(BaseModel):
@@ -205,7 +212,7 @@ class ShortPhysicalObject(BaseModel):
         description="physical object additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    living_building: ShortLivingBuilding | None
+    building: ShortBuilding | None
 
     @classmethod
     def from_dto(cls, dto: ShortPhysicalObjectDTO) -> "ShortPhysicalObject":
@@ -220,13 +227,20 @@ class ShortPhysicalObject(BaseModel):
             ),
             name=dto.name,
             properties=dto.properties,
-            living_building=(
-                ShortLivingBuilding(
-                    id=dto.living_building_id,
-                    living_area=dto.living_area,
-                    properties=dto.living_building_properties,
+            building=(
+                ShortBuilding(
+                    id=dto.building_id,
+                    properties=dto.building_properties,
+                    floors=dto.floors,
+                    building_area_official=dto.building_area_official,
+                    building_area_modeled=dto.building_area_modeled,
+                    project_type=dto.project_type,
+                    floor_type=dto.floor_type,
+                    wall_material=dto.wall_material,
+                    built_year=dto.built_year,
+                    exploitation_start_year=dto.exploitation_start_year,
                 )
-                if dto.living_building_id is not None
+                if dto.building_id is not None
                 else None
             ),
         )
@@ -263,13 +277,20 @@ class ShortScenarioPhysicalObject(ShortPhysicalObject):
             ),
             name=dto.name,
             properties=dto.properties,
-            living_building=(
-                ShortLivingBuilding(
-                    id=dto.living_building_id,
-                    living_area=dto.living_area,
-                    properties=dto.living_building_properties,
+            building=(
+                ShortBuilding(
+                    id=dto.building_id,
+                    properties=dto.building_properties,
+                    floors=dto.floors,
+                    building_area_official=dto.building_area_official,
+                    building_area_modeled=dto.building_area_modeled,
+                    project_type=dto.project_type,
+                    floor_type=dto.floor_type,
+                    wall_material=dto.wall_material,
+                    built_year=dto.built_year,
+                    exploitation_start_year=dto.exploitation_start_year,
                 )
-                if dto.living_building_id is not None
+                if dto.building_id is not None
                 else None
             ),
             is_scenario_object=dto.is_scenario_object,
@@ -283,7 +304,8 @@ class ShortService(BaseModel):
     service_type: ServiceTypeBasic
     territory_type: TerritoryTypeBasic | None
     name: str | None = Field(None, description="service name", examples=["--"])
-    capacity_real: int | None = Field(None, examples=[1])
+    capacity: int | None = Field(None, examples=[1])
+    is_capacity_real: bool | None = Field(None, examples=[True])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="service additional properties",
@@ -307,7 +329,8 @@ class ShortService(BaseModel):
                 else None
             ),
             name=dto.name,
-            capacity_real=dto.capacity_real,
+            capacity=dto.capacity,
+            is_capacity_real=dto.is_capacity_real,
             properties=dto.properties,
         )
 
@@ -334,7 +357,8 @@ class ShortScenarioService(ShortService):
                 else None
             ),
             name=dto.name,
-            capacity_real=dto.capacity_real,
+            capacity=dto.capacity,
+            is_capacity_real=dto.is_capacity_real,
             properties=dto.properties,
             is_scenario_object=dto.is_scenario_object,
         )

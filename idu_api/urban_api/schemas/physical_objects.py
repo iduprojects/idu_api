@@ -12,7 +12,7 @@ from idu_api.urban_api.dto import (
 )
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
 from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFunctionBasic, PhysicalObjectType
-from idu_api.urban_api.schemas.short_models import ShortLivingBuilding
+from idu_api.urban_api.schemas.short_models import ShortBuilding
 from idu_api.urban_api.schemas.territories import ShortTerritory
 
 
@@ -27,7 +27,7 @@ class PhysicalObject(BaseModel):
         description="physical object additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    living_building: ShortLivingBuilding | None
+    building: ShortBuilding | None
     territories: list[ShortTerritory] | None = None
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc), description="the time when the physical object was created"
@@ -57,13 +57,20 @@ class PhysicalObject(BaseModel):
             ),
             name=dto.name,
             properties=dto.properties,
-            living_building=(
-                ShortLivingBuilding(
-                    id=dto.living_building_id,
-                    living_area=dto.living_area,
-                    properties=dto.living_building_properties,
+            building=(
+                ShortBuilding(
+                    id=dto.building_id,
+                    properties=dto.building_properties,
+                    floors=dto.floors,
+                    building_area_official=dto.building_area_official,
+                    building_area_modeled=dto.building_area_modeled,
+                    project_type=dto.project_type,
+                    floor_type=dto.floor_type,
+                    wall_material=dto.wall_material,
+                    built_year=dto.built_year,
+                    exploitation_start_year=dto.exploitation_start_year,
                 )
-                if dto.living_building_id is not None
+                if dto.building_id is not None
                 else None
             ),
             territories=(
@@ -88,7 +95,7 @@ class PhysicalObjectWithGeometry(BaseModel):
         description="physical object additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
-    living_building: ShortLivingBuilding | None
+    building: ShortBuilding | None
     object_geometry_id: int = Field(..., description="object geometry identifier", examples=[1])
     address: str | None = Field(None, description="physical object address", examples=["--"])
     osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
@@ -123,13 +130,20 @@ class PhysicalObjectWithGeometry(BaseModel):
             territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
             name=dto.name,
             properties=dto.properties,
-            living_building=(
-                ShortLivingBuilding(
-                    id=dto.living_building_id,
-                    living_area=dto.living_area,
-                    properties=dto.living_building_properties,
+            building=(
+                ShortBuilding(
+                    id=dto.building_id,
+                    properties=dto.building_properties,
+                    floors=dto.floors,
+                    building_area_official=dto.building_area_official,
+                    building_area_modeled=dto.building_area_modeled,
+                    project_type=dto.project_type,
+                    floor_type=dto.floor_type,
+                    wall_material=dto.wall_material,
+                    built_year=dto.built_year,
+                    exploitation_start_year=dto.exploitation_start_year,
                 )
-                if dto.living_building_id is not None
+                if dto.building_id is not None
                 else None
             ),
             object_geometry_id=dto.object_geometry_id,
@@ -228,13 +242,20 @@ class ScenarioPhysicalObject(PhysicalObject):
                     else None
                 ),
             ),
-            living_building=(
-                ShortLivingBuilding(
-                    id=dto.living_building_id,
-                    living_area=dto.living_area,
-                    properties=dto.living_building_properties,
+            building=(
+                ShortBuilding(
+                    id=dto.building_id,
+                    properties=dto.building_properties,
+                    floors=dto.floors,
+                    building_area_official=dto.building_area_official,
+                    building_area_modeled=dto.building_area_modeled,
+                    project_type=dto.project_type,
+                    floor_type=dto.floor_type,
+                    wall_material=dto.wall_material,
+                    built_year=dto.built_year,
+                    exploitation_start_year=dto.exploitation_start_year,
                 )
-                if dto.living_building_id is not None
+                if dto.building_id is not None
                 else None
             ),
             territories=(
