@@ -436,16 +436,23 @@ async def get_common_territory(
 
     ### Parameters:
     - **geometry** (Geometry, Body): Geometry to be checked.
+      NOTE: The geometry must have **SRID=4326**.
 
     ### Returns:
     - **Territory**: The most deep territory covering the given geometry.
 
     ### Errors:
+    - **400 Bad Request**: If an invalid geometry is specified.
     - **404 Not Found**: If no matching territory is found.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    territory = await territories_service.get_common_territory_for_geometry(geometry.as_shapely_geometry())
+    try:
+        shapely_geom = geometry.as_shapely_geometry()
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+    territory = await territories_service.get_common_territory_for_geometry(shapely_geom)
 
     if territory is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No common territory exists in the database")
@@ -469,17 +476,22 @@ async def intersecting_territories(
     ### Parameters:
     - **parent_territory_id** (int, Path): Unique identifier of the parent territory.
     - **geometry** (Geometry, Body): Geometry to be checked.
+      NOTE: The geometry must have **SRID=4326**.
 
     ### Returns:
     - **list[Territory]**: A list of territories intersecting with the given geometry.
 
     ### Errors:
+    - **400 Bad Request**: If an invalid geometry is specified.
     - **404 Not Found**: If the parent territory does not exist.
     """
     territories_service: TerritoriesService = request.state.territories_service
 
-    territories = await territories_service.get_intersecting_territories_for_geometry(
-        parent_territory_id, geometry.as_shapely_geometry()
-    )
+    try:
+        shapely_geom = geometry.as_shapely_geometry()
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+    territories = await territories_service.get_intersecting_territories_for_geometry(parent_territory_id, shapely_geom)
 
     return [Territory.from_dto(territory) for territory in territories]

@@ -54,7 +54,7 @@ def main(config_path: str):
             password=config.db.master.password,
             pool_size=1,
         ),
-        replicas=config.db.replicas,
+        replicas=config.db.replicas or [],
         logger=logger,
         application_name="duty_regenerate_projects_previews",
     )

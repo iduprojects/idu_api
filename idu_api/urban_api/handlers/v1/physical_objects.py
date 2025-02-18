@@ -1,6 +1,6 @@
 """Physical object handlers are defined here."""
 
-from fastapi import Body, Path, Query, Request
+from fastapi import Body, HTTPException, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.physical_objects import PhysicalObjectsService
@@ -427,22 +427,28 @@ async def get_physical_objects_around_geometry(
     physical_object_type_id: int | None = Query(None, description="physical object type identifier", gt=0),
 ) -> list[PhysicalObjectWithGeometry]:
     """
-    ## Get physical objects within a specified area.
+    ## Get physical objects within a specified area (+ buffer 50 meters).
 
     ### Parameters:
     - **geometry** (AllPossibleGeometry, Body): Geometry defining the search area.
+      NOTE: The geometry must have **SRID=4326**.
     - **physical_object_type_id** (int | None, Query): Filters results by physical object type.
 
     ### Returns:
-    - **list[PhysicalObjectWithGeometry]**: A list of physical objects within the specified area.
+    - **list[PhysicalObjectWithGeometry]**: A list of physical objects within the specified area (+ buffer 50 meters).
 
     ## Errors:
-    - **404 Not Found**: If the physical object does not exist.
+    - **400 Bad Request**: If an invalid geometry is specified.
     """
     physical_objects_service: PhysicalObjectsService = request.state.physical_objects_service
 
+    try:
+        shapely_geom = geometry.as_shapely_geometry()
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
     physical_objects_with_geometry_dto = await physical_objects_service.get_physical_objects_around(
-        geometry.as_shapely_geometry(), physical_object_type_id, 50
+        shapely_geom, physical_object_type_id, 50
     )
     return [PhysicalObjectWithGeometry.from_dto(obj) for obj in physical_objects_with_geometry_dto]
 

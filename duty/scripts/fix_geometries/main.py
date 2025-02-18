@@ -5,18 +5,18 @@ import json
 import os
 from datetime import datetime
 
+import shapely
 import click
 import structlog
-from Tools.scripts.fixnotice import NEW_NOTICE
 from shapely import geometry as geom
 
-from idu_api import UrbanAPIConfig
+from idu_api.common.db.config import DBConfig
 from idu_api.common.db.connection import PostgresConnectionManager
-from idu_api.urban_api.config import DBConfig
+from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.logic.impl.system import SystemServiceImpl
-from idu_api.urban_api.schemas.geometries import GeoJSONResponse, Geometry
+from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 
-Geom = geom.Point | geom.Polygon | geom.MultiPolygon | geom.LineString | geom.MultiLineString
+Geom = geom.Point | geom.MultiPoint | geom.Polygon | geom.MultiPolygon | geom.LineString | geom.MultiLineString | geom.GeometryCollection
 
 
 async def async_main(
@@ -39,7 +39,14 @@ async def async_main(
     # Initialize SystemService and process features geometries (to shapely objects)
     system_service = SystemServiceImpl(connection_manager, logger)
     shapely_geoms: list[Geom] = [
-        Geometry(**feature["geometry"]).as_shapely_geometry() for feature in geojson_data["features"]
+        shapely.from_geojson(
+            json.dumps(
+                {
+                    "type": feature["geometry"]["type"],
+                    "coordinates": feature["geometry"]["coordinates"]
+                }
+            )
+        ) for feature in geojson_data["features"]
     ]
 
     # Try to fix geometries by using SystemService.fix_geojson method
@@ -54,8 +61,7 @@ async def async_main(
     if output_file is None:
         file_name, file_ext = os.path.splitext(os.path.basename(geojson_path))
         os.makedirs("output", exist_ok=True)
-        output_file = os.path.join("output", f"fixed_{file_name}_{datetime.now().strftime('%d%m%y_%H%M%S')}.{file_ext}")
-
+        output_file = os.path.join("output", f"fixed_{file_name}_{datetime.now().strftime('%d%m%y_%H%M%S')}{file_ext}")
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(fixed_geojson.model_dump_json(indent=2))
@@ -85,7 +91,7 @@ async def async_main(
     "--output",
     envvar="OUTPUT_GEOJSON_PATH",
     default=None,
-    type=click.Path(exists=True, dir_okay=False, path_type=str),
+    type=click.Path(exists=False, dir_okay=False, path_type=str),
     show_envvar=True,
     help="Path to output fixed geojson file",
 )
@@ -93,9 +99,17 @@ def main(config_path: str, geojson_path: str, output: str | None):
     # Load configuration
     config = UrbanAPIConfig.load(config_path)
     logger = structlog.getLogger("fix-geometries")
+
     connection_manager = PostgresConnectionManager(
-        master=config.db.master,
-        replicas=config.db.replicas,
+        master=DBConfig(
+            host=config.db.master.host,
+            port=config.db.master.port,
+            database=config.db.master.database,
+            user=config.db.master.user,
+            password=config.db.master.password,
+            pool_size=1,
+        ),
+        replicas=config.db.replicas or [],
         logger=logger,
         application_name="duty_fix_geometry",
     )

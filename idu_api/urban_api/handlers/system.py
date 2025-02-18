@@ -1,16 +1,22 @@
 """System endpoints are defined here."""
 
+import io
+import json
+import os
+import zipfile
 from typing import Any
 
 import fastapi
-from fastapi import HTTPException, Request
+import shapely
+from fastapi import File, HTTPException, Request, UploadFile
+from fastapi.responses import StreamingResponse
 from geojson_pydantic import Feature
 from starlette import status
 
 from idu_api.urban_api.schemas import PingResponse
 
 from ..logic.system import SystemService
-from ..schemas.geometries import AllPossibleGeometry, GeoJSONResponse, Geometry
+from ..schemas.geometries import AllPossibleGeometry, GeoJSONResponse
 from .routers import system_router
 
 
@@ -35,7 +41,7 @@ async def health_check():
 
 @system_router.post(
     "/fix/geometry",
-    response_model=Geometry,
+    response_model=AllPossibleGeometry,
     status_code=status.HTTP_200_OK,
 )
 async def fix_geometry(request: Request, geometry: AllPossibleGeometry):
@@ -50,7 +56,7 @@ async def fix_geometry(request: Request, geometry: AllPossibleGeometry):
       NOTE: The geometry must have **SRID=4326**.
 
     ### Returns:
-    - **Geometry**: The fixed geometry object.
+    - **AllPossibleGeometry**: The fixed geometry object.
 
     ### Errors:
     - **400 Bad Request**: If the provided geometry is invalid and cannot be fixed.
@@ -62,15 +68,15 @@ async def fix_geometry(request: Request, geometry: AllPossibleGeometry):
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
-    return Geometry.from_shapely_geometry(geom)
+    return AllPossibleGeometry.from_shapely_geometry(geom)
 
 
 @system_router.post(
     "/fix/geojson",
-    response_model=GeoJSONResponse[Feature[Geometry, Any]],
+    response_model=GeoJSONResponse[Feature[AllPossibleGeometry, Any]],
     status_code=status.HTTP_200_OK,
 )
-async def fix_geojson(request: Request, geojson: GeoJSONResponse[Feature[Geometry, Any]]):
+async def fix_geojson(request: Request, geojson: GeoJSONResponse[Feature[AllPossibleGeometry, Any]]):
     """
     ## Fix invalid geometries in a GeoJSON object.
 
@@ -78,7 +84,7 @@ async def fix_geojson(request: Request, geojson: GeoJSONResponse[Feature[Geometr
     any invalid geometries, and returns a corrected GeoJSON response.
 
     ### Parameters:
-    - **geojson** (GeoJSONResponse[Feature[Geometry, Any]], Body): A GeoJSON object containing features
+    - **geojson** (GeoJSONResponse[Feature[AllPossibleGeometry, Any]], Body): A GeoJSON object containing features
       with geometries that need to be fixed.
       NOTE: All geometries must have **SRID=4326**.
 
@@ -97,3 +103,58 @@ async def fix_geojson(request: Request, geojson: GeoJSONResponse[Feature[Geometr
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     return geojson.update_geometries(geoms)
+
+
+@system_router.post(
+    "/fix/geojson_file",
+    status_code=status.HTTP_200_OK,
+)
+async def fix_geojson_file(request: Request, file: UploadFile = File(...)):
+    """
+    ## Fix invalid geometries in a GeoJSON file.
+
+    **NOTE:** This endpoint accepts a GeoJSON file containing multiple features with geometries,
+    attempts to fix any invalid geometries, and returns a corrected GeoJSON file.
+
+    ### Parameters:
+    - **file** (UploadFile, Body): A GeoJSON file containing features with geometries to be fixed.
+      NOTE: All geometries must have **SRID=4326**.
+
+    ### Returns:
+    - A file containing the corrected GeoJSON object.
+
+    ### Errors:
+    - **400 Bad Request**: If any geometry is invalid and cannot be fixed.
+    """
+    system_service: SystemService = request.state.system_service
+
+    try:
+        content = await file.read()
+        geojson_data = json.loads(content)
+
+        geojson = GeoJSONResponse(**geojson_data)
+        geoms = [
+            shapely.from_geojson(
+                json.dumps({"type": feature["geometry"]["type"], "coordinates": feature["geometry"]["coordinates"]})
+            )
+            for feature in geojson_data["features"]
+        ]
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid GeoJSON file") from e
+
+    geoms = await system_service.fix_geojson(geoms)
+    fixed_geojson = geojson.update_geometries(geoms)
+
+    fixed_content = json.dumps(fixed_geojson.model_dump_json(indent=2), ensure_ascii=False).encode("utf-8")
+    file_name, file_ext = os.path.splitext(os.path.basename(file.filename))
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+        zip_file.writestr(f"{file_name}.{file_ext}", io.BytesIO(fixed_content).read())
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename={file_name}.zip"},
+    )
