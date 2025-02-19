@@ -16,5 +16,5 @@ class SystemService(Protocol):
         """Returns fixed shapely geometry."""
 
     @abc.abstractmethod
-    async def fix_geojson(self, geoms: list[Geom]) -> list[Geom]:
+    async def fix_geojson(self, geoms: list[Geom], show_progress: bool = False) -> list[Geom]:
         """Returns list of fixed shapely geometry."""

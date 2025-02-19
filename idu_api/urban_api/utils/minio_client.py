@@ -3,7 +3,7 @@ import io
 
 import aioboto3
 import structlog
-from botocore.client import Config
+from botocore.config import Config
 from botocore.exceptions import ConnectionError
 from tenacity import RetryError, retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
@@ -50,11 +50,7 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(
-                connect_timeout=self._connect_timeout,
-                read_timeout=self._read_timeout,
-                response_checksum_validation="when_required",
-            ),
+            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
             try:
                 file_stream = io.BytesIO(file_data)
@@ -75,11 +71,7 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(
-                connect_timeout=self._connect_timeout,
-                read_timeout=self._read_timeout,
-                response_checksum_validation="when_required",
-            ),
+            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
             response = await client.list_objects_v2(Bucket=self._bucket_name, Prefix="")
             existing_objects = {obj["Key"] for obj in response.get("Contents", [])}
@@ -93,11 +85,7 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(
-                connect_timeout=self._connect_timeout,
-                read_timeout=self._read_timeout,
-                response_checksum_validation="when_required",
-            ),
+            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
             try:
                 existence_map = await self.objects_exist(object_names)
@@ -128,11 +116,7 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(
-                connect_timeout=self._connect_timeout,
-                read_timeout=self._read_timeout,
-                response_checksum_validation="when_required",
-            ),
+            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as client:
             try:
                 existence_map = await self.objects_exist(object_names)
@@ -165,11 +149,7 @@ class AsyncMinioClient:
             aws_access_key_id=self._access_key,
             aws_secret_access_key=self._secret_key,
             region_name=self._region_name,
-            config=Config(
-                connect_timeout=self._connect_timeout,
-                read_timeout=self._read_timeout,
-                response_checksum_validation="when_required",
-            ),
+            config=Config(connect_timeout=self._connect_timeout, read_timeout=self._read_timeout),
         ) as s3:
             try:
                 await (await s3.Bucket(self._bucket_name)).objects.filter(Prefix=object_name).delete()

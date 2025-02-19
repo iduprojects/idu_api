@@ -24,6 +24,6 @@ class SystemServiceImpl(SystemService):
         async with self._connection_manager.get_ro_connection() as conn:
             return await fix_geometry_by_postgis(conn, geom, self._logger)
 
-    async def fix_geojson(self, geoms: list[Geom]) -> list[Geom]:
+    async def fix_geojson(self, geoms: list[Geom], show_progress: bool = False) -> list[Geom]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await fix_geojson_by_postgis(conn, geoms, self._logger)
+            return await fix_geojson_by_postgis(conn, geoms, self._logger, show_progress)

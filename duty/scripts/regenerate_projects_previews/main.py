@@ -14,6 +14,7 @@ from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_cli
 
 
 async def regenerate_preview(service: UserProjectService, minio_client: AsyncMinioClient, project: ProjectDTO):
+    """Load project image and upload again (with new params for preview image)."""
     image_buf = await service.get_project_image(minio_client, project.project_id, project.user_id, image_type="origin")
     await service.upload_project_image(minio_client, project.project_id, project.user_id, image_buf.read())
 
@@ -21,6 +22,7 @@ async def regenerate_preview(service: UserProjectService, minio_client: AsyncMin
 async def async_main(
     connection_manager: PostgresConnectionManager, minio_client: AsyncMinioClient, logger: structlog.stdlib.BoundLogger
 ):
+    """Asynchronously regenerate all preview projects images."""
     service = UserProjectServiceImpl(connection_manager, logger)
     projects = await service.get_all_projects()
 
@@ -43,6 +45,7 @@ async def async_main(
     help="Path to YAML configuration file",
 )
 def main(config_path: str):
+    """Run the regenerate-projects-previews script using the parameters from the console and loading configuration."""
     config = UrbanAPIConfig.load(config_path)
     logger = structlog.getLogger("regenerate-project-previews")
     connection_manager = PostgresConnectionManager(

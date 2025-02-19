@@ -5,8 +5,8 @@ import json
 import os
 from datetime import datetime
 
-import shapely
 import click
+import shapely
 import structlog
 from shapely import geometry as geom
 
@@ -16,7 +16,15 @@ from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.logic.impl.system import SystemServiceImpl
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 
-Geom = geom.Point | geom.MultiPoint | geom.Polygon | geom.MultiPolygon | geom.LineString | geom.MultiLineString | geom.GeometryCollection
+Geom = (
+    geom.Point
+    | geom.MultiPoint
+    | geom.Polygon
+    | geom.MultiPolygon
+    | geom.LineString
+    | geom.MultiLineString
+    | geom.GeometryCollection
+)
 
 
 async def async_main(
@@ -25,6 +33,9 @@ async def async_main(
     geojson_path: str,
     output_file: str | None,
 ):
+    """Asynchronously fix all geometries from geojson by postgis methods."""
+    await logger.ainfo("Start fixing geojson...!")
+
     # Reading the source GeoJSON from the file
     with open(geojson_path, "r", encoding="utf-8") as f:
         geojson_data = json.load(f)
@@ -38,20 +49,21 @@ async def async_main(
 
     # Initialize SystemService and process features geometries (to shapely objects)
     system_service = SystemServiceImpl(connection_manager, logger)
-    shapely_geoms: list[Geom] = [
-        shapely.from_geojson(
-            json.dumps(
-                {
-                    "type": feature["geometry"]["type"],
-                    "coordinates": feature["geometry"]["coordinates"]
-                }
-            )
-        ) for feature in geojson_data["features"]
-    ]
+    shapely_geoms: list[Geom] = []
+    for i in range(len(geojson_data["features"])):
+        feature = geojson_data["features"][i]
+        shapely_geometry = shapely.from_geojson(
+            json.dumps({"type": feature["geometry"]["type"], "coordinates": feature["geometry"]["coordinates"]})
+        )
+        if shapely_geometry.is_empty:
+            await logger.awarning("empty geometry in file was found, it will be removed", feature_id=i)
+            del geojson_obj.features[i]
+        else:
+            shapely_geoms.append(shapely_geometry)
 
     # Try to fix geometries by using SystemService.fix_geojson method
     try:
-        fixed_geoms = await system_service.fix_geojson(shapely_geoms)
+        fixed_geoms = await system_service.fix_geojson(shapely_geoms, show_progress=True)
         fixed_geojson = geojson_obj.update_geometries(fixed_geoms)
     except Exception as exc:
         await logger.aerror("failed to fix GeoJSON", error=str(exc))
@@ -64,7 +76,7 @@ async def async_main(
         output_file = os.path.join("output", f"fixed_{file_name}_{datetime.now().strftime('%d%m%y_%H%M%S')}{file_ext}")
 
     with open(output_file, "w", encoding="utf-8") as f:
-        f.write(fixed_geojson.model_dump_json(indent=2))
+        f.write(fixed_geojson.model_dump_json())
 
     await logger.ainfo("fixed geojson saved", output_file=output_file)
 
@@ -96,6 +108,7 @@ async def async_main(
     help="Path to output fixed geojson file",
 )
 def main(config_path: str, geojson_path: str, output: str | None):
+    """Run the fix-geometries script using the parameters from the console and loading configuration."""
     # Load configuration
     config = UrbanAPIConfig.load(config_path)
     logger = structlog.getLogger("fix-geometries")
@@ -118,4 +131,4 @@ def main(config_path: str, geojson_path: str, output: str | None):
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pylint: disable=no-value-for-parameter
