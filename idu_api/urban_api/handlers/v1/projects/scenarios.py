@@ -45,7 +45,7 @@ async def get_scenario_by_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenario = await user_project_service.get_scenario_by_id(scenario_id, user.id if user is not None else None)
+    scenario = await user_project_service.get_scenario_by_id(scenario_id, user)
 
     return Scenario.from_dto(scenario)
 
@@ -79,7 +79,7 @@ async def add_scenario(request: Request, scenario: ScenarioPost, user: UserDTO =
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenario = await user_project_service.add_scenario(scenario, user.id)
+    scenario = await user_project_service.add_scenario(scenario, user)
 
     return Scenario.from_dto(scenario)
 
@@ -115,7 +115,7 @@ async def copy_scenario(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenario = await user_project_service.copy_scenario(scenario, scenario_id, user.id)
+    scenario = await user_project_service.copy_scenario(scenario, scenario_id, user)
 
     return Scenario.from_dto(scenario)
 
@@ -160,7 +160,7 @@ async def put_scenario(
     user_project_service: UserProjectService = request.state.user_project_service
 
     try:
-        scenario = await user_project_service.put_scenario(scenario, scenario_id, user.id)
+        scenario = await user_project_service.put_scenario(scenario, scenario_id, user)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -202,7 +202,7 @@ async def patch_scenario(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenario = await user_project_service.patch_scenario(scenario, scenario_id, user.id)
+    scenario = await user_project_service.patch_scenario(scenario, scenario_id, user)
 
     return Scenario.from_dto(scenario)
 
@@ -236,6 +236,6 @@ async def delete_scenario(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_scenario(scenario_id, user.id)
+    await user_project_service.delete_scenario(scenario_id, user)
 
     return OkResponse()

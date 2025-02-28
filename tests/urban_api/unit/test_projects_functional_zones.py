@@ -18,6 +18,7 @@ from idu_api.urban_api.dto import (
     FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
     ScenarioFunctionalZoneDTO,
+    UserDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
 from idu_api.urban_api.logic.impl.helpers.projects_functional_zones import (
@@ -58,7 +59,7 @@ async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_check: A
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     statement = (
         select(projects_functional_zones.c.year, projects_functional_zones.c.source)
         .where(projects_functional_zones.c.scenario_id == scenario_id)
@@ -66,7 +67,7 @@ async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_check: A
     )
 
     # Act
-    result = await get_functional_zones_sources_by_scenario_id_from_db(mock_conn, scenario_id, user_id)
+    result = await get_functional_zones_sources_by_scenario_id_from_db(mock_conn, scenario_id, user)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
@@ -77,7 +78,7 @@ async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_check: A
         FunctionalZoneSource.from_dto(result[0]), FunctionalZoneSource
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user_id)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user)
 
 
 @pytest.mark.asyncio
@@ -90,7 +91,7 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_check: AsyncMock
     year = datetime.today().year
     source = "mock_sting"
     functional_zone_type_id = 1
-    user_id = "mock_sting"
+    user = "mock_sting"
     statement = (
         select(
             projects_functional_zones.c.functional_zone_id,
@@ -127,7 +128,7 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_check: AsyncMock
 
     # Act
     result = await get_functional_zones_by_scenario_id_from_db(
-        mock_conn, scenario_id, year, source, functional_zone_type_id, user_id
+        mock_conn, scenario_id, year, source, functional_zone_type_id, user
     )
 
     # Assert
@@ -139,7 +140,7 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_check: AsyncMock
         ScenarioFunctionalZone.from_dto(result[0]), ScenarioFunctionalZone
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user_id)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user)
 
 
 @pytest.mark.asyncio
@@ -148,8 +149,8 @@ async def test_get_context_functional_zones_sources_from_db(mock_conn: MockConne
 
     # Arrange
     project_id = 1
-    user_id = "mock_string"
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
+    user = UserDTO(id="mock_string", is_superuser=False)
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
     statement = (
         select(functional_zones_data.c.year, functional_zones_data.c.source)
         .where(
@@ -160,7 +161,7 @@ async def test_get_context_functional_zones_sources_from_db(mock_conn: MockConne
     )
 
     # Act
-    result = await get_context_functional_zones_sources_from_db(mock_conn, project_id, user_id)
+    result = await get_context_functional_zones_sources_from_db(mock_conn, project_id, user)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
@@ -182,8 +183,8 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
     year = datetime.today().year
     source = "mock_string"
     functional_zone_type_id = 1
-    user_id = "mock_string"
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
+    user = UserDTO(id="mock_string", is_superuser=False)
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
     statement = (
         select(
             functional_zones_data.c.functional_zone_id,
@@ -230,7 +231,7 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
 
     # Act
     result = await get_context_functional_zones_from_db(
-        mock_conn, project_id, year, source, functional_zone_type_id, user_id
+        mock_conn, project_id, year, source, functional_zone_type_id, user
     )
 
     # Assert
@@ -304,7 +305,7 @@ async def test_add_scenario_functional_zones_to_db(
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     delete_statement = delete(projects_functional_zones).where(projects_functional_zones.c.scenario_id == scenario_id)
     insert_statement = (
         insert(projects_functional_zones)
@@ -314,7 +315,7 @@ async def test_add_scenario_functional_zones_to_db(
 
     # Act
     result = await add_scenario_functional_zones_to_db(
-        mock_conn, [scenario_functional_zone_post_req], scenario_id, user_id
+        mock_conn, [scenario_functional_zone_post_req], scenario_id, user
     )
 
     # Assert
@@ -328,7 +329,7 @@ async def test_add_scenario_functional_zones_to_db(
     mock_conn.execute_mock.assert_any_call(str(delete_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio
@@ -351,7 +352,7 @@ async def test_put_scenario_functional_zone_to_db(
 
     scenario_id = 1
     functional_zone_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     update_statement = (
         update(projects_functional_zones)
         .where(projects_functional_zones.c.functional_zone_id == functional_zone_id)
@@ -375,7 +376,7 @@ async def test_put_scenario_functional_zone_to_db(
     ):
         with pytest.raises(EntityNotFoundById):
             await put_scenario_functional_zone_to_db(
-                mock_conn, scenario_functional_zone_put_req, scenario_id, functional_zone_id, user_id
+                mock_conn, scenario_functional_zone_put_req, scenario_id, functional_zone_id, user
             )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.check_existence",
@@ -383,10 +384,10 @@ async def test_put_scenario_functional_zone_to_db(
     ):
         with pytest.raises(EntityNotFoundById):
             await put_scenario_functional_zone_to_db(
-                mock_conn, scenario_functional_zone_put_req, scenario_id, functional_zone_id, user_id
+                mock_conn, scenario_functional_zone_put_req, scenario_id, functional_zone_id, user
             )
     result = await put_scenario_functional_zone_to_db(
-        mock_conn, scenario_functional_zone_put_req, scenario_id, functional_zone_id, user_id
+        mock_conn, scenario_functional_zone_put_req, scenario_id, functional_zone_id, user
     )
 
     # Assert
@@ -396,7 +397,7 @@ async def test_put_scenario_functional_zone_to_db(
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(update_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio
@@ -419,7 +420,7 @@ async def test_patch_scenario_functional_zone_to_db(
 
     scenario_id = 1
     functional_zone_id = 1
-    user_id = "test_user"
+    user = "test_user"
     update_statement = (
         update(projects_functional_zones)
         .where(projects_functional_zones.c.functional_zone_id == functional_zone_id)
@@ -435,7 +436,7 @@ async def test_patch_scenario_functional_zone_to_db(
     ):
         with pytest.raises(EntityNotFoundById):
             await patch_scenario_functional_zone_to_db(
-                mock_conn, scenario_functional_zone_patch_req, scenario_id, functional_zone_id, user_id
+                mock_conn, scenario_functional_zone_patch_req, scenario_id, functional_zone_id, user
             )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.check_existence",
@@ -443,10 +444,10 @@ async def test_patch_scenario_functional_zone_to_db(
     ):
         with pytest.raises(EntityNotFoundById):
             await patch_scenario_functional_zone_to_db(
-                mock_conn, scenario_functional_zone_patch_req, scenario_id, functional_zone_id, user_id
+                mock_conn, scenario_functional_zone_patch_req, scenario_id, functional_zone_id, user
             )
     result = await patch_scenario_functional_zone_to_db(
-        mock_conn, scenario_functional_zone_patch_req, scenario_id, functional_zone_id, user_id
+        mock_conn, scenario_functional_zone_patch_req, scenario_id, functional_zone_id, user
     )
 
     # Assert
@@ -456,7 +457,7 @@ async def test_patch_scenario_functional_zone_to_db(
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(update_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio
@@ -466,14 +467,14 @@ async def test_delete_functional_zones_by_scenario_id_from_db(mock_check: AsyncM
 
     # Arrange
     scenario_id = 1
-    user_id = "test_user"
+    user = "test_user"
     delete_statement = delete(projects_functional_zones).where(projects_functional_zones.c.scenario_id == scenario_id)
 
     # Act
-    result = await delete_functional_zones_by_scenario_id_from_db(mock_conn, scenario_id, user_id)
+    result = await delete_functional_zones_by_scenario_id_from_db(mock_conn, scenario_id, user)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
     mock_conn.execute_mock.assert_called_once_with(str(delete_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user, to_edit=True)

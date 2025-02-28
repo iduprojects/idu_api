@@ -59,7 +59,7 @@ async def get_project_by_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    project_dto = await user_project_service.get_project_by_id(project_id, user.id if user is not None else None)
+    project_dto = await user_project_service.get_project_by_id(project_id, user)
 
     return Project.from_dto(project_dto)
 
@@ -92,9 +92,7 @@ async def get_project_territory_by_project_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    project_territory_dto = await user_project_service.get_project_territory_by_id(
-        project_id, user.id if user is not None else None
-    )
+    project_territory_dto = await user_project_service.get_project_territory_by_id(project_id, user)
 
     return ProjectTerritory.from_dto(project_territory_dto)
 
@@ -127,9 +125,7 @@ async def get_scenarios_by_project_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenarios = await user_project_service.get_scenarios_by_project_id(
-        project_id, user.id if user is not None else None
-    )
+    scenarios = await user_project_service.get_scenarios_by_project_id(project_id, user)
 
     return [Scenario.from_dto(scenario) for scenario in scenarios]
 
@@ -204,7 +200,7 @@ async def get_projects(
     order_by_value = order_by.value if order_by is not None else None
 
     projects = await user_project_service.get_projects(
-        user.id if user is not None else None,
+        user,
         only_own,
         is_regional,
         project_type_value,
@@ -268,9 +264,7 @@ async def get_projects_territories(
 
     project_type_value = project_type.value if project_type is not None else None
 
-    projects = await user_project_service.get_projects_territories(
-        user.id if user is not None else None, only_own, project_type_value, territory_id
-    )
+    projects = await user_project_service.get_projects_territories(user, only_own, project_type_value, territory_id)
 
     return await GeoJSONResponse.from_list([p.to_geojson_dict() for p in projects], centers_only=centers_only)
 
@@ -353,7 +347,7 @@ async def get_preview_project_images(
 
     zip_buffer = await user_project_service.get_preview_projects_images(
         minio_client,
-        user.id if user is not None else None,
+        user,
         only_own,
         is_regional,
         project_type_value,
@@ -447,7 +441,7 @@ async def get_project_previews_url(
 
     images = await user_project_service.get_preview_projects_images_url(
         minio_client,
-        user.id if user is not None else None,
+        user,
         only_own,
         is_regional,
         project_type_value,
@@ -489,7 +483,7 @@ async def add_project(request: Request, project: ProjectPost, user: UserDTO = De
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    project_dto = await user_project_service.add_project(project, user.id)
+    project_dto = await user_project_service.add_project(project, user)
 
     return Project.from_dto(project_dto)
 
@@ -529,7 +523,7 @@ async def put_project(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    project_dto = await user_project_service.put_project(project, project_id, user.id)
+    project_dto = await user_project_service.put_project(project, project_id, user)
 
     return Project.from_dto(project_dto)
 
@@ -565,7 +559,7 @@ async def patch_project(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    project_dto = await user_project_service.patch_project(project, project_id, user.id)
+    project_dto = await user_project_service.patch_project(project, project_id, user)
 
     return Project.from_dto(project_dto)
 
@@ -599,7 +593,7 @@ async def delete_project(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_project(project_id, minio_client, user.id)
+    await user_project_service.delete_project(project_id, minio_client, user)
 
     return OkResponse()
 
@@ -644,7 +638,7 @@ async def upload_project_image(
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is not an image")
 
-    image_url = await user_project_service.upload_project_image(minio_client, project_id, user.id, await file.read())
+    image_url = await user_project_service.upload_project_image(minio_client, project_id, user, await file.read())
 
     return MinioImagesURL(**image_url)
 
@@ -678,9 +672,7 @@ async def get_full_project_image(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    image_stream = await user_project_service.get_project_image(
-        minio_client, project_id, user.id if user is not None else None, image_type="origin"
-    )
+    image_stream = await user_project_service.get_project_image(minio_client, project_id, user, image_type="origin")
 
     return StreamingResponse(image_stream, media_type="image/jpeg")
 
@@ -714,9 +706,7 @@ async def get_preview_project_image(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    image_stream = await user_project_service.get_project_image(
-        minio_client, project_id, user.id if user is not None else None, image_type="preview"
-    )
+    image_stream = await user_project_service.get_project_image(minio_client, project_id, user, image_type="preview")
 
     return StreamingResponse(image_stream, media_type="image/jpeg")
 
@@ -751,9 +741,7 @@ async def get_full_project_image_url(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    return await user_project_service.get_project_image_url(
-        minio_client, project_id, user.id if user is not None else None, image_type="origin"
-    )
+    return await user_project_service.get_project_image_url(minio_client, project_id, user, image_type="origin")
 
 
 @projects_router.get(
@@ -786,9 +774,7 @@ async def get_preview_project_image_url(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    return await user_project_service.get_project_image_url(
-        minio_client, project_id, user.id if user is not None else None, image_type="preview"
-    )
+    return await user_project_service.get_project_image_url(minio_client, project_id, user, image_type="preview")
 
 
 @projects_router.get(
@@ -824,7 +810,7 @@ async def get_user_projects(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    projects = await user_project_service.get_user_projects(user.id, is_regional, territory_id)
+    projects = await user_project_service.get_user_projects(user, is_regional, territory_id)
 
     return paginate(
         projects.items,
@@ -872,7 +858,7 @@ async def get_user_preview_project_images(
     user_project_service: UserProjectService = request.state.user_project_service
 
     zip_buffer = await user_project_service.get_user_preview_projects_images(
-        minio_client, user.id, is_regional, territory_id, page, page_size
+        minio_client, user, is_regional, territory_id, page, page_size
     )
 
     return StreamingResponse(
@@ -922,7 +908,7 @@ async def get_user_preview_project_images_url(
     user_project_service: UserProjectService = request.state.user_project_service
 
     images = await user_project_service.get_user_preview_projects_images_url(
-        minio_client, user.id, is_regional, territory_id, page, page_size
+        minio_client, user, is_regional, territory_id, page, page_size
     )
 
     return [MinioImageURL(**img) for img in images]

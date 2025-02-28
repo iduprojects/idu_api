@@ -90,7 +90,7 @@ class AuthenticationClient:
                 raise ExpiredToken()
             await self.validate_token_online(token)
 
-        user_dto = UserDTO(id=payload.get("sub"))
+        user_dto = UserDTO(id=payload.get("sub"), is_superuser=payload.get("is_superuser", False))
 
         self._cache[token] = user_dto
 

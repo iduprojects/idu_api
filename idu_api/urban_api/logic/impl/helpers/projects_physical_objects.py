@@ -21,7 +21,7 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import PhysicalObjectDTO, ScenarioPhysicalObjectDTO, ScenarioUrbanObjectDTO
+from idu_api.urban_api.dto import PhysicalObjectDTO, ScenarioPhysicalObjectDTO, ScenarioUrbanObjectDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import (
     EntitiesNotFoundByIds,
     EntityAlreadyExists,
@@ -42,13 +42,13 @@ from idu_api.urban_api.schemas import PhysicalObjectPatch, PhysicalObjectPut, Ph
 async def get_physical_objects_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
-    user_id: str,
+    user: UserDTO | None,
     physical_object_type_id: int | None,
     physical_object_function_id: int | None,
 ) -> list[ScenarioPhysicalObjectDTO]:
     """Get physical objects by scenario identifier."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id)
+    project = await get_project_by_scenario_id(conn, scenario_id, user)
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -301,13 +301,13 @@ async def get_physical_objects_by_scenario_id_from_db(
 async def get_context_physical_objects_from_db(
     conn: AsyncConnection,
     project_id: int,
-    user_id: str,
+    user: UserDTO | None,
     physical_object_type_id: int | None,
     physical_object_function_id: int | None,
 ) -> list[PhysicalObjectDTO]:
     """Get list of physical objects for 'context' of the project territory."""
 
-    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user)
 
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
@@ -498,11 +498,11 @@ async def add_physical_object_with_geometry_to_db(
     conn: AsyncConnection,
     physical_object: PhysicalObjectWithGeometryPost,
     scenario_id: int,
-    user_id: str,
+    user: UserDTO,
 ) -> ScenarioUrbanObjectDTO:
     """Create scenario physical object with geometry."""
 
-    await check_scenario(conn, scenario_id, user_id, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(conn, territories_data, conditions={"territory_id": physical_object.territory_id}):
         raise EntityNotFoundById(physical_object.territory_id, "territory")
@@ -557,11 +557,11 @@ async def put_physical_object_to_db(
     scenario_id: int,
     physical_object_id: int,
     is_scenario_object: bool,
-    user_id: str,
+    user: UserDTO,
 ) -> ScenarioPhysicalObjectDTO:
     """Update scenario physical object by all its attributes."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(
         conn,
@@ -684,11 +684,11 @@ async def patch_physical_object_to_db(
     scenario_id: int,
     physical_object_id: int,
     is_scenario_object: bool,
-    user_id: str,
+    user: UserDTO,
 ) -> ScenarioPhysicalObjectDTO:
     """Update scenario physical object by only given attributes."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if is_scenario_object:
         statement = select(projects_physical_objects_data).where(
@@ -825,11 +825,11 @@ async def delete_physical_object_from_db(
     scenario_id: int,
     physical_object_id: int,
     is_scenario_object: bool,
-    user_id: str,
+    user: UserDTO,
 ) -> dict:
     """Delete scenario physical object."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(
         conn,
@@ -898,13 +898,13 @@ async def update_physical_objects_by_function_id_to_db(
     conn: AsyncConnection,
     physical_objects: list[PhysicalObjectWithGeometryPost],
     scenario_id: int,
-    user_id: str,
+    user: UserDTO,
     physical_object_function_id: int,
 ) -> list[ScenarioUrbanObjectDTO]:
     """Delete all physical objects by physical object function identifier
     and upload new objects with the same function for given scenario."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     territories = {phys_obj.territory_id for phys_obj in physical_objects}
     statement = select(territories_data.c.territory_id).where(territories_data.c.territory_id.in_(territories))

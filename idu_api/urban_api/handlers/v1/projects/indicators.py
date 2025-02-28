@@ -57,7 +57,7 @@ async def get_scenario_indicators_values_by_scenario_id(
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicators = await user_project_service.get_scenario_indicators_values(
-        scenario_id, indicator_ids, indicators_group_id, territory_id, hexagon_id, user.id if user is not None else None
+        scenario_id, indicator_ids, indicators_group_id, territory_id, hexagon_id, user
     )
 
     return [ScenarioIndicatorValue.from_dto(indicator) for indicator in indicators]
@@ -97,7 +97,7 @@ async def add_scenario_indicator_value(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    indicator = await user_project_service.add_scenario_indicator_value(indicator_value, scenario_id, user.id)
+    indicator = await user_project_service.add_scenario_indicator_value(indicator_value, scenario_id, user)
 
     return ScenarioIndicatorValue.from_dto(indicator)
 
@@ -136,7 +136,7 @@ async def put_scenario_indicator_value(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    indicator = await user_project_service.put_scenario_indicator_value(indicator_value, scenario_id, user.id)
+    indicator = await user_project_service.put_scenario_indicator_value(indicator_value, scenario_id, user)
 
     return ScenarioIndicatorValue.from_dto(indicator)
 
@@ -175,7 +175,7 @@ async def patch_scenario_indicator_value(
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator = await user_project_service.patch_scenario_indicator_value(
-        indicator_value, scenario_id, indicator_value_id, user.id
+        indicator_value, scenario_id, indicator_value_id, user
     )
 
     return ScenarioIndicatorValue.from_dto(indicator)
@@ -210,7 +210,7 @@ async def delete_scenario_indicators_values_by_scenario_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_scenario_indicators_values_by_scenario_id(scenario_id, user.id)
+    await user_project_service.delete_scenario_indicators_values_by_scenario_id(scenario_id, user)
 
     return OkResponse()
 
@@ -246,7 +246,7 @@ async def delete_scenario_indicator_value_by_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_scenario_indicator_value_by_id(scenario_id, indicator_value_id, user.id)
+    await user_project_service.delete_scenario_indicator_value_by_id(scenario_id, indicator_value_id, user)
 
     return OkResponse()
 
@@ -286,7 +286,7 @@ async def get_hexagons_with_indicators_values_by_scenario_id(
     user_project_service: UserProjectService = request.state.user_project_service
 
     hexagons = await user_project_service.get_hexagons_with_indicators_by_scenario_id(
-        scenario_id, indicator_ids, indicators_group_id, user.id if user is not None else None
+        scenario_id, indicator_ids, indicators_group_id, user
     )
 
     return await GeoJSONResponse.from_list([hexagon.to_geojson_dict() for hexagon in hexagons], centers_only)
@@ -321,7 +321,7 @@ async def update_all_indicators_values_by_scenario_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.update_all_indicators_values_by_scenario_id(scenario_id, user.id)
+    await user_project_service.update_all_indicators_values_by_scenario_id(scenario_id, user)
 
     return OkResponse()
 
@@ -359,7 +359,7 @@ async def add_scenario_indicator_deprecated(
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator = await user_project_service.add_scenario_indicator_value(
-        indicator_value, indicator_value.scenario_id, user.id
+        indicator_value, indicator_value.scenario_id, user
     )
 
     return ScenarioIndicatorValue.from_dto(indicator)
@@ -402,7 +402,7 @@ async def put_scenario_indicator_deprecated(
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator = await user_project_service.put_scenario_indicator_value(
-        indicator_value, indicator_value.scenario_id, user.id
+        indicator_value, indicator_value.scenario_id, user
     )
 
     return ScenarioIndicatorValue.from_dto(indicator)
@@ -444,7 +444,7 @@ async def patch_scenario_indicator_deprecated(
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator = await user_project_service.patch_scenario_indicator_value(
-        indicator_value, None, indicator_value_id, user.id
+        indicator_value, None, indicator_value_id, user
     )
 
     return ScenarioIndicatorValue.from_dto(indicator)
@@ -483,6 +483,6 @@ async def delete_scenario_indicator_by_id_deprecated(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_scenario_indicator_value_by_id(None, indicator_value_id, user.id)
+    await user_project_service.delete_scenario_indicator_value_by_id(None, indicator_value_id, user)
 
     return OkResponse()

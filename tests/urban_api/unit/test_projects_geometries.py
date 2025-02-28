@@ -24,7 +24,7 @@ from idu_api.common.db.entities import (
     territory_types_dict,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import ObjectGeometryDTO, ScenarioGeometryDTO, ScenarioGeometryWithAllObjectsDTO
+from idu_api.urban_api.dto import ObjectGeometryDTO, ScenarioGeometryDTO, ScenarioGeometryWithAllObjectsDTO, UserDTO
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
@@ -61,7 +61,7 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     physical_object_id = 1
     service_id = 1
 
@@ -168,9 +168,7 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
     )
 
     # Act
-    result = await get_geometries_by_scenario_id_from_db(
-        mock_conn, scenario_id, user_id, physical_object_id, service_id
-    )
+    result = await get_geometries_by_scenario_id_from_db(mock_conn, scenario_id, user, physical_object_id, service_id)
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
     # Assert
@@ -189,7 +187,7 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     physical_object_type_id = 1
     service_type_id = 1
     building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
@@ -395,7 +393,7 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
 
     # Act
     result = await get_geometries_with_all_objects_by_scenario_id_from_db(
-        mock_conn, scenario_id, user_id, physical_object_type_id, service_type_id, None, None
+        mock_conn, scenario_id, user, physical_object_type_id, service_type_id, None, None
     )
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
@@ -417,8 +415,8 @@ async def test_get_context_geometries_from_db(mock_conn: MockConnection):
 
     # Arrange
     project_id = 1
-    user_id = "mock_string"
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
+    user = UserDTO(id="mock_string", is_superuser=False)
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
     statement = (
         select(
             object_geometries_data.c.object_geometry_id,
@@ -464,7 +462,7 @@ async def test_get_context_geometries_from_db(mock_conn: MockConnection):
     )
 
     # Act
-    result = await get_context_geometries_from_db(mock_conn, project_id, user_id, None, None)
+    result = await get_context_geometries_from_db(mock_conn, project_id, user, None, None)
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
     # Assert
@@ -482,10 +480,10 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
 
     # Arrange
     project_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     physical_object_type_id = 1
     service_type_id = 1
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .select_from(
@@ -586,7 +584,7 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
 
     # Act
     result = await get_context_geometries_with_all_objects_from_db(
-        mock_conn, project_id, user_id, physical_object_type_id, service_type_id, None, None
+        mock_conn, project_id, user, physical_object_type_id, service_type_id, None, None
     )
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
@@ -660,7 +658,7 @@ async def test_put_scenario_object_geometry_to_db(
     scenario_id = 1
     object_geometry_id = 1
     is_scenario_object = True
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     update_statement = (
         update(projects_object_geometries_data)
         .where(projects_object_geometries_data.c.object_geometry_id == object_geometry_id)
@@ -684,7 +682,7 @@ async def test_put_scenario_object_geometry_to_db(
     ):
         with pytest.raises(EntityNotFoundById):
             await put_object_geometry_to_db(
-                mock_conn, object_geometries_put_req, scenario_id, object_geometry_id, is_scenario_object, user_id
+                mock_conn, object_geometries_put_req, scenario_id, object_geometry_id, is_scenario_object, user
             )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_geometries.check_existence",
@@ -692,10 +690,10 @@ async def test_put_scenario_object_geometry_to_db(
     ):
         with pytest.raises(EntityNotFoundById):
             await put_object_geometry_to_db(
-                mock_conn, object_geometries_put_req, scenario_id, object_geometry_id, is_scenario_object, user_id
+                mock_conn, object_geometries_put_req, scenario_id, object_geometry_id, is_scenario_object, user
             )
     result = await put_object_geometry_to_db(
-        mock_conn, object_geometries_put_req, scenario_id, object_geometry_id, is_scenario_object, user_id
+        mock_conn, object_geometries_put_req, scenario_id, object_geometry_id, is_scenario_object, user
     )
 
     # Assert
@@ -722,7 +720,7 @@ async def test_patch_scenario_object_geometry_to_db(
     scenario_id = 1
     object_geometry_id = 1
     is_scenario_object = True
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     update_statement = (
         update(projects_object_geometries_data)
         .where(projects_object_geometries_data.c.object_geometry_id == object_geometry_id)
@@ -737,10 +735,10 @@ async def test_patch_scenario_object_geometry_to_db(
     ):
         with pytest.raises(EntityNotFoundById):
             await patch_object_geometry_to_db(
-                mock_conn, object_geometries_patch_req, scenario_id, object_geometry_id, is_scenario_object, user_id
+                mock_conn, object_geometries_patch_req, scenario_id, object_geometry_id, is_scenario_object, user
             )
     result = await patch_object_geometry_to_db(
-        mock_conn, object_geometries_patch_req, scenario_id, object_geometry_id, is_scenario_object, user_id
+        mock_conn, object_geometries_patch_req, scenario_id, object_geometry_id, is_scenario_object, user
     )
 
     # Assert
@@ -760,7 +758,7 @@ async def test_delete_public_object_geometry_from_db(mock_conn: MockConnection):
     scenario_id = 1
     object_geometry_id = 1
     is_scenario_object = False
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     delete_statement = delete(projects_urban_objects_data).where(
         projects_urban_objects_data.c.public_object_geometry_id == object_geometry_id
     )
@@ -796,13 +794,11 @@ async def test_delete_public_object_geometry_from_db(mock_conn: MockConnection):
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.projects_geometries.check_existence") as mock_check_existence:
         result = await delete_object_geometry_from_db(
-            mock_conn, scenario_id, object_geometry_id, is_scenario_object, user_id
+            mock_conn, scenario_id, object_geometry_id, is_scenario_object, user
         )
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
-            await delete_object_geometry_from_db(
-                mock_conn, scenario_id, object_geometry_id, is_scenario_object, user_id
-            )
+            await delete_object_geometry_from_db(mock_conn, scenario_id, object_geometry_id, is_scenario_object, user)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
@@ -820,7 +816,7 @@ async def test_delete_scenario_object_geometry_from_db(mock_conn: MockConnection
     scenario_id = 1
     object_geometry_id = 1
     is_scenario_object = True
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     delete_statement = delete(projects_object_geometries_data).where(
         projects_object_geometries_data.c.object_geometry_id == object_geometry_id
     )
@@ -828,13 +824,11 @@ async def test_delete_scenario_object_geometry_from_db(mock_conn: MockConnection
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.projects_geometries.check_existence") as mock_check_existence:
         result = await delete_object_geometry_from_db(
-            mock_conn, scenario_id, object_geometry_id, is_scenario_object, user_id
+            mock_conn, scenario_id, object_geometry_id, is_scenario_object, user
         )
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
-            await delete_object_geometry_from_db(
-                mock_conn, scenario_id, object_geometry_id, is_scenario_object, user_id
-            )
+            await delete_object_geometry_from_db(mock_conn, scenario_id, object_geometry_id, is_scenario_object, user)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."

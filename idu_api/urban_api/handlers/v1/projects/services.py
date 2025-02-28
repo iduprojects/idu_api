@@ -62,7 +62,7 @@ async def get_services_by_scenario_id(
 
     services = await user_project_service.get_services_by_scenario_id(
         scenario_id,
-        user.id if user is not None else None,
+        user,
         service_type_id,
         urban_function_id,
     )
@@ -111,9 +111,7 @@ async def get_context_services(
             detail="Please, choose either service_type_id or urban_function_id",
         )
 
-    services = await user_project_service.get_context_services(
-        project_id, user.id if user is not None else None, service_type_id, urban_function_id
-    )
+    services = await user_project_service.get_context_services(project_id, user, service_type_id, urban_function_id)
 
     return [Service.from_dto(service) for service in services]
 
@@ -149,7 +147,7 @@ async def add_service(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    urban_object = await user_project_service.add_service(service, scenario_id, user.id)
+    urban_object = await user_project_service.add_service(service, scenario_id, user)
 
     return ScenarioUrbanObject.from_dto(urban_object)
 
@@ -191,7 +189,7 @@ async def put_service(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    service_dto = await user_project_service.put_service(service, scenario_id, service_id, is_scenario_object, user.id)
+    service_dto = await user_project_service.put_service(service, scenario_id, service_id, is_scenario_object, user)
 
     return ScenarioService.from_dto(service_dto)
 
@@ -238,7 +236,7 @@ async def patch_service(
         scenario_id,
         service_id,
         is_scenario_object,
-        user.id,
+        user,
     )
 
     return ScenarioService.from_dto(service_dto)
@@ -277,6 +275,6 @@ async def delete_service(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_service(scenario_id, service_id, is_scenario_object, user.id)
+    await user_project_service.delete_service(scenario_id, service_id, is_scenario_object, user)
 
     return OkResponse()

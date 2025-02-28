@@ -59,7 +59,7 @@ async def get_geometries_by_scenario_id(
 
     geometries = await user_project_service.get_geometries_by_scenario_id(
         scenario_id,
-        user.id if user is not None else None,
+        user,
         physical_object_id,
         service_id,
     )
@@ -121,7 +121,7 @@ async def get_geometries_with_all_objects_by_scenario_id(
 
     geometries = await user_project_service.get_geometries_with_all_objects_by_scenario_id(
         scenario_id,
-        user.id if user is not None else None,
+        user,
         physical_object_type_id,
         service_type_id,
         physical_object_function_id,
@@ -167,7 +167,7 @@ async def get_context_geometries(
 
     geometries = await user_project_service.get_context_geometries(
         project_id,
-        user.id if user is not None else None,
+        user,
         physical_object_id,
         service_id,
     )
@@ -229,7 +229,7 @@ async def get_context_geometries_with_all_objects(
 
     geometries = await user_project_service.get_context_geometries_with_all_objects(
         project_id,
-        user.id if user is not None else None,
+        user,
         physical_object_type_id,
         service_type_id,
         physical_object_function_id,
@@ -281,7 +281,7 @@ async def put_object_geometry(
         scenario_id,
         object_geometry_id,
         is_scenario_object,
-        user.id,
+        user,
     )
 
     return ScenarioObjectGeometry.from_dto(object_geometry_dto)
@@ -329,7 +329,7 @@ async def patch_object_geometry(
         scenario_id,
         object_geometry_id,
         is_scenario_object,
-        user.id,
+        user,
     )
 
     return ScenarioObjectGeometry.from_dto(object_geometry_dto)
@@ -368,6 +368,6 @@ async def delete_object_geometry(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_object_geometry(scenario_id, object_geometry_id, is_scenario_object, user.id)
+    await user_project_service.delete_object_geometry(scenario_id, object_geometry_id, is_scenario_object, user)
 
     return OkResponse()

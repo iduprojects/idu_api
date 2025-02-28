@@ -26,6 +26,7 @@ from idu_api.urban_api.dto import (
     ScenarioServiceDTO,
     ScenarioUrbanObjectDTO,
     ServiceDTO,
+    UserDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.logic.impl.helpers.projects_functional_zones import (
@@ -138,13 +139,13 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         self._connection_manager = connection_manager
         self._logger = logger
 
-    async def get_project_by_id(self, project_id: int, user_id: str | None) -> ProjectDTO:
+    async def get_project_by_id(self, project_id: int, user: UserDTO | None) -> ProjectDTO:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_project_by_id_from_db(conn, project_id, user_id)
+            return await get_project_by_id_from_db(conn, project_id, user)
 
-    async def get_project_territory_by_id(self, project_id: int, user_id: str | None) -> ProjectTerritoryDTO:
+    async def get_project_territory_by_id(self, project_id: int, user: UserDTO | None) -> ProjectTerritoryDTO:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_project_territory_by_id_from_db(conn, project_id, user_id)
+            return await get_project_territory_by_id_from_db(conn, project_id, user)
 
     async def get_all_projects(self) -> list[ProjectDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
@@ -152,7 +153,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def get_projects(
         self,
-        user_id: str | None,
+        user: UserDTO | None,
         only_own: bool,
         is_regional: bool,
         project_type: Literal["common", "city"] | None,
@@ -166,7 +167,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_projects_from_db(
                 conn,
-                user_id,
+                user,
                 only_own,
                 is_regional,
                 project_type,
@@ -180,18 +181,18 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def get_projects_territories(
         self,
-        user_id: str | None,
+        user: UserDTO | None,
         only_own: bool,
         project_type: Literal["common", "city"] | None,
         territory_id: int | None,
     ) -> list[ProjectWithTerritoryDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_projects_territories_from_db(conn, user_id, only_own, project_type, territory_id)
+            return await get_projects_territories_from_db(conn, user, only_own, project_type, territory_id)
 
     async def get_preview_projects_images(
         self,
         minio_client: AsyncMinioClient,
-        user_id: str | None,
+        user: UserDTO | None,
         only_own: bool,
         is_regional: bool,
         project_type: Literal["common", "city"] | None,
@@ -207,7 +208,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_preview_projects_images_from_minio(
                 conn,
                 minio_client,
-                user_id,
+                user,
                 only_own,
                 is_regional,
                 project_type,
@@ -224,7 +225,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_preview_projects_images_url(
         self,
         minio_client: AsyncMinioClient,
-        user_id: str | None,
+        user: UserDTO | None,
         only_own: bool,
         is_regional: bool,
         project_type: Literal["common", "city"] | None,
@@ -240,7 +241,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_preview_projects_images_url_from_minio(
                 conn,
                 minio_client,
-                user_id,
+                user,
                 only_own,
                 is_regional,
                 project_type,
@@ -254,14 +255,16 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
                 self._logger,
             )
 
-    async def get_user_projects(self, user_id: str, is_regional: bool, territory_id: int | None) -> PageDTO[ProjectDTO]:
+    async def get_user_projects(
+        self, user: UserDTO, is_regional: bool, territory_id: int | None
+    ) -> PageDTO[ProjectDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_user_projects_from_db(conn, user_id, is_regional, territory_id)
+            return await get_user_projects_from_db(conn, user, is_regional, territory_id)
 
     async def get_user_preview_projects_images(
         self,
         minio_client: AsyncMinioClient,
-        user_id: str,
+        user: UserDTO,
         is_regional: bool,
         territory_id: int | None,
         page: int,
@@ -269,13 +272,13 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     ) -> io.BytesIO:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_user_preview_projects_images_from_minio(
-                conn, minio_client, user_id, is_regional, territory_id, page, page_size, self._logger
+                conn, minio_client, user, is_regional, territory_id, page, page_size, self._logger
             )
 
     async def get_user_preview_projects_images_url(
         self,
         minio_client: AsyncMinioClient,
-        user_id: str,
+        user: UserDTO,
         is_regional: bool,
         territory_id: int | None,
         page: int,
@@ -283,85 +286,85 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     ) -> list[dict[str, int | str]]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_user_preview_projects_images_url_from_minio(
-                conn, minio_client, user_id, is_regional, territory_id, page, page_size, self._logger
+                conn, minio_client, user, is_regional, territory_id, page, page_size, self._logger
             )
 
-    async def add_project(self, project: ProjectPost, user_id: str) -> ProjectDTO:
+    async def add_project(self, project: ProjectPost, user: UserDTO) -> ProjectDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_project_to_db(conn, project, user_id, logger=self._logger)
+            return await add_project_to_db(conn, project, user, logger=self._logger)
 
-    async def put_project(self, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO:
+    async def put_project(self, project: ProjectPut, project_id: int, user: UserDTO) -> ProjectDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await put_project_to_db(conn, project, project_id, user_id)
+            return await put_project_to_db(conn, project, project_id, user)
 
-    async def patch_project(self, project: ProjectPatch, project_id: int, user_id: str) -> ProjectDTO:
+    async def patch_project(self, project: ProjectPatch, project_id: int, user: UserDTO) -> ProjectDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await patch_project_to_db(conn, project, project_id, user_id)
+            return await patch_project_to_db(conn, project, project_id, user)
 
-    async def delete_project(self, project_id: int, minio_client: AsyncMinioClient, user_id: str) -> dict:
+    async def delete_project(self, project_id: int, minio_client: AsyncMinioClient, user: UserDTO) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await delete_project_from_db(conn, project_id, minio_client, user_id, self._logger)
+            return await delete_project_from_db(conn, project_id, minio_client, user, self._logger)
 
     async def upload_project_image(
-        self, minio_client: AsyncMinioClient, project_id: int, user_id: str, file: bytes
+        self, minio_client: AsyncMinioClient, project_id: int, user: UserDTO, file: bytes
     ) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await upload_project_image_to_minio(conn, minio_client, project_id, user_id, file, self._logger)
+            return await upload_project_image_to_minio(conn, minio_client, project_id, user, file, self._logger)
 
     async def get_project_image(
         self,
         minio_client: AsyncMinioClient,
         project_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         image_type: Literal["origin", "preview"],
     ) -> io.BytesIO:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_project_image_from_minio(conn, minio_client, project_id, user_id, image_type, self._logger)
+            return await get_project_image_from_minio(conn, minio_client, project_id, user, image_type, self._logger)
 
     async def get_project_image_url(
         self,
         minio_client: AsyncMinioClient,
         project_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         image_type: Literal["origin", "preview"],
     ) -> str:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_project_image_url_from_minio(
-                conn, minio_client, project_id, user_id, image_type, self._logger
+                conn, minio_client, project_id, user, image_type, self._logger
             )
 
-    async def get_scenarios_by_project_id(self, project_id: int, user_id: str | None) -> list[ScenarioDTO]:
+    async def get_scenarios_by_project_id(self, project_id: int, user: UserDTO | None) -> list[ScenarioDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_scenarios_by_project_id_from_db(conn, project_id, user_id)
+            return await get_scenarios_by_project_id_from_db(conn, project_id, user)
 
-    async def get_scenario_by_id(self, scenario_id: int, user_id: str | None) -> ScenarioDTO:
+    async def get_scenario_by_id(self, scenario_id: int, user: UserDTO | None) -> ScenarioDTO:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_scenario_by_id_from_db(conn, scenario_id, user_id)
+            return await get_scenario_by_id_from_db(conn, scenario_id, user)
 
-    async def add_scenario(self, scenario: ScenarioPost, user_id: str) -> ScenarioDTO:
+    async def add_scenario(self, scenario: ScenarioPost, user: UserDTO) -> ScenarioDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_new_scenario_to_db(conn, scenario, user_id)
+            return await add_new_scenario_to_db(conn, scenario, user)
 
-    async def copy_scenario(self, scenario: ScenarioPost, scenario_id: int, user_id: str) -> ScenarioDTO:
+    async def copy_scenario(self, scenario: ScenarioPost, scenario_id: int, user: UserDTO) -> ScenarioDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await copy_scenario_to_db(conn, scenario, scenario_id, user_id)
+            return await copy_scenario_to_db(conn, scenario, scenario_id, user)
 
-    async def put_scenario(self, scenario: ScenarioPut, scenario_id: int, user_id) -> ScenarioDTO:
+    async def put_scenario(self, scenario: ScenarioPut, scenario_id: int, user) -> ScenarioDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await put_scenario_to_db(conn, scenario, scenario_id, user_id)
+            return await put_scenario_to_db(conn, scenario, scenario_id, user)
 
-    async def patch_scenario(self, scenario: ScenarioPatch, scenario_id: int, user_id: str) -> ScenarioDTO:
+    async def patch_scenario(self, scenario: ScenarioPatch, scenario_id: int, user: UserDTO) -> ScenarioDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await patch_scenario_to_db(conn, scenario, scenario_id, user_id)
+            return await patch_scenario_to_db(conn, scenario, scenario_id, user)
 
-    async def delete_scenario(self, scenario_id: int, user_id: str) -> dict:
+    async def delete_scenario(self, scenario_id: int, user: UserDTO) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await delete_scenario_from_db(conn, scenario_id, user_id)
+            return await delete_scenario_from_db(conn, scenario_id, user)
 
     async def get_physical_objects_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
     ) -> list[ScenarioPhysicalObjectDTO]:
@@ -369,7 +372,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_physical_objects_by_scenario_id_from_db(
                 conn,
                 scenario_id,
-                user_id,
+                user,
                 physical_object_type_id,
                 physical_object_function_id,
             )
@@ -377,7 +380,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_context_physical_objects(
         self,
         project_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
     ) -> list[PhysicalObjectDTO]:
@@ -385,7 +388,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_context_physical_objects_from_db(
                 conn,
                 project_id,
-                user_id,
+                user,
                 physical_object_type_id,
                 physical_object_function_id,
             )
@@ -394,21 +397,21 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         self,
         physical_object: PhysicalObjectWithGeometryPost,
         scenario_id: int,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioUrbanObjectDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_physical_object_with_geometry_to_db(conn, physical_object, scenario_id, user_id)
+            return await add_physical_object_with_geometry_to_db(conn, physical_object, scenario_id, user)
 
     async def update_physical_objects_by_function_id(
         self,
         physical_object: list[PhysicalObjectWithGeometryPost],
         scenario_id: int,
-        user_id: str,
+        user: UserDTO,
         physical_object_function_id: int,
     ) -> list[ScenarioUrbanObjectDTO]:
         async with self._connection_manager.get_connection() as conn:
             return await update_physical_objects_by_function_id_to_db(
-                conn, physical_object, scenario_id, user_id, physical_object_function_id
+                conn, physical_object, scenario_id, user, physical_object_function_id
             )
 
     async def put_physical_object(
@@ -417,11 +420,11 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         scenario_id: int,
         physical_object_id: int,
         is_scenario_object: bool,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioPhysicalObjectDTO:
         async with self._connection_manager.get_connection() as conn:
             return await put_physical_object_to_db(
-                conn, physical_object, scenario_id, physical_object_id, is_scenario_object, user_id
+                conn, physical_object, scenario_id, physical_object_id, is_scenario_object, user
             )
 
     async def patch_physical_object(
@@ -430,11 +433,11 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         scenario_id: int,
         physical_object_id: int,
         is_scenario_object: bool,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioPhysicalObjectDTO:
         async with self._connection_manager.get_connection() as conn:
             return await patch_physical_object_to_db(
-                conn, physical_object, scenario_id, physical_object_id, is_scenario_object, user_id
+                conn, physical_object, scenario_id, physical_object_id, is_scenario_object, user
             )
 
     async def delete_physical_object(
@@ -442,17 +445,15 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         scenario_id: int,
         physical_object_id: int,
         is_scenario_object: bool,
-        user_id: str,
+        user: UserDTO,
     ) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await delete_physical_object_from_db(
-                conn, scenario_id, physical_object_id, is_scenario_object, user_id
-            )
+            return await delete_physical_object_from_db(conn, scenario_id, physical_object_id, is_scenario_object, user)
 
     async def get_services_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         service_type_id: int | None,
         urban_function_id: int | None,
     ) -> list[ScenarioServiceDTO]:
@@ -460,7 +461,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_services_by_scenario_id_from_db(
                 conn,
                 scenario_id,
-                user_id,
+                user,
                 service_type_id,
                 urban_function_id,
             )
@@ -468,16 +469,18 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_context_services(
         self,
         project_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         service_type_id: int | None,
         urban_function_id: int | None,
     ) -> list[ServiceDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_context_services_from_db(conn, project_id, user_id, service_type_id, urban_function_id)
+            return await get_context_services_from_db(conn, project_id, user, service_type_id, urban_function_id)
 
-    async def add_service(self, service: ScenarioServicePost, scenario_id: int, user_id: str) -> ScenarioUrbanObjectDTO:
+    async def add_service(
+        self, service: ScenarioServicePost, scenario_id: int, user: UserDTO
+    ) -> ScenarioUrbanObjectDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_service_to_db(conn, service, scenario_id, user_id)
+            return await add_service_to_db(conn, service, scenario_id, user)
 
     async def put_service(
         self,
@@ -485,10 +488,10 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         scenario_id: int,
         service_id: int,
         is_scenario_object: bool,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioServiceDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await put_service_to_db(conn, service, scenario_id, service_id, is_scenario_object, user_id)
+            return await put_service_to_db(conn, service, scenario_id, service_id, is_scenario_object, user)
 
     async def patch_service(
         self,
@@ -496,25 +499,25 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         scenario_id: int,
         service_id: int,
         is_scenario_object: bool,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioServiceDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await patch_service_to_db(conn, service, scenario_id, service_id, is_scenario_object, user_id)
+            return await patch_service_to_db(conn, service, scenario_id, service_id, is_scenario_object, user)
 
     async def delete_service(
         self,
         scenario_id: int,
         service_id: int,
         is_scenario_object: bool,
-        user_id: str,
+        user: UserDTO,
     ) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await delete_service_from_db(conn, scenario_id, service_id, is_scenario_object, user_id)
+            return await delete_service_from_db(conn, scenario_id, service_id, is_scenario_object, user)
 
     async def get_geometries_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         physical_object_id: int | None,
         service_id: int | None,
     ) -> list[ScenarioGeometryDTO]:
@@ -522,7 +525,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_geometries_by_scenario_id_from_db(
                 conn,
                 scenario_id,
-                user_id,
+                user,
                 physical_object_id,
                 service_id,
             )
@@ -530,7 +533,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_geometries_with_all_objects_by_scenario_id(
         self,
         scenario_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         physical_object_type_id: int | None,
         service_type_id: int | None,
         physical_object_function_id: int | None,
@@ -540,7 +543,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_geometries_with_all_objects_by_scenario_id_from_db(
                 conn,
                 scenario_id,
-                user_id,
+                user,
                 physical_object_type_id,
                 service_type_id,
                 physical_object_function_id,
@@ -550,7 +553,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_context_geometries(
         self,
         project_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         physical_object_id: int | None,
         service_id: int | None,
     ) -> list[ObjectGeometryDTO]:
@@ -558,7 +561,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_context_geometries_from_db(
                 conn,
                 project_id,
-                user_id,
+                user,
                 physical_object_id,
                 service_id,
             )
@@ -566,7 +569,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_context_geometries_with_all_objects(
         self,
         project_id: int,
-        user_id: str | None,
+        user: UserDTO | None,
         physical_object_type_id: int | None,
         service_type_id: int | None,
         physical_object_function_id: int | None,
@@ -576,7 +579,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_context_geometries_with_all_objects_from_db(
                 conn,
                 project_id,
-                user_id,
+                user,
                 physical_object_type_id,
                 service_type_id,
                 physical_object_function_id,
@@ -589,11 +592,11 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         scenario_id: int,
         object_geometry_id: int,
         is_scenario_object: bool,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioGeometryDTO:
         async with self._connection_manager.get_connection() as conn:
             return await put_object_geometry_to_db(
-                conn, object_geometry, scenario_id, object_geometry_id, is_scenario_object, user_id
+                conn, object_geometry, scenario_id, object_geometry_id, is_scenario_object, user
             )
 
     async def patch_object_geometry(
@@ -602,11 +605,11 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         scenario_id: int,
         object_geometry_id: int,
         is_scenario_object: bool,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioGeometryDTO:
         async with self._connection_manager.get_connection() as conn:
             return await patch_object_geometry_to_db(
-                conn, object_geometry, scenario_id, object_geometry_id, is_scenario_object, user_id
+                conn, object_geometry, scenario_id, object_geometry_id, is_scenario_object, user
             )
 
     async def delete_object_geometry(
@@ -614,12 +617,10 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         scenario_id: int,
         object_geometry_id: int,
         is_scenario_object: bool,
-        user_id: str,
+        user: UserDTO,
     ) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await delete_object_geometry_from_db(
-                conn, scenario_id, object_geometry_id, is_scenario_object, user_id
-            )
+            return await delete_object_geometry_from_db(conn, scenario_id, object_geometry_id, is_scenario_object, user)
 
     async def get_scenario_indicators_values(
         self,
@@ -628,70 +629,68 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         indicator_group_id: int | None,
         territory_id: int | None,
         hexagon_id: int | None,
-        user_id: str | None,
+        user: UserDTO | None,
     ) -> list[ScenarioIndicatorValueDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_scenario_indicators_values_by_scenario_id_from_db(
-                conn, scenario_id, indicator_ids, indicator_group_id, territory_id, hexagon_id, user_id
+                conn, scenario_id, indicator_ids, indicator_group_id, territory_id, hexagon_id, user
             )
 
     async def add_scenario_indicator_value(
-        self, indicator_value: ScenarioIndicatorValuePost, scenario_id, user_id: str
+        self, indicator_value: ScenarioIndicatorValuePost, scenario_id, user: UserDTO
     ) -> ScenarioIndicatorValueDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_scenario_indicator_value_to_db(conn, indicator_value, scenario_id, user_id)
+            return await add_scenario_indicator_value_to_db(conn, indicator_value, scenario_id, user)
 
     async def put_scenario_indicator_value(
-        self, indicator_value: ScenarioIndicatorValuePut, scenario_id: int, user_id: str
+        self, indicator_value: ScenarioIndicatorValuePut, scenario_id: int, user: UserDTO
     ) -> ScenarioIndicatorValueDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await put_scenario_indicator_value_to_db(conn, indicator_value, scenario_id, user_id)
+            return await put_scenario_indicator_value_to_db(conn, indicator_value, scenario_id, user)
 
     async def patch_scenario_indicator_value(
         self,
         indicator_value: ScenarioIndicatorValuePatch,
         scenario_id: int | None,
         indicator_value_id: int,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioIndicatorValueDTO:
         async with self._connection_manager.get_connection() as conn:
             return await patch_scenario_indicator_value_to_db(
-                conn, indicator_value, scenario_id, indicator_value_id, user_id
+                conn, indicator_value, scenario_id, indicator_value_id, user
             )
 
-    async def delete_scenario_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
+    async def delete_scenario_indicators_values_by_scenario_id(self, scenario_id: int, user: UserDTO) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await delete_scenario_indicators_values_by_scenario_id_from_db(conn, scenario_id, user_id)
+            return await delete_scenario_indicators_values_by_scenario_id_from_db(conn, scenario_id, user)
 
     async def delete_scenario_indicator_value_by_id(
-        self, scenario_id: int | None, indicator_value_id: int, user_id: str
+        self, scenario_id: int | None, indicator_value_id: int, user: UserDTO
     ) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await delete_scenario_indicator_value_by_id_from_db(conn, scenario_id, indicator_value_id, user_id)
+            return await delete_scenario_indicator_value_by_id_from_db(conn, scenario_id, indicator_value_id, user)
 
     async def get_hexagons_with_indicators_by_scenario_id(
         self,
         scenario_id: int,
         indicator_ids: str | None,
         indicators_group_id: int | None,
-        user_id: str | None,
+        user: UserDTO | None,
     ) -> list[HexagonWithIndicatorsDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_hexagons_with_indicators_by_scenario_id_from_db(
-                conn, scenario_id, indicator_ids, indicators_group_id, user_id
+                conn, scenario_id, indicator_ids, indicators_group_id, user
             )
 
-    async def update_all_indicators_values_by_scenario_id(self, scenario_id: int, user_id: str) -> dict[str, Any]:
+    async def update_all_indicators_values_by_scenario_id(self, scenario_id: int, user: UserDTO) -> dict[str, Any]:
         async with self._connection_manager.get_connection() as conn:
-            return await update_all_indicators_values_by_scenario_id_to_db(
-                conn, scenario_id, user_id, logger=self._logger
-            )
+            return await update_all_indicators_values_by_scenario_id_to_db(conn, scenario_id, user, logger=self._logger)
 
     async def get_functional_zones_sources_by_scenario_id(
-        self, scenario_id: int, user_id: str | None
+        self, scenario_id: int, user: UserDTO | None
     ) -> list[FunctionalZoneSourceDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_functional_zones_sources_by_scenario_id_from_db(conn, scenario_id, user_id)
+            return await get_functional_zones_sources_by_scenario_id_from_db(conn, scenario_id, user)
 
     async def get_functional_zones_by_scenario_id(
         self,
@@ -699,18 +698,18 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         year: int,
         source: str,
         functional_zone_type_id: int | None,
-        user_id: str | None,
+        user: UserDTO | None,
     ) -> list[ScenarioFunctionalZoneDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_functional_zones_by_scenario_id_from_db(
-                conn, scenario_id, year, source, functional_zone_type_id, user_id
+                conn, scenario_id, year, source, functional_zone_type_id, user
             )
 
     async def get_context_functional_zones_sources(
-        self, project_id: int, user_id: str | None
+        self, project_id: int, user: UserDTO | None
     ) -> list[FunctionalZoneSourceDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_context_functional_zones_sources_from_db(conn, project_id, user_id)
+            return await get_context_functional_zones_sources_from_db(conn, project_id, user)
 
     async def get_context_functional_zones(
         self,
@@ -718,39 +717,39 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         year: int,
         source: str,
         functional_zone_type_id: int | None,
-        user_id: str | None,
+        user: UserDTO | None,
     ) -> list[FunctionalZoneDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_context_functional_zones_from_db(
-                conn, project_id, year, source, functional_zone_type_id, user_id
+                conn, project_id, year, source, functional_zone_type_id, user
             )
 
     async def add_scenario_functional_zones(
-        self, profiles: list[ScenarioFunctionalZonePost], scenario_id: int, user_id: str
+        self, profiles: list[ScenarioFunctionalZonePost], scenario_id: int, user: UserDTO
     ) -> list[ScenarioFunctionalZoneDTO]:
         async with self._connection_manager.get_connection() as conn:
-            return await add_scenario_functional_zones_to_db(conn, profiles, scenario_id, user_id)
+            return await add_scenario_functional_zones_to_db(conn, profiles, scenario_id, user)
 
     async def put_scenario_functional_zone(
         self,
         profile: ScenarioFunctionalZonePut,
         scenario_id: int,
         functional_zone_id: int,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioFunctionalZoneDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await put_scenario_functional_zone_to_db(conn, profile, scenario_id, functional_zone_id, user_id)
+            return await put_scenario_functional_zone_to_db(conn, profile, scenario_id, functional_zone_id, user)
 
     async def patch_scenario_functional_zone(
         self,
         profile: ScenarioFunctionalZonePatch,
         scenario_id: int,
         functional_zone_id: int,
-        user_id: str,
+        user: UserDTO,
     ) -> ScenarioFunctionalZoneDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await patch_scenario_functional_zone_to_db(conn, profile, scenario_id, functional_zone_id, user_id)
+            return await patch_scenario_functional_zone_to_db(conn, profile, scenario_id, functional_zone_id, user)
 
-    async def delete_functional_zones_by_scenario_id(self, scenario_id: int, user_id: str) -> dict:
+    async def delete_functional_zones_by_scenario_id(self, scenario_id: int, user: UserDTO) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await delete_functional_zones_by_scenario_id_from_db(conn, scenario_id, user_id)
+            return await delete_functional_zones_by_scenario_id_from_db(conn, scenario_id, user)

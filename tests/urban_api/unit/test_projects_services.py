@@ -20,7 +20,7 @@ from idu_api.common.db.entities import (
     urban_functions_dict,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import ScenarioServiceDTO, ScenarioUrbanObjectDTO, ServiceDTO
+from idu_api.urban_api.dto import ScenarioServiceDTO, ScenarioUrbanObjectDTO, ServiceDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_services import (
     add_service_to_db,
@@ -53,7 +53,7 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     service_type_id = 1
     urban_function_id = None
 
@@ -188,9 +188,7 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
     )
 
     # Act
-    result = await get_services_by_scenario_id_from_db(
-        mock_conn, scenario_id, user_id, service_type_id, urban_function_id
-    )
+    result = await get_services_by_scenario_id_from_db(mock_conn, scenario_id, user, service_type_id, urban_function_id)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
@@ -206,10 +204,10 @@ async def test_get_context_services_from_db(mock_conn: MockConnection):
 
     # Arrange
     project_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     service_type_id = 1
     urban_function_id = None
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .select_from(
@@ -269,7 +267,7 @@ async def test_get_context_services_from_db(mock_conn: MockConnection):
     )
 
     # Act
-    result = await get_context_services_from_db(mock_conn, project_id, user_id, service_type_id, urban_function_id)
+    result = await get_context_services_from_db(mock_conn, project_id, user, service_type_id, urban_function_id)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
@@ -366,7 +364,7 @@ async def test_add_physical_object_with_geometry_to_db(
 
     scenario_id = 1
     service_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     check_statement = select(projects_urban_objects_data).where(
         projects_urban_objects_data.c.physical_object_id == scenario_service_post_req.physical_object_id,
         projects_urban_objects_data.c.object_geometry_id == scenario_service_post_req.object_geometry_id,
@@ -405,14 +403,14 @@ async def test_add_physical_object_with_geometry_to_db(
         new=AsyncMock(side_effect=check_service_type),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_service_to_db(mock_conn, scenario_service_post_req, scenario_id, user_id)
+            await add_service_to_db(mock_conn, scenario_service_post_req, scenario_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_services.check_existence",
         new=AsyncMock(side_effect=check_territory_type),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_service_to_db(mock_conn, scenario_service_post_req, scenario_id, user_id)
-    result = await add_service_to_db(mock_conn, scenario_service_post_req, scenario_id, user_id)
+            await add_service_to_db(mock_conn, scenario_service_post_req, scenario_id, user)
+    result = await add_service_to_db(mock_conn, scenario_service_post_req, scenario_id, user)
 
     # Assert
     assert isinstance(result, ScenarioUrbanObjectDTO), "Result should be a ScenarioUrbanObjectDTO."
@@ -423,7 +421,7 @@ async def test_add_physical_object_with_geometry_to_db(
     mock_conn.execute_mock.assert_any_call(str(insert_service_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_urban_object_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio
@@ -449,7 +447,7 @@ async def test_put_scenario_service_to_db(mock_conn: MockConnection, service_put
     scenario_id = 1
     service_id = 1
     is_scenario_object = True
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     update_statement = (
         update(projects_services_data)
         .where(projects_services_data.c.service_id == service_id)
@@ -463,20 +461,20 @@ async def test_put_scenario_service_to_db(mock_conn: MockConnection, service_put
         new=AsyncMock(side_effect=check_service),
     ):
         with pytest.raises(EntityNotFoundById):
-            await put_service_to_db(mock_conn, service_put_req, scenario_id, service_id, is_scenario_object, user_id)
+            await put_service_to_db(mock_conn, service_put_req, scenario_id, service_id, is_scenario_object, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_services.check_existence",
         new=AsyncMock(side_effect=check_service_type),
     ):
         with pytest.raises(EntityNotFoundById):
-            await put_service_to_db(mock_conn, service_put_req, scenario_id, service_id, is_scenario_object, user_id)
+            await put_service_to_db(mock_conn, service_put_req, scenario_id, service_id, is_scenario_object, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_services.check_existence",
         new=AsyncMock(side_effect=check_territory_type),
     ):
         with pytest.raises(EntityNotFoundById):
-            await put_service_to_db(mock_conn, service_put_req, scenario_id, service_id, is_scenario_object, user_id)
-    result = await put_service_to_db(mock_conn, service_put_req, scenario_id, service_id, is_scenario_object, user_id)
+            await put_service_to_db(mock_conn, service_put_req, scenario_id, service_id, is_scenario_object, user)
+    result = await put_service_to_db(mock_conn, service_put_req, scenario_id, service_id, is_scenario_object, user)
 
     # Assert
     assert isinstance(result, ScenarioServiceDTO), "Result should be a ScenarioServiceDTO."
@@ -503,7 +501,7 @@ async def test_patch_scenario_service_to_db(mock_conn: MockConnection, service_p
     scenario_id = 1
     service_id = 1
     is_scenario_object = True
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     update_statement = (
         update(projects_services_data)
         .where(projects_services_data.c.service_id == service_id)
@@ -517,20 +515,14 @@ async def test_patch_scenario_service_to_db(mock_conn: MockConnection, service_p
         new=AsyncMock(side_effect=check_service_type),
     ):
         with pytest.raises(EntityNotFoundById):
-            await patch_service_to_db(
-                mock_conn, service_patch_req, scenario_id, service_id, is_scenario_object, user_id
-            )
+            await patch_service_to_db(mock_conn, service_patch_req, scenario_id, service_id, is_scenario_object, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_services.check_existence",
         new=AsyncMock(side_effect=check_territory_type),
     ):
         with pytest.raises(EntityNotFoundById):
-            await patch_service_to_db(
-                mock_conn, service_patch_req, scenario_id, service_id, is_scenario_object, user_id
-            )
-    result = await patch_service_to_db(
-        mock_conn, service_patch_req, scenario_id, service_id, is_scenario_object, user_id
-    )
+            await patch_service_to_db(mock_conn, service_patch_req, scenario_id, service_id, is_scenario_object, user)
+    result = await patch_service_to_db(mock_conn, service_patch_req, scenario_id, service_id, is_scenario_object, user)
 
     # Assert
     assert isinstance(result, ScenarioServiceDTO), "Result should be a ScenarioServiceDTO."
@@ -547,7 +539,7 @@ async def test_delete_public_service_from_db(mock_conn: MockConnection):
     scenario_id = 1
     service_id = 1
     is_scenario_object = False
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     delete_statement = delete(projects_urban_objects_data).where(
         projects_urban_objects_data.c.public_service_id == service_id
     )
@@ -582,10 +574,10 @@ async def test_delete_public_service_from_db(mock_conn: MockConnection):
 
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.projects_services.check_existence") as mock_check_existence:
-        result = await delete_service_from_db(mock_conn, scenario_id, service_id, is_scenario_object, user_id)
+        result = await delete_service_from_db(mock_conn, scenario_id, service_id, is_scenario_object, user)
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
-            await delete_service_from_db(mock_conn, scenario_id, service_id, is_scenario_object, user_id)
+            await delete_service_from_db(mock_conn, scenario_id, service_id, is_scenario_object, user)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
@@ -603,15 +595,15 @@ async def test_delete_scenario_service_from_db(mock_conn: MockConnection):
     scenario_id = 1
     service_id = 1
     is_scenario_object = True
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     delete_statement = delete(projects_services_data).where(projects_services_data.c.service_id == service_id)
 
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.projects_services.check_existence") as mock_check_existence:
-        result = await delete_service_from_db(mock_conn, scenario_id, service_id, is_scenario_object, user_id)
+        result = await delete_service_from_db(mock_conn, scenario_id, service_id, is_scenario_object, user)
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
-            await delete_service_from_db(mock_conn, scenario_id, service_id, is_scenario_object, user_id)
+            await delete_service_from_db(mock_conn, scenario_id, service_id, is_scenario_object, user)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."

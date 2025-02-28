@@ -17,7 +17,7 @@ from idu_api.common.db.entities import (
     scenarios_data,
     territories_data,
 )
-from idu_api.urban_api.dto import ScenarioDTO
+from idu_api.urban_api.dto import ScenarioDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import (
     EntitiesNotFoundByIds,
     EntityNotFoundById,
@@ -32,7 +32,7 @@ from idu_api.urban_api.schemas import (
 )
 
 
-async def check_scenario(conn: AsyncConnection, scenario_id: int, user_id: str, to_edit: bool = False) -> None:
+async def check_scenario(conn: AsyncConnection, scenario_id: int, user: UserDTO | None, to_edit: bool = False) -> None:
     """Check scenario existence and user access."""
 
     statement = (
@@ -43,12 +43,15 @@ async def check_scenario(conn: AsyncConnection, scenario_id: int, user_id: str, 
     scenario = (await conn.execute(statement)).mappings().one_or_none()
     if scenario is None:
         raise EntityNotFoundById(scenario_id, "scenario")
-    if scenario.user_id != user_id and (not scenario.public or to_edit):
+    if user is None:
+        if not scenario.public:
+            raise AccessDeniedError(scenario.project_id, "project")
+    elif scenario.user_id != user.id and (not scenario.public or to_edit) and not user.is_superuser:
         raise AccessDeniedError(scenario.project_id, "project")
 
 
 async def get_project_by_scenario_id(
-    conn: AsyncConnection, scenario_id: int, user_id: str, to_edit: bool = False
+    conn: AsyncConnection, scenario_id: int, user: UserDTO | None, to_edit: bool = False
 ) -> RowMapping:
     """Get project"""
 
@@ -60,18 +63,21 @@ async def get_project_by_scenario_id(
     project = (await conn.execute(statement)).mappings().one_or_none()
     if project is None:
         raise EntityNotFoundById(scenario_id, "scenario")
-    if project.user_id != user_id and (not project.public or to_edit):
+    if user is None:
+        if not project.public:
+            raise AccessDeniedError(project.project_id, "project")
+    elif project.user_id != user.id and (not project.public or to_edit) and not user.is_superuser:
         raise AccessDeniedError(project.project_id, "project")
 
     return project
 
 
 async def get_scenarios_by_project_id_from_db(
-    conn: AsyncConnection, project_id: int, user_id: str
+    conn: AsyncConnection, project_id: int, user: UserDTO | None
 ) -> list[ScenarioDTO]:
     """Get list of scenario objects by project id."""
 
-    await check_project(conn, project_id, user_id)
+    await check_project(conn, project_id, user)
 
     scenarios_data_parents = scenarios_data.alias("scenarios_data_parents")
     statement = (
@@ -104,7 +110,7 @@ async def get_scenarios_by_project_id_from_db(
     return [ScenarioDTO(**scenario) for scenario in result]
 
 
-async def get_scenario_by_id_from_db(conn: AsyncConnection, scenario_id: int, user_id: str) -> ScenarioDTO:
+async def get_scenario_by_id_from_db(conn: AsyncConnection, scenario_id: int, user: UserDTO | None) -> ScenarioDTO:
     """Get scenario object by id."""
 
     scenarios_data_parents = scenarios_data.alias("scenarios_data_parents")
@@ -139,14 +145,14 @@ async def get_scenario_by_id_from_db(conn: AsyncConnection, scenario_id: int, us
 
     statement = select(projects_data).where(projects_data.c.project_id == result.project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user_id and not project.public:
+    if project.user_id != user.id and not project.public and not user.is_superuser:
         raise AccessDeniedError(result.project_id, "project")
 
     return ScenarioDTO(**result)
 
 
 async def copy_scenario_to_db(
-    conn: AsyncConnection, scenario: ScenarioPost, scenario_id: int, user_id: str
+    conn: AsyncConnection, scenario: ScenarioPost, scenario_id: int, user: UserDTO
 ) -> ScenarioDTO:
     """Create a new scenario from another scenario (copy) by its identifier."""
 
@@ -159,7 +165,7 @@ async def copy_scenario_to_db(
         ):
             raise EntityNotFoundById(scenario.functional_zone_type_id, "functional zone type")
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     # fixme: use the real parent scenario identifier from the user
     #  instead of using the basic regional scenario by default
@@ -291,10 +297,10 @@ async def copy_scenario_to_db(
 
     await conn.commit()
 
-    return await get_scenario_by_id_from_db(conn, new_scenario_id, user_id)
+    return await get_scenario_by_id_from_db(conn, new_scenario_id, user)
 
 
-async def add_new_scenario_to_db(conn: AsyncConnection, scenario: ScenarioPost, user_id: str) -> ScenarioDTO:
+async def add_new_scenario_to_db(conn: AsyncConnection, scenario: ScenarioPost, user: UserDTO) -> ScenarioDTO:
     """Create a new scenario from base scenario."""
 
     base_scenario_id = (
@@ -310,11 +316,11 @@ async def add_new_scenario_to_db(conn: AsyncConnection, scenario: ScenarioPost, 
     if base_scenario_id is None:
         raise EntityNotFoundById(scenario.project_id, "project")
 
-    return await copy_scenario_to_db(conn, scenario, base_scenario_id, user_id)
+    return await copy_scenario_to_db(conn, scenario, base_scenario_id, user)
 
 
 async def put_scenario_to_db(
-    conn: AsyncConnection, scenario: ScenarioPut, scenario_id: int, user_id: str
+    conn: AsyncConnection, scenario: ScenarioPut, scenario_id: int, user: UserDTO
 ) -> ScenarioDTO:
     """Update scenario object - all attributes."""
 
@@ -326,7 +332,7 @@ async def put_scenario_to_db(
     requested_scenario = (await conn.execute(statement)).mappings().one_or_none()
     if requested_scenario is None:
         raise EntityNotFoundById(scenario_id, "scenario")
-    if requested_scenario.user_id != user_id:
+    if requested_scenario.user_id != user.id and not user.is_superuser:
         raise AccessDeniedError(requested_scenario.project_id, "project")
 
     if scenario.functional_zone_type_id is not None:
@@ -356,11 +362,11 @@ async def put_scenario_to_db(
     await conn.execute(statement)
     await conn.commit()
 
-    return await get_scenario_by_id_from_db(conn, scenario_id, user_id)
+    return await get_scenario_by_id_from_db(conn, scenario_id, user)
 
 
 async def patch_scenario_to_db(
-    conn: AsyncConnection, scenario: ScenarioPatch, scenario_id: int, user_id: str
+    conn: AsyncConnection, scenario: ScenarioPatch, scenario_id: int, user: UserDTO
 ) -> ScenarioDTO:
     """Update scenario object - only given fields."""
 
@@ -372,7 +378,7 @@ async def patch_scenario_to_db(
     requested_scenario = (await conn.execute(statement)).mappings().one_or_none()
     if requested_scenario is None:
         raise EntityNotFoundById(scenario_id, "scenario")
-    if requested_scenario.user_id != user_id:
+    if requested_scenario.user_id != user.id and not user.is_superuser:
         raise AccessDeniedError(requested_scenario.project_id, "project")
 
     if scenario.functional_zone_type_id is not None:
@@ -403,13 +409,13 @@ async def patch_scenario_to_db(
     await conn.execute(statement)
     await conn.commit()
 
-    return await get_scenario_by_id_from_db(conn, scenario_id, user_id)
+    return await get_scenario_by_id_from_db(conn, scenario_id, user)
 
 
-async def delete_scenario_from_db(conn: AsyncConnection, scenario_id: int, user_id: str) -> dict:
+async def delete_scenario_from_db(conn: AsyncConnection, scenario_id: int, user: UserDTO) -> dict:
     """Delete scenario object by identifier."""
 
-    await check_scenario(conn, scenario_id, user_id, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True)
 
     urban_objects = (
         (

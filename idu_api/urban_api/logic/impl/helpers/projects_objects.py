@@ -23,7 +23,7 @@ from geoalchemy2.functions import (
     ST_Within,
 )
 from PIL import Image
-from sqlalchemy import cast, delete, func, insert, literal, or_, select, text, update
+from sqlalchemy import cast, delete, func, insert, literal, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -43,7 +43,7 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
-from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithTerritoryDTO
+from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithTerritoryDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
@@ -59,18 +59,21 @@ from idu_api.urban_api.utils.pagination import paginate_dto
 func: Callable
 
 
-async def check_project(conn: AsyncConnection, project_id: int, user_id: str, to_edit: bool = False) -> None:
+async def check_project(conn: AsyncConnection, project_id: int, user: UserDTO | None, to_edit: bool = False) -> None:
     """Check project existence and user access."""
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
     result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
         raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and (not result.public or to_edit):
+    if user is None:
+        if not result.public:
+            raise AccessDeniedError(project_id, "project")
+    elif result.user_id != user.id and (not result.public or to_edit) and not user.is_superuser:
         raise AccessDeniedError(project_id, "project")
 
 
-async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user_id: str) -> ProjectDTO:
+async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user: UserDTO | None) -> ProjectDTO:
     """Get project object by identifier."""
 
     statement = (
@@ -92,18 +95,21 @@ async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user
 
     if result is None:
         raise EntityNotFoundById(project_id, "project")
-    if result.user_id != user_id and not result.public:
+    if user is None:
+        if not result.public:
+            raise AccessDeniedError(project_id, "project")
+    elif result.user_id != user.id and not result.public and not user.is_superuser:
         raise AccessDeniedError(project_id, "project")
 
     return ProjectDTO(**result)
 
 
 async def get_project_territory_by_id_from_db(
-    conn: AsyncConnection, project_id: int, user_id: str
+    conn: AsyncConnection, project_id: int, user: UserDTO | None
 ) -> ProjectTerritoryDTO:
     """Get project territory object by project identifier."""
 
-    await check_project(conn, project_id, user_id)
+    await check_project(conn, project_id, user)
 
     statement = (
         select(
@@ -168,7 +174,7 @@ async def get_all_projects_from_db(conn: AsyncConnection) -> list[ProjectDTO]:
 
 async def get_projects_from_db(
     conn: AsyncConnection,
-    user_id: str | None,
+    user: UserDTO | None,
     only_own: bool,
     is_regional: bool,
     project_type: Literal["common", "city"] | None,
@@ -198,9 +204,11 @@ async def get_projects_from_db(
     )
 
     if only_own:
-        statement = statement.where(projects_data.c.user_id == user_id)
-    elif user_id is not None:
-        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
+        statement = statement.where(projects_data.c.user_id == user.id)
+    elif user is not None:
+        statement = statement.where(
+            (projects_data.c.user_id == user.id) | (projects_data.c.public.is_(True) if not user.is_superuser else True)
+        )
     else:
         statement = statement.where(projects_data.c.public.is_(True))
 
@@ -237,7 +245,7 @@ async def get_projects_from_db(
 
 async def get_projects_territories_from_db(
     conn: AsyncConnection,
-    user_id: str | None,
+    user: UserDTO | None,
     only_own: bool,
     project_type: Literal["common", "city"] | None,
     territory_id: int | None,
@@ -262,9 +270,11 @@ async def get_projects_territories_from_db(
     )
 
     if only_own:
-        statement = statement.where(projects_data.c.user_id == user_id)
-    elif user_id is not None:
-        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
+        statement = statement.where(projects_data.c.user_id == user.id)
+    elif user is not None:
+        statement = statement.where(
+            (projects_data.c.user_id == user.id) | (projects_data.c.public.is_(True) if not user.is_superuser else True)
+        )
     else:
         statement = statement.where(projects_data.c.public.is_(True))
 
@@ -284,7 +294,7 @@ async def get_projects_territories_from_db(
 async def get_preview_projects_images_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
-    user_id: str | None,
+    user: UserDTO | None,
     only_own: bool,
     is_regional: bool,
     project_type: Literal["common", "city"] | None,
@@ -307,9 +317,11 @@ async def get_preview_projects_images_from_minio(
     )
 
     if only_own:
-        statement = statement.where(projects_data.c.user_id == user_id)
-    elif user_id is not None:
-        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
+        statement = statement.where(projects_data.c.user_id == user.id)
+    elif user is not None:
+        statement = statement.where(
+            (projects_data.c.user_id == user.id) | (projects_data.c.public.is_(True) if not user.is_superuser else True)
+        )
     else:
         statement = statement.where(projects_data.c.public.is_(True))
 
@@ -354,7 +366,7 @@ async def get_preview_projects_images_from_minio(
 async def get_preview_projects_images_url_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
-    user_id: str | None,
+    user: UserDTO | None,
     only_own: bool,
     is_regional: bool,
     project_type: Literal["common", "city"] | None,
@@ -377,9 +389,11 @@ async def get_preview_projects_images_url_from_minio(
     )
 
     if only_own:
-        statement = statement.where(projects_data.c.user_id == user_id)
-    elif user_id is not None:
-        statement = statement.where(or_(projects_data.c.user_id == user_id, projects_data.c.public.is_(True)))
+        statement = statement.where(projects_data.c.user_id == user.id)
+    elif user is not None:
+        statement = statement.where(
+            (projects_data.c.user_id == user.id) | (projects_data.c.public.is_(True) if not user.is_superuser else True)
+        )
     else:
         statement = statement.where(projects_data.c.public.is_(True))
 
@@ -416,7 +430,7 @@ async def get_preview_projects_images_url_from_minio(
 
 
 async def get_user_projects_from_db(
-    conn: AsyncConnection, user_id: str, is_regional: bool, territory_id: int | None
+    conn: AsyncConnection, user: UserDTO, is_regional: bool, territory_id: int | None
 ) -> PageDTO[ProjectDTO]:
     """Get all user's projects."""
 
@@ -436,7 +450,7 @@ async def get_user_projects_from_db(
         .where(
             scenarios_data.c.is_based.is_(True),
             projects_data.c.is_regional.is_(is_regional),
-            projects_data.c.user_id == user_id,
+            projects_data.c.user_id == user.id,
         )
         .order_by(projects_data.c.project_id)
     )
@@ -450,7 +464,7 @@ async def get_user_projects_from_db(
 async def get_user_preview_projects_images_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
-    user_id: str,
+    user: UserDTO,
     is_regional: bool,
     territory_id: int | None,
     page: int,
@@ -461,7 +475,7 @@ async def get_user_preview_projects_images_from_minio(
 
     statement = (
         select(projects_data.c.project_id)
-        .where(projects_data.c.user_id == user_id, projects_data.c.is_regional.is_(is_regional))
+        .where(projects_data.c.user_id == user.id, projects_data.c.is_regional.is_(is_regional))
         .order_by(projects_data.c.project_id)
         .offset(page_size * (page - 1))
         .limit(page_size)
@@ -486,7 +500,7 @@ async def get_user_preview_projects_images_from_minio(
 async def get_user_preview_projects_images_url_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
-    user_id: str,
+    user: UserDTO,
     is_regional: bool,
     territory_id: int | None,
     page: int,
@@ -497,7 +511,7 @@ async def get_user_preview_projects_images_url_from_minio(
 
     statement = (
         select(projects_data.c.project_id)
-        .where(projects_data.c.user_id == user_id, projects_data.c.is_regional.is_(is_regional))
+        .where(projects_data.c.user_id == user.id, projects_data.c.is_regional.is_(is_regional))
         .order_by(projects_data.c.project_id)
         .offset(page_size * (page - 1))
         .limit(page_size)
@@ -514,7 +528,7 @@ async def get_user_preview_projects_images_url_from_minio(
 
 
 async def add_project_to_db(
-    conn: AsyncConnection, project: ProjectPost, user_id: str, logger: structlog.stdlib.BoundLogger
+    conn: AsyncConnection, project: ProjectPost, user: UserDTO, logger: structlog.stdlib.BoundLogger
 ) -> ProjectDTO:
     """Create project object, its territory and base scenario."""
 
@@ -584,7 +598,7 @@ async def add_project_to_db(
 
     statement_for_project = (
         insert(projects_data)
-        .values(**project.model_dump(exclude={"territory"}), user_id=user_id, is_regional=False)
+        .values(**project.model_dump(exclude={"territory"}), user_id=user.id, is_regional=False)
         .returning(projects_data.c.project_id)
     )
     project_id = (await conn.execute(statement_for_project)).scalar_one()
@@ -778,13 +792,13 @@ async def add_project_to_db(
         except Exception:  # pylint: disable=broad-except
             await logger.aexception("unexpected error occurred")
 
-    return await get_project_by_id_from_db(conn, project_id, user_id)
+    return await get_project_by_id_from_db(conn, project_id, user)
 
 
-async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_id: int, user_id: str) -> ProjectDTO:
+async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_id: int, user: UserDTO) -> ProjectDTO:
     """Update project object by all its attributes."""
 
-    await check_project(conn, project_id, user_id, to_edit=True)
+    await check_project(conn, project_id, user, to_edit=True)
 
     statement = (
         update(projects_data)
@@ -795,15 +809,15 @@ async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_
     await conn.execute(statement)
     await conn.commit()
 
-    return await get_project_by_id_from_db(conn, project_id, user_id)
+    return await get_project_by_id_from_db(conn, project_id, user)
 
 
 async def patch_project_to_db(
-    conn: AsyncConnection, project: ProjectPatch, project_id: int, user_id: str
+    conn: AsyncConnection, project: ProjectPatch, project_id: int, user: UserDTO
 ) -> ProjectDTO:
     """Patch project object."""
 
-    await check_project(conn, project_id, user_id, to_edit=True)
+    await check_project(conn, project_id, user, to_edit=True)
 
     statement_for_project = (
         update(projects_data)
@@ -815,19 +829,19 @@ async def patch_project_to_db(
     await conn.execute(statement_for_project)
     await conn.commit()
 
-    return await get_project_by_id_from_db(conn, project_id, user_id)
+    return await get_project_by_id_from_db(conn, project_id, user)
 
 
 async def delete_project_from_db(
     conn: AsyncConnection,
     project_id: int,
     minio_client: AsyncMinioClient,
-    user_id: str,
+    user: UserDTO,
     logger: structlog.stdlib.BoundLogger,
 ) -> dict:
     """Delete project object."""
 
-    await check_project(conn, project_id, user_id, to_edit=True)
+    await check_project(conn, project_id, user, to_edit=True)
 
     urban_objects = (
         (
@@ -886,13 +900,13 @@ async def upload_project_image_to_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
     project_id: int,
-    user_id: str,
+    user: UserDTO,
     file: bytes,
     logger: structlog.stdlib.BoundLogger,
 ) -> dict[str, str]:
     """Upload original and resized project image to minio bucket."""
 
-    await check_project(conn, project_id, user_id, to_edit=True)
+    await check_project(conn, project_id, user, to_edit=True)
 
     try:
         image = Image.open(io.BytesIO(file))
@@ -942,13 +956,13 @@ async def get_project_image_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
     project_id: int,
-    user_id: str,
+    user: UserDTO | None,
     image_type: Literal["origin", "preview"],
     logger: structlog.stdlib.BoundLogger,
 ) -> io.BytesIO:
     """Get full image for given project."""
 
-    await check_project(conn, project_id, user_id)
+    await check_project(conn, project_id, user)
 
     object_name = f"projects/{project_id}/image.jpg" if image_type == "origin" else f"projects/{project_id}/preview.jpg"
 
@@ -959,13 +973,13 @@ async def get_project_image_url_from_minio(
     conn: AsyncConnection,
     minio_client: AsyncMinioClient,
     project_id: int,
-    user_id: str,
+    user: UserDTO | None,
     image_type: Literal["origin", "preview"],
     logger: structlog.stdlib.BoundLogger,
 ) -> str:
     """Get full image url for given project."""
 
-    await check_project(conn, project_id, user_id)
+    await check_project(conn, project_id, user)
 
     object_name = f"projects/{project_id}/image.jpg" if image_type == "origin" else f"projects/{project_id}/preview.jpg"
 

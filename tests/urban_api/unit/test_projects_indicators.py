@@ -21,7 +21,7 @@ from idu_api.common.db.entities import (
     territories_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
-from idu_api.urban_api.dto import HexagonWithIndicatorsDTO, ScenarioIndicatorValueDTO
+from idu_api.urban_api.dto import HexagonWithIndicatorsDTO, ScenarioIndicatorValueDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
     add_scenario_indicator_value_to_db,
@@ -101,7 +101,7 @@ async def test_get_scenario_indicators_values_by_scenario_id_from_db(mock_check:
     indicators_group_id = 1
     territory_id = 1
     hexagon_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     statement = (
         select(
             projects_indicators_data,
@@ -142,7 +142,7 @@ async def test_get_scenario_indicators_values_by_scenario_id_from_db(mock_check:
 
     # Act
     result = await get_scenario_indicators_values_by_scenario_id_from_db(
-        mock_conn, scenario_id, "1", indicators_group_id, territory_id, hexagon_id, user_id
+        mock_conn, scenario_id, "1", indicators_group_id, territory_id, hexagon_id, user
     )
 
     # Assert
@@ -154,7 +154,7 @@ async def test_get_scenario_indicators_values_by_scenario_id_from_db(mock_check:
         ScenarioIndicatorValue.from_dto(result[0]), ScenarioIndicatorValue
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user_id)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user)
 
 
 @pytest.mark.asyncio
@@ -186,7 +186,7 @@ async def test_add_scenario_indicator_value_to_db(
         return True
 
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     insert_statement = (
         insert(projects_indicators_data)
         .values(**scenario_indicator_value_post_req.model_dump())
@@ -195,31 +195,31 @@ async def test_add_scenario_indicator_value_to_db(
 
     # Act
     with pytest.raises(EntityAlreadyExists):
-        await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user_id)
+        await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_indicator),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user_id)
+            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_territory),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user_id)
+            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_hexagon),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user_id)
+            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_indicator_value),
     ):
         result = await add_scenario_indicator_value_to_db(
-            mock_conn, scenario_indicator_value_post_req, scenario_id, user_id
+            mock_conn, scenario_indicator_value_post_req, scenario_id, user
         )
 
     # Assert
@@ -229,7 +229,7 @@ async def test_add_scenario_indicator_value_to_db(
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(insert_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio
@@ -261,7 +261,7 @@ async def test_put_scenario_indicator_value_to_db(
         return True
 
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     update_statement = (
         update(projects_indicators_data)
         .where(
@@ -285,25 +285,25 @@ async def test_put_scenario_indicator_value_to_db(
         new=AsyncMock(side_effect=check_indicator),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user_id)
+            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_territory),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user_id)
+            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_hexagon),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user_id)
+            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_indicator_value),
     ):
-        await put_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user_id)
-    result = await put_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user_id)
+        await put_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
+    result = await put_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
 
     # Assert
     assert isinstance(result, ScenarioIndicatorValueDTO), "Result should be a ScenarioIndicatorValueDTO."
@@ -313,7 +313,7 @@ async def test_put_scenario_indicator_value_to_db(
     mock_conn.execute_mock.assert_any_call(str(update_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_statement))
     assert mock_conn.commit_mock.call_count == 2, "Commit mock count should be one for one method."
-    mock_check.assert_any_call(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio
@@ -326,7 +326,7 @@ async def test_patch_scenario_indicator_value_to_db(
     # Arrange
     indicator_value_id = 1
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     update_statement = (
         update(projects_indicators_data)
         .where(projects_indicators_data.c.indicator_value_id == indicator_value_id)
@@ -340,10 +340,10 @@ async def test_patch_scenario_indicator_value_to_db(
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
             await patch_scenario_indicator_value_to_db(
-                mock_conn, scenario_indicator_value_patch_req, scenario_id, indicator_value_id, user_id
+                mock_conn, scenario_indicator_value_patch_req, scenario_id, indicator_value_id, user
             )
     result = await patch_scenario_indicator_value_to_db(
-        mock_conn, scenario_indicator_value_patch_req, scenario_id, indicator_value_id, user_id
+        mock_conn, scenario_indicator_value_patch_req, scenario_id, indicator_value_id, user
     )
 
     # Assert
@@ -353,7 +353,7 @@ async def test_patch_scenario_indicator_value_to_db(
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(update_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio
@@ -365,17 +365,17 @@ async def test_delete_scenario_indicators_values_by_scenario_id_from_db(
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     delete_statement = delete(projects_indicators_data).where(projects_indicators_data.c.scenario_id == scenario_id)
 
     # Act
-    result = await delete_scenario_indicators_values_by_scenario_id_from_db(mock_conn, scenario_id, user_id)
+    result = await delete_scenario_indicators_values_by_scenario_id_from_db(mock_conn, scenario_id, user)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
     mock_conn.execute_mock.assert_any_call(str(delete_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio
@@ -386,7 +386,7 @@ async def test_delete_scenario_indicator_value_by_id_from_db(mock_check: AsyncMo
     # Arrange
     indicator_value_id = 1
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     delete_statement = delete(projects_indicators_data).where(
         projects_indicators_data.c.indicator_value_id == indicator_value_id
     )
@@ -395,14 +395,14 @@ async def test_delete_scenario_indicator_value_by_id_from_db(mock_check: AsyncMo
     with patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence") as mock_check_existence:
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
-            await delete_scenario_indicator_value_by_id_from_db(mock_conn, scenario_id, indicator_value_id, user_id)
-    result = await delete_scenario_indicator_value_by_id_from_db(mock_conn, scenario_id, indicator_value_id, user_id)
+            await delete_scenario_indicator_value_by_id_from_db(mock_conn, scenario_id, indicator_value_id, user)
+    result = await delete_scenario_indicator_value_by_id_from_db(mock_conn, scenario_id, indicator_value_id, user)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
     mock_conn.execute_mock.assert_any_call(str(delete_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio
@@ -414,7 +414,7 @@ async def test_get_hexagons_with_indicators_by_scenario_id_from_db(mock_check: A
     scenario_id = 1
     indicator_ids = [1]
     indicators_group_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     statement = (
         select(
             projects_indicators_data.c.value,
@@ -451,7 +451,7 @@ async def test_get_hexagons_with_indicators_by_scenario_id_from_db(mock_check: A
 
     # Act
     result = await get_hexagons_with_indicators_by_scenario_id_from_db(
-        mock_conn, scenario_id, "1", indicators_group_id, user_id
+        mock_conn, scenario_id, "1", indicators_group_id, user
     )
 
     # Assert
@@ -460,7 +460,7 @@ async def test_get_hexagons_with_indicators_by_scenario_id_from_db(mock_check: A
         isinstance(item, HexagonWithIndicatorsDTO) for item in result
     ), "Each item should be a HexagonWithIndicatorsDTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user_id)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user)
 
 
 @pytest.mark.asyncio
@@ -470,7 +470,7 @@ async def test_update_all_indicators_values_by_scenario_id_to_db(config: UrbanAP
     # Arrange
     scenario_id = 1
     project_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     logger: structlog.stdlib.BoundLogger = structlog.get_logger()
     api_url = f"{config.external.hextech_api}/hextech/indicators_saving/save_all"
     params = {"scenario_id": scenario_id, "project_id": project_id, "background": "false"}
@@ -480,9 +480,9 @@ async def test_update_all_indicators_values_by_scenario_id_to_db(config: UrbanAP
     with aioresponses() as mocked:
         mocked.put(normal_api_url, status=200)
         mocked.put(normal_api_url, status=400)
-        result = await update_all_indicators_values_by_scenario_id_to_db(mock_conn, scenario_id, user_id, logger)
+        result = await update_all_indicators_values_by_scenario_id_to_db(mock_conn, scenario_id, user, logger)
         with pytest.raises(aiohttp.ClientResponseError):
-            await update_all_indicators_values_by_scenario_id_to_db(mock_conn, scenario_id, user_id, logger)
+            await update_all_indicators_values_by_scenario_id_to_db(mock_conn, scenario_id, user, logger)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."

@@ -23,6 +23,7 @@ from idu_api.urban_api.dto import (
     ScenarioServiceDTO,
     ScenarioUrbanObjectDTO,
     ServiceDTO,
+    UserDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario, get_project_by_scenario_id
@@ -38,13 +39,13 @@ from idu_api.urban_api.schemas import ScenarioServicePost, ServicePatch, Service
 async def get_services_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
-    user_id: str,
+    user: UserDTO | None,
     service_type_id: int | None,
     urban_function_id: int | None,
 ) -> list[ScenarioServiceDTO]:
     """Get services by scenario identifier."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id)
+    project = await get_project_by_scenario_id(conn, scenario_id, user)
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -264,13 +265,13 @@ async def get_services_by_scenario_id_from_db(
 async def get_context_services_from_db(
     conn: AsyncConnection,
     project_id: int,
-    user_id: str,
+    user: UserDTO | None,
     service_type_id: int | None,
     urban_function_id: int | None,
 ) -> list[ServiceDTO]:
     """Get list of services for 'context' of the project territory."""
 
-    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user)
 
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
@@ -366,11 +367,11 @@ async def get_context_services_from_db(
 
 
 async def add_service_to_db(
-    conn: AsyncConnection, service: ScenarioServicePost, scenario_id: int, user_id: str
+    conn: AsyncConnection, service: ScenarioServicePost, scenario_id: int, user: UserDTO
 ) -> ScenarioUrbanObjectDTO:
     """Create scenario service object."""
 
-    await check_scenario(conn, scenario_id, user_id, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True)
 
     physical_object_column = (
         projects_urban_objects_data.c.physical_object_id
@@ -544,11 +545,11 @@ async def put_service_to_db(
     scenario_id: int,
     service_id: int,
     is_scenario_object: bool,
-    user_id: str,
+    user: UserDTO,
 ) -> ScenarioServiceDTO:
     """Update scenario service by all its attributes."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(
         conn,
@@ -670,11 +671,11 @@ async def patch_service_to_db(
     scenario_id: int,
     service_id: int,
     is_scenario_object: bool,
-    user_id: str,
+    user: UserDTO,
 ) -> ScenarioServiceDTO:
     """Update scenario service by only given attributes."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if is_scenario_object:
         statement = select(projects_services_data).where(projects_services_data.c.service_id == service_id)
@@ -809,11 +810,11 @@ async def delete_service_from_db(
     scenario_id: int,
     service_id: int,
     is_scenario_object: bool,
-    user_id: str,
+    user: UserDTO,
 ) -> dict:
     """Delete scenario service."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(
         conn,

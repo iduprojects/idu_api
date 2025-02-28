@@ -19,7 +19,12 @@ from idu_api.common.db.entities import (
     territories_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
-from idu_api.urban_api.dto import HexagonWithIndicatorsDTO, ScenarioIndicatorValueDTO, ShortScenarioIndicatorValueDTO
+from idu_api.urban_api.dto import (
+    HexagonWithIndicatorsDTO,
+    ScenarioIndicatorValueDTO,
+    ShortScenarioIndicatorValueDTO,
+    UserDTO,
+)
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario, get_project_by_scenario_id
 from idu_api.urban_api.logic.impl.helpers.utils import check_existence, extract_values_from_model
@@ -72,12 +77,12 @@ async def get_scenario_indicators_values_by_scenario_id_from_db(
     indicators_group_id: int | None,
     territory_id: int | None,
     hexagon_id: int | None,
-    user_id: str,
+    user: UserDTO | None,
 ) -> list[ScenarioIndicatorValueDTO]:
     """Get scenario's indicators values for given scenario
     if relevant project is public or if you're the project owner."""
 
-    await check_scenario(conn, scenario_id, user_id)
+    await check_scenario(conn, scenario_id, user)
 
     statement = (
         select(
@@ -127,11 +132,11 @@ async def get_scenario_indicators_values_by_scenario_id_from_db(
 
 
 async def add_scenario_indicator_value_to_db(
-    conn: AsyncConnection, indicator_value: ScenarioIndicatorValuePost, scenario_id: int, user_id: str
+    conn: AsyncConnection, indicator_value: ScenarioIndicatorValuePost, scenario_id: int, user: UserDTO
 ) -> ScenarioIndicatorValueDTO:
     """Add a new scenario's indicator value."""
 
-    await check_scenario(conn, scenario_id, user_id, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(conn, indicators_dict, conditions={"indicator_id": indicator_value.indicator_id}):
         raise EntityNotFoundById(indicator_value.indicator_id, "indicator")
@@ -175,11 +180,11 @@ async def add_scenario_indicator_value_to_db(
 
 
 async def put_scenario_indicator_value_to_db(
-    conn: AsyncConnection, indicator_value: ScenarioIndicatorValuePut, scenario_id: int, user_id: str
+    conn: AsyncConnection, indicator_value: ScenarioIndicatorValuePut, scenario_id: int, user: UserDTO
 ) -> ScenarioIndicatorValueDTO:
     """Update scenario's indicator value by all attributes."""
 
-    await check_scenario(conn, scenario_id, user_id, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(conn, indicators_dict, conditions={"indicator_id": indicator_value.indicator_id}):
         raise EntityNotFoundById(indicator_value.indicator_id, "indicator")
@@ -232,7 +237,7 @@ async def patch_scenario_indicator_value_to_db(
     indicator_value: ScenarioIndicatorValuePatch,
     scenario_id: int | None,
     indicator_value_id: int,
-    user_id: str,
+    user: UserDTO,
 ) -> ScenarioIndicatorValueDTO:
     """Update scenario's indicator value by only given attributes."""
 
@@ -244,7 +249,7 @@ async def patch_scenario_indicator_value_to_db(
         if scenario_id is None:
             raise EntityNotFoundById(indicator_value_id, "indicator value")
 
-    await check_scenario(conn, scenario_id, user_id, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(conn, projects_indicators_data, conditions={"indicator_value_id": indicator_value_id}):
         raise EntityNotFoundById(indicator_value_id, "indicator value")
@@ -263,11 +268,11 @@ async def patch_scenario_indicator_value_to_db(
 
 
 async def delete_scenario_indicators_values_by_scenario_id_from_db(
-    conn: AsyncConnection, scenario_id: int, user_id: str
+    conn: AsyncConnection, scenario_id: int, user: UserDTO
 ) -> dict:
     """Delete all scenario's indicators values for given scenario if you're the project owner."""
 
-    await check_scenario(conn, scenario_id, user_id, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True)
 
     statement = delete(projects_indicators_data).where(projects_indicators_data.c.scenario_id == scenario_id)
 
@@ -278,7 +283,7 @@ async def delete_scenario_indicators_values_by_scenario_id_from_db(
 
 
 async def delete_scenario_indicator_value_by_id_from_db(
-    conn: AsyncConnection, scenario_id: int | None, indicator_value_id: int, user_id: str
+    conn: AsyncConnection, scenario_id: int | None, indicator_value_id: int, user: UserDTO
 ) -> dict:
     """Delete specific scenario's indicator values by indicator value identifier if you're the project owner."""
 
@@ -290,7 +295,7 @@ async def delete_scenario_indicator_value_by_id_from_db(
         if scenario_id is None:
             raise EntityNotFoundById(indicator_value_id, "indicator value")
 
-    await check_scenario(conn, scenario_id, user_id, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(conn, projects_indicators_data, conditions={"indicator_value_id": indicator_value_id}):
         raise EntityNotFoundById(indicator_value_id, "indicator value")
@@ -310,11 +315,11 @@ async def get_hexagons_with_indicators_by_scenario_id_from_db(
     scenario_id: int,
     indicator_ids: str | None,
     indicators_group_id: int | None,
-    user_id: str,
+    user: UserDTO | None,
 ) -> list[HexagonWithIndicatorsDTO]:
     """Get scenario's indicators values for given regional scenario with hexagons."""
 
-    await check_scenario(conn, scenario_id, user_id)
+    await check_scenario(conn, scenario_id, user)
 
     statement = (
         select(
@@ -377,11 +382,11 @@ async def get_hexagons_with_indicators_by_scenario_id_from_db(
 
 
 async def update_all_indicators_values_by_scenario_id_to_db(
-    conn: AsyncConnection, scenario_id: int, user_id: str, logger: structlog.stdlib.BoundLogger
+    conn: AsyncConnection, scenario_id: int, user: UserDTO, logger: structlog.stdlib.BoundLogger
 ) -> dict[str, Any]:
     """Update all indicators values for given scenario."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id)
+    project = await get_project_by_scenario_id(conn, scenario_id, user)
 
     config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.selectable import CTE, Select
 
 from idu_api.common.db.entities import projects_data, territories_data
+from idu_api.urban_api.dto import UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 
@@ -207,7 +208,9 @@ def extract_values_from_model(
     return values
 
 
-async def get_context_territories_geometry(conn, project_id: int, user_id: int) -> tuple[ScalarSelect[Any], list[int]]:
+async def get_context_territories_geometry(
+    conn, project_id: int, user: UserDTO | None
+) -> tuple[ScalarSelect[Any], list[int]]:
     """
     Retrieve project territory relations including context territories, unified geometry,
     and all related territories (descendants and ancestors).
@@ -215,7 +218,7 @@ async def get_context_territories_geometry(conn, project_id: int, user_id: int) 
     Args:
         conn (AsyncConnection): Database connection object.
         project_id (int): ID of the project to analyze.
-        user_id (int): ID of the user requesting the data.
+        user (UserDTO | None): Data of the user requesting the data.
 
     Returns:
         Tuple containing:
@@ -233,7 +236,10 @@ async def get_context_territories_geometry(conn, project_id: int, user_id: int) 
     project = (await conn.execute(statement)).mappings().one_or_none()
     if project is None:
         raise EntityNotFoundById(project_id, "project")
-    if project.user_id != user_id and not project.public:
+    if user is None:
+        if not project.public:
+            raise AccessDeniedError(project_id, "project")
+    elif project.user_id != user.id and not project.public and not user.is_superuser:
         raise AccessDeniedError(project_id, "project")
 
     # Get union geometry of all context territories

@@ -36,6 +36,7 @@ from idu_api.urban_api.dto import (
     ObjectGeometryDTO,
     ScenarioGeometryDTO,
     ScenarioGeometryWithAllObjectsDTO,
+    UserDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
@@ -51,13 +52,13 @@ from idu_api.urban_api.schemas import ObjectGeometryPatch, ObjectGeometryPut
 async def get_geometries_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
-    user_id: str,
+    user: UserDTO | None,
     physical_object_id: int | None,
     service_id: int | None,
 ) -> list[ScenarioGeometryDTO]:
     """Get geometries by scenario identifier."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id)
+    project = await get_project_by_scenario_id(conn, scenario_id, user)
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -257,7 +258,7 @@ async def get_geometries_by_scenario_id_from_db(
 async def get_geometries_with_all_objects_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
-    user_id: str,
+    user: UserDTO | None,
     physical_object_type_id: int | None,
     service_type_id: int | None,
     physical_object_function_id: int | None,
@@ -265,7 +266,7 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
 ) -> list[ScenarioGeometryWithAllObjectsDTO]:
     """Get geometries with list of physical objects and services by scenario identifier."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id)
+    project = await get_project_by_scenario_id(conn, scenario_id, user)
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -745,13 +746,13 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
 async def get_context_geometries_from_db(
     conn: AsyncConnection,
     project_id: int,
-    user_id: str,
+    user: UserDTO | None,
     physical_object_id: int | None,
     service_id: int | None,
 ) -> list[ObjectGeometryDTO]:
     """Get list of geometries for 'context' of the project territory."""
 
-    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user)
 
     statement = (
         select(
@@ -810,7 +811,7 @@ async def get_context_geometries_from_db(
 async def get_context_geometries_with_all_objects_from_db(
     conn: AsyncConnection,
     project_id: int,
-    user_id: str,
+    user: UserDTO | None,
     physical_object_type_id: int | None,
     service_type_id: int | None,
     physical_object_function_id: int | None,
@@ -818,7 +819,7 @@ async def get_context_geometries_with_all_objects_from_db(
 ) -> list[GeometryWithAllObjectsDTO]:
     """Get geometries with lists of physical objects and services for 'context' of the project territory."""
 
-    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user)
 
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
@@ -1102,11 +1103,11 @@ async def put_object_geometry_to_db(
     scenario_id: int,
     object_geometry_id: int,
     is_scenario_object: bool,
-    user_id: str,
+    user: UserDTO,
 ) -> ScenarioGeometryDTO:
     """Update scenario object geometry by all its attributes."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(
         conn,
@@ -1232,11 +1233,11 @@ async def patch_object_geometry_to_db(
     scenario_id: int,
     object_geometry_id: int,
     is_scenario_object: bool,
-    user_id: str,
+    user: UserDTO,
 ) -> ScenarioGeometryDTO:
     """Update scenario object geometry by only given attributes."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if is_scenario_object:
         statement = select(projects_object_geometries_data).where(
@@ -1369,11 +1370,11 @@ async def delete_object_geometry_from_db(
     scenario_id: int,
     object_geometry_id: int,
     is_scenario_object: bool,
-    user_id: str,
+    user: UserDTO,
 ) -> dict:
     """Delete scenario physical object."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user_id, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(
         conn, projects_object_geometries_data if is_scenario_object else object_geometries_data

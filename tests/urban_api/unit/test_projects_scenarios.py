@@ -18,7 +18,7 @@ from idu_api.common.db.entities import (
     scenarios_data,
     territories_data,
 )
-from idu_api.urban_api.dto import ScenarioDTO
+from idu_api.urban_api.dto import ScenarioDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     copy_geometries,
@@ -46,7 +46,7 @@ async def test_get_scenarios_by_project_id_from_db(mock_check: AsyncMock, mock_c
 
     # Arrange
     project_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     scenarios_data_parents = scenarios_data.alias("scenarios_data_parents")
     statement = (
         select(
@@ -75,14 +75,14 @@ async def test_get_scenarios_by_project_id_from_db(mock_check: AsyncMock, mock_c
     )
 
     # Act
-    result = await get_scenarios_by_project_id_from_db(mock_conn, project_id, user_id)
+    result = await get_scenarios_by_project_id_from_db(mock_conn, project_id, user)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
     assert all(isinstance(item, ScenarioDTO) for item in result), "Each item should be a ScenarioDTO."
     assert isinstance(Scenario.from_dto(result[0]), Scenario), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
-    mock_check.assert_called_once_with(mock_conn, project_id, user_id)
+    mock_check.assert_called_once_with(mock_conn, project_id, user)
 
 
 @pytest.mark.asyncio
@@ -91,7 +91,7 @@ async def test_get_scenario_by_id_from_db(mock_conn: MockConnection):
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     scenarios_data_parents = scenarios_data.alias("scenarios_data_parents")
     statement = (
         select(
@@ -120,7 +120,7 @@ async def test_get_scenario_by_id_from_db(mock_conn: MockConnection):
     )
 
     # Act
-    result = await get_scenario_by_id_from_db(mock_conn, scenario_id, user_id)
+    result = await get_scenario_by_id_from_db(mock_conn, scenario_id, user)
 
     # Assert
     assert isinstance(result, ScenarioDTO), "Result should be a ScenarioDTO."
@@ -144,7 +144,7 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
         return True
 
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     project = {"project_id": 1, "territory_id": 1}
     parent_scenario_statement = (
         select(scenarios_data.c.scenario_id)
@@ -232,14 +232,14 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
         new=AsyncMock(side_effect=check_project),
     ):
         with pytest.raises(EntityNotFoundById):
-            await copy_scenario_to_db(mock_conn, scenario_post_req, scenario_id, user_id)
+            await copy_scenario_to_db(mock_conn, scenario_post_req, scenario_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_scenarios.check_existence",
         new=AsyncMock(side_effect=check_functional_zone_type),
     ):
         with pytest.raises(EntityNotFoundById):
-            await copy_scenario_to_db(mock_conn, scenario_post_req, scenario_id, user_id)
-    result = await copy_scenario_to_db(mock_conn, scenario_post_req, scenario_id, user_id)
+            await copy_scenario_to_db(mock_conn, scenario_post_req, scenario_id, user)
+    result = await copy_scenario_to_db(mock_conn, scenario_post_req, scenario_id, user)
 
     # Assert
     assert isinstance(result, ScenarioDTO), "Result should be a ScenarioDTO."
@@ -259,7 +259,7 @@ async def test_put_scenario_to_db(mock_conn: MockConnection, scenario_put_req: S
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     check_statement = (
         select(scenarios_data, projects_data.c.project_id, projects_data.c.user_id)
         .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
@@ -274,8 +274,8 @@ async def test_put_scenario_to_db(mock_conn: MockConnection, scenario_put_req: S
 
     # Act
     with pytest.raises(ValueError):
-        await put_scenario_to_db(mock_conn, not_based_scenario, scenario_id, user_id)
-    result = await put_scenario_to_db(mock_conn, scenario_put_req, scenario_id, user_id)
+        await put_scenario_to_db(mock_conn, not_based_scenario, scenario_id, user)
+    result = await put_scenario_to_db(mock_conn, scenario_put_req, scenario_id, user)
 
     # Assert
     assert isinstance(result, ScenarioDTO), "Result should be a ScenarioDTO."
@@ -290,7 +290,7 @@ async def test_patch_scenario_to_db(mock_conn: MockConnection, scenario_patch_re
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     check_statement = (
         select(scenarios_data, projects_data.c.project_id, projects_data.c.user_id)
         .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
@@ -307,8 +307,8 @@ async def test_patch_scenario_to_db(mock_conn: MockConnection, scenario_patch_re
 
     # Act
     with pytest.raises(ValueError):
-        await patch_scenario_to_db(mock_conn, not_based_scenario, scenario_id, user_id)
-    result = await patch_scenario_to_db(mock_conn, scenario_patch_req, scenario_id, user_id)
+        await patch_scenario_to_db(mock_conn, not_based_scenario, scenario_id, user)
+    result = await patch_scenario_to_db(mock_conn, scenario_patch_req, scenario_id, user)
 
     # Assert
     assert isinstance(result, ScenarioDTO), "Result should be a ScenarioDTO."
@@ -324,7 +324,7 @@ async def test_delete_scenario_from_db(mock_check: AsyncMock, mock_conn: MockCon
 
     # Arrange
     scenario_id = 1
-    user_id = "mock_string"
+    user = UserDTO(id="mock_string", is_superuser=False)
     delete_geometry_statement = delete(projects_object_geometries_data).where(
         projects_object_geometries_data.c.object_geometry_id.in_([1])
     )
@@ -335,7 +335,7 @@ async def test_delete_scenario_from_db(mock_check: AsyncMock, mock_conn: MockCon
     delete_statement = delete(scenarios_data).where(scenarios_data.c.scenario_id == scenario_id)
 
     # Act
-    result = await delete_scenario_from_db(mock_conn, scenario_id, user_id)
+    result = await delete_scenario_from_db(mock_conn, scenario_id, user)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
@@ -344,7 +344,7 @@ async def test_delete_scenario_from_db(mock_check: AsyncMock, mock_conn: MockCon
     mock_conn.execute_mock.assert_any_call(str(delete_service_statement))
     mock_conn.execute_mock.assert_any_call(str(delete_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user_id, to_edit=True)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user, to_edit=True)
 
 
 @pytest.mark.asyncio

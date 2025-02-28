@@ -51,9 +51,7 @@ async def get_functional_zone_sources_by_scenario_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    sources = await user_project_service.get_functional_zones_sources_by_scenario_id(
-        scenario_id, user.id if user is not None else None
-    )
+    sources = await user_project_service.get_functional_zones_sources_by_scenario_id(scenario_id, user)
 
     return [FunctionalZoneSource.from_dto(source) for source in sources]
 
@@ -93,7 +91,7 @@ async def get_functional_zones_by_scenario_id(
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zones = await user_project_service.get_functional_zones_by_scenario_id(
-        scenario_id, year, source, functional_zone_type_id, user.id if user is not None else None
+        scenario_id, year, source, functional_zone_type_id, user
     )
 
     return await GeoJSONResponse.from_list([zone.to_geojson_dict() for zone in functional_zones])
@@ -127,9 +125,7 @@ async def get_context_functional_zone_sources(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    sources = await user_project_service.get_context_functional_zones_sources(
-        project_id, user.id if user is not None else None
-    )
+    sources = await user_project_service.get_context_functional_zones_sources(project_id, user)
 
     return [FunctionalZoneSource.from_dto(source) for source in sources]
 
@@ -169,7 +165,7 @@ async def get_context_functional_zones_by_scenario_id(
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zones = await user_project_service.get_context_functional_zones(
-        project_id, year, source, functional_zone_type_id, user.id if user is not None else None
+        project_id, year, source, functional_zone_type_id, user
     )
 
     return await GeoJSONResponse.from_list([zone.to_geojson_dict() for zone in functional_zones])
@@ -208,7 +204,7 @@ async def add_scenario_functional_zones(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    functional_zones = await user_project_service.add_scenario_functional_zones(functional_zones, scenario_id, user.id)
+    functional_zones = await user_project_service.add_scenario_functional_zones(functional_zones, scenario_id, user)
 
     return [ScenarioFunctionalZone.from_dto(zone) for zone in functional_zones]
 
@@ -247,7 +243,7 @@ async def put_scenario_functional_zone(
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zone = await user_project_service.put_scenario_functional_zone(
-        functional_zone, scenario_id, functional_zone_id, user.id
+        functional_zone, scenario_id, functional_zone_id, user
     )
 
     return ScenarioFunctionalZone.from_dto(functional_zone)
@@ -287,7 +283,7 @@ async def patch_scenario_functional_zone(
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zone = await user_project_service.patch_scenario_functional_zone(
-        functional_zone, scenario_id, functional_zone_id, user.id
+        functional_zone, scenario_id, functional_zone_id, user
     )
 
     return ScenarioFunctionalZone.from_dto(functional_zone)
@@ -322,6 +318,6 @@ async def delete_functional_zones_by_scenario_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_functional_zones_by_scenario_id(scenario_id, user.id)
+    await user_project_service.delete_functional_zones_by_scenario_id(scenario_id, user)
 
     return OkResponse()

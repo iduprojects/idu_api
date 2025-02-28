@@ -4,7 +4,7 @@ import io
 import aioboto3
 import structlog
 from botocore.config import Config
-from botocore.exceptions import ConnectionError
+from botocore.exceptions import ConnectionError as BotoConnectionError
 from tenacity import RetryError, retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from idu_api.urban_api.config import UrbanAPIConfig
@@ -38,7 +38,7 @@ class AsyncMinioClient:
         self._read_timeout = read_timeout
         AsyncMinioClient.RETRIES = retries
 
-    @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ConnectionError))
+    @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(BotoConnectionError))
     async def _upload_file(self, client: aioboto3.Session.client, file_stream: io.BytesIO, object_name: str) -> str:
         await client.upload_fileobj(file_stream, self._bucket_name, object_name)
 
@@ -63,7 +63,7 @@ class AsyncMinioClient:
                 await logger.aexception("unexpected error in AsyncMinioClient")
                 raise exc
 
-    @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ConnectionError))
+    @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(BotoConnectionError))
     async def objects_exist(self, object_names: list[str]) -> dict[str, bool]:
         async with aioboto3.Session().client(
             "s3",
@@ -135,7 +135,7 @@ class AsyncMinioClient:
                 await logger.aexception("unexpected error in AsyncMinioClient")
                 raise exc
 
-    @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(ConnectionError))
+    @retry(stop=stop_after_attempt(RETRIES), wait=wait_fixed(1), retry=retry_if_exception_type(BotoConnectionError))
     async def delete_file(self, object_name: str, logger: structlog.stdlib.BoundLogger) -> None:
         """
         Delete a file from the specified bucket asynchronously.

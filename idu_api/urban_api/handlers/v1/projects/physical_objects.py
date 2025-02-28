@@ -62,7 +62,7 @@ async def get_physical_objects_by_scenario_id(
 
     physical_objects = await user_project_service.get_physical_objects_by_scenario_id(
         scenario_id,
-        user.id if user is not None else None,
+        user,
         physical_object_type_id,
         physical_object_function_id,
     )
@@ -112,7 +112,7 @@ async def get_context_physical_objects(
         )
 
     physical_objects = await user_project_service.get_context_physical_objects(
-        project_id, user.id if user is not None else None, physical_object_type_id, physical_object_function_id
+        project_id, user, physical_object_type_id, physical_object_function_id
     )
 
     return [PhysicalObject.from_dto(phys_obj) for phys_obj in physical_objects]
@@ -152,7 +152,7 @@ async def add_physical_object_with_geometry(
     urban_object = await user_project_service.add_physical_object_with_geometry(
         physical_object,
         scenario_id,
-        user.id,
+        user,
     )
 
     return ScenarioUrbanObject.from_dto(urban_object)
@@ -199,7 +199,7 @@ async def update_physical_objects_by_function_id(
         urban_objects = await user_project_service.update_physical_objects_by_function_id(
             physical_object,
             scenario_id,
-            user.id,
+            user,
             physical_object_function_id,
         )
     except ValueError as exc:
@@ -250,7 +250,7 @@ async def put_physical_object(
         scenario_id,
         physical_object_id,
         is_scenario_object,
-        user.id,
+        user,
     )
 
     return ScenarioPhysicalObject.from_dto(physical_object_dto)
@@ -298,7 +298,7 @@ async def patch_physical_object(
         scenario_id,
         physical_object_id,
         is_scenario_object,
-        user.id,
+        user,
     )
 
     return ScenarioPhysicalObject.from_dto(physical_object_dto)
@@ -337,6 +337,6 @@ async def delete_physical_object(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_physical_object(scenario_id, physical_object_id, is_scenario_object, user.id)
+    await user_project_service.delete_physical_object(scenario_id, physical_object_id, is_scenario_object, user)
 
     return OkResponse()
