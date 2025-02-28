@@ -7,7 +7,7 @@ from idu_api.urban_api.schemas.physical_object_types import PhysicalObjectFuncti
 from idu_api.urban_api.schemas.physical_objects import PhysicalObject, PhysicalObjectType, ScenarioPhysicalObject
 from idu_api.urban_api.schemas.service_types import ServiceType, UrbanFunctionBasic
 from idu_api.urban_api.schemas.services import ScenarioService, Service
-from idu_api.urban_api.schemas.short_models import ShortLivingBuilding, ShortTerritory
+from idu_api.urban_api.schemas.short_models import ShortBuilding, ShortTerritory
 from idu_api.urban_api.schemas.territories import TerritoryType
 
 
@@ -37,13 +37,20 @@ class UrbanObject(BaseModel):
                     ),
                 ),
                 name=dto.physical_object_name,
-                living_building=(
-                    ShortLivingBuilding(
-                        id=dto.living_building_id,
-                        living_area=dto.living_area,
-                        properties=dto.living_building_properties,
+                building=(
+                    ShortBuilding(
+                        id=dto.building_id,
+                        properties=dto.building_properties,
+                        floors=dto.floors,
+                        building_area_official=dto.building_area_official,
+                        building_area_modeled=dto.building_area_modeled,
+                        project_type=dto.project_type,
+                        floor_type=dto.floor_type,
+                        wall_material=dto.wall_material,
+                        built_year=dto.built_year,
+                        exploitation_start_year=dto.exploitation_start_year,
                     )
-                    if dto.living_building_id is not None
+                    if dto.building_id is not None
                     else None
                 ),
                 properties=dto.physical_object_properties,
@@ -78,7 +85,8 @@ class UrbanObject(BaseModel):
                         else None
                     ),
                     name=dto.service_name,
-                    capacity_real=dto.capacity_real,
+                    capacity=dto.capacity,
+                    is_capacity_real=dto.is_capacity_real,
                     properties=dto.service_properties,
                     created_at=dto.service_created_at,
                     updated_at=dto.service_updated_at,
@@ -121,13 +129,20 @@ class ScenarioUrbanObject(BaseModel):
                         else None
                     ),
                 ),
-                living_building=(
-                    ShortLivingBuilding(
-                        id=dto.living_building_id,
-                        living_area=dto.living_area,
-                        properties=dto.living_building_properties,
+                building=(
+                    ShortBuilding(
+                        id=dto.building_id,
+                        properties=dto.building_properties,
+                        floors=dto.floors,
+                        building_area_official=dto.building_area_official,
+                        building_area_modeled=dto.building_area_modeled,
+                        project_type=dto.project_type,
+                        floor_type=dto.floor_type,
+                        wall_material=dto.wall_material,
+                        built_year=dto.built_year,
+                        exploitation_start_year=dto.exploitation_start_year,
                     )
-                    if dto.living_building_id is not None
+                    if dto.building_id is not None
                     else None
                 ),
                 name=dto.physical_object_name,
@@ -165,7 +180,8 @@ class ScenarioUrbanObject(BaseModel):
                         else None
                     ),
                     name=dto.service_name,
-                    capacity_real=dto.capacity_real,
+                    capacity=dto.capacity,
+                    is_capacity_real=dto.is_capacity_real,
                     properties=dto.service_properties,
                     created_at=dto.service_created_at,
                     updated_at=dto.service_updated_at,

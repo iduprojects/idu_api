@@ -1,17 +1,16 @@
 """Unit tests for scenario urban objects are defined here."""
 
 import pytest
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, or_, select
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import or_, select
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
-    projects_living_buildings_data,
+    projects_buildings_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
     projects_services_data,
@@ -25,7 +24,7 @@ from idu_api.common.db.entities import (
 from idu_api.urban_api.dto import ScenarioUrbanObjectDTO
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, TooManyObjectsError
 from idu_api.urban_api.logic.impl.helpers.projects_urban_objects import get_scenario_urban_object_by_ids_from_db
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, OBJECTS_NUMBER_LIMIT
+from idu_api.urban_api.logic.impl.helpers.utils import OBJECTS_NUMBER_LIMIT
 from idu_api.urban_api.schemas import ScenarioUrbanObject
 from tests.urban_api.helpers.connection import MockConnection
 
@@ -42,6 +41,9 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
     ids = [1]
     not_found_ids = [1, 2]
     too_many_ids = list(range(OBJECTS_NUMBER_LIMIT + 1))
+    project_building_columns = [
+        col for col in projects_buildings_data.c if col.name not in ("physical_object_id", "properties")
+    ]
     statement = (
         select(
             projects_urban_objects_data,
@@ -55,14 +57,13 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
             projects_physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "centre_point"
-            ),
+            ST_AsEWKB(projects_object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_object_geometries_data.c.centre_point).label("centre_point"),
             projects_object_geometries_data.c.created_at.label("object_geometry_created_at"),
             projects_object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
             projects_services_data.c.name.label("service_name"),
-            projects_services_data.c.capacity_real,
+            projects_services_data.c.capacity,
+            projects_services_data.c.is_capacity_real,
             projects_services_data.c.properties.label("service_properties"),
             projects_services_data.c.created_at.label("service_created_at"),
             projects_services_data.c.updated_at.label("service_updated_at"),
@@ -82,25 +83,30 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
             physical_objects_data.c.properties.label("public_physical_object_properties"),
             physical_objects_data.c.created_at.label("public_physical_object_created_at"),
             physical_objects_data.c.updated_at.label("public_physical_object_updated_at"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("public_geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "public_centre_point"
-            ),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("public_geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("public_centre_point"),
             object_geometries_data.c.created_at.label("public_object_geometry_created_at"),
             object_geometries_data.c.updated_at.label("public_object_geometry_updated_at"),
             services_data.c.name.label("public_service_name"),
-            services_data.c.capacity_real.label("public_capacity_real"),
+            services_data.c.capacity.label("public_capacity"),
+            services_data.c.is_capacity_real.label("public_is_capacity_real"),
             services_data.c.properties.label("public_service_properties"),
             services_data.c.created_at.label("public_service_created_at"),
             services_data.c.updated_at.label("public_service_updated_at"),
             object_geometries_data.c.address.label("public_address"),
             object_geometries_data.c.osm_id.label("public_osm_id"),
-            projects_living_buildings_data.c.living_building_id,
-            projects_living_buildings_data.c.living_area,
-            projects_living_buildings_data.c.properties.label("living_building_properties"),
-            living_buildings_data.c.living_building_id.label("public_living_building_id"),
-            living_buildings_data.c.living_area.label("public_living_area"),
-            living_buildings_data.c.properties.label("public_living_building_properties"),
+            *project_building_columns,
+            projects_buildings_data.c.properties.label("building_properties"),
+            buildings_data.c.building_id.label("public_building_id"),
+            buildings_data.c.properties.label("public_building_properties"),
+            buildings_data.c.floors.label("public_floors"),
+            buildings_data.c.building_area_official.label("public_building_area_official"),
+            buildings_data.c.building_area_modeled.label("public_building_area_modeled"),
+            buildings_data.c.project_type.label("public_project_type"),
+            buildings_data.c.floor_type.label("public_floor_type"),
+            buildings_data.c.wall_material.label("public_wall_material"),
+            buildings_data.c.built_year.label("public_built_year"),
+            buildings_data.c.exploitation_start_year.label("public_exploitation_start_year"),
         )
         .select_from(
             projects_urban_objects_data.outerjoin(
@@ -164,13 +170,12 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
                 urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
             .outerjoin(
-                projects_living_buildings_data,
-                projects_living_buildings_data.c.physical_object_id
-                == projects_physical_objects_data.c.physical_object_id,
+                projects_buildings_data,
+                projects_buildings_data.c.physical_object_id == projects_physical_objects_data.c.physical_object_id,
             )
         )
         .where(projects_urban_objects_data.c.urban_object_id.in_(ids))

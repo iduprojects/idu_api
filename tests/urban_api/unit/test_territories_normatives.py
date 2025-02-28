@@ -5,9 +5,8 @@ from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import and_, cast, delete, insert, literal, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import and_, delete, insert, literal, select, update
 
 from idu_api.common.db.entities import (
     service_types_dict,
@@ -31,7 +30,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_normatives import (
     patch_normatives_by_territory_id_in_db,
     put_normatives_by_territory_id_in_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, OBJECTS_NUMBER_LIMIT
+from idu_api.urban_api.logic.impl.helpers.utils import OBJECTS_NUMBER_LIMIT
 from idu_api.urban_api.schemas import Normative, NormativeDelete, NormativePatch, NormativePost, TerritoryWithNormatives
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection
@@ -401,8 +400,8 @@ async def test_get_normatives_values_by_parent_id_from_db(mock_conn: MockConnect
         territories_data.c.territory_id,
         territories_data.c.name,
         territories_data.c.parent_id,
-        cast(ST_AsGeoJSON(territories_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-        cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+        ST_AsEWKB(territories_data.c.geometry).label("geometry"),
+        ST_AsEWKB(territories_data.c.centre_point).label("centre_point"),
     ).where(territories_data.c.parent_id == parent_id)
     cte_statement = (
         select(

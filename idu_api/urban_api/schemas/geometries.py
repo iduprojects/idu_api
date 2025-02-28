@@ -21,7 +21,7 @@ class AllPossibleGeometry(BaseModel):
     """Geometry representation for GeoJSON model (all valid geometry types)."""
 
     type: Literal[
-        "Point", "Polygon", "MultiPolygon", "LineString", "MultiPoint", "MultiLineString", "GeometryCollection"
+        "Point", "MultiPoint", "Polygon", "MultiPolygon", "LineString", "MultiLineString", "GeometryCollection"
     ] = Field(examples=["Polygon"])
     coordinates: list[Any] | None = Field(
         default=None,
@@ -199,21 +199,14 @@ class GeoJSONResponse(FeatureCollection):
         Construct GeoJSON model from list of dictionaries,
         with one field in each containing GeoJSON geometries.
         """
-
-        feature_collection = []
-        for feature in features:
-            properties = feature.copy()
-            if not centers_only:
-                geometry = properties.pop("geometry", None)
-                if properties.get("centre_point", False):
-                    del properties["centre_point"]
-            else:
-                geometry = properties.pop("centre_point", None)
-                if properties.get("geometry", False):
-                    del properties["geometry"]
-
-            feature_collection.append(Feature(type="Feature", geometry=geometry, properties=properties))
-
+        feature_collection = [
+            Feature(
+                type="Feature",
+                geometry=feature["centre_point" if centers_only else "geometry"],
+                properties={k: v for k, v in feature.items() if k not in ("geometry", "centre_point")},
+            )
+            for feature in features
+        ]
         return cls(features=feature_collection)
 
     def update_geometries(

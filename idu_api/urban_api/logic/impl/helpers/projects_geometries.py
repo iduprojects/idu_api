@@ -3,24 +3,23 @@
 from collections import defaultdict
 
 from geoalchemy2.functions import (
-    ST_AsGeoJSON,
+    ST_AsEWKB,
     ST_Centroid,
     ST_GeomFromText,
     ST_Intersection,
     ST_Intersects,
     ST_Within,
 )
-from sqlalchemy import cast, delete, insert, literal, or_, select, text, update
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import case, delete, insert, literal, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
     physical_objects_data,
-    projects_living_buildings_data,
+    projects_buildings_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
     projects_services_data,
@@ -42,10 +41,9 @@ from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import get_project_by_scenario_id
 from idu_api.urban_api.logic.impl.helpers.utils import (
-    DECIMAL_PLACES,
     check_existence,
     extract_values_from_model,
-    get_all_context_territories,
+    get_context_territories_geometry,
 )
 from idu_api.urban_api.schemas import ObjectGeometryPatch, ObjectGeometryPut
 
@@ -63,14 +61,14 @@ async def get_geometries_by_scenario_id_from_db(
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-    ).alias("project_geometry")
+    ).scalar_subquery()
 
     # Шаг 1: Получить все public_urban_object_id для данного scenario_id
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
         .where(projects_urban_objects_data.c.public_urban_object_id.isnot(None))
-    ).alias("public_urban_object_ids")
+    ).cte(name="public_urban_object_ids")
 
     # Шаг 2: Собрать все записи из public.urban_objects_data по собранным public_urban_object_id
     public_urban_objects_query = (
@@ -80,8 +78,8 @@ async def get_geometries_by_scenario_id_from_db(
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.created_at,
             object_geometries_data.c.updated_at,
         )
@@ -104,7 +102,6 @@ async def get_geometries_by_scenario_id_from_db(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
             ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
         )
-        .distinct()
     )
 
     # Условия фильтрации для public объектов
@@ -143,19 +140,15 @@ async def get_geometries_by_scenario_id_from_db(
             territories_data.c.name.label("territory_name"),
             projects_object_geometries_data.c.address,
             projects_object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "centre_point"
-            ),
+            ST_AsEWKB(projects_object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_object_geometries_data.c.centre_point).label("centre_point"),
             projects_object_geometries_data.c.created_at,
             projects_object_geometries_data.c.updated_at,
             object_geometries_data.c.object_geometry_id.label("public_object_geometry_id"),
             object_geometries_data.c.address.label("public_address"),
             object_geometries_data.c.osm_id.label("public_osm_id"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("public_geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "public_centre_point"
-            ),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("public_geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("public_centre_point"),
             object_geometries_data.c.created_at.label("public_created_at"),
             object_geometries_data.c.updated_at.label("public_updated_at"),
         )
@@ -193,7 +186,6 @@ async def get_geometries_by_scenario_id_from_db(
             projects_urban_objects_data.c.scenario_id == scenario_id,
             projects_urban_objects_data.c.public_urban_object_id.is_(None),
         )
-        .distinct()
     )
 
     # Условия фильтрации для объектов user_projects
@@ -277,14 +269,19 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-    ).alias("project_geometry")
+    ).scalar_subquery()
 
     # Шаг 1: Получить все public_urban_object_id для данного scenario_id
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
         .where(projects_urban_objects_data.c.public_urban_object_id.isnot(None))
-    ).alias("public_urban_object_ids")
+    ).cte(name="public_urban_object_ids")
+
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
+    project_building_columns = [
+        col for col in projects_buildings_data.c if col.name not in ("physical_object_id", "properties")
+    ]
 
     # Шаг 2: Собрать все записи из public.urban_objects_data по собранным public_urban_object_id
     public_urban_objects_query = (
@@ -294,19 +291,19 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             object_geometries_data.c.object_geometry_id,
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             services_data.c.service_id,
             services_data.c.name.label("service_name"),
-            services_data.c.capacity_real,
+            services_data.c.capacity,
+            services_data.c.is_capacity_real,
             services_data.c.properties.label("service_properties"),
             service_types_dict.c.service_type_id,
             service_types_dict.c.name.label("service_type_name"),
@@ -336,8 +333,8 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
                 territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
             .join(
                 territories_data,
@@ -362,32 +359,36 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
             projects_urban_objects_data.c.public_service_id,
             projects_physical_objects_data.c.name.label("physical_object_name"),
             projects_physical_objects_data.c.properties.label("physical_object_properties"),
-            projects_living_buildings_data.c.living_building_id,
-            projects_living_buildings_data.c.living_area,
-            projects_living_buildings_data.c.properties.label("living_building_properties"),
+            *project_building_columns,
+            projects_buildings_data.c.properties.label("building_properties"),
             projects_object_geometries_data.c.territory_id,
             projects_object_geometries_data.c.address,
             projects_object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "centre_point"
-            ),
+            ST_AsEWKB(projects_object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_object_geometries_data.c.centre_point).label("centre_point"),
             projects_services_data.c.name.label("service_name"),
-            projects_services_data.c.capacity_real,
+            projects_services_data.c.capacity,
+            projects_services_data.c.is_capacity_real,
             projects_services_data.c.properties.label("service_properties"),
             physical_objects_data.c.name.label("public_physical_object_name"),
             physical_objects_data.c.properties.label("public_physical_object_properties"),
-            living_buildings_data.c.living_building_id.label("public_living_building_id"),
-            living_buildings_data.c.living_area.label("public_living_area"),
-            living_buildings_data.c.properties.label("public_living_building_properties"),
+            buildings_data.c.building_id.label("public_building_id"),
+            buildings_data.c.properties.label("public_building_properties"),
+            buildings_data.c.floors.label("public_floors"),
+            buildings_data.c.building_area_official.label("public_building_area_official"),
+            buildings_data.c.building_area_modeled.label("public_building_area_modeled"),
+            buildings_data.c.project_type.label("public_project_type"),
+            buildings_data.c.floor_type.label("public_floor_type"),
+            buildings_data.c.wall_material.label("public_wall_material"),
+            buildings_data.c.built_year.label("public_built_year"),
+            buildings_data.c.exploitation_start_year.label("public_exploitation_start_year"),
             object_geometries_data.c.address.label("public_address"),
             object_geometries_data.c.osm_id.label("public_osm_id"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("public_geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "public_centre_point"
-            ),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("public_geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("public_centre_point"),
             services_data.c.name.label("public_service_name"),
-            services_data.c.capacity_real.label("public_capacity_real"),
+            services_data.c.capacity.label("public_capacity"),
+            services_data.c.is_capacity_real.label("public_is_capacity_real"),
             services_data.c.properties.label("public_service_properties"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
@@ -451,13 +452,12 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
                 ),
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
             .outerjoin(
-                projects_living_buildings_data,
-                projects_living_buildings_data.c.physical_object_id
-                == projects_physical_objects_data.c.physical_object_id,
+                projects_buildings_data,
+                projects_buildings_data.c.physical_object_id == projects_physical_objects_data.c.physical_object_id,
             )
         )
         .where(
@@ -556,13 +556,20 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
                         "name": row.physical_object_type_name,
                     },
                     "name": row.physical_object_name,
-                    "living_building": (
+                    "building": (
                         {
-                            "id": row.living_building_id,
-                            "living_area": row.living_area,
-                            "properties": row.living_building_properties,
+                            "id": row.building_id,
+                            "properties": row.building_properties,
+                            "floors": row.floors,
+                            "building_area_official": row.building_area_official,
+                            "building_area_modeled": row.building_area_modeled,
+                            "project_type": row.project_type,
+                            "floor_type": row.floor_type,
+                            "wall_material": row.wall_material,
+                            "built_year": row.built_year,
+                            "exploitation_start_year": row.exploitation_start_year,
                         }
-                        if row.living_building_id is not None
+                        if row.building_id is not None
                         else None
                     ),
                     "properties": row.physical_object_properties,
@@ -578,7 +585,8 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
                             else None
                         ),
                         "name": row.service_name,
-                        "capacity_real": row.capacity_real,
+                        "capacity": row.capacity,
+                        "is_capacity_real": row.is_capacity_real,
                         "properties": row.service_properties,
                         "is_scenario_object": False,
                     }
@@ -616,19 +624,40 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
                     "name": (
                         row.physical_object_name if is_scenario_physical_object else row.public_physical_object_name
                     ),
-                    "living_building": (
+                    "building": (
                         {
-                            "id": (
-                                row.living_building_id if is_scenario_physical_object else row.public_living_building_id
-                            ),
-                            "living_area": row.living_area if is_scenario_physical_object else row.public_living_area,
+                            "id": (row.building_id if is_scenario_physical_object else row.public_building_id),
                             "properties": (
-                                row.living_building_properties
+                                row.building_properties
                                 if is_scenario_physical_object
-                                else row.public_living_building_properties
+                                else row.public_building_properties
+                            ),
+                            "floors": row.floors if is_scenario_physical_object else row.public_floors,
+                            "building_area_official": (
+                                row.building_area_official
+                                if is_scenario_physical_object
+                                else row.public_building_area_official
+                            ),
+                            "building_area_modeled": (
+                                row.building_area_modeled
+                                if is_scenario_physical_object
+                                else row.public_building_area_modeled
+                            ),
+                            "project_type": (
+                                row.project_type if is_scenario_physical_object else row.public_project_type
+                            ),
+                            "floor_type": row.floor_type if is_scenario_physical_object else row.public_floor_type,
+                            "wall_material": (
+                                row.wall_material if is_scenario_physical_object else row.public_wall_material
+                            ),
+                            "built_year": row.built_year if is_scenario_physical_object else row.public_built_year,
+                            "exploitation_start_year": (
+                                row.exploitation_start_year
+                                if is_scenario_physical_object
+                                else row.public_exploitation_start_year
                             ),
                         }
-                        if row.living_building_id or row.public_living_building_id
+                        if row.building_id or row.public_building_id
                         else None
                     ),
                     "properties": (
@@ -648,7 +677,10 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
                             else None
                         ),
                         "name": row.service_name if is_scenario_service else row.public_service_name,
-                        "capacity_real": row.capacity_real if is_scenario_service else row.public_capacity_real,
+                        "capacity": row.capacity if is_scenario_service else row.public_capacity,
+                        "is_capacity_real": (
+                            row.is_capacity_real if is_scenario_service else row.public_is_capacity_real
+                        ),
                         "properties": row.service_properties if is_scenario_service else row.public_service_properties,
                         "is_scenario_object": is_scenario_service,
                     }
@@ -719,18 +751,8 @@ async def get_context_geometries_from_db(
 ) -> list[ObjectGeometryDTO]:
     """Get list of geometries for 'context' of the project territory."""
 
-    context = await get_all_context_territories(conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user_id)
 
-    objects_intersecting = (
-        select(object_geometries_data.c.object_geometry_id)
-        .where(
-            object_geometries_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
-            ST_Intersects(object_geometries_data.c.geometry, context["geometry"]),
-        )
-        .subquery()
-    )
-
-    # Step 2. Find all the geometries in `public` schema for `intersecting_territories`
     statement = (
         select(
             object_geometries_data.c.object_geometry_id,
@@ -738,43 +760,47 @@ async def get_context_geometries_from_db(
             territories_data.c.name.label("territory_name"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(
-                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, context["geometry"]), DECIMAL_PLACES),
-                JSONB,
+            ST_AsEWKB(
+                case(
+                    (
+                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
+                        ST_Intersection(object_geometries_data.c.geometry, context_geom),
+                    ),
+                    else_=object_geometries_data.c.geometry,
+                )
             ).label("geometry"),
-            cast(
-                ST_AsGeoJSON(
-                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context["geometry"])), DECIMAL_PLACES
-                ),
-                JSONB,
+            ST_AsEWKB(
+                case(
+                    (
+                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
+                        ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context_geom)),
+                    ),
+                    else_=object_geometries_data.c.centre_point,
+                )
             ).label("centre_point"),
             object_geometries_data.c.created_at,
             object_geometries_data.c.updated_at,
         )
         .select_from(
-            object_geometries_data.join(
+            urban_objects_data.join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            ).join(
                 territories_data,
                 territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
-            .join(
-                urban_objects_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            )
-            .join(
-                physical_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            )
-            .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
         )
-        .where(object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting)))
+        .where(
+            object_geometries_data.c.territory_id.in_(context_ids)
+            | ST_Intersects(object_geometries_data.c.geometry, context_geom)
+        )
         .distinct()
     )
 
-    # Условия фильтрации для объектов
     if physical_object_id is not None:
-        statement = statement.where(physical_objects_data.c.physical_object_id == physical_object_id)
+        statement = statement.where(urban_objects_data.c.physical_object_id == physical_object_id)
     if service_id is not None:
-        statement = statement.where(services_data.c.service_id == service_id)
+        statement = statement.where(urban_objects_data.c.service_id == service_id)
 
     result = (await conn.execute(statement)).mappings().all()
 
@@ -792,89 +818,102 @@ async def get_context_geometries_with_all_objects_from_db(
 ) -> list[GeometryWithAllObjectsDTO]:
     """Get geometries with lists of physical objects and services for 'context' of the project territory."""
 
-    context = await get_all_context_territories(conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user_id)
 
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
-        .where(
-            object_geometries_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
-            ST_Intersects(object_geometries_data.c.geometry, context["geometry"]),
-        )
-        .subquery()
-    )
-
-    # Шаг 2: Собрать все записи из public.urban_objects_data по собранным public_urban_object_id
-    statement = (
-        select(
-            physical_objects_data.c.physical_object_id,
-            physical_object_types_dict.c.physical_object_type_id,
-            physical_object_types_dict.c.name.label("physical_object_type_name"),
-            physical_objects_data.c.name.label("physical_object_name"),
-            physical_objects_data.c.properties.label("physical_object_properties"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
-            object_geometries_data.c.object_geometry_id,
-            territories_data.c.territory_id,
-            territories_data.c.name.label("territory_name"),
-            object_geometries_data.c.address,
-            object_geometries_data.c.osm_id,
-            cast(
-                ST_AsGeoJSON(ST_Intersection(object_geometries_data.c.geometry, context["geometry"]), DECIMAL_PLACES),
-                JSONB,
-            ).label("geometry"),
-            cast(
-                ST_AsGeoJSON(
-                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context["geometry"])), DECIMAL_PLACES
-                ),
-                JSONB,
-            ).label("centre_point"),
-            services_data.c.service_id,
-            services_data.c.name.label("service_name"),
-            services_data.c.capacity_real,
-            services_data.c.properties.label("service_properties"),
-            service_types_dict.c.service_type_id,
-            service_types_dict.c.name.label("service_type_name"),
-            territory_types_dict.c.territory_type_id,
-            territory_types_dict.c.name.label("territory_type_name"),
-        )
         .select_from(
             object_geometries_data.join(
-                territories_data,
-                territories_data.c.territory_id == object_geometries_data.c.territory_id,
-            )
-            .join(
                 urban_objects_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            )
-            .join(
-                physical_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            )
-            .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
-            .join(
-                physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
-            )
-            .outerjoin(
-                service_types_dict,
-                service_types_dict.c.service_type_id == services_data.c.service_type_id,
-            )
-            .outerjoin(
-                territory_types_dict,
-                territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
-            )
-            .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
-            )
+            ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
-        .where(object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting)))
-        .distinct()
+        .where(
+            object_geometries_data.c.territory_id.in_(context_ids)
+            | ST_Intersects(object_geometries_data.c.geometry, context_geom)
+        )
+        .cte(name="objects_intersecting")
+    )
+
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
+    statement = select(
+        physical_objects_data.c.physical_object_id,
+        physical_object_types_dict.c.physical_object_type_id,
+        physical_object_types_dict.c.name.label("physical_object_type_name"),
+        physical_objects_data.c.name.label("physical_object_name"),
+        physical_objects_data.c.properties.label("physical_object_properties"),
+        *building_columns,
+        buildings_data.c.properties.label("building_properties"),
+        object_geometries_data.c.object_geometry_id,
+        territories_data.c.territory_id,
+        territories_data.c.name.label("territory_name"),
+        object_geometries_data.c.address,
+        object_geometries_data.c.osm_id,
+        ST_AsEWKB(
+            case(
+                (
+                    ~ST_Within(object_geometries_data.c.geometry, context_geom),
+                    ST_Intersection(object_geometries_data.c.geometry, context_geom),
+                ),
+                else_=object_geometries_data.c.geometry,
+            )
+        ).label("geometry"),
+        ST_AsEWKB(
+            case(
+                (
+                    ~ST_Within(object_geometries_data.c.geometry, context_geom),
+                    ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context_geom)),
+                ),
+                else_=object_geometries_data.c.centre_point,
+            )
+        ).label("centre_point"),
+        services_data.c.service_id,
+        services_data.c.name.label("service_name"),
+        services_data.c.capacity,
+        services_data.c.is_capacity_real,
+        services_data.c.properties.label("service_properties"),
+        service_types_dict.c.service_type_id,
+        service_types_dict.c.name.label("service_type_name"),
+        territory_types_dict.c.territory_type_id,
+        territory_types_dict.c.name.label("territory_type_name"),
+    ).select_from(
+        urban_objects_data.join(
+            physical_objects_data,
+            physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+        )
+        .join(
+            object_geometries_data,
+            object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+        )
+        .join(
+            objects_intersecting,
+            objects_intersecting.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+        )
+        .join(
+            territories_data,
+            territories_data.c.territory_id == object_geometries_data.c.territory_id,
+        )
+        .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+        .join(
+            physical_object_types_dict,
+            physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
+        )
+        .outerjoin(
+            service_types_dict,
+            service_types_dict.c.service_type_id == services_data.c.service_type_id,
+        )
+        .outerjoin(
+            territory_types_dict,
+            territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
+        )
+        .outerjoin(
+            buildings_data,
+            buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+        )
     )
 
     if physical_object_type_id is not None:
-        statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
+        statement = statement.where(physical_object_types_dict.c.physical_object_type_id == physical_object_type_id)
     elif physical_object_function_id is not None:
         physical_object_functions_cte = (
             select(
@@ -901,7 +940,7 @@ async def get_context_geometries_with_all_objects_from_db(
         )
 
     if service_type_id is not None:
-        statement = statement.where(services_data.c.service_type_id == service_type_id)
+        statement = statement.where(service_types_dict.c.service_type_id == service_type_id)
     elif urban_function_id is not None:
         urban_functions_cte = (
             select(
@@ -942,13 +981,20 @@ async def get_context_geometries_with_all_objects_from_db(
                         "name": row.physical_object_type_name,
                     },
                     "name": row.physical_object_name,
-                    "living_building": (
+                    "building": (
                         {
-                            "id": row.living_building_id,
-                            "living_area": row.living_area,
-                            "properties": row.living_building_properties,
+                            "id": row.building_id,
+                            "properties": row.building_properties,
+                            "floors": row.floors,
+                            "building_area_official": row.building_area_official,
+                            "building_area_modeled": row.building_area_modeled,
+                            "project_type": row.project_type,
+                            "floor_type": row.floor_type,
+                            "wall_material": row.wall_material,
+                            "built_year": row.built_year,
+                            "exploitation_start_year": row.exploitation_start_year,
                         }
-                        if row.living_building_id is not None
+                        if row.building_id is not None
                         else None
                     ),
                     "properties": row.physical_object_properties,
@@ -963,7 +1009,8 @@ async def get_context_geometries_with_all_objects_from_db(
                             else None
                         ),
                         "name": row.service_name,
-                        "capacity_real": row.capacity_real,
+                        "capacity": row.capacity,
+                        "is_capacity_real": row.is_capacity_real,
                         "properties": row.service_properties,
                     }
                     if row.service_id
@@ -1027,10 +1074,8 @@ async def get_scenario_object_geometry_by_id_from_db(
             territories_data.c.name.label("territory_name"),
             projects_object_geometries_data.c.address,
             projects_object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label(
-                "centre_point"
-            ),
+            ST_AsEWKB(projects_object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_object_geometries_data.c.centre_point).label("centre_point"),
             projects_object_geometries_data.c.created_at,
             projects_object_geometries_data.c.updated_at,
             literal(True).label("is_scenario_object"),

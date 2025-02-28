@@ -1,5 +1,6 @@
 """Data Transfer Objects (much like entities from database) are defined in this module."""
 
+from .buildings import BuildingDTO, BuildingWithGeometryDTO
 from .functional_zones import (
     FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
@@ -15,7 +16,6 @@ from .indicators import (
     ScenarioIndicatorValueDTO,
     ShortScenarioIndicatorValueDTO,
 )
-from .living_buildings import LivingBuildingDTO, LivingBuildingWithGeometryDTO
 from .normatives import NormativeDTO
 from .object_geometries import ObjectGeometryDTO, ScenarioGeometryDTO, ScenarioGeometryWithAllObjectsDTO
 from .pages import PageDTO
@@ -78,8 +78,8 @@ __all__ = [
     "PhysicalObjectTypeDTO",
     "PhysicalObjectTypesHierarchyDTO",
     "PhysicalObjectWithGeometryDTO",
-    "LivingBuildingDTO",
-    "LivingBuildingWithGeometryDTO",
+    "BuildingDTO",
+    "BuildingWithGeometryDTO",
     "FunctionalZoneDTO",
     "FunctionalZoneTypeDTO",
     "TerritoryWithIndicatorDTO",

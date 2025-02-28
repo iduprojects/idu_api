@@ -1,6 +1,5 @@
 """Unit tests for indicator objects are defined here."""
 
-from collections.abc import Callable
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 

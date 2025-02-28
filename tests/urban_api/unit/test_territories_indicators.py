@@ -4,9 +4,8 @@ from datetime import date
 from unittest.mock import patch
 
 import pytest
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, func, select, text
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import func, select
 
 from idu_api.common.db.entities import (
     indicators_dict,
@@ -22,7 +21,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_indicators import (
     get_indicator_values_by_territory_id_from_db,
     get_indicators_by_territory_id_from_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, include_child_territories_cte
+from idu_api.urban_api.logic.impl.helpers.utils import include_child_territories_cte
 from idu_api.urban_api.schemas import Indicator, IndicatorValue, TerritoryWithIndicators
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection
@@ -83,12 +82,13 @@ async def test_get_indicator_values_by_territory_id_from_db(mock_conn: MockConne
         select(
             territory_indicators_data.c.indicator_id,
             territory_indicators_data.c.value_type,
+            territory_indicators_data.c.territory_id,
             func.max(func.date(territory_indicators_data.c.date_value)).label("max_date"),
         )
-        .where(territory_indicators_data.c.territory_id == territory_id)
         .group_by(
             territory_indicators_data.c.indicator_id,
             territory_indicators_data.c.value_type,
+            territory_indicators_data.c.territory_id,
         )
         .subquery()
     )
@@ -125,7 +125,8 @@ async def test_get_indicator_values_by_territory_id_from_db(mock_conn: MockConne
             subquery,
             (territory_indicators_data.c.indicator_id == subquery.c.indicator_id)
             & (territory_indicators_data.c.value_type == subquery.c.value_type)
-            & (territory_indicators_data.c.date_value == subquery.c.max_date),
+            & (territory_indicators_data.c.date_value == subquery.c.max_date)
+            & (territory_indicators_data.c.territory_id == subquery.c.territory_id),
         )
         .join(
             indicators_dict,
@@ -236,18 +237,11 @@ async def test_get_indicator_values_by_parent_id_from_db(mock_conn: MockConnecti
         "value_type": "real",
         "information_source": "mock_string",
     }
-    statement = select(
-        territories_data.c.territory_id,
-        territories_data.c.name,
-        territories_data.c.geometry,
-        territories_data.c.centre_point,
-    ).where(territories_data.c.parent_id == parent_id)
-    territories_cte = statement.cte(name="territories_cte")
     statement = (
         select(
-            territories_cte.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(territories_cte.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(territories_cte.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            territories_data.c.name.label("territory_name"),
+            ST_AsEWKB(territories_data.c.geometry).label("geometry"),
+            ST_AsEWKB(territories_data.c.centre_point).label("centre_point"),
             territory_indicators_data,
             indicators_dict.c.parent_id,
             indicators_dict.c.name_full,
@@ -256,42 +250,71 @@ async def test_get_indicator_values_by_parent_id_from_db(mock_conn: MockConnecti
             measurement_units_dict.c.measurement_unit_id,
             measurement_units_dict.c.name.label("measurement_unit_name"),
         )
-        .select_from(
-            territories_cte.join(
-                territory_indicators_data, territories_cte.c.territory_id == territory_indicators_data.c.territory_id
-            )
-            .join(indicators_dict, indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id)
-            .outerjoin(
-                measurement_units_dict,
-                measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
-            )
-            .outerjoin(indicators_groups_data, indicators_groups_data.c.indicator_id == indicators_dict.c.indicator_id)
-        )
         .where(
+            (
+                territories_data.c.parent_id == parent_id
+                if parent_id is not None
+                else territories_data.c.parent_id.is_(None)
+            ),
             territory_indicators_data.c.indicator_id.in_([1]),
             indicators_groups_data.c.indicators_group_id == filters["indicators_group_id"],
             func.date(territory_indicators_data.c.date_value) >= filters["start_date"],
             func.date(territory_indicators_data.c.date_value) <= filters["end_date"],
             territory_indicators_data.c.value_type == filters["value_type"],
             territory_indicators_data.c.information_source.ilike(f"%{filters['information_source']}%"),
-        ).distinct()
-    )
-    last_only_statement = (
-        statement.add_columns(
-            func.row_number()
-            .over(
-                partition_by=[
-                    territory_indicators_data.c.territory_id,
-                    territory_indicators_data.c.indicator_id,
-                    territory_indicators_data.c.value_type,
-                ],
-                order_by=territory_indicators_data.c.date_value.desc(),
-            )
-            .label("row_num")
         )
-        .alias("last_values")
-        .select()
-        .where(text("row_num = 1"))
+        .distinct()
+    )
+    subquery = (
+        select(
+            territory_indicators_data.c.indicator_id,
+            territory_indicators_data.c.value_type,
+            territory_indicators_data.c.territory_id,
+            func.max(func.date(territory_indicators_data.c.date_value)).label("max_date"),
+        )
+        .group_by(
+            territory_indicators_data.c.indicator_id,
+            territory_indicators_data.c.value_type,
+            territory_indicators_data.c.territory_id,
+        )
+        .subquery()
+    )
+    last_only_statement = statement.select_from(
+        territory_indicators_data.join(
+            subquery,
+            (territory_indicators_data.c.indicator_id == subquery.c.indicator_id)
+            & (territory_indicators_data.c.value_type == subquery.c.value_type)
+            & (territory_indicators_data.c.date_value == subquery.c.max_date)
+            & (territory_indicators_data.c.territory_id == subquery.c.territory_id),
+        )
+        .join(
+            indicators_dict,
+            indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
+        )
+        .outerjoin(
+            measurement_units_dict,
+            measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
+        )
+        .outerjoin(
+            indicators_groups_data,
+            indicators_groups_data.c.indicator_id == indicators_dict.c.indicator_id,
+        )
+        .join(territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id)
+    )
+    statement = statement.select_from(
+        territory_indicators_data.join(
+            indicators_dict,
+            indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
+        )
+        .outerjoin(
+            measurement_units_dict,
+            measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
+        )
+        .outerjoin(
+            indicators_groups_data,
+            indicators_groups_data.c.indicator_id == indicators_dict.c.indicator_id,
+        )
+        .join(territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id)
     )
 
     # Act
@@ -299,8 +322,6 @@ async def test_get_indicator_values_by_parent_id_from_db(mock_conn: MockConnecti
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
             await get_indicator_values_by_parent_id_from_db(mock_conn, parent_id, **filters, last_only=False)
-    await get_indicator_values_by_parent_id_from_db(mock_conn, parent_id, **filters, last_only=True)
-    await get_indicator_values_by_parent_id_from_db(mock_conn, parent_id, **filters, last_only=False)
     await get_indicator_values_by_parent_id_from_db(mock_conn, parent_id, **filters, last_only=True)
     result = await get_indicator_values_by_parent_id_from_db(mock_conn, parent_id, **filters, last_only=False)
     geojson_result = await GeoJSONResponse.from_list([r.to_geojson_dict() for r in result])

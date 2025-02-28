@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any
 
 import shapely.geometry as geom
+from shapely.wkb import loads as wkb_loads
 
 
 @dataclass(frozen=True)
@@ -42,10 +43,12 @@ class ProjectTerritoryDTO:
     properties: dict[str, Any] | None
 
     def __post_init__(self) -> None:
-        if isinstance(self.centre_point, dict):
-            self.centre_point = geom.shape(self.centre_point)
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.centre_point, bytes):
+            self.centre_point = wkb_loads(self.centre_point)
+        if self.geometry is None:
+            self.geometry = self.centre_point
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)
 
 
 @dataclass
@@ -68,10 +71,12 @@ class ProjectWithTerritoryDTO:
     centre_point: geom.Point
 
     def __post_init__(self) -> None:
-        if isinstance(self.centre_point, dict):
-            self.centre_point = geom.shape(self.centre_point)
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.centre_point, bytes):
+            self.centre_point = wkb_loads(self.centre_point)
+        if self.geometry is None:
+            self.geometry = self.centre_point
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)
 
     def to_geojson_dict(self):
         project = asdict(self)

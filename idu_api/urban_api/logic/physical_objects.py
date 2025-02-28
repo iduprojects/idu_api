@@ -6,7 +6,7 @@ from typing import Protocol
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
 
 from idu_api.urban_api.dto import (
-    LivingBuildingDTO,
+    BuildingDTO,
     ObjectGeometryDTO,
     PhysicalObjectDTO,
     PhysicalObjectWithGeometryDTO,
@@ -15,9 +15,9 @@ from idu_api.urban_api.dto import (
     UrbanObjectDTO,
 )
 from idu_api.urban_api.schemas import (
-    LivingBuildingPatch,
-    LivingBuildingPost,
-    LivingBuildingPut,
+    BuildingPatch,
+    BuildingPost,
+    BuildingPut,
     PhysicalObjectPatch,
     PhysicalObjectPost,
     PhysicalObjectPut,
@@ -67,25 +67,23 @@ class PhysicalObjectsService(Protocol):
         """Delete physical object."""
 
     @abc.abstractmethod
-    async def add_living_building(self, living_building: LivingBuildingPost) -> PhysicalObjectDTO:
+    async def add_building(self, building: BuildingPost) -> PhysicalObjectDTO:
         """Create living building object."""
 
     @abc.abstractmethod
-    async def put_living_building(self, living_building: LivingBuildingPut) -> PhysicalObjectDTO:
+    async def put_building(self, building: BuildingPut) -> PhysicalObjectDTO:
         """Put living building object."""
 
     @abc.abstractmethod
-    async def patch_living_building(
-        self, living_building: LivingBuildingPatch, living_building_id: int
-    ) -> PhysicalObjectDTO:
+    async def patch_building(self, building: BuildingPatch, building_id: int) -> PhysicalObjectDTO:
         """Patch living building object."""
 
     @abc.abstractmethod
-    async def delete_living_building(self, living_building_id: int) -> dict:
+    async def delete_building(self, building_id: int) -> dict:
         """Delete living building object."""
 
     @abc.abstractmethod
-    async def get_living_buildings_by_physical_object_id(self, physical_object_id: int) -> list[LivingBuildingDTO]:
+    async def get_buildings_by_physical_object_id(self, physical_object_id: int) -> list[BuildingDTO]:
         """Get living building or list of living buildings by physical object id."""
 
     @abc.abstractmethod

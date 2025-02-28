@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from geoalchemy2.types import Geometry
+from shapely.geometry import shape
 from sqlalchemy import Column, Enum, Table
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql import Insert, Select, Update
@@ -229,7 +230,8 @@ class MockConnection:
         if dtype == dict:
             return {"context": [1]}
         if dtype == "GeometryType":
-            return {"type": "Point", "coordinates": [1, 2]}
+            geom = shape({"type": "Point", "coordinates": [1, 2]})
+            return geom.wkb
         if dtype == datetime:
             return datetime(2024, 1, 1)
         if dtype == date:

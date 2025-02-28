@@ -7,12 +7,12 @@ from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, P
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.dto import (
+    BuildingWithGeometryDTO,
     FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
     HexagonDTO,
     IndicatorDTO,
     IndicatorValueDTO,
-    LivingBuildingWithGeometryDTO,
     NormativeDTO,
     PageDTO,
     PhysicalObjectDTO,
@@ -30,7 +30,7 @@ from idu_api.urban_api.dto import (
     TerritoryWithoutGeometryDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_buildings import (
-    get_living_buildings_with_geometry_by_territory_id_from_db,
+    get_buildings_with_geometry_by_territory_id_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_functional_zones import (
     delete_all_functional_zones_for_territory_from_db,
@@ -368,14 +368,14 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
                 paginate,
             )
 
-    async def get_living_buildings_with_geometry_by_territory_id(
+    async def get_buildings_with_geometry_by_territory_id(
         self,
         territory_id: int,
         include_child_territories: bool,
         cities_only: bool,
-    ) -> PageDTO[LivingBuildingWithGeometryDTO]:
+    ) -> PageDTO[BuildingWithGeometryDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_living_buildings_with_geometry_by_territory_id_from_db(
+            return await get_buildings_with_geometry_by_territory_id_from_db(
                 conn, territory_id, include_child_territories, cities_only
             )
 

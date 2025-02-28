@@ -4,12 +4,11 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, call, patch
 
 import pytest
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, delete, insert, select, text, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB
+from sqlalchemy import delete, insert, select, text, update
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
@@ -27,7 +26,7 @@ from idu_api.urban_api.logic.impl.helpers.object_geometries import (
     patch_object_geometry_to_db,
     put_object_geometry_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, OBJECTS_NUMBER_LIMIT
+from idu_api.urban_api.logic.impl.helpers.utils import OBJECTS_NUMBER_LIMIT, SRID
 from idu_api.urban_api.schemas import (
     ObjectGeometry,
     ObjectGeometryPatch,
@@ -49,6 +48,7 @@ async def test_get_physical_objects_by_object_geometry_id_from_db(mock_conn: Moc
 
     # Arrange
     object_geometry_id = 1
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     statement = (
         select(
             physical_objects_data.c.physical_object_id,
@@ -60,9 +60,8 @@ async def test_get_physical_objects_by_object_geometry_id_from_db(mock_conn: Moc
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
             physical_objects_data.c.created_at,
             physical_objects_data.c.updated_at,
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
         )
@@ -89,8 +88,8 @@ async def test_get_physical_objects_by_object_geometry_id_from_db(mock_conn: Moc
                 territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(urban_objects_data.c.object_geometry_id == object_geometry_id)
@@ -123,8 +122,8 @@ async def test_get_object_geometry_by_ids_from_db(mock_conn: MockConnection):
         select(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.territory_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             object_geometries_data.c.created_at,
@@ -175,9 +174,9 @@ async def test_put_object_geometry_to_db(mock_conn: MockConnection, object_geome
         .where(object_geometries_data.c.object_geometry_id == object_geometry_id)
         .values(
             territory_id=object_geometries_put_req.territory_id,
-            geometry=ST_GeomFromText(object_geometries_put_req.geometry.as_shapely_geometry().wkt, text("4326")),
-            centre_point=ST_GeomFromText(
-                object_geometries_put_req.centre_point.as_shapely_geometry().wkt, text("4326")
+            geometry=ST_GeomFromWKB(object_geometries_put_req.geometry.as_shapely_geometry().wkb, text(str(SRID))),
+            centre_point=ST_GeomFromWKB(
+                object_geometries_put_req.centre_point.as_shapely_geometry().wkb, text(str(SRID))
             ),
             address=object_geometries_put_req.address,
             osm_id=object_geometries_put_req.osm_id,
@@ -297,9 +296,9 @@ async def test_add_object_geometry_to_physical_object_to_db(
         insert(object_geometries_data)
         .values(
             territory_id=object_geometries_post_req.territory_id,
-            geometry=ST_GeomFromText(object_geometries_post_req.geometry.as_shapely_geometry().wkt, text("4326")),
-            centre_point=ST_GeomFromText(
-                object_geometries_post_req.centre_point.as_shapely_geometry().wkt, text("4326")
+            geometry=ST_GeomFromWKB(object_geometries_post_req.geometry.as_shapely_geometry().wkb, text(str(SRID))),
+            centre_point=ST_GeomFromWKB(
+                object_geometries_post_req.centre_point.as_shapely_geometry().wkb, text(str(SRID))
             ),
             address=object_geometries_post_req.address,
             osm_id=object_geometries_post_req.osm_id,

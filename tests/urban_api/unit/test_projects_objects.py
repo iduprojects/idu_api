@@ -10,9 +10,8 @@ import structlog
 from aioresponses import aioresponses
 from aioresponses.core import merge_params, normalize_url
 from fastapi_pagination.bases import RawParams
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, delete, func, insert, or_, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import delete, func, insert, or_, select, update
 
 from idu_api.common.db.entities import (
     projects_data,
@@ -28,11 +27,11 @@ from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, Proj
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     delete_project_from_db,
-    get_project_image_from_minio,
-    get_project_image_url_from_minio,
     get_preview_projects_images_from_minio,
     get_preview_projects_images_url_from_minio,
     get_project_by_id_from_db,
+    get_project_image_from_minio,
+    get_project_image_url_from_minio,
     get_project_territory_by_id_from_db,
     get_projects_from_db,
     get_projects_territories_from_db,
@@ -43,7 +42,6 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     put_project_to_db,
     upload_project_image_to_minio,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES
 from idu_api.urban_api.schemas import (
     Project,
     ProjectPatch,
@@ -110,8 +108,8 @@ async def test_get_project_territory_by_id_from_db(mock_check: AsyncMock, mock_c
             projects_data.c.user_id.label("project_user_id"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(projects_territory_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_territory_data.c.centre_point).label("centre_point"),
             projects_territory_data.c.properties,
             scenarios_data.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
@@ -212,13 +210,12 @@ async def test_get_projects_territories_from_db(mock_conn: MockConnection):
 
     # Arrange
     user_id = "mock_string"
-    decimal_places = 15
     statement = (
         select(
             projects_data,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.geometry, decimal_places), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.centre_point, decimal_places), JSONB).label("centre_point"),
+            ST_AsEWKB(projects_territory_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_territory_data.c.centre_point).label("centre_point"),
             scenarios_data.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
         )
@@ -237,8 +234,8 @@ async def test_get_projects_territories_from_db(mock_conn: MockConnection):
         select(
             projects_data,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.geometry, decimal_places), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(projects_territory_data.c.centre_point, decimal_places), JSONB).label("centre_point"),
+            ST_AsEWKB(projects_territory_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_territory_data.c.centre_point).label("centre_point"),
             scenarios_data.c.scenario_id,
             scenarios_data.c.name.label("scenario_name"),
         )

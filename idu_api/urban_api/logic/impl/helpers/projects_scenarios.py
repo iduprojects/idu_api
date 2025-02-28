@@ -537,7 +537,8 @@ async def copy_services(conn, service_ids: list[int]) -> dict[int, int]:
             projects_services_data.c.public_service_id,
             projects_services_data.c.service_type_id,
             projects_services_data.c.name,
-            projects_services_data.c.capacity_real,
+            projects_services_data.c.capacity,
+            projects_services_data.c.is_capacity_real,
             projects_services_data.c.properties,
         )
         .where(projects_services_data.c.service_id.in_(service_ids))

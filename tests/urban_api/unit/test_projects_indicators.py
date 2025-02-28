@@ -8,9 +8,8 @@ import pytest
 import structlog
 from aioresponses import aioresponses
 from aioresponses.core import merge_params, normalize_url
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, delete, insert, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import delete, insert, select, update
 
 from idu_api.common.db.entities import (
     hexagons_data,
@@ -424,8 +423,8 @@ async def test_get_hexagons_with_indicators_by_scenario_id_from_db(mock_check: A
             indicators_dict.c.name_full,
             measurement_units_dict.c.name.label("measurement_unit_name"),
             hexagons_data.c.hexagon_id,
-            cast(ST_AsGeoJSON(hexagons_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(hexagons_data.c.centre_point), JSONB).label("centre_point"),
+            ST_AsEWKB(hexagons_data.c.geometry).label("geometry"),
+            ST_AsEWKB(hexagons_data.c.centre_point).label("centre_point"),
         )
         .select_from(
             projects_indicators_data.join(

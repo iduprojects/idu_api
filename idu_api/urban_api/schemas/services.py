@@ -22,8 +22,9 @@ class Service(BaseModel):
     service_id: int = Field(..., examples=[1])
     service_type: ServiceType
     territory_type: TerritoryType | None
-    name: str | None = Field(None, description="service name", examples=["--"])
-    capacity_real: int | None = Field(None, examples=[1])
+    name: str | None = Field(..., description="service name", examples=["--"])
+    capacity: int | None = Field(..., examples=[1])
+    is_capacity_real: bool | None = Field(..., examples=[True])
     territories: list[ShortTerritory] | None = None
     properties: dict[str, Any] = Field(
         default_factory=dict,
@@ -64,7 +65,8 @@ class Service(BaseModel):
                 else None
             ),
             name=dto.name,
-            capacity_real=dto.capacity_real,
+            capacity=dto.capacity,
+            is_capacity_real=dto.is_capacity_real,
             properties=dto.properties,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
@@ -77,7 +79,8 @@ class ServicePost(BaseModel):
     service_type_id: int = Field(..., examples=[1])
     territory_type_id: int | None = Field(None, examples=[1])
     name: str | None = Field(None, description="service name", examples=["--"])
-    capacity_real: int | None = Field(None, examples=[1])
+    capacity: int | None = Field(..., examples=[1])
+    is_capacity_real: bool | None = Field(None, examples=[True])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="service additional properties",
@@ -93,7 +96,8 @@ class ScenarioServicePost(BaseModel):
     service_type_id: int = Field(..., examples=[1])
     territory_type_id: int | None = Field(None, examples=[1])
     name: str | None = Field(None, description="service name", examples=["--"])
-    capacity_real: int | None = Field(None, examples=[1])
+    capacity: int | None = Field(..., examples=[1])
+    is_capacity_real: bool | None = Field(None, examples=[True])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="service additional properties",
@@ -105,7 +109,8 @@ class ServicePut(BaseModel):
     service_type_id: int = Field(..., examples=[1])
     territory_type_id: int | None = Field(..., examples=[1])
     name: str | None = Field(..., description="service name", examples=["--"])
-    capacity_real: int | None = Field(..., examples=[1])
+    capacity: int | None = Field(..., examples=[1])
+    is_capacity_real: bool | None = Field(..., examples=[True])
     properties: dict[str, Any] = Field(
         ...,
         description="service additional properties",
@@ -117,7 +122,8 @@ class ServicePatch(BaseModel):
     service_type_id: int | None = Field(None, examples=[1])
     territory_type_id: int | None = Field(None, examples=[1])
     name: str | None = Field(None, description="service name", examples=["--"])
-    capacity_real: int | None = Field(None, examples=[1])
+    capacity: int | None = Field(None, examples=[1])
+    is_capacity_real: bool | None = Field(None, examples=[True])
     properties: dict[str, Any] | None = Field(
         None,
         description="service additional properties",
@@ -141,7 +147,8 @@ class ServiceWithGeometry(BaseModel):
     territory_type: TerritoryType | None = None
     territory: ShortTerritory
     name: str | None = Field(..., description="service name", examples=["--"])
-    capacity_real: int | None = Field(..., examples=[1])
+    capacity: int | None = Field(..., examples=[1])
+    is_capacity_real: bool | None = Field(..., examples=[True])
     properties: dict[str, Any] = Field(
         default_factory=dict,
         description="service additional properties",
@@ -182,7 +189,8 @@ class ServiceWithGeometry(BaseModel):
             ),
             territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
             name=dto.name,
-            capacity_real=dto.capacity_real,
+            capacity=dto.capacity,
+            is_capacity_real=dto.is_capacity_real,
             properties=dto.properties,
             object_geometry_id=dto.object_geometry_id,
             address=dto.address,
@@ -237,7 +245,8 @@ class ScenarioService(Service):
                 else None
             ),
             name=dto.name,
-            capacity_real=dto.capacity_real,
+            capacity=dto.capacity,
+            is_capacity_real=dto.is_capacity_real,
             properties=dto.properties,
             created_at=dto.created_at,
             updated_at=dto.updated_at,

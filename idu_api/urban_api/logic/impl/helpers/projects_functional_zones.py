@@ -1,8 +1,7 @@
 """Projects functional zones internal logic is defined here."""
 
-from geoalchemy2.functions import ST_AsGeoJSON, ST_Intersection, ST_Intersects
-from sqlalchemy import cast, delete, insert, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB, ST_Intersection, ST_Intersects, ST_Within
+from sqlalchemy import case, delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -16,11 +15,10 @@ from idu_api.urban_api.dto import FunctionalZoneDTO, FunctionalZoneSourceDTO, Sc
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario
 from idu_api.urban_api.logic.impl.helpers.utils import (
-    DECIMAL_PLACES,
     OBJECTS_NUMBER_LIMIT,
     check_existence,
     extract_values_from_model,
-    get_all_context_territories,
+    get_context_territories_geometry,
 )
 from idu_api.urban_api.schemas import (
     ScenarioFunctionalZonePatch,
@@ -69,7 +67,7 @@ async def get_functional_zones_by_scenario_id_from_db(
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             projects_functional_zones.c.name,
-            cast(ST_AsGeoJSON(projects_functional_zones.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            ST_AsEWKB(projects_functional_zones.c.geometry).label("geometry"),
             projects_functional_zones.c.year,
             projects_functional_zones.c.source,
             projects_functional_zones.c.properties,
@@ -108,13 +106,15 @@ async def get_context_functional_zones_sources_from_db(
 ) -> list[FunctionalZoneSourceDTO]:
     """Get list of pairs year + source for functional zones for 'context' of the project territory."""
 
-    context = await get_all_context_territories(conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user_id)
 
     statement = (
         select(functional_zones_data.c.year, functional_zones_data.c.source)
         .where(
-            functional_zones_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
-            ST_Intersects(functional_zones_data.c.geometry, context["geometry"]),
+            (
+                (functional_zones_data.c.territory_id.in_(context_ids))
+                | (ST_Intersects(functional_zones_data.c.geometry, context_geom))
+            ),
         )
         .distinct()
     )
@@ -133,7 +133,7 @@ async def get_context_functional_zones_from_db(
 ) -> list[FunctionalZoneDTO]:
     """Get list of functional zone objects for 'context' of the project territory."""
 
-    context = await get_all_context_territories(conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user_id)
 
     statement = (
         select(
@@ -144,9 +144,14 @@ async def get_context_functional_zones_from_db(
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
-            cast(
-                ST_AsGeoJSON(ST_Intersection(functional_zones_data.c.geometry, context["geometry"]), DECIMAL_PLACES),
-                JSONB,
+            ST_AsEWKB(
+                case(
+                    (
+                        ~ST_Within(functional_zones_data.c.geometry, context_geom),
+                        ST_Intersection(functional_zones_data.c.geometry, context_geom),
+                    ),
+                    else_=functional_zones_data.c.geometry,
+                )
             ).label("geometry"),
             functional_zones_data.c.year,
             functional_zones_data.c.source,
@@ -166,8 +171,10 @@ async def get_context_functional_zones_from_db(
         .where(
             functional_zones_data.c.year == year,
             functional_zones_data.c.source == source,
-            functional_zones_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
-            ST_Intersects(functional_zones_data.c.geometry, context["geometry"]),
+            (
+                functional_zones_data.c.territory_id.in_(context_ids)
+                | ST_Intersects(functional_zones_data.c.geometry, context_geom)
+            ),
         )
     )
 
@@ -194,7 +201,7 @@ async def get_functional_zone_by_ids(conn: AsyncConnection, ids: list[int]) -> l
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             projects_functional_zones.c.name,
-            cast(ST_AsGeoJSON(projects_functional_zones.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            ST_AsEWKB(projects_functional_zones.c.geometry).label("geometry"),
             projects_functional_zones.c.year,
             projects_functional_zones.c.source,
             projects_functional_zones.c.properties,

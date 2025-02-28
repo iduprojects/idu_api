@@ -1,14 +1,13 @@
 """Territories functional zones internal logic is defined here."""
 
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, delete, select
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import functional_zone_types_dict, functional_zones_data, territories_data
 from idu_api.urban_api.dto import FunctionalZoneDTO, FunctionalZoneSourceDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, check_existence, include_child_territories_cte
+from idu_api.urban_api.logic.impl.helpers.utils import check_existence, include_child_territories_cte
 
 
 async def get_functional_zones_sources_by_territory_id_from_db(
@@ -55,7 +54,7 @@ async def get_functional_zones_by_territory_id_from_db(
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
-            cast(ST_AsGeoJSON(functional_zones_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            ST_AsEWKB(functional_zones_data.c.geometry).label("geometry"),
             functional_zones_data.c.year,
             functional_zones_data.c.source,
             functional_zones_data.c.properties,

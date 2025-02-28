@@ -4,24 +4,23 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi_pagination.bases import CursorRawParams, RawParams
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, select
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import select
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_types_dict,
     physical_objects_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import LivingBuildingWithGeometryDTO, PageDTO
+from idu_api.urban_api.dto import BuildingWithGeometryDTO, PageDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.territories_buildings import (
-    get_living_buildings_with_geometry_by_territory_id_from_db,
+    get_buildings_with_geometry_by_territory_id_from_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, include_child_territories_cte
-from idu_api.urban_api.schemas import LivingBuildingWithGeometry
+from idu_api.urban_api.logic.impl.helpers.utils import include_child_territories_cte
+from idu_api.urban_api.schemas import BuildingWithGeometry
 from tests.urban_api.helpers.connection import MockConnection
 
 ####################################################################################
@@ -30,8 +29,8 @@ from tests.urban_api.helpers.connection import MockConnection
 
 
 @pytest.mark.asyncio
-async def test_get_living_buildings_with_geometry_by_territory_id_from_db(mock_conn: MockConnection):
-    """Test the get_living_buildings_with_geometry_by_territory_id_from_db function."""
+async def test_get_buildings_with_geometry_by_territory_id_from_db(mock_conn: MockConnection):
+    """Test the get_buildings_with_geometry_by_territory_id_from_db function."""
 
     # Arrange
     territory_id = 1
@@ -39,10 +38,7 @@ async def test_get_living_buildings_with_geometry_by_territory_id_from_db(mock_c
     limit, offset = 10, 0
     statement = (
         select(
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties,
-            physical_objects_data.c.physical_object_id,
+            buildings_data,
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
             physical_object_types_dict.c.physical_object_type_id,
@@ -50,13 +46,13 @@ async def test_get_living_buildings_with_geometry_by_territory_id_from_db(mock_c
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
         )
         .select_from(
-            living_buildings_data.join(
+            buildings_data.join(
                 physical_objects_data,
-                physical_objects_data.c.physical_object_id == living_buildings_data.c.physical_object_id,
+                physical_objects_data.c.physical_object_id == buildings_data.c.physical_object_id,
             )
             .join(
                 physical_object_types_dict,
@@ -72,7 +68,7 @@ async def test_get_living_buildings_with_geometry_by_territory_id_from_db(mock_c
             )
         )
         .distinct()
-        .order_by(living_buildings_data.c.living_building_id)
+        .order_by(buildings_data.c.building_id)
     )
     territories_cte = include_child_territories_cte(territory_id, True)
     recursive_statement = statement.where(
@@ -84,15 +80,15 @@ async def test_get_living_buildings_with_geometry_by_territory_id_from_db(mock_c
     with patch("idu_api.urban_api.logic.impl.helpers.territories_buildings.check_existence") as mock_check_existence:
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
-            await get_living_buildings_with_geometry_by_territory_id_from_db(
+            await get_buildings_with_geometry_by_territory_id_from_db(
                 mock_conn, territory_id, include_child_territories, cities_only
             )
     with patch("idu_api.urban_api.utils.pagination.verify_params") as mock_verify_params:
         mock_verify_params.return_value = (None, RawParams(limit=limit, offset=offset))
         statement = statement.offset(offset).limit(limit)
         recursive_statement = recursive_statement.limit(limit).offset(offset)
-        await get_living_buildings_with_geometry_by_territory_id_from_db(mock_conn, territory_id, True, True)
-        page_result = await get_living_buildings_with_geometry_by_territory_id_from_db(
+        await get_buildings_with_geometry_by_territory_id_from_db(mock_conn, territory_id, True, True)
+        page_result = await get_buildings_with_geometry_by_territory_id_from_db(
             mock_conn, territory_id, include_child_territories, cities_only
         )
     with patch("idu_api.urban_api.utils.pagination.verify_params") as mock_verify_params:
@@ -107,24 +103,24 @@ async def test_get_living_buildings_with_geometry_by_territory_id_from_db(mock_c
                     "has_next": False,
                 },
             )
-            cursor_result = await get_living_buildings_with_geometry_by_territory_id_from_db(
+            cursor_result = await get_buildings_with_geometry_by_territory_id_from_db(
                 mock_conn, territory_id, include_child_territories, cities_only
             )
 
     # Assert
     assert isinstance(page_result, PageDTO), "Result should be a PageDTO."
     assert all(
-        isinstance(item, LivingBuildingWithGeometryDTO) for item in page_result.items
-    ), "Each item should be a LivingBuildingWithGeometryDTO."
+        isinstance(item, BuildingWithGeometryDTO) for item in page_result.items
+    ), "Each item should be a BuildingWithGeometryDTO."
     assert isinstance(
-        LivingBuildingWithGeometry.from_dto(page_result.items[0]), LivingBuildingWithGeometry
+        BuildingWithGeometry.from_dto(page_result.items[0]), BuildingWithGeometry
     ), "Couldn't create pydantic model from DTO."
     assert isinstance(cursor_result, PageDTO), "Result should be a PageDTO."
     assert all(
-        isinstance(item, LivingBuildingWithGeometryDTO) for item in cursor_result.items
-    ), "Each item should be a LivingBuildingWithGeometryDTO."
+        isinstance(item, BuildingWithGeometryDTO) for item in cursor_result.items
+    ), "Each item should be a BuildingWithGeometryDTO."
     assert isinstance(
-        LivingBuildingWithGeometry.from_dto(cursor_result.items[0]), LivingBuildingWithGeometry
+        BuildingWithGeometry.from_dto(cursor_result.items[0]), BuildingWithGeometry
     ), "Couldn't create pydantic model from DTO."
     assert hasattr(
         cursor_result, "cursor_data"

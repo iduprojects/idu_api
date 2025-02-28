@@ -4,9 +4,8 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 from typing import Any, Literal
 
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import RowMapping, cast, func, select
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import RowMapping, func, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -20,7 +19,7 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.dto import PageDTO, ServiceDTO, ServicesCountCapacityDTO, ServiceTypeDTO, ServiceWithGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, check_existence, include_child_territories_cte
+from idu_api.urban_api.logic.impl.helpers.utils import check_existence, include_child_territories_cte
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
@@ -37,22 +36,19 @@ async def get_service_types_by_territory_id_from_db(
     statement = (
         select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
         .select_from(
-            territories_data.join(
-                object_geometries_data,
-                object_geometries_data.c.territory_id == territories_data.c.territory_id,
-            )
+            urban_objects_data.join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
             .join(
-                urban_objects_data,
+                object_geometries_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
             )
             .join(
-                services_data,
-                services_data.c.service_id == urban_objects_data.c.service_id,
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
             .join(service_types_dict, service_types_dict.c.service_type_id == services_data.c.service_type_id)
             .join(
                 urban_functions_dict,
-                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+                service_types_dict.c.urban_function_id == urban_functions_dict.c.urban_function_id,
             )
         )
         .order_by(service_types_dict.c.service_type_id)
@@ -208,8 +204,8 @@ async def get_services_with_geometry_by_territory_id_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
         )
@@ -304,7 +300,7 @@ async def get_services_capacity_by_territory_id_from_db(
         select(
             level_territories.c.territory_id,
             func.count(services_data.c.service_id).label("count"),
-            func.coalesce(func.sum(services_data.c.capacity_real), 0).label("capacity"),
+            func.coalesce(func.sum(services_data.c.capacity), 0).label("capacity"),
         )
         .select_from(
             level_territories.outerjoin(

@@ -1,8 +1,7 @@
 """Functional zones internal logic is defined here."""
 
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import case, cast, delete, insert, or_, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import case, delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -23,7 +22,7 @@ from idu_api.urban_api.exceptions.logic.common import (
     EntityNotFoundById,
     EntityNotFoundByParams,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, check_existence, extract_values_from_model
+from idu_api.urban_api.logic.impl.helpers.utils import check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import (
     FunctionalZonePatch,
     FunctionalZonePost,
@@ -82,10 +81,8 @@ async def get_all_sources_from_db(conn: AsyncConnection, territory_id: int | Non
     statement = (
         select(profiles_reclamation_data.c.source_profile_id)
         .where(
-            or_(
-                profiles_reclamation_data.c.territory_id == territory_id,
-                profiles_reclamation_data.c.territory_id.is_(None),
-            )
+            (profiles_reclamation_data.c.territory_id == territory_id)
+            | (profiles_reclamation_data.c.territory_id.is_(None)),
         )
         .order_by(profiles_reclamation_data.c.source_profile_id, priority_order)
         .distinct()
@@ -137,10 +134,8 @@ async def get_profiles_reclamation_data_matrix_from_db(
         if not await check_existence(conn, territories_data, conditions={"territory_id": territory_id}):
             raise EntityNotFoundById(territory_id, "territory")
         statement = base_statement.where(
-            or_(
-                profiles_reclamation_data.c.territory_id == territory_id,
-                profiles_reclamation_data.c.territory_id.is_(None),
-            )
+            (profiles_reclamation_data.c.territory_id == territory_id)
+            | (profiles_reclamation_data.c.territory_id.is_(None)),
         )
     else:
         statement = base_statement.where(profiles_reclamation_data.c.territory_id.is_(None))
@@ -324,7 +319,7 @@ async def get_functional_zone_by_id(conn: AsyncConnection, functional_zone_id: i
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
-            cast(ST_AsGeoJSON(functional_zones_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            ST_AsEWKB(functional_zones_data.c.geometry).label("geometry"),
             functional_zones_data.c.year,
             functional_zones_data.c.source,
             functional_zones_data.c.properties,

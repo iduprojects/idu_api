@@ -5,9 +5,8 @@ from typing import Any
 
 import aiohttp
 import structlog
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, delete, insert, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -325,8 +324,8 @@ async def get_hexagons_with_indicators_by_scenario_id_from_db(
             indicators_dict.c.name_full,
             measurement_units_dict.c.name.label("measurement_unit_name"),
             hexagons_data.c.hexagon_id,
-            cast(ST_AsGeoJSON(hexagons_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(hexagons_data.c.centre_point), JSONB).label("centre_point"),
+            ST_AsEWKB(hexagons_data.c.geometry).label("geometry"),
+            ST_AsEWKB(hexagons_data.c.centre_point).label("centre_point"),
         )
         .select_from(
             projects_indicators_data.join(
@@ -350,7 +349,7 @@ async def get_hexagons_with_indicators_by_scenario_id_from_db(
     if indicators_group_id is not None:
         statement = statement.where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
     if indicator_ids is not None:
-        ids = [int(indicator.strip()) for indicator in indicator_ids.split(",")]
+        ids = {int(indicator.strip()) for indicator in indicator_ids.split(",")}
         statement = statement.where(projects_indicators_data.c.indicator_id.in_(ids))
     indicators = (await conn.execute(statement)).mappings().all()
 

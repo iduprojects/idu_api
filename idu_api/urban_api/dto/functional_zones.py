@@ -4,7 +4,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
-from shapely import geometry as geom
+import shapely.geometry as geom
+from shapely.wkb import loads as wkb_loads
 
 
 @dataclass(frozen=True)
@@ -32,8 +33,8 @@ class FunctionalZoneDTO:  # pylint: disable=too-many-instance-attributes
     updated_at: datetime
 
     def __post_init__(self) -> None:
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)
 
     def to_geojson_dict(self) -> dict:
         zone = asdict(self)
@@ -63,8 +64,8 @@ class ScenarioFunctionalZoneDTO:  # pylint: disable=too-many-instance-attributes
     updated_at: datetime
 
     def __post_init__(self) -> None:
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)
 
     def to_geojson_dict(self) -> dict:
         profile = asdict(self)

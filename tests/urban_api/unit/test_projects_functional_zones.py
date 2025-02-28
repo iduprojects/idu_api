@@ -4,9 +4,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText, ST_Intersection, ST_Intersects
-from sqlalchemy import cast, delete, insert, select, text, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB, ST_Intersection, ST_Intersects, ST_Within
+from sqlalchemy import case, delete, insert, select, text, update
 
 from idu_api.common.db.entities import (
     functional_zone_types_dict,
@@ -33,10 +32,10 @@ from idu_api.urban_api.logic.impl.helpers.projects_functional_zones import (
     put_scenario_functional_zone_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.utils import (
-    DECIMAL_PLACES,
     OBJECTS_NUMBER_LIMIT,
+    SRID,
     extract_values_from_model,
-    get_all_context_territories,
+    get_context_territories_geometry,
 )
 from idu_api.urban_api.schemas import (
     FunctionalZone,
@@ -101,7 +100,7 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_check: AsyncMock
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             projects_functional_zones.c.name,
-            cast(ST_AsGeoJSON(projects_functional_zones.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            ST_AsEWKB(projects_functional_zones.c.geometry).label("geometry"),
             projects_functional_zones.c.year,
             projects_functional_zones.c.source,
             projects_functional_zones.c.properties,
@@ -150,12 +149,12 @@ async def test_get_context_functional_zones_sources_from_db(mock_conn: MockConne
     # Arrange
     project_id = 1
     user_id = "mock_string"
-    context = await get_all_context_territories(mock_conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
     statement = (
         select(functional_zones_data.c.year, functional_zones_data.c.source)
         .where(
-            functional_zones_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
-            ST_Intersects(functional_zones_data.c.geometry, context["geometry"]),
+            (functional_zones_data.c.territory_id.in_(context_ids))
+            | (ST_Intersects(functional_zones_data.c.geometry, context_geom))
         )
         .distinct()
     )
@@ -184,7 +183,7 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
     source = "mock_string"
     functional_zone_type_id = 1
     user_id = "mock_string"
-    context = await get_all_context_territories(mock_conn, project_id, user_id)
+    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user_id)
     statement = (
         select(
             functional_zones_data.c.functional_zone_id,
@@ -194,9 +193,14 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
-            cast(
-                ST_AsGeoJSON(ST_Intersection(functional_zones_data.c.geometry, context["geometry"]), DECIMAL_PLACES),
-                JSONB,
+            ST_AsEWKB(
+                case(
+                    (
+                        ~ST_Within(functional_zones_data.c.geometry, context_geom),
+                        ST_Intersection(functional_zones_data.c.geometry, context_geom),
+                    ),
+                    else_=functional_zones_data.c.geometry,
+                )
             ).label("geometry"),
             functional_zones_data.c.year,
             functional_zones_data.c.source,
@@ -216,8 +220,10 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
         .where(
             functional_zones_data.c.year == year,
             functional_zones_data.c.source == source,
-            functional_zones_data.c.territory_id.in_(select(context["territories"].c.territory_id)),
-            ST_Intersects(functional_zones_data.c.geometry, context["geometry"]),
+            (
+                functional_zones_data.c.territory_id.in_(context_ids)
+                | ST_Intersects(functional_zones_data.c.geometry, context_geom)
+            ),
             functional_zones_data.c.functional_zone_type_id == functional_zone_type_id,
         )
     )
@@ -251,7 +257,7 @@ async def test_get_functional_zone_by_ids(mock_conn: MockConnection):
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             projects_functional_zones.c.name,
-            cast(ST_AsGeoJSON(projects_functional_zones.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            ST_AsEWKB(projects_functional_zones.c.geometry).label("geometry"),
             projects_functional_zones.c.year,
             projects_functional_zones.c.source,
             projects_functional_zones.c.properties,
@@ -354,7 +360,9 @@ async def test_put_scenario_functional_zone_to_db(
             functional_zone_type_id=scenario_functional_zone_put_req.functional_zone_type_id,
             year=scenario_functional_zone_put_req.year,
             source=scenario_functional_zone_put_req.source,
-            geometry=ST_GeomFromText(scenario_functional_zone_put_req.geometry.as_shapely_geometry().wkt, text("4326")),
+            geometry=ST_GeomFromWKB(
+                scenario_functional_zone_put_req.geometry.as_shapely_geometry().wkb, text(str(SRID))
+            ),
             properties=scenario_functional_zone_put_req.properties,
             updated_at=datetime.now(timezone.utc),
         )

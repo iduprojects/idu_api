@@ -2,9 +2,8 @@
 
 import asyncio
 
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import cast, delete, insert, select, text
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB
+from sqlalchemy import delete, insert, select, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import hexagons_data, territories_data
@@ -16,9 +15,9 @@ from idu_api.urban_api.exceptions.logic.common import (
     TooManyObjectsError,
 )
 from idu_api.urban_api.logic.impl.helpers.utils import (
-    DECIMAL_PLACES,
     OBJECTS_NUMBER_LIMIT,
     OBJECTS_NUMBER_TO_INSERT_LIMIT,
+    SRID,
     check_existence,
 )
 from idu_api.urban_api.schemas import HexagonPost
@@ -34,8 +33,8 @@ async def get_hexagons_by_ids(conn: AsyncConnection, ids: list[int]) -> list[Hex
         select(
             hexagons_data.c.hexagon_id,
             hexagons_data.c.territory_id,
-            cast(ST_AsGeoJSON(hexagons_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(hexagons_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(hexagons_data.c.geometry).label("geometry"),
+            ST_AsEWKB(hexagons_data.c.centre_point).label("centre_point"),
             hexagons_data.c.properties,
             territories_data.c.name.label("territory_name"),
         )
@@ -62,8 +61,8 @@ async def get_hexagons_by_territory_id_from_db(conn: AsyncConnection, territory_
         select(
             hexagons_data.c.hexagon_id,
             hexagons_data.c.territory_id,
-            cast(ST_AsGeoJSON(hexagons_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(hexagons_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(hexagons_data.c.geometry).label("geometry"),
+            ST_AsEWKB(hexagons_data.c.centre_point).label("centre_point"),
             hexagons_data.c.properties,
             territories_data.c.name.label("territory_name"),
         )
@@ -93,8 +92,8 @@ async def add_hexagons_by_territory_id_to_db(
         insert_values = [
             {
                 "territory_id": territory_id,
-                "geometry": ST_GeomFromText(hexagon.geometry.as_shapely_geometry().wkt, text("4326")),
-                "centre_point": ST_GeomFromText(hexagon.centre_point.as_shapely_geometry().wkt, text("4326")),
+                "geometry": ST_GeomFromWKB(hexagon.geometry.as_shapely_geometry().wkb, text(str(SRID))),
+                "centre_point": ST_GeomFromWKB(hexagon.centre_point.as_shapely_geometry().wkb, text(str(SRID))),
                 "properties": hexagon.properties,
             }
             for hexagon in batch

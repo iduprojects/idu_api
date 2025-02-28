@@ -1,12 +1,11 @@
 """Urban objects internal logic is defined here."""
 
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, delete, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
@@ -26,7 +25,6 @@ from idu_api.urban_api.exceptions.logic.common import (
     TooManyObjectsError,
 )
 from idu_api.urban_api.logic.impl.helpers.utils import (
-    DECIMAL_PLACES,
     OBJECTS_NUMBER_LIMIT,
     check_existence,
     extract_values_from_model,
@@ -41,6 +39,7 @@ async def get_urban_objects_by_ids_from_db(conn: AsyncConnection, ids: list[int]
     if len(ids) > OBJECTS_NUMBER_LIMIT:
         raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     statement = (
         select(
             urban_objects_data,
@@ -54,12 +53,13 @@ async def get_urban_objects_by_ids_from_db(conn: AsyncConnection, ids: list[int]
             physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             object_geometries_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.created_at.label("object_geometry_created_at"),
             object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
             services_data.c.name.label("service_name"),
-            services_data.c.capacity_real,
+            services_data.c.capacity,
+            services_data.c.is_capacity_real,
             services_data.c.properties.label("service_properties"),
             services_data.c.created_at.label("service_created_at"),
             services_data.c.updated_at.label("service_updated_at"),
@@ -75,9 +75,8 @@ async def get_urban_objects_by_ids_from_db(conn: AsyncConnection, ids: list[int]
             service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
         )
         .select_from(
             urban_objects_data.join(
@@ -111,8 +110,8 @@ async def get_urban_objects_by_ids_from_db(conn: AsyncConnection, ids: list[int]
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(urban_objects_data.c.urban_object_id.in_(ids))
@@ -195,6 +194,7 @@ async def get_urban_objects_by_territory_id_from_db(
     if not await check_existence(conn, territories_data, conditions={"territory_id": territory_id}):
         raise EntityNotFoundById(territory_id, "territory")
 
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     territories_cte = include_child_territories_cte(territory_id)
     statement = (
         select(
@@ -209,12 +209,13 @@ async def get_urban_objects_by_territory_id_from_db(
             physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             object_geometries_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.created_at.label("object_geometry_created_at"),
             object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
             services_data.c.name.label("service_name"),
-            services_data.c.capacity_real,
+            services_data.c.capacity,
+            services_data.c.is_capacity_real,
             services_data.c.properties.label("service_properties"),
             services_data.c.created_at.label("service_created_at"),
             services_data.c.updated_at.label("service_updated_at"),
@@ -230,9 +231,8 @@ async def get_urban_objects_by_territory_id_from_db(
             service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
         )
         .select_from(
             urban_objects_data.join(
@@ -266,8 +266,8 @@ async def get_urban_objects_by_territory_id_from_db(
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))

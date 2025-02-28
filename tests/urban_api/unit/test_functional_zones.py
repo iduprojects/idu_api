@@ -4,9 +4,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
-from sqlalchemy import case, cast, delete, insert, or_, select, text, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB
+from sqlalchemy import case, delete, insert, or_, select, text, update
 
 from idu_api.common.db.entities import (
     functional_zone_types_dict,
@@ -41,6 +40,7 @@ from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     put_functional_zone_to_db,
     put_profiles_reclamation_data_to_db,
 )
+from idu_api.urban_api.logic.impl.helpers.utils import SRID
 from idu_api.urban_api.schemas import (
     FunctionalZone,
     FunctionalZonePatch,
@@ -403,7 +403,6 @@ async def test_get_functional_zone_by_id(mock_conn: MockConnection):
 
     # Arrange
     functional_zone_id = 1
-    DECIMAL_PLACES = 15
     statement = (
         select(
             functional_zones_data.c.functional_zone_id,
@@ -413,7 +412,7 @@ async def test_get_functional_zone_by_id(mock_conn: MockConnection):
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
             functional_zones_data.c.name,
-            cast(ST_AsGeoJSON(functional_zones_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            ST_AsEWKB(functional_zones_data.c.geometry).label("geometry"),
             functional_zones_data.c.year,
             functional_zones_data.c.source,
             functional_zones_data.c.properties,
@@ -462,7 +461,7 @@ async def test_add_functional_zone_to_db(mock_conn: MockConnection, functional_z
             territory_id=functional_zone_post_req.territory_id,
             name=functional_zone_post_req.name,
             functional_zone_type_id=functional_zone_post_req.functional_zone_type_id,
-            geometry=ST_GeomFromText(functional_zone_post_req.geometry.as_shapely_geometry().wkt, text("4326")),
+            geometry=ST_GeomFromWKB(functional_zone_post_req.geometry.as_shapely_geometry().wkb, text(str(SRID))),
             year=functional_zone_post_req.year,
             source=functional_zone_post_req.source,
             properties=functional_zone_post_req.properties,
@@ -515,7 +514,7 @@ async def test_put_functional_zone_to_db(mock_conn: MockConnection, functional_z
             territory_id=functional_zone_put_req.territory_id,
             functional_zone_type_id=functional_zone_put_req.functional_zone_type_id,
             name=functional_zone_put_req.name,
-            geometry=ST_GeomFromText(functional_zone_put_req.geometry.as_shapely_geometry().wkt, text("4326")),
+            geometry=ST_GeomFromWKB(functional_zone_put_req.geometry.as_shapely_geometry().wkb, text(str(SRID))),
             year=functional_zone_put_req.year,
             source=functional_zone_put_req.source,
             properties=functional_zone_put_req.properties,

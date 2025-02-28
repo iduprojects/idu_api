@@ -296,4 +296,4 @@ async def get_physical_objects_geojson_by_territory_id(
         paginate=False,
     )
 
-    return await GeoJSONResponse.from_list([obj.to_geojson_dict() for obj in physical_objects], centers_only)
+    return await GeoJSONResponse.from_list((obj.to_geojson_dict() for obj in physical_objects), centers_only)

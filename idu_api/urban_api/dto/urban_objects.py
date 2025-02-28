@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any
 
 import shapely.geometry as geom
+from shapely.wkb import loads as wkb_loads
 
 Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
 
@@ -18,9 +19,16 @@ class UrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     physical_object_function_id: int | None
     physical_object_function_name: str | None
     physical_object_name: str | None
-    living_building_id: int | None
-    living_area: float | None
-    living_building_properties: dict[str, Any] | None
+    building_id: int | None
+    floors: int | None
+    building_area_official: float | None
+    building_area_modeled: float | None
+    project_type: str | None
+    floor_type: str | None
+    wall_material: str | None
+    built_year: int | None
+    exploitation_start_year: int | None
+    building_properties: dict[str, Any] | None
     physical_object_properties: dict[str, Any]
     physical_object_created_at: datetime
     physical_object_updated_at: datetime
@@ -45,18 +53,19 @@ class UrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     territory_type_id: int | None
     territory_type_name: str | None
     service_name: str | None
-    capacity_real: int | None
+    capacity: int | None
+    is_capacity_real: bool | None
     service_properties: dict[str, Any] | None
     service_created_at: datetime | None
     service_updated_at: datetime | None
 
     def __post_init__(self) -> None:
-        if isinstance(self.centre_point, dict):
-            self.centre_point = geom.shape(self.centre_point)
+        if isinstance(self.centre_point, bytes):
+            self.centre_point = wkb_loads(self.centre_point)
         if self.geometry is None:
             self.geometry = self.centre_point
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)
 
 
 @dataclass
@@ -73,9 +82,16 @@ class ScenarioUrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     physical_object_properties: dict[str, Any]
     physical_object_created_at: datetime
     physical_object_updated_at: datetime
-    living_building_id: int | None
-    living_area: float | None
-    living_building_properties: dict[str, Any] | None
+    building_id: int | None
+    floors: int | None
+    building_area_official: float | None
+    building_area_modeled: float | None
+    project_type: str | None
+    floor_type: str | None
+    wall_material: str | None
+    built_year: int | None
+    exploitation_start_year: int | None
+    building_properties: dict[str, Any] | None
     is_scenario_physical_object: bool
     object_geometry_id: int
     territory_id: int
@@ -99,16 +115,17 @@ class ScenarioUrbanObjectDTO:  # pylint: disable=too-many-instance-attributes
     territory_type_id: int | None
     territory_type_name: str | None
     service_name: str | None
-    capacity_real: int | None
+    capacity: int | None
+    is_capacity_real: bool | None
     service_properties: dict[str, Any] | None
     service_created_at: datetime | None
     service_updated_at: datetime | None
     is_scenario_service: bool | None
 
     def __post_init__(self) -> None:
-        if isinstance(self.centre_point, dict):
-            self.centre_point = geom.shape(self.centre_point)
+        if isinstance(self.centre_point, bytes):
+            self.centre_point = wkb_loads(self.centre_point)
         if self.geometry is None:
             self.geometry = self.centre_point
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)

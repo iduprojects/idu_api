@@ -3,13 +3,12 @@
 from collections import defaultdict
 from typing import Callable
 
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, delete, insert, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
@@ -21,7 +20,6 @@ from idu_api.urban_api.dto import ObjectGeometryDTO, PhysicalObjectDTO, UrbanObj
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
 from idu_api.urban_api.logic.impl.helpers.urban_objects import get_urban_objects_by_ids_from_db
 from idu_api.urban_api.logic.impl.helpers.utils import (
-    DECIMAL_PLACES,
     OBJECTS_NUMBER_LIMIT,
     check_existence,
     extract_values_from_model,
@@ -40,6 +38,7 @@ async def get_physical_objects_by_object_geometry_id_from_db(
     if not await check_existence(conn, object_geometries_data, conditions={"object_geometry_id": object_geometry_id}):
         raise EntityNotFoundById(object_geometry_id, "object geometry")
 
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     statement = (
         select(
             physical_objects_data.c.physical_object_id,
@@ -51,9 +50,8 @@ async def get_physical_objects_by_object_geometry_id_from_db(
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
             physical_objects_data.c.created_at,
             physical_objects_data.c.updated_at,
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
         )
@@ -80,8 +78,8 @@ async def get_physical_objects_by_object_geometry_id_from_db(
                 territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(urban_objects_data.c.object_geometry_id == object_geometry_id)
@@ -112,8 +110,8 @@ async def get_object_geometry_by_ids_from_db(conn: AsyncConnection, ids: list[in
         select(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.territory_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             object_geometries_data.c.created_at,

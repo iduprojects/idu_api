@@ -6,10 +6,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi_pagination.bases import CursorRawParams, RawParams
-from geoalchemy2.functions import ST_AsGeoJSON, ST_GeomFromText
+from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB
 from shapely.geometry import LineString, MultiLineString, MultiPoint, MultiPolygon, Point, Polygon
-from sqlalchemy import cast, func, insert, select, text, update
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import func, insert, select, text, update
 
 from idu_api.common.db.entities import (
     target_city_types_dict,
@@ -28,7 +27,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_objects import (
     patch_territory_to_db,
     put_territory_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, OBJECTS_NUMBER_LIMIT, build_recursive_query
+from idu_api.urban_api.logic.impl.helpers.utils import OBJECTS_NUMBER_LIMIT, SRID, build_recursive_query
 from idu_api.urban_api.schemas import Territory, TerritoryPatch, TerritoryPost, TerritoryPut, TerritoryWithoutGeometry
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection
@@ -55,10 +54,10 @@ async def test_get_territories_by_ids(mock_conn: MockConnection):
             territories_data.c.parent_id,
             territories_data_parents.c.name.label("parent_name"),
             territories_data.c.name,
-            cast(ST_AsGeoJSON(territories_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
+            ST_AsEWKB(territories_data.c.geometry).label("geometry"),
             territories_data.c.level,
             territories_data.c.properties,
-            cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(territories_data.c.centre_point).label("centre_point"),
             territories_data.c.admin_center_id,
             admin_centers.c.name.label("admin_center_name"),
             territories_data.c.target_city_type_id,
@@ -130,8 +129,8 @@ async def test_add_territory_to_db(mock_conn: MockConnection, territory_post_req
         insert(territories_data)
         .values(
             name=territory_post_req.name,
-            geometry=ST_GeomFromText(territory_post_req.geometry.as_shapely_geometry().wkt, text("4326")),
-            centre_point=ST_GeomFromText(territory_post_req.centre_point.as_shapely_geometry().wkt, text("4326")),
+            geometry=ST_GeomFromWKB(territory_post_req.geometry.as_shapely_geometry().wkb, text(str(SRID))),
+            centre_point=ST_GeomFromWKB(territory_post_req.centre_point.as_shapely_geometry().wkb, text(str(SRID))),
             territory_type_id=territory_post_req.territory_type_id,
             parent_id=territory_post_req.parent_id,
             properties=territory_post_req.properties,
@@ -216,8 +215,8 @@ async def test_put_territory_to_db(mock_conn: MockConnection, territory_put_req:
         .where(territories_data.c.territory_id == territory_id)
         .values(
             name=territory_put_req.name,
-            geometry=ST_GeomFromText(territory_put_req.geometry.as_shapely_geometry().wkt, text("4326")),
-            centre_point=ST_GeomFromText(territory_put_req.centre_point.as_shapely_geometry().wkt, text("4326")),
+            geometry=ST_GeomFromWKB(territory_put_req.geometry.as_shapely_geometry().wkb, text(str(SRID))),
+            centre_point=ST_GeomFromWKB(territory_put_req.centre_point.as_shapely_geometry().wkb, text(str(SRID))),
             territory_type_id=territory_put_req.territory_type_id,
             parent_id=territory_put_req.parent_id,
             properties=territory_put_req.properties,
@@ -363,52 +362,94 @@ async def test_get_territories_by_parent_id_from_db(mock_conn: MockConnection):
         "ordering": "asc",
     }
     limit, offset = 10, 0
-    territories_data_parents = territories_data.alias("territories_data_parents")
-    admin_centers = territories_data.alias("admin_centers")
-    statement = select(
-        territories_data.c.territory_id,
-        territories_data.c.territory_type_id,
-        territory_types_dict.c.name.label("territory_type_name"),
-        territories_data.c.parent_id,
-        territories_data_parents.c.name.label("parent_name"),
-        territories_data.c.name,
-        cast(ST_AsGeoJSON(territories_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-        territories_data.c.level,
-        territories_data.c.properties,
-        cast(ST_AsGeoJSON(territories_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
-        territories_data.c.admin_center_id,
-        admin_centers.c.name.label("admin_center_name"),
-        territories_data.c.target_city_type_id,
-        target_city_types_dict.c.name.label("target_city_type_name"),
-        target_city_types_dict.c.description.label("target_city_type_description"),
-        territories_data.c.okato_code,
-        territories_data.c.oktmo_code,
-        territories_data.c.is_city,
-        territories_data.c.created_at,
-        territories_data.c.updated_at,
-    ).select_from(
-        territories_data.join(
-            territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-        )
-        .outerjoin(
-            target_city_types_dict,
-            target_city_types_dict.c.target_city_type_id == territories_data.c.target_city_type_id,
-        )
-        .outerjoin(
-            territories_data_parents,
-            territories_data_parents.c.territory_id == territories_data.c.parent_id,
-        )
-        .outerjoin(admin_centers, admin_centers.c.territory_id == territories_data.c.admin_center_id)
-    )
+    statement = select(territories_data)
     recursive_statement = build_recursive_query(
         statement, territories_data, parent_id, "territories_recursive", "territory_id"
     )
     statement = statement.where(territories_data.c.parent_id == parent_id)
     requested_territories = statement.cte("requested_territories")
     requested_recursive_territories = recursive_statement.cte("requested_territories")
-    statement = select(requested_territories).order_by(requested_territories.c.territory_id)
-    recursive_statement = select(requested_recursive_territories).order_by(
-        requested_recursive_territories.c.territory_id
+    territories_data_parents = territories_data.alias("territories_data_parents")
+    admin_centers = territories_data.alias("admin_centers")
+    statement = (
+        select(
+            requested_territories.c.territory_id,
+            requested_territories.c.territory_type_id,
+            requested_territories.c.name.label("territory_type_name"),
+            requested_territories.c.parent_id,
+            requested_territories.c.name.label("parent_name"),
+            requested_territories.c.name,
+            ST_AsEWKB(requested_territories.c.geometry).label("geometry"),
+            requested_territories.c.level,
+            requested_territories.c.properties,
+            ST_AsEWKB(requested_territories.c.centre_point).label("centre_point"),
+            requested_territories.c.admin_center_id,
+            admin_centers.c.name.label("admin_center_name"),
+            requested_territories.c.target_city_type_id,
+            target_city_types_dict.c.name.label("target_city_type_name"),
+            target_city_types_dict.c.description.label("target_city_type_description"),
+            requested_territories.c.okato_code,
+            requested_territories.c.oktmo_code,
+            requested_territories.c.is_city,
+            requested_territories.c.created_at,
+            requested_territories.c.updated_at,
+        )
+        .select_from(
+            requested_territories.join(
+                territory_types_dict,
+                territory_types_dict.c.territory_type_id == requested_territories.c.territory_type_id,
+            )
+            .outerjoin(
+                target_city_types_dict,
+                target_city_types_dict.c.target_city_type_id == requested_territories.c.target_city_type_id,
+            )
+            .outerjoin(
+                territories_data_parents,
+                territories_data_parents.c.territory_id == requested_territories.c.parent_id,
+            )
+            .outerjoin(admin_centers, admin_centers.c.territory_id == requested_territories.c.admin_center_id)
+        )
+        .order_by(requested_recursive_territories.c.territory_id)
+    )
+    recursive_statement = (
+        select(
+            requested_recursive_territories.c.territory_id,
+            requested_recursive_territories.c.territory_type_id,
+            requested_recursive_territories.c.name.label("territory_type_name"),
+            requested_recursive_territories.c.parent_id,
+            requested_recursive_territories.c.name.label("parent_name"),
+            requested_recursive_territories.c.name,
+            ST_AsEWKB(requested_recursive_territories.c.geometry).label("geometry"),
+            requested_recursive_territories.c.level,
+            requested_recursive_territories.c.properties,
+            ST_AsEWKB(requested_recursive_territories.c.centre_point).label("centre_point"),
+            requested_recursive_territories.c.admin_center_id,
+            admin_centers.c.name.label("admin_center_name"),
+            requested_recursive_territories.c.target_city_type_id,
+            target_city_types_dict.c.name.label("target_city_type_name"),
+            target_city_types_dict.c.description.label("target_city_type_description"),
+            requested_recursive_territories.c.okato_code,
+            requested_recursive_territories.c.oktmo_code,
+            requested_recursive_territories.c.is_city,
+            requested_recursive_territories.c.created_at,
+            requested_recursive_territories.c.updated_at,
+        )
+        .select_from(
+            requested_recursive_territories.join(
+                territory_types_dict,
+                territory_types_dict.c.territory_type_id == requested_recursive_territories.c.territory_type_id,
+            )
+            .outerjoin(
+                target_city_types_dict,
+                target_city_types_dict.c.target_city_type_id == requested_recursive_territories.c.target_city_type_id,
+            )
+            .outerjoin(
+                territories_data_parents,
+                territories_data_parents.c.territory_id == requested_recursive_territories.c.parent_id,
+            )
+            .outerjoin(admin_centers, admin_centers.c.territory_id == requested_recursive_territories.c.admin_center_id)
+        )
+        .order_by(requested_recursive_territories.c.territory_id)
     )
     statement_with_filters = statement.where(
         requested_territories.c.is_city.is_(filters["cities_only"]),
@@ -487,50 +528,90 @@ async def test_get_territories_without_geometry_by_parent_id_from_db(mock_conn: 
         "ordering": "asc",
     }
     limit, offset = 10, 0
-    territories_data_parents = territories_data.alias("territories_data_parents")
-    admin_centers = territories_data.alias("admin_centers")
-    statement = select(
-        territories_data.c.territory_id,
-        territories_data.c.territory_type_id,
-        territory_types_dict.c.name.label("territory_type_name"),
-        territories_data.c.parent_id,
-        territories_data_parents.c.name.label("parent_name"),
-        territories_data.c.name,
-        territories_data.c.level,
-        territories_data.c.properties,
-        territories_data.c.admin_center_id,
-        admin_centers.c.name.label("admin_center_name"),
-        territories_data.c.target_city_type_id,
-        target_city_types_dict.c.name.label("target_city_type_name"),
-        target_city_types_dict.c.description.label("target_city_type_description"),
-        territories_data.c.okato_code,
-        territories_data.c.oktmo_code,
-        territories_data.c.is_city,
-        territories_data.c.created_at,
-        territories_data.c.updated_at,
-    ).select_from(
-        territories_data.join(
-            territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
-        )
-        .outerjoin(
-            target_city_types_dict,
-            target_city_types_dict.c.target_city_type_id == territories_data.c.target_city_type_id,
-        )
-        .outerjoin(
-            territories_data_parents,
-            territories_data_parents.c.territory_id == territories_data.c.parent_id,
-        )
-        .outerjoin(admin_centers, admin_centers.c.territory_id == territories_data.c.admin_center_id)
-    )
+    statement = select(territories_data)
     recursive_statement = build_recursive_query(
         statement, territories_data, parent_id, "territories_recursive", "territory_id"
     )
     statement = statement.where(territories_data.c.parent_id == parent_id)
+    territories_data_parents = territories_data.alias("territories_data_parents")
+    admin_centers = territories_data.alias("admin_centers")
     requested_territories = statement.cte("requested_territories")
     requested_recursive_territories = recursive_statement.cte("requested_territories")
-    statement = select(requested_territories).order_by(requested_territories.c.territory_id)
-    recursive_statement = select(requested_recursive_territories).order_by(
-        requested_recursive_territories.c.territory_id
+    statement = (
+        select(
+            requested_territories.c.territory_id,
+            requested_territories.c.territory_type_id,
+            requested_territories.c.name.label("territory_type_name"),
+            requested_territories.c.parent_id,
+            requested_territories.c.name.label("parent_name"),
+            requested_territories.c.name,
+            requested_territories.c.level,
+            requested_territories.c.properties,
+            requested_territories.c.admin_center_id,
+            admin_centers.c.name.label("admin_center_name"),
+            requested_territories.c.target_city_type_id,
+            target_city_types_dict.c.name.label("target_city_type_name"),
+            target_city_types_dict.c.description.label("target_city_type_description"),
+            requested_territories.c.okato_code,
+            requested_territories.c.oktmo_code,
+            requested_territories.c.is_city,
+            requested_territories.c.created_at,
+            requested_territories.c.updated_at,
+        )
+        .select_from(
+            requested_territories.join(
+                territory_types_dict,
+                territory_types_dict.c.territory_type_id == requested_territories.c.territory_type_id,
+            )
+            .outerjoin(
+                target_city_types_dict,
+                target_city_types_dict.c.target_city_type_id == requested_territories.c.target_city_type_id,
+            )
+            .outerjoin(
+                territories_data_parents,
+                territories_data_parents.c.territory_id == requested_territories.c.parent_id,
+            )
+            .outerjoin(admin_centers, admin_centers.c.territory_id == requested_territories.c.admin_center_id)
+        )
+        .order_by(requested_territories.c.territory_id)
+    )
+    recursive_statement = (
+        select(
+            requested_recursive_territories.c.territory_id,
+            requested_recursive_territories.c.territory_type_id,
+            requested_recursive_territories.c.name.label("territory_type_name"),
+            requested_recursive_territories.c.parent_id,
+            requested_recursive_territories.c.name.label("parent_name"),
+            requested_recursive_territories.c.name,
+            requested_recursive_territories.c.level,
+            requested_recursive_territories.c.properties,
+            requested_recursive_territories.c.admin_center_id,
+            admin_centers.c.name.label("admin_center_name"),
+            requested_recursive_territories.c.target_city_type_id,
+            target_city_types_dict.c.name.label("target_city_type_name"),
+            target_city_types_dict.c.description.label("target_city_type_description"),
+            requested_recursive_territories.c.okato_code,
+            requested_recursive_territories.c.oktmo_code,
+            requested_recursive_territories.c.is_city,
+            requested_recursive_territories.c.created_at,
+            requested_recursive_territories.c.updated_at,
+        )
+        .select_from(
+            requested_recursive_territories.join(
+                territory_types_dict,
+                territory_types_dict.c.territory_type_id == requested_recursive_territories.c.territory_type_id,
+            )
+            .outerjoin(
+                target_city_types_dict,
+                target_city_types_dict.c.target_city_type_id == requested_recursive_territories.c.target_city_type_id,
+            )
+            .outerjoin(
+                territories_data_parents,
+                territories_data_parents.c.territory_id == requested_recursive_territories.c.parent_id,
+            )
+            .outerjoin(admin_centers, admin_centers.c.territory_id == requested_recursive_territories.c.admin_center_id)
+        )
+        .order_by(requested_recursive_territories.c.territory_id)
     )
     statement_with_filters = statement.where(
         requested_territories.c.is_city.is_(filters["cities_only"]),
@@ -614,7 +695,7 @@ async def test_get_common_territory_for_geometry(mock_conn: MockConnection, shap
     # Arrange
     statement = (
         select(territories_data.c.territory_id)
-        .where(func.ST_Covers(territories_data.c.geometry, ST_GeomFromText(shapely_geometry.wkt, text("4326"))))
+        .where(func.ST_Covers(territories_data.c.geometry, ST_GeomFromWKB(shapely_geometry.wkb, text(str(SRID)))))
         .order_by(territories_data.c.level.desc())
         .limit(1)
     )
@@ -634,14 +715,14 @@ async def test_get_intersecting_territories_for_geometry(mock_conn: MockConnecti
 
     # Arrange
     parent_territory = 1
-    level_subqery = (
+    level_subquery = (
         select(territories_data.c.level + 1)
         .where(territories_data.c.territory_id == parent_territory)
         .scalar_subquery()
     )
-    given_geometry = select(ST_GeomFromText(shapely_geometry.wkt, text("4326"))).cte("given_geometry")
+    given_geometry = select(ST_GeomFromWKB(shapely_geometry.wkb, text(str(SRID)))).cte("given_geometry")
     statement = select(territories_data.c.territory_id).where(
-        territories_data.c.level == level_subqery,
+        territories_data.c.level == level_subquery,
         (
             func.ST_Intersects(territories_data.c.geometry, select(given_geometry).scalar_subquery())
             | func.ST_Covers(select(given_geometry).scalar_subquery(), territories_data.c.geometry)

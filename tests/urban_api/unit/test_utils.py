@@ -3,16 +3,17 @@
 from datetime import datetime, timezone
 
 import pytest
-from geoalchemy2.functions import ST_GeomFromText, ST_Union
+from geoalchemy2.functions import ST_GeomFromWKB, ST_Union
 from sqlalchemy import select, text
-from sqlalchemy.sql.selectable import CTE, Select
+from sqlalchemy.sql.selectable import CTE, ScalarSelect, Select
 
 from idu_api.common.db.entities import projects_data, territories_data
 from idu_api.urban_api.logic.impl.helpers.utils import (
+    SRID,
     build_recursive_query,
     check_existence,
     extract_values_from_model,
-    get_all_context_territories,
+    get_context_territories_geometry,
     include_child_territories_cte,
 )
 from idu_api.urban_api.schemas import TerritoryPatch, TerritoryPost, TerritoryPut
@@ -96,16 +97,15 @@ def test_extract_values_from_model(
     """Test the extract_values_from_model function."""
 
     # Arrange
-    srid = "4326"
     expected_post_result = territory_post_req.model_dump()
     expected_put_result = territory_put_req.model_dump()
     expected_patch_result = territory_patch_req.model_dump(exclude_unset=True)
     for field in ("geometry", "centre_point"):
-        expected_post_result[field] = ST_GeomFromText(
-            getattr(territory_post_req, field).as_shapely_geometry().wkt, text(srid)
+        expected_post_result[field] = ST_GeomFromWKB(
+            getattr(territory_post_req, field).as_shapely_geometry().wkb, text(str(SRID))
         )
-        expected_put_result[field] = ST_GeomFromText(
-            getattr(territory_put_req, field).as_shapely_geometry().wkt, text(srid)
+        expected_put_result[field] = ST_GeomFromWKB(
+            getattr(territory_put_req, field).as_shapely_geometry().wkb, text(str(SRID))
         )
     expected_put_result["updated_at"] = datetime.now(timezone.utc)
     expected_patch_result["updated_at"] = datetime.now(timezone.utc)
@@ -148,64 +148,21 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
     statement = select(projects_data.c.user_id, projects_data.c.public, projects_data.c.properties).where(
         projects_data.c.project_id == project_id
     )
-    context_territories = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.geometry,
-        )
+    unified_geometry = (
+        select(ST_Union(territories_data.c.geometry).label("geometry"))
         .where(territories_data.c.territory_id.in_([1]))
-        .subquery()
-    )
-    unified_geometry = select(ST_Union(context_territories.c.geometry)).scalar_subquery()
-    all_descendants = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_descendants", recursive=True)
-    )
-    all_descendants = all_descendants.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_descendants,
-                territories_data.c.parent_id == all_descendants.c.territory_id,
-            )
-        )
-    )
-    all_ancestors = (
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        )
-        .where(territories_data.c.territory_id.in_(select(context_territories.c.territory_id)))
-        .cte(name="all_ancestors", recursive=True)
-    )
-    all_ancestors = all_ancestors.union_all(
-        select(
-            territories_data.c.territory_id,
-            territories_data.c.parent_id,
-        ).select_from(
-            territories_data.join(
-                all_ancestors,
-                territories_data.c.territory_id == all_ancestors.c.parent_id,
-            )
-        )
-    )
-    all_related_territories = (
-        select(all_descendants.c.territory_id).union(select(all_ancestors.c.territory_id)).subquery()
+        .scalar_subquery()
     )
 
     # Act
-    result = await get_all_context_territories(mock_conn, project_id, user_id)
+    result = await get_context_territories_geometry(mock_conn, project_id, user_id)
 
     # Assert
-    assert isinstance(result, dict), "Result should be a dictionary."
-    assert "geometry" in result, "Unified geometry should be included."
-    assert str(result["geometry"]) == str(unified_geometry), "Expected unified geometry not found."
-    assert "territories" in result, "All related territories should be included."
-    assert str(result["territories"]) == str(all_related_territories), "Expected territories subquery not found."
+    assert isinstance(result, tuple), "Result should be a dictionary."
+    assert isinstance(
+        result[0], ScalarSelect
+    ), "The first item in result should be a ScalarSelect object (unified geometry)."
+    assert str(result[0]) == str(unified_geometry), "The ScalarSelect should be a unified geometry."
+    assert isinstance(result[1], list), "The second item in result should be a list of context identifiers."
+    assert all(isinstance(idx, int) for idx in result[1]), "Each item in list of identifiers should be an integer."
     mock_conn.execute_mock.assert_called_once_with(str(statement))

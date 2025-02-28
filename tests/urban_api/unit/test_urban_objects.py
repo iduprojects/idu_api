@@ -3,12 +3,11 @@
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, select, update
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import select, update
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_functions_dict,
     physical_object_types_dict,
@@ -36,7 +35,6 @@ from idu_api.urban_api.logic.impl.helpers.urban_objects import (
     patch_urban_object_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.utils import (
-    DECIMAL_PLACES,
     OBJECTS_NUMBER_LIMIT,
     include_child_territories_cte,
 )
@@ -52,6 +50,7 @@ async def test_get_urban_objects_by_ids_from_db(mock_conn: MockConnection):
     ids = [1]
     not_found_ids = [1, 2]
     too_many_ids = list(range(OBJECTS_NUMBER_LIMIT + 1))
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     statement = (
         select(
             urban_objects_data,
@@ -65,12 +64,13 @@ async def test_get_urban_objects_by_ids_from_db(mock_conn: MockConnection):
             physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             object_geometries_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.created_at.label("object_geometry_created_at"),
             object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
             services_data.c.name.label("service_name"),
-            services_data.c.capacity_real,
+            services_data.c.capacity,
+            services_data.c.is_capacity_real,
             services_data.c.properties.label("service_properties"),
             services_data.c.created_at.label("service_created_at"),
             services_data.c.updated_at.label("service_updated_at"),
@@ -86,9 +86,8 @@ async def test_get_urban_objects_by_ids_from_db(mock_conn: MockConnection):
             service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
         )
         .select_from(
             urban_objects_data.join(
@@ -122,8 +121,8 @@ async def test_get_urban_objects_by_ids_from_db(mock_conn: MockConnection):
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(urban_objects_data.c.urban_object_id.in_(ids))
@@ -236,7 +235,7 @@ async def test_get_urban_objects_by_territory_id_from_db(mock_conn: MockConnecti
     territory_id = 1
     service_type_id = 1
     physical_object_type_id = 1
-    territories_cte = include_child_territories_cte(territory_id)
+    building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     territories_cte = include_child_territories_cte(territory_id)
     statement = (
         select(
@@ -251,12 +250,13 @@ async def test_get_urban_objects_by_territory_id_from_db(mock_conn: MockConnecti
             physical_objects_data.c.updated_at.label("physical_object_updated_at"),
             object_geometries_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             object_geometries_data.c.created_at.label("object_geometry_created_at"),
             object_geometries_data.c.updated_at.label("object_geometry_updated_at"),
             services_data.c.name.label("service_name"),
-            services_data.c.capacity_real,
+            services_data.c.capacity,
+            services_data.c.is_capacity_real,
             services_data.c.properties.label("service_properties"),
             services_data.c.created_at.label("service_created_at"),
             services_data.c.updated_at.label("service_updated_at"),
@@ -272,9 +272,8 @@ async def test_get_urban_objects_by_territory_id_from_db(mock_conn: MockConnecti
             service_types_dict.c.properties.label("service_type_properties"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties.label("living_building_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
         )
         .select_from(
             urban_objects_data.join(
@@ -308,8 +307,8 @@ async def test_get_urban_objects_by_territory_id_from_db(mock_conn: MockConnecti
                 territory_types_dict, territory_types_dict.c.territory_type_id == services_data.c.territory_type_id
             )
             .outerjoin(
-                living_buildings_data,
-                living_buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
         .where(

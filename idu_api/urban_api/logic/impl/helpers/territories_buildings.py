@@ -1,30 +1,29 @@
 """Territories buildings internal logic is defined here."""
 
-from geoalchemy2.functions import ST_AsGeoJSON
-from sqlalchemy import cast, select
-from sqlalchemy.dialects.postgresql import JSONB
+from geoalchemy2.functions import ST_AsEWKB
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
-    living_buildings_data,
+    buildings_data,
     object_geometries_data,
     physical_object_types_dict,
     physical_objects_data,
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import LivingBuildingWithGeometryDTO, PageDTO
+from idu_api.urban_api.dto import BuildingWithGeometryDTO, PageDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
-from idu_api.urban_api.logic.impl.helpers.utils import DECIMAL_PLACES, check_existence, include_child_territories_cte
+from idu_api.urban_api.logic.impl.helpers.utils import check_existence, include_child_territories_cte
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 
-async def get_living_buildings_with_geometry_by_territory_id_from_db(
+async def get_buildings_with_geometry_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
     include_child_territories: bool,
     cities_only: bool,
-) -> PageDTO[LivingBuildingWithGeometryDTO]:
+) -> PageDTO[BuildingWithGeometryDTO]:
     """Get living buildings with geometry by territory identifier."""
 
     if not await check_existence(conn, territories_data, conditions={"territory_id": territory_id}):
@@ -32,10 +31,7 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
 
     statement = (
         select(
-            living_buildings_data.c.living_building_id,
-            living_buildings_data.c.living_area,
-            living_buildings_data.c.properties,
-            physical_objects_data.c.physical_object_id,
+            buildings_data,
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
             physical_object_types_dict.c.physical_object_type_id,
@@ -43,13 +39,13 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            cast(ST_AsGeoJSON(object_geometries_data.c.geometry, DECIMAL_PLACES), JSONB).label("geometry"),
-            cast(ST_AsGeoJSON(object_geometries_data.c.centre_point, DECIMAL_PLACES), JSONB).label("centre_point"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
         )
         .select_from(
-            living_buildings_data.join(
+            buildings_data.join(
                 physical_objects_data,
-                physical_objects_data.c.physical_object_id == living_buildings_data.c.physical_object_id,
+                physical_objects_data.c.physical_object_id == buildings_data.c.physical_object_id,
             )
             .join(
                 physical_object_types_dict,
@@ -65,7 +61,7 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
             )
         )
         .distinct()
-        .order_by(living_buildings_data.c.living_building_id)
+        .order_by(buildings_data.c.building_id)
     )
 
     if include_child_territories:
@@ -74,6 +70,4 @@ async def get_living_buildings_with_geometry_by_territory_id_from_db(
     else:
         statement = statement.where(object_geometries_data.c.territory_id == territory_id)
 
-    return await paginate_dto(
-        conn, statement, transformer=lambda x: [LivingBuildingWithGeometryDTO(**item) for item in x]
-    )
+    return await paginate_dto(conn, statement, transformer=lambda x: [BuildingWithGeometryDTO(**item) for item in x])

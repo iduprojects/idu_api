@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any
 
 import shapely.geometry as geom
+from shapely.wkb import loads as wkb_loads
 
 from idu_api.urban_api.dto.indicators import IndicatorValueDTO
 from idu_api.urban_api.dto.normatives import NormativeDTO
@@ -53,12 +54,12 @@ class TerritoryDTO:  # pylint: disable=too-many-instance-attributes
     updated_at: datetime
 
     def __post_init__(self) -> None:
-        if isinstance(self.centre_point, dict):
-            self.centre_point = geom.shape(self.centre_point)
+        if isinstance(self.centre_point, bytes):
+            self.centre_point = wkb_loads(self.centre_point)
         if self.geometry is None:
             self.geometry = self.centre_point
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)
 
     def to_geojson_dict(self) -> dict[str, Any]:
         territory = asdict(self)
@@ -149,12 +150,12 @@ class TerritoryWithIndicatorsDTO:
     indicators: list[IndicatorValueDTO]
 
     def __post_init__(self) -> None:
-        if isinstance(self.centre_point, dict):
-            self.centre_point = geom.shape(self.centre_point)
+        if isinstance(self.centre_point, bytes):
+            self.centre_point = wkb_loads(self.centre_point)
         if self.geometry is None:
             self.geometry = self.centre_point
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)
 
     def to_geojson_dict(self) -> dict[str, Any]:
         territory = asdict(self)
@@ -180,12 +181,12 @@ class TerritoryWithNormativesDTO:
     normatives: list[NormativeDTO]
 
     def __post_init__(self) -> None:
-        if isinstance(self.centre_point, dict):
-            self.centre_point = geom.shape(self.centre_point)
+        if isinstance(self.centre_point, bytes):
+            self.centre_point = wkb_loads(self.centre_point)
         if self.geometry is None:
             self.geometry = self.centre_point
-        if isinstance(self.geometry, dict):
-            self.geometry = geom.shape(self.geometry)
+        if isinstance(self.geometry, bytes):
+            self.geometry = wkb_loads(self.geometry)
 
     def to_geojson_dict(self) -> dict[str, Any]:
         territory = asdict(self)
