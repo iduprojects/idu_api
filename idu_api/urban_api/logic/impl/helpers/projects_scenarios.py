@@ -145,7 +145,10 @@ async def get_scenario_by_id_from_db(conn: AsyncConnection, scenario_id: int, us
 
     statement = select(projects_data).where(projects_data.c.project_id == result.project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
-    if project.user_id != user.id and not project.public and not user.is_superuser:
+    if user is None:
+        if not project.public:
+            raise AccessDeniedError(result.project_id, "project")
+    elif project.user_id != user.id and not project.public and not user.is_superuser:
         raise AccessDeniedError(result.project_id, "project")
 
     return ScenarioDTO(**result)
