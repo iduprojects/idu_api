@@ -53,7 +53,7 @@ async def get_scenario_by_id(
 @projects_router.post(
     "/scenarios",
     response_model=Scenario,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Security(HTTPBearer())],
     deprecated=True,
 )
@@ -87,7 +87,7 @@ async def add_scenario(request: Request, scenario: ScenarioPost, user: UserDTO =
 @projects_router.post(
     "/scenarios/{scenario_id}",
     response_model=Scenario,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Security(HTTPBearer())],
 )
 async def copy_scenario(
@@ -202,7 +202,10 @@ async def patch_scenario(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    scenario = await user_project_service.patch_scenario(scenario, scenario_id, user)
+    try:
+        scenario = await user_project_service.patch_scenario(scenario, scenario_id, user)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     return Scenario.from_dto(scenario)
 

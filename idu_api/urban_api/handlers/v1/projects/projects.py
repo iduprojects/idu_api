@@ -708,7 +708,7 @@ async def get_preview_project_image(
 
     image_stream = await user_project_service.get_project_image(minio_client, project_id, user, image_type="preview")
 
-    return StreamingResponse(image_stream, media_type="image/jpeg")
+    return StreamingResponse(image_stream, media_type="image/png")
 
 
 @projects_router.get(

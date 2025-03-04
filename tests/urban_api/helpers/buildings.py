@@ -11,12 +11,25 @@ __all__ = [
 ]
 
 
+####################################################################################
+#                                 Models                                           #
+####################################################################################
+
+
 @pytest.fixture
 def building_post_req() -> BuildingPost:
     """POST request template for buildings data."""
 
     return BuildingPost(
         physical_object_id=1,
+        floors=1,
+        building_area_official=1.0,
+        building_area_modeled=1.0,
+        project_type="example",
+        floor_type="example",
+        wall_material="example",
+        built_year=1,
+        exploitation_start_year=1,
         properties={"key": "value"},
     )
 

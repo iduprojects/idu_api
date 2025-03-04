@@ -65,7 +65,7 @@ class ServiceTypesService(Protocol):
         """Delete urban function object by id."""
 
     @abc.abstractmethod
-    async def get_service_types_hierarchy(self, service_type_ids: str | None) -> list[ServiceTypesHierarchyDTO]:
+    async def get_service_types_hierarchy(self, ids: set[int] | None) -> list[ServiceTypesHierarchyDTO]:
         """Get service types hierarchy (from top-level urban function to service type)
         based on a list of required service type ids.
 

@@ -31,8 +31,8 @@ from idu_api.urban_api.logic.impl.helpers.utils import build_recursive_query, ch
 from idu_api.urban_api.schemas import (
     IndicatorsGroupPost,
     IndicatorsPatch,
-    IndicatorsPost,
-    IndicatorsPut,
+    IndicatorPost,
+    IndicatorPut,
     IndicatorValuePost,
     IndicatorValuePut,
     MeasurementUnitPost,
@@ -110,9 +110,6 @@ async def add_indicators_group_to_db(
 ) -> IndicatorsGroupDTO:
     """Create indicators group object."""
 
-    if await check_existence(conn, indicators_groups_dict, conditions={"name": indicators_group.name}):
-        raise EntityAlreadyExists("indicators group", indicators_group.name)
-
     statement = (
         select(
             indicators_dict,
@@ -128,6 +125,9 @@ async def add_indicators_group_to_db(
     indicators = [IndicatorDTO(**indicator) for indicator in indicators]
     if len(indicators) < len(indicators_group.indicators_ids):
         raise EntitiesNotFoundByIds("indicator")
+
+    if await check_existence(conn, indicators_groups_dict, conditions={"name": indicators_group.name}):
+        raise EntityAlreadyExists("indicators group", indicators_group.name)
 
     statement = (
         insert(indicators_groups_dict)
@@ -313,7 +313,7 @@ async def get_indicator_by_id_from_db(conn: AsyncConnection, indicator_id: int) 
     return IndicatorDTO(**result)
 
 
-async def add_indicator_to_db(conn: AsyncConnection, indicator: IndicatorsPost) -> IndicatorDTO:
+async def add_indicator_to_db(conn: AsyncConnection, indicator: IndicatorPost) -> IndicatorDTO:
     """Create indicator object."""
 
     if indicator.parent_id is not None:
@@ -337,7 +337,7 @@ async def add_indicator_to_db(conn: AsyncConnection, indicator: IndicatorsPost) 
     return await get_indicator_by_id_from_db(conn, indicator_id)
 
 
-async def put_indicator_to_db(conn: AsyncConnection, indicator: IndicatorsPut) -> IndicatorDTO:
+async def put_indicator_to_db(conn: AsyncConnection, indicator: IndicatorPut) -> IndicatorDTO:
     """Update indicator object by all its attributes."""
 
     if indicator.parent_id is not None:

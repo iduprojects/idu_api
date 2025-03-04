@@ -121,7 +121,7 @@ async def get_context_physical_objects(
 @projects_router.post(
     "/scenarios/{scenario_id}/physical_objects",
     response_model=ScenarioUrbanObject,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Security(HTTPBearer())],
 )
 async def add_physical_object_with_geometry(
@@ -161,7 +161,7 @@ async def add_physical_object_with_geometry(
 @projects_router.post(
     "/scenarios/{scenario_id}/all_physical_objects",
     response_model=list[ScenarioUrbanObject],
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Security(HTTPBearer())],
 )
 async def update_physical_objects_by_function_id(

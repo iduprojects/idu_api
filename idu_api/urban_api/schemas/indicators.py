@@ -126,8 +126,8 @@ class Indicator(BaseModel):
         )
 
 
-class IndicatorsPost(BaseModel):
-    """Indicators schema for POST requests."""
+class IndicatorPost(BaseModel):
+    """Indicator schema for POST requests."""
 
     name_full: str = Field(
         ...,
@@ -139,8 +139,8 @@ class IndicatorsPost(BaseModel):
     parent_id: int | None = Field(..., description="indicator parent identifier", examples=[1])
 
 
-class IndicatorsPut(BaseModel):
-    """Indicators schema for PUT requests."""
+class IndicatorPut(BaseModel):
+    """Indicator schema for PUT requests."""
 
     name_full: str = Field(
         ...,

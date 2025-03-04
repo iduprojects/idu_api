@@ -141,19 +141,23 @@ async def fix_geojson_file(request: Request, file: UploadFile = File(...)):
         geojson_data = json.loads(content)
 
         geojson = GeoJSONResponse(**geojson_data)
-        geoms = [
-            shapely.from_geojson(
+        geoms = []
+        for i in range(len(geojson_data["features"])):
+            feature = geojson_data["features"][i]
+            shapely_geometry = shapely.from_geojson(
                 json.dumps({"type": feature["geometry"]["type"], "coordinates": feature["geometry"]["coordinates"]})
             )
-            for feature in geojson_data["features"]
-        ]
+            if shapely_geometry.is_empty:
+                del geojson.features[i]
+            else:
+                geoms.append(shapely_geometry)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid GeoJSON file") from e
 
     geoms = await system_service.fix_geojson(geoms)
     fixed_geojson = geojson.update_geometries(geoms)
 
-    fixed_content = json.dumps(fixed_geojson.model_dump_json(indent=2), ensure_ascii=False).encode("utf-8")
+    fixed_content = json.dumps(fixed_geojson.model_dump_json(), ensure_ascii=False).encode("utf-8")
     file_name, file_ext = os.path.splitext(os.path.basename(file.filename))
 
     zip_buffer = io.BytesIO()

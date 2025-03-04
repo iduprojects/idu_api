@@ -1,5 +1,7 @@
 """All fixtures for services objects tests are defined here."""
 
+from typing import Any
+
 import pytest
 
 from idu_api.urban_api.schemas import (
@@ -10,11 +12,35 @@ from idu_api.urban_api.schemas import (
 )
 
 __all__ = [
+    "service",
     "service_patch_req",
     "service_post_req",
     "service_put_req",
+    "scenario_service",
     "scenario_service_post_req",
 ]
+
+
+####################################################################################
+#                        Integration tests helpers                                 #
+####################################################################################
+
+
+@pytest.fixture
+def service(urban_api_host, urban_object) -> dict[str, Any]:
+    """Returns created service."""
+    return urban_object["service"]
+
+
+@pytest.fixture
+def scenario_service(urban_api_host, scenario_urban_object) -> dict[str, Any]:
+    """Returns created service."""
+    return scenario_urban_object["service"]
+
+
+####################################################################################
+#                                 Models                                           #
+####################################################################################
 
 
 @pytest.fixture

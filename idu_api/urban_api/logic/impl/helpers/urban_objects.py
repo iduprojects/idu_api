@@ -270,21 +270,15 @@ async def get_urban_objects_by_territory_id_from_db(
                 buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
-        .where(object_geometries_data.c.territory_id.in_(select(territories_cte)))
+        .where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
         .order_by(urban_objects_data.c.urban_object_id)
         .distinct()
     )
 
     if physical_object_type_id is not None:
-        if not await check_existence(
-            conn, physical_object_types_dict, conditions={"physical_object_type_id": physical_object_type_id}
-        ):
-            raise EntityNotFoundById(physical_object_type_id, "physical object type")
         statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
 
     if service_type_id is not None:
-        if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
-            raise EntityNotFoundById(service_type_id, "service type")
         statement = statement.where(services_data.c.service_type_id == service_type_id)
 
     urban_objects = (await conn.execute(statement)).mappings().all()

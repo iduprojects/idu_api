@@ -70,9 +70,7 @@ class PhysicalObjectTypesService(Protocol):
         """Delete physical object function object by id."""
 
     @abc.abstractmethod
-    async def get_physical_object_types_hierarchy(
-        self, physical_object_type_ids: str | None
-    ) -> list[PhysicalObjectTypesHierarchyDTO]:
+    async def get_physical_object_types_hierarchy(self, ids: set[int] | None) -> list[PhysicalObjectTypesHierarchyDTO]:
         """Get physical object types hierarchy (from top-level physical object function to physical object type)
         based on a list of required physical object type ids.
 

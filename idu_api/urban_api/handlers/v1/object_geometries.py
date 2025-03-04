@@ -145,7 +145,7 @@ async def delete_object_geometry(
 @object_geometries_router.post(
     "/object_geometries/{physical_object_id}",
     response_model=UrbanObject,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
 )
 async def add_object_geometry_to_physical_object(
     request: Request,

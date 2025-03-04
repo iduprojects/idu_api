@@ -55,7 +55,7 @@ async def get_living_buildings_with_geometry_by_territory_id(
             detail="You can use cities_only parameter only with including child territories",
         )
 
-    buildings = await territories_service.get_living_buildings_with_geometry_by_territory_id(
+    buildings = await territories_service.get_buildings_with_geometry_by_territory_id(
         territory_id, include_child_territories, cities_only
     )
 

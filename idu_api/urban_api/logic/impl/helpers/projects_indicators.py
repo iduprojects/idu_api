@@ -212,8 +212,12 @@ async def put_scenario_indicator_value_to_db(
             .where(
                 projects_indicators_data.c.indicator_id == indicator_value.indicator_id,
                 projects_indicators_data.c.scenario_id == scenario_id,
-                projects_indicators_data.c.territory_id == indicator_value.territory_id,
-                projects_indicators_data.c.hexagon_id == indicator_value.hexagon_id,
+                projects_indicators_data.c.territory_id == indicator_value.territory_id
+                if indicator_value.territory_id is not None
+                else projects_indicators_data.c.territory_id.is_(None),
+                projects_indicators_data.c.hexagon_id == indicator_value.hexagon_id
+                if indicator_value.hexagon_id is not None
+                else projects_indicators_data.c.hexagon_id.is_(None),
             )
             .values(**extract_values_from_model(indicator_value, to_update=True))
             .returning(projects_indicators_data.c.indicator_value_id)

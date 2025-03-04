@@ -115,51 +115,20 @@ async def test_get_all_sources_from_db(mock_conn: MockConnection):
     """Test the get_all_sources_from_db function."""
 
     # Arrange
-    territory_id_int, territory_id_none = 1, None
-    statement_with_territory = (
+    statement = (
         select(profiles_reclamation_data.c.source_profile_id)
-        .where(
-            or_(
-                profiles_reclamation_data.c.territory_id == territory_id_int,
-                profiles_reclamation_data.c.territory_id.is_(None),
-            )
-        )
-        .order_by(
-            profiles_reclamation_data.c.source_profile_id,
-            case(
-                (profiles_reclamation_data.c.territory_id == territory_id_int, 0),
-                else_=1,
-            ).desc(),
-        )
-        .distinct()
-    )
-    statement_with_territory_none = (
-        select(profiles_reclamation_data.c.source_profile_id)
-        .where(
-            or_(
-                profiles_reclamation_data.c.territory_id == territory_id_none,
-                profiles_reclamation_data.c.territory_id.is_(None),
-            )
-        )
-        .order_by(
-            profiles_reclamation_data.c.source_profile_id,
-            case(
-                (profiles_reclamation_data.c.territory_id.is_(None), 0),
-                else_=1,
-            ).desc(),
-        )
+        .order_by(profiles_reclamation_data.c.source_profile_id)
         .distinct()
     )
 
     # Act
-    await get_all_sources_from_db(mock_conn, territory_id_int)
-    result = await get_all_sources_from_db(mock_conn, territory_id_none)
+    await get_all_sources_from_db(mock_conn)
+    result = await get_all_sources_from_db(mock_conn)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
     assert all(isinstance(item, int) for item in result), "Each item should be a Integer."
-    mock_conn.execute_mock.assert_any_call(str(statement_with_territory))
-    mock_conn.execute_mock.assert_any_call(str(statement_with_territory_none))
+    mock_conn.execute_mock.assert_any_call(str(statement))
 
 
 @pytest.mark.asyncio

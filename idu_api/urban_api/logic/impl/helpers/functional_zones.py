@@ -63,28 +63,12 @@ async def add_functional_zone_type_to_db(
     return FunctionalZoneTypeDTO(**result)
 
 
-async def get_all_sources_from_db(conn: AsyncConnection, territory_id: int | None) -> list[int]:
+async def get_all_sources_from_db(conn: AsyncConnection) -> list[int]:
     """Get a list of all profiles reclamation sources."""
-
-    priority_order = case(
-        (
-            (
-                profiles_reclamation_data.c.territory_id == territory_id
-                if territory_id is not None
-                else profiles_reclamation_data.c.territory_id.is_(None)
-            ),
-            0,
-        ),
-        else_=1,
-    ).desc()
 
     statement = (
         select(profiles_reclamation_data.c.source_profile_id)
-        .where(
-            (profiles_reclamation_data.c.territory_id == territory_id)
-            | (profiles_reclamation_data.c.territory_id.is_(None)),
-        )
-        .order_by(profiles_reclamation_data.c.source_profile_id, priority_order)
+        .order_by(profiles_reclamation_data.c.source_profile_id)
         .distinct()
     )
 
@@ -107,7 +91,7 @@ async def get_profiles_reclamation_data_matrix_from_db(
     )
     sources = (await conn.execute(statement)).scalars().all()
     if size > len(sources):
-        raise EntitiesNotFoundByIds("profiles reclamation")
+        raise EntitiesNotFoundByIds("source profile")
 
     priority_order = case(
         (
@@ -211,6 +195,20 @@ async def add_profiles_reclamation_data_to_db(
 
     if not await check_existence(
         conn,
+        functional_zone_types_dict,
+        conditions={"functional_zone_type_id": profiles_reclamation.source_profile_id},
+    ):
+        raise EntityNotFoundById(profiles_reclamation.source_profile_id, "source profile")
+
+    if not await check_existence(
+        conn,
+        functional_zone_types_dict,
+        conditions={"functional_zone_type_id": profiles_reclamation.target_profile_id},
+    ):
+        raise EntityNotFoundById(profiles_reclamation.source_profile_id, "target profile")
+
+    if profiles_reclamation.territory_id is not None and not await check_existence(
+        conn,
         territories_data,
         conditions={"territory_id": profiles_reclamation.territory_id},
     ):
@@ -257,6 +255,21 @@ async def put_profiles_reclamation_data_to_db(
             .returning(profiles_reclamation_data.c.profile_reclamation_id)
         )
     else:
+
+        if not await check_existence(
+            conn,
+            functional_zone_types_dict,
+            conditions={"functional_zone_type_id": profiles_reclamation.source_profile_id},
+        ):
+            raise EntityNotFoundById(profiles_reclamation.source_profile_id, "source profile")
+
+        if not await check_existence(
+            conn,
+            functional_zone_types_dict,
+            conditions={"functional_zone_type_id": profiles_reclamation.target_profile_id},
+        ):
+            raise EntityNotFoundById(profiles_reclamation.source_profile_id, "target profile")
+
         if profiles_reclamation.territory_id is not None and not await check_existence(
             conn, territories_data, conditions={"territory_id": profiles_reclamation.territory_id}
         ):
@@ -433,7 +446,7 @@ async def patch_functional_zone_to_db(
 async def delete_functional_zone_from_db(conn: AsyncConnection, functional_zone_id: int) -> dict:
     """Delete functional zone by identifier."""
 
-    if not await check_existence(conn, functional_zones_data):
+    if not await check_existence(conn, functional_zones_data, conditions={"functional_zone_id": functional_zone_id}):
         raise EntityNotFoundById(functional_zone_id, "functional zone")
 
     statement = delete(functional_zones_data).where(functional_zones_data.c.functional_zone_id == functional_zone_id)

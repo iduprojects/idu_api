@@ -47,3 +47,6 @@ apply-migrations:
 
 test-urban-api:
 	poetry run pytest --verbose tests/urban_api/
+
+test-urban-api-with-cov:
+	poetry run pytest --verbose tests/urban_api/ --cov idu_api/urban_api

@@ -1,6 +1,6 @@
 """Service types handlers are defined here."""
 
-from fastapi import Path, Query, Request
+from fastapi import Path, Query, Request, HTTPException
 from starlette import status
 
 from idu_api.urban_api.logic.service_types import ServiceTypesService
@@ -332,6 +332,13 @@ async def get_service_types_hierarchy(
     """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
-    hierarchy = await service_types_service.get_service_types_hierarchy(service_types_ids)
+    ids: set[int] | None = None
+    if service_types_ids is not None:
+        try:
+            ids = {int(type_id.strip()) for type_id in service_types_ids.split(",")}
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    hierarchy = await service_types_service.get_service_types_hierarchy(ids)
 
     return [ServiceTypesHierarchy.from_dto(node) for node in hierarchy]

@@ -1,15 +1,41 @@
 """All fixtures for object geometries tests are defined here."""
 
+from typing import Any
+
 import pytest
 
 from idu_api.urban_api.schemas import ObjectGeometryPatch, ObjectGeometryPost, ObjectGeometryPut
 from idu_api.urban_api.schemas.geometries import Geometry
 
 __all__ = [
+    "object_geometry",
     "object_geometries_patch_req",
     "object_geometries_post_req",
     "object_geometries_put_req",
+    "scenario_geometry",
 ]
+
+
+####################################################################################
+#                        Integration tests helpers                                 #
+####################################################################################
+
+
+@pytest.fixture(scope="session")
+def object_geometry(urban_api_host, urban_object) -> dict[str, Any]:
+    """Returns created object geometry."""
+    return urban_object["object_geometry"]
+
+
+@pytest.fixture(scope="session")
+def scenario_geometry(urban_api_host, scenario_urban_object) -> dict[str, Any]:
+    """Returns created object geometry."""
+    return scenario_urban_object["object_geometry"]
+
+
+####################################################################################
+#                                 Models                                           #
+####################################################################################
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ from collections import defaultdict
 from geoalchemy2.functions import (
     ST_AsEWKB,
     ST_Centroid,
-    ST_GeomFromText,
+    ST_GeomFromWKB,
     ST_Intersection,
     ST_Intersects,
     ST_Within,
@@ -1133,6 +1133,7 @@ async def put_object_geometry_to_db(
                 projects_urban_objects_data.c.scenario_id == scenario_id,
                 projects_object_geometries_data.c.public_object_geometry_id == object_geometry_id,
             )
+            .limit(1)
         )
         public_object_geometry = (await conn.execute(statement)).one_or_none()
         if public_object_geometry is not None:
@@ -1151,11 +1152,7 @@ async def put_object_geometry_to_db(
             insert(projects_object_geometries_data)
             .values(
                 public_object_geometry_id=object_geometry_id,
-                territory_id=object_geometry.territory_id,
-                geometry=ST_GeomFromText(object_geometry.geometry.as_shapely_geometry().wkt, text("4326")),
-                centre_point=ST_GeomFromText(object_geometry.centre_point.as_shapely_geometry().wkt, text("4326")),
-                address=object_geometry.address,
-                osm_id=object_geometry.osm_id,
+                **extract_values_from_model(object_geometry),
             )
             .returning(projects_object_geometries_data.c.object_geometry_id)
         )
@@ -1269,13 +1266,13 @@ async def patch_object_geometry_to_db(
                 projects_urban_objects_data.c.scenario_id == scenario_id,
                 projects_object_geometries_data.c.public_object_geometry_id == object_geometry_id,
             )
+            .limit(1)
         )
         public_object_geometry = (await conn.execute(statement)).scalar_one_or_none()
         if public_object_geometry is not None:
             raise EntityAlreadyExists("scenario object geometry", object_geometry_id)
 
     values = extract_values_from_model(object_geometry, exclude_unset=True, to_update=True)
-
     if is_scenario_object:
         statement = (
             update(projects_object_geometries_data)

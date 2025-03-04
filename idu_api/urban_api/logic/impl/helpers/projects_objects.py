@@ -47,7 +47,7 @@ from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, Proj
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
-from idu_api.urban_api.logic.impl.helpers.utils import SRID, extract_values_from_model
+from idu_api.urban_api.logic.impl.helpers.utils import SRID, extract_values_from_model, check_existence
 from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
@@ -536,69 +536,72 @@ async def add_project_to_db(
         ST_GeomFromWKB(project.territory.geometry.as_shapely_geometry().wkb, text(str(SRID))).label("geometry")
     ).scalar_subquery()
 
-    buffer_meters = 3000
-    buffered_project_geometry = select(
-        cast(
-            ST_Buffer(
-                cast(
-                    given_geometry,
-                    Geography(srid=SRID),
+    if not project.is_regional:
+        if not await check_existence(conn, territories_data, conditions={"territory_id": project.territory_id}):
+            raise EntityNotFoundById(project.territory_id, "territory")
+        buffer_meters = 3000
+        buffered_project_geometry = select(
+            cast(
+                ST_Buffer(
+                    cast(
+                        given_geometry,
+                        Geography(srid=SRID),
+                    ),
+                    buffer_meters,
                 ),
-                buffer_meters,
-            ),
-            Geometry(srid=SRID),
-        ).label("geometry")
-    ).scalar_subquery()
+                Geometry(srid=SRID),
+            ).label("geometry")
+        ).scalar_subquery()
 
-    base_cte = (
-        select(
+        base_cte = (
+            select(
+                territories_data.c.territory_id,
+                territories_data.c.name,
+                territories_data.c.is_city,
+                territories_data.c.level,
+                territories_data.c.geometry,
+            )
+            .where(territories_data.c.territory_id == project.territory_id)
+            .cte(name="territories_cte", recursive=True)
+        )
+        recursive_query = select(
             territories_data.c.territory_id,
             territories_data.c.name,
             territories_data.c.is_city,
             territories_data.c.level,
             territories_data.c.geometry,
+        ).where(territories_data.c.parent_id == base_cte.c.territory_id)
+        territories_cte = base_cte.union_all(recursive_query)
+        cities_level = (
+            select(territories_cte.c.level)
+            .where(territories_cte.c.is_city.is_(True))
+            .order_by(territories_cte.c.level.desc())
+            .limit(1)
+            .cte(name="cities_level")
         )
-        .where(territories_data.c.territory_id == project.territory_id)
-        .cte(name="territories_cte", recursive=True)
-    )
-    recursive_query = select(
-        territories_data.c.territory_id,
-        territories_data.c.name,
-        territories_data.c.is_city,
-        territories_data.c.level,
-        territories_data.c.geometry,
-    ).where(territories_data.c.parent_id == base_cte.c.territory_id)
-    territories_cte = base_cte.union_all(recursive_query)
-    cities_level = (
-        select(territories_cte.c.level)
-        .where(territories_cte.c.is_city.is_(True))
-        .order_by(territories_cte.c.level.desc())
-        .limit(1)
-        .cte(name="cities_level")
-    )
-    intersecting_territories = select(territories_cte.c.name).where(
-        territories_cte.c.level == (cities_level.c.level - 1),
-        ST_Intersects(territories_cte.c.geometry, given_geometry),
-    )
-    intersecting_district = select(territories_cte.c.name).where(
-        territories_cte.c.level == (cities_level.c.level - 2),
-        ST_Intersects(territories_cte.c.geometry, given_geometry),
-    )
-    context_territories = select(territories_cte.c.territory_id).where(
-        territories_cte.c.level == (cities_level.c.level - 1),
-        ST_Intersects(territories_cte.c.geometry, buffered_project_geometry),
-    )
-    project.properties.update(
-        {
-            "territories": list((await conn.execute(intersecting_territories)).scalars().all()),
-            "districts": list((await conn.execute(intersecting_district)).scalars().all()),
-            "context": list((await conn.execute(context_territories)).scalars().all()),
-        }
-    )
+        intersecting_territories = select(territories_cte.c.name).where(
+            territories_cte.c.level == (cities_level.c.level - 1),
+            ST_Intersects(territories_cte.c.geometry, given_geometry),
+        )
+        intersecting_district = select(territories_cte.c.name).where(
+            territories_cte.c.level == (cities_level.c.level - 2),
+            ST_Intersects(territories_cte.c.geometry, given_geometry),
+        )
+        context_territories = select(territories_cte.c.territory_id).where(
+            territories_cte.c.level == (cities_level.c.level - 1),
+            ST_Intersects(territories_cte.c.geometry, buffered_project_geometry),
+        )
+        project.properties.update(
+            {
+                "territories": list((await conn.execute(intersecting_territories)).scalars().all()),
+                "districts": list((await conn.execute(intersecting_district)).scalars().all()),
+                "context": list((await conn.execute(context_territories)).scalars().all()),
+            }
+        )
 
     statement_for_project = (
         insert(projects_data)
-        .values(**project.model_dump(exclude={"territory"}), user_id=user.id, is_regional=False)
+        .values(**project.model_dump(exclude={"territory"}), user_id=user.id)
         .returning(projects_data.c.project_id)
     )
     project_id = (await conn.execute(statement_for_project)).scalar_one()
@@ -608,19 +611,21 @@ async def add_project_to_db(
 
     # fixme: use the real parent scenario identifier from the user
     #  instead of using the basic regional scenario by default
-    parent_scenario_id = (
-        await conn.execute(
-            select(scenarios_data.c.scenario_id)
-            .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
-            .where(
-                projects_data.c.territory_id == project.territory_id,
-                projects_data.c.is_regional.is_(True),
-                scenarios_data.c.is_based.is_(True),
+    parent_scenario_id = None
+    if not project.is_regional:
+        parent_scenario_id = (
+            await conn.execute(
+                select(scenarios_data.c.scenario_id)
+                .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
+                .where(
+                    projects_data.c.territory_id == project.territory_id,
+                    projects_data.c.is_regional.is_(True),
+                    scenarios_data.c.is_based.is_(True),
+                )
             )
-        )
-    ).scalar_one_or_none()
-    if parent_scenario_id is None:
-        raise EntityNotFoundByParams(project.territory_id, "scenario")
+        ).scalar_one_or_none()
+        if parent_scenario_id is None:
+            raise EntityNotFoundByParams("parent scenario", project.territory_id)
 
     scenario_id = (
         await conn.execute(
@@ -734,63 +739,65 @@ async def add_project_to_db(
     # TODO: If we get at least one urban object from regional scenario
     # or we haven't got any functional zones for the project territory from public schema,
     # it's needed to generate new functional zones else get it from public schema
-    statement = select(
-        literal(scenario_id).label("scenario_id"),
-        functional_zones_data.c.functional_zone_type_id,
-        ST_Intersection(functional_zones_data.c.geometry, given_geometry).label("geometry"),
-        functional_zones_data.c.year,
-        functional_zones_data.c.source,
-        functional_zones_data.c.properties,
-    ).where(
-        functional_zones_data.c.territory_id.in_(select(territories_data.c.territory_id)),
-        ST_Intersects(functional_zones_data.c.geometry, given_geometry),
-        ST_GeometryType(ST_Intersection(functional_zones_data.c.geometry, given_geometry)).in_(
-            ("ST_Polygon", "ST_MultiPolygon")
-        ),
-        ~ST_IsEmpty(ST_Intersection(functional_zones_data.c.geometry, given_geometry)),
-    )
-    zones = (await conn.execute(statement)).mappings().all()
-    if not zones:
-        pass  # TODO: use external service to generate zones if there is no zones
-    else:
-        await conn.execute(
-            insert(projects_functional_zones).from_select(
-                [
-                    projects_functional_zones.c.scenario_id,
-                    projects_functional_zones.c.functional_zone_type_id,
-                    projects_functional_zones.c.geometry,
-                    projects_functional_zones.c.year,
-                    projects_functional_zones.c.source,
-                    projects_functional_zones.c.properties,
-                ],
-                statement,
-            )
+    if not project.is_regional:
+        statement = select(
+            literal(scenario_id).label("scenario_id"),
+            functional_zones_data.c.functional_zone_type_id,
+            ST_Intersection(functional_zones_data.c.geometry, given_geometry).label("geometry"),
+            functional_zones_data.c.year,
+            functional_zones_data.c.source,
+            functional_zones_data.c.properties,
+        ).where(
+            functional_zones_data.c.territory_id.in_(select(territories_data.c.territory_id)),
+            ST_Intersects(functional_zones_data.c.geometry, given_geometry),
+            ST_GeometryType(ST_Intersection(functional_zones_data.c.geometry, given_geometry)).in_(
+                ("ST_Polygon", "ST_MultiPolygon")
+            ),
+            ~ST_IsEmpty(ST_Intersection(functional_zones_data.c.geometry, given_geometry)),
         )
+        zones = (await conn.execute(statement)).mappings().all()
+        if not zones:
+            pass  # TODO: use external service to generate zones if there is no zones
+        else:
+            await conn.execute(
+                insert(projects_functional_zones).from_select(
+                    [
+                        projects_functional_zones.c.scenario_id,
+                        projects_functional_zones.c.functional_zone_type_id,
+                        projects_functional_zones.c.geometry,
+                        projects_functional_zones.c.year,
+                        projects_functional_zones.c.source,
+                        projects_functional_zones.c.properties,
+                    ],
+                    statement,
+                )
+            )
 
     await conn.commit()
 
     config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 
-    async with aiohttp.ClientSession() as session:
-        params = {"scenario_id": scenario_id, "project_id": project_id, "background": "true"}
-        try:
-            response = await session.put(
-                f"{config.external.hextech_api}/hextech/indicators_saving/save_all",
-                params=params,
-            )
-            response.raise_for_status()
-        except aiohttp.ClientResponseError as exc:
-            await logger.awarning(
-                "failed to save indicators",
-                status=exc.status,
-                message=exc.message,
-                url=exc.request_info.url,
-                params=params,
-            )
-        except aiohttp.ClientConnectorError as exc:
-            await logger.awarning("request failed", reason=str(exc), params=params)
-        except Exception:  # pylint: disable=broad-except
-            await logger.aexception("unexpected error occurred")
+    if not project.is_regional:
+        async with aiohttp.ClientSession() as session:
+            params = {"scenario_id": scenario_id, "project_id": project_id, "background": "true"}
+            try:
+                response = await session.put(
+                    f"{config.external.hextech_api}/hextech/indicators_saving/save_all",
+                    params=params,
+                )
+                response.raise_for_status()
+            except aiohttp.ClientResponseError as exc:
+                await logger.awarning(
+                    "failed to save indicators",
+                    status=exc.status,
+                    message=exc.message,
+                    url=exc.request_info.url,
+                    params=params,
+                )
+            except aiohttp.ClientConnectorError as exc:
+                await logger.awarning("request failed", reason=str(exc), params=params)
+            except Exception:  # pylint: disable=broad-except
+                await logger.aexception("unexpected error occurred")
 
     return await get_project_by_id_from_db(conn, project_id, user)
 

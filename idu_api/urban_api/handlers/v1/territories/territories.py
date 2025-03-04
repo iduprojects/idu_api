@@ -15,7 +15,7 @@ from idu_api.urban_api.schemas import (
     TerritoryWithoutGeometry,
 )
 from idu_api.urban_api.schemas.enums import OrderByField, Ordering
-from idu_api.urban_api.schemas.geometries import Feature, GeoJSONResponse, Geometry
+from idu_api.urban_api.schemas.geometries import Feature, GeoJSONResponse, Geometry, AllPossibleGeometry
 from idu_api.urban_api.schemas.pages import Page
 from idu_api.urban_api.utils.pagination import paginate
 
@@ -81,7 +81,7 @@ async def add_territory(
 @territories_router.put(
     "/territory/{territory_id}",
     response_model=Territory,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
     deprecated=True,
 )
 async def put_territory(
@@ -115,7 +115,7 @@ async def put_territory(
 @territories_router.patch(
     "/territory/{territory_id}",
     response_model=Territory,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def patch_territory(
     request: Request,
@@ -289,7 +289,7 @@ async def get_all_territories_by_parent_id(
     response_model=Page[TerritoryWithoutGeometry],
     status_code=status.HTTP_200_OK,
 )
-async def get_territory_without_geometry_by_parent_id(
+async def get_territories_without_geometry_by_parent_id(
     request: Request,
     parent_id: int | None = Query(
         None, description="parent territory identifier to filter, should be skipped to get top level territories", gt=0
@@ -334,6 +334,12 @@ async def get_territory_without_geometry_by_parent_id(
     - **404 Not Found**: If the parent territory does not exist.
     """
     territories_service: TerritoriesService = request.state.territories_service
+
+    if not get_all_levels and cities_only:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You can use cities_only parameter only with including all levels",
+        )
 
     order_by_value = order_by.value if order_by is not None else None
 
@@ -405,6 +411,12 @@ async def get_all_territories_without_geometry_by_parent_id(
     """
     territories_service: TerritoriesService = request.state.territories_service
 
+    if not get_all_levels and cities_only:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You can use cities_only parameter only with including all levels",
+        )
+
     order_by_value = order_by.value if order_by is not None else None
 
     territories = await territories_service.get_territories_without_geometry_by_parent_id(
@@ -429,7 +441,7 @@ async def get_all_territories_without_geometry_by_parent_id(
 )
 async def get_common_territory(
     request: Request,
-    geometry: Geometry,
+    geometry: AllPossibleGeometry,
 ) -> Territory:
     """
     ## Get the most deep territory that fully covers a given geometry.
@@ -449,7 +461,7 @@ async def get_common_territory(
 
     try:
         shapely_geom = geometry.as_shapely_geometry()
-    except ValueError as e:
+    except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     territory = await territories_service.get_common_territory_for_geometry(shapely_geom)
@@ -467,7 +479,7 @@ async def get_common_territory(
 )
 async def intersecting_territories(
     request: Request,
-    geometry: Geometry,
+    geometry: AllPossibleGeometry,
     parent_territory_id: int = Path(..., description="parent territory identifier", gt=0),
 ) -> list[Territory]:
     """
@@ -489,7 +501,7 @@ async def intersecting_territories(
 
     try:
         shapely_geom = geometry.as_shapely_geometry()
-    except ValueError as e:
+    except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     territories = await territories_service.get_intersecting_territories_for_geometry(parent_territory_id, shapely_geom)
@@ -523,7 +535,7 @@ async def get_territories_by_ids(
     territories_service: TerritoriesService = request.state.territories_service
 
     try:
-        ids = {int(tid.strip()) for tid in territories_ids.split(",")}
+        ids = list({int(tid.strip()) for tid in territories_ids.split(",")})
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 

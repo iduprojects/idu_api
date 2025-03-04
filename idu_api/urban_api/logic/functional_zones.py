@@ -31,7 +31,7 @@ class FunctionalZonesService(Protocol):
         """Create functional zone type object."""
 
     @abc.abstractmethod
-    async def get_all_sources(self, territory_id: int | None) -> list[int]:
+    async def get_all_sources(self) -> list[int]:
         """Get a list of all profiles reclamation sources."""
 
     @abc.abstractmethod

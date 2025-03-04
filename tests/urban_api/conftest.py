@@ -54,6 +54,7 @@ def config(database) -> UrbanAPIConfig:
         fileserver=config.fileserver,
         external=config.external,
         logging=config.logging,
+        prometheus=config.prometheus,
     )
     return config
 
@@ -75,18 +76,12 @@ def urban_api_host(config) -> Iterator[str]:  # pylint: disable=redefined-outer-
         ]
     ) as process:
         try:
-            max_attempts = 30
-            for _ in range(max_attempts):
-                time.sleep(1)
-                try:
-                    with httpx.Client() as client:
-                        if client.get(f"{host}/health_check/ping").is_success:
-                            yield host
-                            break
-                except httpx.ConnectError:
-                    continue
-            else:
-                pytest.fail("Failed to start urban_api server")
+            time.sleep(5)
+            with httpx.Client() as client:
+                if client.get(f"{host}/health_check/ping").is_success:
+                    yield host
+                else:
+                    pytest.fail("Failed to start urban_api server")
         finally:
             if os.path.exists(temp_yaml_config_path):
                 os.remove(temp_yaml_config_path)

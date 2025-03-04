@@ -48,9 +48,9 @@ class FunctionalZonesServiceImpl(FunctionalZonesService):
         async with self._connection_manager.get_connection() as conn:
             return await add_functional_zone_type_to_db(conn, functional_zone_type)
 
-    async def get_all_sources(self, territory_id: int | None) -> list[int]:
+    async def get_all_sources(self) -> list[int]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_all_sources_from_db(conn, territory_id)
+            return await get_all_sources_from_db(conn)
 
     async def get_profiles_reclamation_data_matrix(
         self, labels: list[int], territory_id: int | None

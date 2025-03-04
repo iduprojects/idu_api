@@ -11,8 +11,8 @@ from idu_api.urban_api.schemas import (
     IndicatorsGroup,
     IndicatorsGroupPost,
     IndicatorsPatch,
-    IndicatorsPost,
-    IndicatorsPut,
+    IndicatorPost,
+    IndicatorPut,
     IndicatorValue,
     IndicatorValuePost,
     IndicatorValuePut,
@@ -117,7 +117,7 @@ async def add_indicators_group(request: Request, indicators_group: IndicatorsGro
 @indicators_router.put(
     "/indicators_groups",
     response_model=IndicatorsGroup,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def update_indicators_group(
     request: Request,
@@ -257,12 +257,12 @@ async def get_indicator_by_id(
     response_model=Indicator,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_indicator(request: Request, indicator: IndicatorsPost) -> Indicator:
+async def add_indicator(request: Request, indicator: IndicatorPost) -> Indicator:
     """
     ## Create a new indicator.
 
     ### Parameters:
-    - **indicator** (IndicatorsPost, Body): Data for the new indicator.
+    - **indicator** (IndicatorPost, Body): Data for the new indicator.
 
     ### Returns:
     - **Indicator**: The created indicator.
@@ -281,9 +281,9 @@ async def add_indicator(request: Request, indicator: IndicatorsPost) -> Indicato
 @indicators_router.put(
     "/indicators",
     response_model=Indicator,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
-async def put_indicator(request: Request, indicator: IndicatorsPut) -> Indicator:
+async def put_indicator(request: Request, indicator: IndicatorPut) -> Indicator:
     """
     ## Update or create an indicator.
 
@@ -291,7 +291,7 @@ async def put_indicator(request: Request, indicator: IndicatorsPut) -> Indicator
     Otherwise, a new indicator will be created.
 
     ### Parameters:
-    - **indicator** (IndicatorsPut, Body): Data for updating or creating an indicator.
+    - **indicator** (IndicatorPut, Body): Data for updating or creating an indicator.
 
     ### Returns:
     - **Indicator**: The updated or created indicator.
@@ -309,7 +309,7 @@ async def put_indicator(request: Request, indicator: IndicatorsPut) -> Indicator
 @indicators_router.patch(
     "/indicators/{indicator_id}",
     response_model=Indicator,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def patch_indicator(
     request: Request,
@@ -339,7 +339,7 @@ async def patch_indicator(
 @indicators_router.delete(
     "/indicators/{indicator_id}",
     response_model=OkResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def delete_indicator(
     request: Request, indicator_id: int = Path(..., description="indicator identifier", gt=0)
@@ -434,7 +434,7 @@ async def add_indicator_value(request: Request, indicator_value: IndicatorValueP
 @indicators_router.put(
     "/indicator_value",
     response_model=IndicatorValue,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def put_indicator_value(request: Request, indicator_value: IndicatorValuePut) -> IndicatorValue:
     """
@@ -462,7 +462,7 @@ async def put_indicator_value(request: Request, indicator_value: IndicatorValueP
 @indicators_router.delete(
     "/indicator_value",
     response_model=OkResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def delete_indicator_value(
     request: Request,

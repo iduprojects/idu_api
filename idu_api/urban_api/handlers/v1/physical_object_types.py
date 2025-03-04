@@ -1,6 +1,6 @@
 """Physical object type handlers are defined here."""
 
-from fastapi import Path, Query, Request
+from fastapi import Path, Query, Request, HTTPException
 from starlette import status
 
 from idu_api.urban_api.logic.physical_object_types import PhysicalObjectTypesService
@@ -316,10 +316,18 @@ async def get_physical_object_types_hierarchy(
     - **list[PhysicalObjectsTypesHierarchy]**: A hierarchical representation of physical object types.
 
     ### Errors:
+    - **400 Bad Request**: If given identifiers are invalid.
     - **404 Not Found**: If the physical object types do not exist.
     """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
-    hierarchy = await physical_object_types_service.get_physical_object_types_hierarchy(physical_object_types_ids)
+    ids: set[int] | None = None
+    if physical_object_types_ids is not None:
+        try:
+            ids = {int(type_id.strip()) for type_id in physical_object_types_ids.split(",")}
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    hierarchy = await physical_object_types_service.get_physical_object_types_hierarchy(ids)
 
     return [PhysicalObjectsTypesHierarchy.from_dto(node) for node in hierarchy]

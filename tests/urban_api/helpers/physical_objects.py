@@ -1,6 +1,7 @@
 """All fixtures for physical objects tests are defined here."""
 
 from datetime import datetime, timezone
+from typing import Any
 
 import pytest
 
@@ -17,13 +18,37 @@ from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.short_models import PhysicalObjectFunctionBasic, ShortTerritory
 
 __all__ = [
+    "physical_object",
     "physical_object_req",
     "physical_object_patch_req",
     "physical_object_post_req",
     "physical_object_put_req",
     "physical_object_with_geometry_req",
     "physical_object_with_geometry_post_req",
+    "scenario_physical_object",
 ]
+
+
+####################################################################################
+#                        Integration tests helpers                                 #
+####################################################################################
+
+
+@pytest.fixture(scope="session")
+def physical_object(urban_api_host, urban_object) -> dict[str, Any]:
+    """Returns created physical object."""
+    return urban_object["physical_object"]
+
+
+@pytest.fixture(scope="session")
+def scenario_physical_object(urban_api_host, scenario_urban_object) -> dict[str, Any]:
+    """Returns created physical object."""
+    return scenario_urban_object["physical_object"]
+
+
+####################################################################################
+#                                 Models                                           #
+####################################################################################
 
 
 @pytest.fixture

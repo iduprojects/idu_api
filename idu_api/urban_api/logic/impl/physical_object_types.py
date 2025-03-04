@@ -88,8 +88,6 @@ class PhysicalObjectTypesServiceImpl(PhysicalObjectTypesService):
         async with self._connection_manager.get_connection() as conn:
             return await delete_physical_object_function_from_db(conn, physical_object_function_id)
 
-    async def get_physical_object_types_hierarchy(
-        self, physical_object_type_ids: str | None
-    ) -> list[PhysicalObjectTypesHierarchyDTO]:
+    async def get_physical_object_types_hierarchy(self, ids: set[int] | None) -> list[PhysicalObjectTypesHierarchyDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_physical_object_types_hierarchy_from_db(conn, physical_object_type_ids)
+            return await get_physical_object_types_hierarchy_from_db(conn, ids)

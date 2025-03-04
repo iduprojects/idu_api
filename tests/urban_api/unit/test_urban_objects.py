@@ -222,16 +222,6 @@ async def test_get_urban_objects_by_territory_id_from_db(mock_conn: MockConnecti
             return False
         return True
 
-    async def check_physical_object_type(conn, table, conditions):
-        if table == physical_object_types_dict:
-            return False
-        return True
-
-    async def check_service_type(conn, table, conditions):
-        if table == service_types_dict:
-            return False
-        return True
-
     territory_id = 1
     service_type_id = 1
     physical_object_type_id = 1
@@ -312,7 +302,7 @@ async def test_get_urban_objects_by_territory_id_from_db(mock_conn: MockConnecti
             )
         )
         .where(
-            object_geometries_data.c.territory_id.in_(select(territories_cte)),
+            object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
             physical_objects_data.c.physical_object_type_id == physical_object_type_id,
             services_data.c.service_type_id == service_type_id,
         )
@@ -327,18 +317,6 @@ async def test_get_urban_objects_by_territory_id_from_db(mock_conn: MockConnecti
     ):
         with pytest.raises(EntityNotFoundById):
             await get_urban_objects_by_territory_id_from_db(mock_conn, territory_id, None, None)
-    with patch(
-        "idu_api.urban_api.logic.impl.helpers.urban_objects.check_existence",
-        new=AsyncMock(side_effect=check_physical_object_type),
-    ):
-        with pytest.raises(EntityNotFoundById):
-            await get_urban_objects_by_territory_id_from_db(mock_conn, territory_id, None, physical_object_type_id)
-    with patch(
-        "idu_api.urban_api.logic.impl.helpers.urban_objects.check_existence",
-        new=AsyncMock(side_effect=check_service_type),
-    ):
-        with pytest.raises(EntityNotFoundById):
-            await get_urban_objects_by_territory_id_from_db(mock_conn, territory_id, service_type_id, None)
     result = await get_urban_objects_by_territory_id_from_db(
         mock_conn, territory_id, service_type_id, physical_object_type_id
     )

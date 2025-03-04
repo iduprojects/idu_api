@@ -231,9 +231,9 @@ async def get_territories_by_parent_id_from_db(
     statement = select(
         requested_territories.c.territory_id,
         requested_territories.c.territory_type_id,
-        requested_territories.c.name.label("territory_type_name"),
+        territory_types_dict.c.name.label("territory_type_name"),
         requested_territories.c.parent_id,
-        requested_territories.c.name.label("parent_name"),
+        territories_data_parents.c.name.label("parent_name"),
         requested_territories.c.name,
         ST_AsEWKB(requested_territories.c.geometry).label("geometry"),
         requested_territories.c.level,
@@ -330,9 +330,9 @@ async def get_territories_without_geometry_by_parent_id_from_db(
     statement = select(
         requested_territories.c.territory_id,
         requested_territories.c.territory_type_id,
-        requested_territories.c.name.label("territory_type_name"),
+        territory_types_dict.c.name.label("territory_type_name"),
         requested_territories.c.parent_id,
-        requested_territories.c.name.label("parent_name"),
+        territories_data_parents.c.name.label("parent_name"),
         requested_territories.c.name,
         requested_territories.c.level,
         requested_territories.c.properties,
