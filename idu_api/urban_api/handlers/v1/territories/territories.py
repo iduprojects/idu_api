@@ -530,4 +530,3 @@ async def get_territories_by_ids(
     territories = await territories_service.get_territories_by_ids(ids)
 
     return await GeoJSONResponse.from_list([t.to_geojson_dict() for t in territories], centers_only=centers_only)
-

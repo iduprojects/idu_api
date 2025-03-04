@@ -41,3 +41,6 @@ logging:
   files:
   - filename: logs/info.log
     level: INFO
+prometheus:
+  port: 9000
+  disable: false

@@ -59,18 +59,6 @@ def _run_uvicorn(configuration: dict[str, tp.Any]) -> tp.NoReturn:
     help="Logger verbosity",
 )
 @click.option(
-    "--add_logger",
-    "-l",
-    "additional_loggers",
-    type=logger_from_str,
-    envvar="ADDITIONAL_LOGGERS",
-    multiple=True,
-    default=[],
-    show_default="[]",
-    show_envvar=True,
-    help="Add logger in format LEVEL,path/to/logfile",
-)
-@click.option(
     "--debug",
     envvar="DEBUG",
     is_flag=True,
@@ -89,7 +77,6 @@ def main(
     port: int,
     host: str,
     logger_verbosity: LogLevel,
-    additional_loggers: list[tuple[LogLevel, str]],
     debug: bool,
     config_path: str,
 ):
@@ -111,6 +98,7 @@ def main(
         fileserver=config.fileserver,
         external=config.external,
         logging=logging_section,
+        prometheus=config.prometheus,
     )
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_yaml_config_path = temp_file.name

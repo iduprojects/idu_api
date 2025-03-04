@@ -69,6 +69,12 @@ class LoggingConfig:
 
 
 @dataclass
+class PrometheusConfig:
+    port: int = 9000
+    disable: bool = False
+
+
+@dataclass
 class UrbanAPIConfig:
     app: AppConfig
     db: MultipleDBsConfig
@@ -76,6 +82,7 @@ class UrbanAPIConfig:
     fileserver: FileServerConfig
     external: ExternalServicesConfig
     logging: LoggingConfig
+    prometheus: PrometheusConfig
 
     def to_order_dict(self) -> OrderedDict:
         """OrderDict transformer."""
@@ -101,6 +108,7 @@ class UrbanAPIConfig:
                 ("fileserver", to_ordered_dict_recursive(self.fileserver)),
                 ("external", to_ordered_dict_recursive(self.external)),
                 ("logging", to_ordered_dict_recursive(self.logging)),
+                ("prometheus", to_ordered_dict_recursive(self.prometheus)),
             ]
         )
 
@@ -156,6 +164,7 @@ class UrbanAPIConfig:
                 hextech_api="http://localhost:8100", gen_planner_api="http://localhost:8101"
             ),
             logging=LoggingConfig(level="INFO", files=[FileLogger(filename="logs/info.log", level="INFO")]),
+            prometheus=PrometheusConfig(port=9000, disable=False),
         )
 
     @classmethod
@@ -176,6 +185,7 @@ class UrbanAPIConfig:
                 fileserver=FileServerConfig(**data.get("fileserver", {})),
                 external=ExternalServicesConfig(**data.get("external", {})),
                 logging=LoggingConfig(**data.get("logging", {})),
+                prometheus=PrometheusConfig(**data.get("prometheus", {})),
             )
         except Exception as exc:
             raise ValueError(f"Could not read app config file: {file}") from exc

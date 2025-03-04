@@ -26,6 +26,7 @@ from idu_api.urban_api.middlewares.authentication import AuthenticationMiddlewar
 from idu_api.urban_api.middlewares.dependency_injection import PassServicesDependenciesMiddleware
 from idu_api.urban_api.middlewares.exception_handler import ExceptionHandlerMiddleware
 from idu_api.urban_api.middlewares.logging import LoggingMiddleware
+from idu_api.urban_api.prometheus import server as prometheus_server
 from idu_api.urban_api.utils.auth_client import AuthenticationClient
 from idu_api.urban_api.utils.logging import configure_logging
 
@@ -150,12 +151,18 @@ async def lifespan(application: FastAPI):
                 app_config.auth.url,
             )
 
+    if not app_config.prometheus.disable:
+        prometheus_server.start_server(port=app_config.prometheus.port)
+
     yield
 
     for middleware in application.user_middleware:
         if middleware.cls == PassServicesDependenciesMiddleware:
             connection_manager: PostgresConnectionManager = middleware.kwargs["connection_manager"]
             await connection_manager.shutdown()
+
+    if not app_config.prometheus.disable:
+        prometheus_server.stop_server()
 
 
 app = get_app()
