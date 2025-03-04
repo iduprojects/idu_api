@@ -495,3 +495,39 @@ async def intersecting_territories(
     territories = await territories_service.get_intersecting_territories_for_geometry(parent_territory_id, shapely_geom)
 
     return [Territory.from_dto(territory) for territory in territories]
+
+
+@territories_router.get(
+    "/territories/{territories_ids}",
+    response_model=GeoJSONResponse[Feature[FeatureGeometry, TerritoryWithoutGeometry]],
+    status_code=status.HTTP_200_OK,
+)
+async def get_territories_by_ids(
+    request: Request,
+    territories_ids: str = Path(..., description="list of identifiers separated by comma"),
+    centers_only: bool = Query(False, description="display only centers"),
+) -> GeoJSONResponse[Feature[FeatureGeometry, TerritoryWithoutGeometry]]:
+    """
+    ## Get list of territories by given identifiers in GeoJSON format.
+
+    ### Parameters:
+    - **territories_ids** (int, Path): List of unique identifiers separated by comma.
+
+    ### Returns:
+    - **GeoJSONResponse[Feature[FeatureGeometry, TerritoryWithoutGeometry]]**: A list of requested territories in GeoJSON format.
+
+    ### Errors:
+    - **400 Bad Request**: If an invalid list of identifiers is specified.
+    - **404 Not Found**: If at least one territory with given identifier was not found.
+    """
+    territories_service: TerritoriesService = request.state.territories_service
+
+    try:
+        ids = {int(tid.strip()) for tid in territories_ids.split(",")}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+    territories = await territories_service.get_territories_by_ids(ids)
+
+    return await GeoJSONResponse.from_list([t.to_geojson_dict() for t in territories], centers_only=centers_only)
+
