@@ -108,7 +108,7 @@ class PostgresConnectionManager:
                         cur = await conn.execute(select(1))
                         assert cur.fetchone()[0] == 1
                         self._replica_engines.append(replica_engine)
-                except Exception as exc:
+                except Exception as exc:  # pylint: disable=broad-except
                     await replica_engine.dispose()
                     await self._logger.awarning("error connecting to replica", host=replica.host, error=repr(exc))
 
@@ -157,16 +157,22 @@ class PostgresConnectionManager:
                 yield conn
             return
 
-        # Select the next replica (round-robin)
-        engine = next(self._replica_cycle)
+        # Select the next replica (round-robin), `self._replica_cycle` is guranteed to have values here
+        engine = next(self._replica_cycle)  # pylint: disable=stop-iteration-return
+        conn = None
         try:
             conn = await engine.connect()
             if self._application_name is not None:
                 await conn.execute(text(f'SET application_name TO "{self._application_name}"'))
                 await conn.commit()
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-except
+            if conn is not None:
+                try:
+                    conn.close()
+                except Exception:  # pylint: disable=broad-except
+                    pass
             await self._logger.awarning(
-                "error connecting to replica, falling back to master", error=repr(exc), error_type=type(exc)
+                "error connecting to replica, falling back to master", error=repr(exc), error_type=type(exc).__name__
             )
             async with self.get_connection() as conn:
                 yield conn

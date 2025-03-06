@@ -13,6 +13,7 @@ from fastapi.responses import StreamingResponse
 from geojson_pydantic import Feature
 from starlette import status
 
+from idu_api.urban_api.exceptions.base import IduApiError
 from idu_api.urban_api.schemas import PingResponse
 
 from ..logic.system import SystemService
@@ -37,6 +38,13 @@ async def health_check():
     Return health check response.
     """
     return PingResponse()
+
+
+@system_router.post("/debug/raise_error")
+async def raise_error(idu_api_error: bool = True):
+    if idu_api_error:
+        raise IduApiError()
+    raise RuntimeError("Something really unexpected occured")
 
 
 @system_router.post(

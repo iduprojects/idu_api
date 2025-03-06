@@ -30,18 +30,28 @@ from idu_api.urban_api.prometheus import server as prometheus_server
 from idu_api.urban_api.utils.auth_client import AuthenticationClient
 from idu_api.urban_api.utils.logging import configure_logging
 
-from .handlers import list_of_routes
+from .handlers import list_of_routers
 from .version import LAST_UPDATE, VERSION
 
 
-def bind_routes(application: FastAPI, prefix: str) -> None:
+def bind_routes(application: FastAPI, prefix: str, debug: bool) -> None:
     """Bind all routes to application."""
-    for route in list_of_routes:
-        application.include_router(route, prefix=(prefix if "/" not in {r.path for r in route.routes} else ""))
+    for router in list_of_routers:
+        if not debug:
+            to_remove = []
+            for i, route in enumerate(router.routes):
+                if "debug" in route.path:
+                    to_remove.append(i)
+            for i in to_remove[::-1]:
+                del router.routes[i]
+        if len(router.routes) > 0:
+            application.include_router(router, prefix=(prefix if "/" not in {r.path for r in router.routes} else ""))
 
 
 def get_app(prefix: str = "/api") -> FastAPI:
     """Create application and all dependable objects."""
+
+    app_config: UrbanAPIConfig = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 
     description = "This is a Digital Territories Platform API to access and manipulate basic territories data."
 
@@ -56,7 +66,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
         license_info={"name": "Apache 2.0", "url": "http://www.apache.org/licenses/LICENSE-2.0.html"},
         lifespan=lifespan,
     )
-    bind_routes(application, prefix)
+    bind_routes(application, prefix, app_config.app.debug)
 
     @application.get(f"{prefix}/docs", include_in_schema=False)
     async def custom_swagger_ui_html():
@@ -88,6 +98,8 @@ def get_app(prefix: str = "/api") -> FastAPI:
             return func(*args)
 
         return wrapped
+
+    application.state.config = app_config
 
     application.add_middleware(
         PassServicesDependenciesMiddleware,
@@ -125,7 +137,7 @@ async def lifespan(application: FastAPI):
 
     Initializes database connection in pass_services_dependencies middleware.
     """
-    app_config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
+    app_config: UrbanAPIConfig = application.state.config
     loggers_dict = {logger_config.filename: logger_config.level for logger_config in app_config.logging.files}
     logger = configure_logging(app_config.logging.level, loggers_dict)
     application.state.logger = logger

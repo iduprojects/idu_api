@@ -54,3 +54,7 @@ def configure_logging(
     root_logger.setLevel(root_logger_level)
 
     return logger
+
+def get_handler_from_path(path: str) -> str:
+    parts = path.split("/")
+    return "/".join(part if not part.rstrip(".0").isdigit() else "*" for part in parts)
