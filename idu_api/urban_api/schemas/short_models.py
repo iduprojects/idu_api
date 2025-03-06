@@ -379,7 +379,7 @@ class ShortProjectIndicatorValue(BaseModel):
 
 
 class ShortIndicatorInfo(BaseModel):
-    """Basic indicator model to encapsulate in other models.""" 
+    """Basic indicator model to encapsulate in other models."""
 
     indicator_id: int = Field(..., examples=[1])
     parent_id: int | None = Field(..., description="parent indicator identifier", examples=[1])
