@@ -6,7 +6,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     libgeos-dev \
     git \
-    logrotate && \
+    logrotate \
+    curl && \
     pip install --no-cache-dir poetry && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 

@@ -20,3 +20,6 @@ class IduApiError(HTTPException):
             but it defaults to 500 - Internal Server Error.
         """
         return status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    def __str__(self) -> str:
+        return "Unexpected error happened in IDU API"

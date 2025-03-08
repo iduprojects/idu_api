@@ -9,6 +9,8 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from idu_api.urban_api.exceptions import IduApiError
+from idu_api.urban_api.prometheus import metrics
+from idu_api.urban_api.utils.logging import get_handler_from_path
 
 
 class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-public-methods
@@ -29,15 +31,22 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
         try:
             return await call_next(request)
         except Exception as exc:  # pylint: disable=broad-except
-            error_status = 500
+            status_code = 500
             if isinstance(exc, (IduApiError, HTTPException)):
-                error_status = getattr(exc, "status_code", 500)
+                status_code = getattr(exc, "status_code", 500)
+
+            metrics.ERRORS_COUNTER.labels(
+                method=request.method,
+                path=get_handler_from_path(request.url.path),
+                error_type=type(exc).__name__,
+                status_code=status_code,
+            ).inc(1)
 
             if self._debug[0]:
                 return JSONResponse(
                     {
                         "error": str(exc),
-                        "error_type": str(type(exc)),
+                        "error_type": type(exc).__name__,
                         "path": request.url.path,
                         "params": request.url.query,
                         "trace": list(
@@ -46,6 +55,6 @@ class ExceptionHandlerMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few
                             )
                         ),
                     },
-                    status_code=error_status,
+                    status_code=status_code,
                 )
-            return JSONResponse({"code": error_status, "message": "exception occured"}, status_code=error_status)
+            return JSONResponse({"code": status_code, "message": "exception occured"}, status_code=status_code)

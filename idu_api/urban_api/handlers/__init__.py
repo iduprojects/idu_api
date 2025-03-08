@@ -10,11 +10,11 @@ for file in sorted(Path(__file__).resolve().parent.iterdir()):
         importlib.import_module(f".{file.name[:-3]}", __package__)
 
 
-list_of_routes = [
+list_of_routers = [
     *routers_list,
 ]
 
 
 __all__ = [
-    "list_of_routes",
+    "list_of_routers",
 ]

@@ -19,7 +19,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):  # pylint: disable=too-few-p
         try:
             authorization = request.headers.get("Authorization")
             if authorization and authorization.startswith("Bearer "):
-                token = authorization.split(" ")[1]
+                token = authorization.split(" ", 1)[1]
                 request.state.user = await self.auth_client.get_user_from_token(token)
             else:
                 request.state.user = None  # No token, user is unauthenticated
