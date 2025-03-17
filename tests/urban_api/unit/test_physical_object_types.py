@@ -521,7 +521,7 @@ async def test_get_physical_object_types_hierarchy_from_db(mock_conn: MockConnec
 
     # Act
     with pytest.raises(EntitiesNotFoundByIds):
-        await get_physical_object_types_hierarchy_from_db(mock_conn, "1, 2")
+        await get_physical_object_types_hierarchy_from_db(mock_conn, {1, 2})
     result = await get_physical_object_types_hierarchy_from_db(mock_conn, None)
 
     # Assert

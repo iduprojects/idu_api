@@ -1,5 +1,8 @@
 """All fixtures for physical object types tests are defined here."""
 
+from typing import Any
+
+import httpx
 import pytest
 
 from idu_api.urban_api.schemas import (
@@ -15,15 +18,57 @@ from idu_api.urban_api.schemas import (
 from idu_api.urban_api.schemas.short_models import PhysicalObjectFunctionBasic
 
 __all__ = [
-    "physical_object_type_req",
-    "physical_object_type_patch_req",
-    "physical_object_type_post_req",
-    "physical_objects_types_hierarchy_req",
+    "physical_object_function",
+    "physical_object_type",
     "physical_object_function_req",
     "physical_object_function_patch_req",
     "physical_object_function_post_req",
     "physical_object_function_put_req",
+    "physical_object_type_req",
+    "physical_object_type_patch_req",
+    "physical_object_type_post_req",
+    "physical_objects_types_hierarchy_req",
 ]
+
+####################################################################################
+#                        Integration tests helpers                                 #
+####################################################################################
+
+
+@pytest.fixture(scope="session")
+def physical_object_function(urban_api_host) -> dict[str, Any]:
+    """Returns created physical object function."""
+    physical_object_function_post_req = PhysicalObjectFunctionPost(
+        name="Test Function",
+        parent_id=None,
+        code="1",
+    )
+
+    with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
+        response = client.post("/physical_object_functions", json=physical_object_function_post_req.model_dump())
+
+    assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}."
+    return response.json()
+
+
+@pytest.fixture(scope="session")
+def physical_object_type(urban_api_host, physical_object_function) -> dict[str, Any]:
+    """Returns created physical object type."""
+    physical_object_type_post_req = PhysicalObjectTypePost(
+        name="Test Type",
+        physical_object_function_id=physical_object_function["physical_object_function_id"],
+    )
+
+    with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
+        response = client.post("/physical_object_types", json=physical_object_type_post_req.model_dump())
+
+    assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}."
+    return response.json()
+
+
+####################################################################################
+#                                 Models                                           #
+####################################################################################
 
 
 @pytest.fixture

@@ -13,8 +13,8 @@ from idu_api.urban_api.dto import (
 from idu_api.urban_api.schemas import (
     IndicatorsGroupPost,
     IndicatorsPatch,
-    IndicatorsPost,
-    IndicatorsPut,
+    IndicatorPost,
+    IndicatorPut,
     IndicatorValuePost,
     IndicatorValuePut,
     MeasurementUnitPost,
@@ -64,11 +64,11 @@ class IndicatorsService(Protocol):
         """Get indicator object by id."""
 
     @abc.abstractmethod
-    async def add_indicator(self, indicator: IndicatorsPost) -> IndicatorDTO:
+    async def add_indicator(self, indicator: IndicatorPost) -> IndicatorDTO:
         """Create indicator object."""
 
     @abc.abstractmethod
-    async def put_indicator(self, indicator: IndicatorsPut) -> IndicatorDTO:
+    async def put_indicator(self, indicator: IndicatorPut) -> IndicatorDTO:
         """Update indicator object by all its attributes."""
 
     @abc.abstractmethod

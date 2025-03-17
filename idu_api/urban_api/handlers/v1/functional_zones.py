@@ -1,6 +1,6 @@
 """Functional zones endpoints are defined here."""
 
-from fastapi import Path, Query, Request
+from fastapi import Path, Query, Request, HTTPException
 from starlette import status
 
 from idu_api.urban_api.logic.functional_zones import FunctionalZonesService
@@ -87,15 +87,19 @@ async def get_profiles_reclamation_data_matrix(
     - **ProfilesReclamationDataMatrix**: A matrix of profiles reclamation data.
 
     ### Errors:
+    - **400 Bad Request**: If labels were passed incorrectly.
     - **404 Not Found**: If the territory or label does not exist.
     """
     functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
 
     labels_array: list[int]
     if labels is None:
-        labels_array = await functional_zones_service.get_all_sources(territory_id)
+        labels_array = await functional_zones_service.get_all_sources()
     else:
-        labels_array = [int(label.strip()) for label in labels.split(",")]
+        try:
+            labels_array = [int(label.strip()) for label in labels.split(",")]
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
 
     profiles_reclamation_matrix = await functional_zones_service.get_profiles_reclamation_data_matrix(
         labels_array, territory_id
@@ -167,7 +171,7 @@ async def put_profiles_reclamation_data(
 @functional_zones_router.delete(
     "/profiles_reclamation",
     response_model=OkResponse,
-    status_code=status.HTTP_201_CREATED,
+    status_code=status.HTTP_200_OK,
 )
 async def delete_profiles_reclamation_data(
     request: Request, profiles_reclamation: ProfilesReclamationDataDelete

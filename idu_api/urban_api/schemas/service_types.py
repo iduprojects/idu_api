@@ -88,7 +88,7 @@ class ServiceTypePatch(BaseModel):
     infrastructure_type: Literal["basic", "additional", "comfort"] | None = Field(
         None, description="infrastructure type", examples=["basic"]
     )
-    properties: dict[str, Any] = Field(
+    properties: dict[str, Any] | None = Field(
         None,
         description="service type additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],

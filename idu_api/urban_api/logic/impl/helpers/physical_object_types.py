@@ -309,7 +309,7 @@ async def patch_physical_object_function_to_db(
 
     values_to_update = physical_object_function.model_dump(exclude_unset=True)
 
-    if "parent_id" in values_to_update:
+    if "parent_id" in values_to_update and values_to_update["parent_id"] is not None:
         if not await check_existence(
             conn,
             physical_object_functions_dict,
@@ -356,7 +356,7 @@ async def delete_physical_object_function_from_db(conn: AsyncConnection, physica
 
 
 async def get_physical_object_types_hierarchy_from_db(
-    conn: AsyncConnection, physical_object_type_ids: str | None
+    conn: AsyncConnection, ids: set[int] | None
 ) -> list[PhysicalObjectTypesHierarchyDTO]:
     """Get physical object types hierarchy (from top-level physical object function to physical object type)
     based on a list of required physical object type ids.
@@ -376,8 +376,7 @@ async def get_physical_object_types_hierarchy_from_db(
         .order_by(physical_object_types_dict.c.physical_object_type_id)
     )
 
-    if physical_object_type_ids is not None:
-        ids = {int(physical_object_type_id.strip()) for physical_object_type_id in physical_object_type_ids.split(",")}
+    if ids is not None:
         query = select(physical_object_types_dict.c.physical_object_type_id).where(
             physical_object_types_dict.c.physical_object_type_id.in_(ids)
         )

@@ -8,6 +8,7 @@ from sqlalchemy import select, text
 from sqlalchemy.sql.selectable import CTE, ScalarSelect, Select
 
 from idu_api.common.db.entities import projects_data, territories_data
+from idu_api.urban_api.dto import UserDTO
 from idu_api.urban_api.logic.impl.helpers.utils import (
     SRID,
     build_recursive_query,
@@ -144,7 +145,7 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
 
     # Arrange
     project_id = 1
-    user_id = "mock_string"
+    user = UserDTO("mock_string", is_superuser=False)
     statement = select(projects_data.c.user_id, projects_data.c.public, projects_data.c.properties).where(
         projects_data.c.project_id == project_id
     )
@@ -155,7 +156,7 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
     )
 
     # Act
-    result = await get_context_territories_geometry(mock_conn, project_id, user_id)
+    result = await get_context_territories_geometry(mock_conn, project_id, user)
 
     # Assert
     assert isinstance(result, tuple), "Result should be a dictionary."

@@ -32,8 +32,8 @@ from idu_api.urban_api.logic.indicators import IndicatorsService
 from idu_api.urban_api.schemas import (
     IndicatorsGroupPost,
     IndicatorsPatch,
-    IndicatorsPost,
-    IndicatorsPut,
+    IndicatorPost,
+    IndicatorPut,
     IndicatorValuePost,
     IndicatorValuePut,
     MeasurementUnitPost,
@@ -90,11 +90,11 @@ class IndicatorsServiceImpl(IndicatorsService):
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_indicator_by_id_from_db(conn, indicator_id)
 
-    async def add_indicator(self, indicator: IndicatorsPost) -> IndicatorDTO:
+    async def add_indicator(self, indicator: IndicatorPost) -> IndicatorDTO:
         async with self._connection_manager.get_connection() as conn:
             return await add_indicator_to_db(conn, indicator)
 
-    async def put_indicator(self, indicator: IndicatorsPut) -> IndicatorDTO:
+    async def put_indicator(self, indicator: IndicatorPut) -> IndicatorDTO:
         async with self._connection_manager.get_connection() as conn:
             return await put_indicator_to_db(conn, indicator)
 

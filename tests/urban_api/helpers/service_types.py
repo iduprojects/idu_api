@@ -1,5 +1,8 @@
 """All fixtures for service types tests are defined here."""
 
+from typing import Any
+
+import httpx
 import pytest
 
 from idu_api.urban_api.schemas import (
@@ -16,14 +19,60 @@ from idu_api.urban_api.schemas import (
 from idu_api.urban_api.schemas.short_models import UrbanFunctionBasic
 
 __all__ = [
+    "service_type",
     "service_type_patch_req",
     "service_type_post_req",
     "service_type_put_req",
+    "urban_function",
     "urban_function_req",
     "urban_function_patch_req",
     "urban_function_post_req",
     "urban_function_put_req",
 ]
+
+
+####################################################################################
+#                        Integration tests helpers                                 #
+####################################################################################
+
+
+@pytest.fixture(scope="session")
+def urban_function(urban_api_host) -> dict[str, Any]:
+    """Returns created urban function."""
+    urban_function_post_req = UrbanFunctionPost(
+        name="Test Function",
+        parent_id=None,
+        code="1",
+    )
+
+    with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
+        response = client.post("/urban_functions", json=urban_function_post_req.model_dump())
+
+    assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}."
+    return response.json()
+
+
+@pytest.fixture(scope="session")
+def service_type(urban_api_host, urban_function) -> dict[str, Any]:
+    """Returns created service type."""
+    service_type_post_req = ServiceTypePost(
+        name="Test Type",
+        urban_function_id=urban_function["urban_function_id"],
+        capacity_modeled=100,
+        code="1",
+        infrastructure_type="basic",
+    )
+
+    with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
+        response = client.post("/service_types", json=service_type_post_req.model_dump())
+
+    assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}."
+    return response.json()
+
+
+####################################################################################
+#                                 Models                                           #
+####################################################################################
 
 
 @pytest.fixture

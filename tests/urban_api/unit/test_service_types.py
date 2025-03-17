@@ -524,7 +524,7 @@ async def test_get_service_types_hierarchy_from_db(mock_conn: MockConnection):
 
     # Act
     with pytest.raises(EntitiesNotFoundByIds):
-        await get_service_types_hierarchy_from_db(mock_conn, "1, 2")
+        await get_service_types_hierarchy_from_db(mock_conn, {1, 2})
     result = await get_service_types_hierarchy_from_db(mock_conn, None)
 
     # Assert

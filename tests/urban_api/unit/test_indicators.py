@@ -37,11 +37,11 @@ from idu_api.urban_api.logic.impl.helpers.indicators import (
 )
 from idu_api.urban_api.schemas import (
     Indicator,
+    IndicatorPost,
+    IndicatorPut,
     IndicatorsGroup,
     IndicatorsGroupPost,
     IndicatorsPatch,
-    IndicatorsPost,
-    IndicatorsPut,
     IndicatorValue,
     IndicatorValuePost,
     IndicatorValuePut,
@@ -344,7 +344,7 @@ async def test_get_indicator_by_id_from_db(mock_conn: MockConnection):
 
 
 @pytest.mark.asyncio
-async def test_add_indicator_to_db(mock_conn: MockConnection, indicators_post_req: IndicatorsPost):
+async def test_add_indicator_to_db(mock_conn: MockConnection, indicators_post_req: IndicatorPost):
     """Test the add_indicator_to_db function."""
 
     # Arrange
@@ -396,7 +396,7 @@ async def test_add_indicator_to_db(mock_conn: MockConnection, indicators_post_re
 
 
 @pytest.mark.asyncio
-async def test_put_indicator_to_db(mock_conn: MockConnection, indicators_put_req: IndicatorsPut):
+async def test_put_indicator_to_db(mock_conn: MockConnection, indicators_put_req: IndicatorPut):
     """Test the put_indicator_to_db function."""
 
     # Arrange

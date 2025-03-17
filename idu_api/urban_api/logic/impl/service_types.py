@@ -80,6 +80,6 @@ class ServiceTypesServiceImpl(ServiceTypesService):
         async with self._connection_manager.get_connection() as conn:
             return await delete_urban_function_from_db(conn, urban_function_id)
 
-    async def get_service_types_hierarchy(self, service_type_ids: str | None) -> list[ServiceTypesHierarchyDTO]:
+    async def get_service_types_hierarchy(self, ids: set[int] | None) -> list[ServiceTypesHierarchyDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_service_types_hierarchy_from_db(conn, service_type_ids)
+            return await get_service_types_hierarchy_from_db(conn, ids)

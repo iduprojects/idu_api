@@ -193,16 +193,8 @@ async def test_get_physical_objects_around_from_db(mock_conn: MockConnection, sh
             | object_geometries_data.c.territory_id.in_(
                 select(possible_territories_cte.c.territory_id).scalar_subquery()
             )
-            & (
-                ST_Intersects(
-                    object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
-                )
-                | ST_Covers(
-                    object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
-                )
-                | ST_CoveredBy(
-                    object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
-                )
+            & ST_Intersects(
+                object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
             ),
         )
         .distinct()

@@ -485,7 +485,7 @@ async def get_scenario_physical_object_by_id_from_db(
     )
 
     result = (await conn.execute(statement)).mappings().all()
-    if result is None:
+    if not result:
         raise EntityNotFoundById(physical_object_id, "scenario physical object")
 
     territories = [{"territory_id": row.territory_id, "name": row.territory_name} for row in result]
@@ -591,6 +591,7 @@ async def put_physical_object_to_db(
                 projects_urban_objects_data.c.scenario_id == scenario_id,
                 projects_physical_objects_data.c.public_physical_object_id == physical_object_id,
             )
+            .limit(1)
         )
         public_physical_object = (await conn.execute(statement)).scalar_one_or_none()
         if public_physical_object is not None:
@@ -607,7 +608,10 @@ async def put_physical_object_to_db(
     else:
         statement = (
             insert(projects_physical_objects_data)
-            .values(**physical_object.model_dump(), updated_at=datetime.now(timezone.utc))
+            .values(
+                public_physical_object_id=physical_object_id,
+                **extract_values_from_model(physical_object),
+            )
             .returning(projects_physical_objects_data.c.physical_object_id)
         )
         updated_physical_object_id = (await conn.execute(statement)).scalar_one()
@@ -724,6 +728,7 @@ async def patch_physical_object_to_db(
                 projects_urban_objects_data.c.scenario_id == scenario_id,
                 projects_physical_objects_data.c.public_physical_object_id == physical_object_id,
             )
+            .limit(1)
         )
         public_physical_object = (await conn.execute(statement)).scalar_one_or_none()
         if public_physical_object is not None:

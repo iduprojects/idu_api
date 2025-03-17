@@ -105,6 +105,7 @@ class ProjectPost(BaseModel):
         description="project's additional properties",
         examples=[{"additional_attribute_name": "additional_attribute_value"}],
     )
+    is_regional: bool = Field(False, description="boolean parameter to determine regional project")
     # TODO: regional_scenario_id: int = Field(
     #      ..., description="identifier of parent regional scenario for base project scenario", examples=[1]
     #  )

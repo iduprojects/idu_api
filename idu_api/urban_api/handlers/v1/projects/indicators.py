@@ -25,7 +25,7 @@ from idu_api.urban_api.utils.auth_client import get_user
     response_model=list[ScenarioIndicatorValue],
     status_code=status.HTTP_200_OK,
 )
-async def get_scenario_indicators_values_by_scenario_id(
+async def get_indicators_values_by_scenario_id(
     request: Request,
     scenario_id: int = Path(..., description="scenario identifier", gt=0),
     indicator_ids: str | None = Query(None, description="list id separated by commas"),
@@ -187,7 +187,7 @@ async def patch_scenario_indicator_value(
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
-async def delete_scenario_indicators_values_by_scenario_id(
+async def delete_indicators_values_by_scenario_id(
     request: Request,
     scenario_id: int = Path(..., description="scenario identifier", gt=0),
     user: UserDTO = Depends(get_user),

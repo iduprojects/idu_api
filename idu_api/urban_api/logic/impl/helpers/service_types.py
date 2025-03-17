@@ -355,7 +355,7 @@ async def delete_urban_function_from_db(conn: AsyncConnection, urban_function_id
 
 
 async def get_service_types_hierarchy_from_db(
-    conn: AsyncConnection, service_type_ids: str | None
+    conn: AsyncConnection, ids: set[int] | None
 ) -> list[ServiceTypesHierarchyDTO]:
     """Get service types hierarchy (from top-level urban function to service type)
     based on a list of required service type ids.
@@ -374,8 +374,7 @@ async def get_service_types_hierarchy_from_db(
         .order_by(service_types_dict.c.service_type_id)
     )
 
-    if service_type_ids is not None:
-        ids = [int(service_type_id.strip()) for service_type_id in service_type_ids.split(",")]
+    if ids is not None:
         query = select(service_types_dict.c.service_type_id).where(service_types_dict.c.service_type_id.in_(ids))
         service_types = (await conn.execute(query)).scalars().all()
         if len(list(service_types)) < len(ids):

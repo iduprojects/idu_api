@@ -19,6 +19,7 @@ from idu_api.urban_api.exceptions.logic.common import (
     EntitiesNotFoundByIds,
     EntityAlreadyExists,
     EntityNotFoundById,
+    EntityNotFoundByParams,
     TooManyObjectsError,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_normatives import (
@@ -342,8 +343,6 @@ async def test_patch_normatives_by_territory_id_in_db(mock_conn: MockConnection,
     )
 
     # Act
-    with pytest.raises(EntityAlreadyExists):
-        await patch_normatives_by_territory_id_in_db(mock_conn, territory_id, [normative_patch_req])
     with patch(
         "idu_api.urban_api.logic.impl.helpers.territories_normatives.check_existence",
         new=AsyncMock(side_effect=check_territory),
@@ -354,7 +353,9 @@ async def test_patch_normatives_by_territory_id_in_db(mock_conn: MockConnection,
         "idu_api.urban_api.logic.impl.helpers.territories_normatives.check_existence",
         new=AsyncMock(side_effect=check_normative),
     ):
-        result = await patch_normatives_by_territory_id_in_db(mock_conn, territory_id, [normative_patch_req])
+        with pytest.raises(EntityNotFoundByParams):
+            await patch_normatives_by_territory_id_in_db(mock_conn, territory_id, [normative_patch_req])
+    result = await patch_normatives_by_territory_id_in_db(mock_conn, territory_id, [normative_patch_req])
     result = process_normatives(result)
 
     # Assert

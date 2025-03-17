@@ -26,3 +26,7 @@ pg_data/
 
 *.log
 *.conf
+
+# Ignore coverage files
+htmlcov/
+.coverage

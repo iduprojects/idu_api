@@ -72,7 +72,7 @@ async def get_territory_normatives(
 @territories_router.post(
     "/territory/{territory_id}/normatives",
     response_model=list[Normative],
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
 )
 async def post_territory_normatives(
     request: Request,
@@ -92,6 +92,7 @@ async def post_territory_normatives(
     ### Errors:
     - **400 Bad Request**: If at least one normative with the specified attributes already exists.
     - **404 Not Found**: If the territory (or related entities) does not exist.
+    - **409 Conflict**: If the normative with such attributes already exists.
     """
     territories_service: TerritoriesService = request.state.territories_service
 

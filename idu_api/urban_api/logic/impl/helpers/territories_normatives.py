@@ -311,8 +311,8 @@ async def patch_normatives_by_territory_id_in_db(
         else:
             raise EntityNotFoundByParams("normative", normative.service_type_id, normative.urban_function_id)
 
-        if await check_existence(conn, service_types_normatives_data, conditions=conditions):
-            raise EntityAlreadyExists(
+        if not await check_existence(conn, service_types_normatives_data, conditions=conditions):
+            raise EntityNotFoundByParams(
                 "normative", normative.service_type_id, normative.urban_function_id, territory_id, normative.year
             )
 

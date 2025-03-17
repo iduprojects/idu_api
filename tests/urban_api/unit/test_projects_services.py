@@ -142,12 +142,13 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
         )
         .select_from(
             projects_urban_objects_data.outerjoin(
+                projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id
+            )
+            .outerjoin(services_data, services_data.c.service_id == projects_urban_objects_data.c.public_service_id)
+            .outerjoin(
                 projects_object_geometries_data,
                 projects_object_geometries_data.c.object_geometry_id
                 == projects_urban_objects_data.c.object_geometry_id,
-            )
-            .outerjoin(
-                projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id
             )
             .outerjoin(
                 object_geometries_data,
@@ -160,7 +161,6 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
                     territories_data.c.territory_id == object_geometries_data.c.territory_id,
                 ),
             )
-            .outerjoin(services_data, services_data.c.service_id == projects_urban_objects_data.c.public_service_id)
             .outerjoin(
                 service_types_dict,
                 or_(
@@ -346,7 +346,7 @@ async def test_get_scenario_service_by_id_from_db(mock_conn: MockConnection):
 
 @pytest.mark.asyncio
 @patch("idu_api.urban_api.logic.impl.helpers.projects_services.check_scenario")
-async def test_add_physical_object_with_geometry_to_db(
+async def test_add_service_to_db(
     mock_check: AsyncMock, mock_conn: MockConnection, scenario_service_post_req: ScenarioServicePost
 ):
     """Test the add_physical_object_with_geometry_to_db function."""

@@ -164,7 +164,7 @@ async def delete_service(
 @services_router.post(
     "/services/{service_id}",
     response_model=UrbanObject,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
 )
 async def add_service_to_objects(
     request: Request,

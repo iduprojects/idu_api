@@ -135,7 +135,7 @@ async def get_context_functional_zone_sources(
     response_model=GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]],
     status_code=status.HTTP_200_OK,
 )
-async def get_context_functional_zones_by_scenario_id(
+async def get_context_functional_zones(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
     year: int = Query(..., description="to filter by year when zones were uploaded"),
@@ -174,7 +174,7 @@ async def get_context_functional_zones_by_scenario_id(
 @projects_router.post(
     "/scenarios/{scenario_id}/functional_zones",
     response_model=list[ScenarioFunctionalZone],
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
     dependencies=[Security(HTTPBearer())],
 )
 async def add_scenario_functional_zones(

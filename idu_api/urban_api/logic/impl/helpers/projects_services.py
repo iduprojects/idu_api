@@ -134,12 +134,13 @@ async def get_services_by_scenario_id_from_db(
         )
         .select_from(
             projects_urban_objects_data.outerjoin(
+                projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id
+            )
+            .outerjoin(services_data, services_data.c.service_id == projects_urban_objects_data.c.public_service_id)
+            .outerjoin(
                 projects_object_geometries_data,
                 projects_object_geometries_data.c.object_geometry_id
                 == projects_urban_objects_data.c.object_geometry_id,
-            )
-            .outerjoin(
-                projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id
             )
             .outerjoin(
                 object_geometries_data,
@@ -152,7 +153,6 @@ async def get_services_by_scenario_id_from_db(
                     territories_data.c.territory_id == object_geometries_data.c.territory_id,
                 ),
             )
-            .outerjoin(services_data, services_data.c.service_id == projects_urban_objects_data.c.public_service_id)
             .outerjoin(
                 service_types_dict,
                 or_(
@@ -221,7 +221,7 @@ async def get_services_by_scenario_id_from_db(
     scenario_objects = []
     for row in rows:
         is_scenario_service = row.service_id is not None and row.public_service_id is None
-        if row.service_id is not None and row.public_service_id is not None:
+        if row.service_id is not None or row.public_service_id is not None:
             scenario_objects.append(
                 {
                     "service_id": row.service_id or row.public_service_id,
@@ -258,6 +258,7 @@ async def get_services_by_scenario_id_from_db(
 
         territory = {"territory_id": obj["territory_id"], "name": obj["territory_name"]}
         grouped_objects[key]["territories"].append(territory)
+
 
     return [ScenarioServiceDTO(**row) for row in grouped_objects.values()]
 
@@ -580,6 +581,7 @@ async def put_service_to_db(
                 projects_urban_objects_data.c.scenario_id == scenario_id,
                 projects_services_data.c.public_service_id == service_id,
             )
+            .limit(1)
         )
         public_service = (await conn.execute(statement)).scalar_one_or_none()
         if public_service is not None:
@@ -595,7 +597,9 @@ async def put_service_to_db(
         updated_service_id = (await conn.execute(statement)).scalar_one()
     else:
         statement = (
-            insert(projects_services_data).values(**service.model_dump()).returning(projects_services_data.c.service_id)
+            insert(projects_services_data)
+            .values(public_service_id=service_id, **service.model_dump())
+            .returning(projects_services_data.c.service_id)
         )
         updated_service_id = (await conn.execute(statement)).scalar_one()
 
@@ -708,6 +712,7 @@ async def patch_service_to_db(
                 projects_urban_objects_data.c.scenario_id == scenario_id,
                 projects_services_data.c.public_service_id == service_id,
             )
+            .limit(1)
         )
         public_service = (await conn.execute(statement)).scalar_one_or_none()
         if public_service is not None:

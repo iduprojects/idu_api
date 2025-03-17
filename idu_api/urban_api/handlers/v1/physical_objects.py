@@ -31,7 +31,7 @@ from .routers import physical_objects_router
     response_model=PhysicalObject,
     status_code=status.HTTP_200_OK,
 )
-async def get_physical_object_by_id_with_territories(
+async def get_physical_object_by_id(
     request: Request,
     physical_object_id: int = Path(..., description="physical object identifier", gt=0),
 ) -> PhysicalObject:
@@ -575,7 +575,7 @@ async def get_physical_objects_around_geometry(
 
     try:
         shapely_geom = geometry.as_shapely_geometry()
-    except ValueError as e:
+    except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
     physical_objects_with_geometry_dto = await physical_objects_service.get_physical_objects_around(
@@ -587,7 +587,7 @@ async def get_physical_objects_around_geometry(
 @physical_objects_router.post(
     "/physical_objects/{object_geometry_id}",
     response_model=UrbanObject,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_201_CREATED,
 )
 async def add_physical_object_to_object_geometry(
     request: Request,
