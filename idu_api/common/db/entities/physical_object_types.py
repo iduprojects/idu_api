@@ -5,9 +5,10 @@ Current list is:
 - functional_zones_data
 """
 
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table
+from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table, PrimaryKeyConstraint
 
 from idu_api.common.db import metadata
+from idu_api.common.db.entities.service_types import service_types_dict
 
 physical_object_functions_dict_id_seq = Sequence("physical_object_functions_dict_id_seq")
 
@@ -66,4 +67,28 @@ Physical object types:
 - physical_object_type_id int 
 - name string(200)
 - physical_object_function_id foreign key int
+"""
+
+object_service_types_dict = Table(
+    "object_service_types_dict",
+    metadata,
+    Column(
+        "physical_object_type_id",
+        Integer,
+        ForeignKey(physical_object_types_dict.c.physical_object_type_id, ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column(
+        "service_type_id",
+        Integer,
+        ForeignKey(service_types_dict.c.service_type_id, ondelete="CASCADE"),
+        nullable=False,
+    ),
+    PrimaryKeyConstraint("physical_object_type_id", "service_type_id"),
+)
+
+"""
+Physical object/Service types:
+- physical_object_type_id int 
+- service_type_id int 
 """

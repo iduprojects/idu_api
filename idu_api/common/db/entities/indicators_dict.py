@@ -11,6 +11,8 @@ from typing import Callable
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, func
 
 from idu_api.common.db import metadata
+from idu_api.common.db.entities.service_types import service_types_dict
+from idu_api.common.db.entities.physical_object_types import physical_object_types_dict
 
 func: Callable
 
@@ -39,7 +41,9 @@ indicators_dict = Table(
     Column("name_full", String(200), nullable=False, unique=True),
     Column("name_short", String(200), nullable=False),
     Column("measurement_unit_id", ForeignKey(measurement_units_dict.c.measurement_unit_id)),
-    Column("level", Integer),
+    Column("service_type_id", ForeignKey(service_types_dict.c.service_type_id)),
+    Column("physical_object_type_id", ForeignKey(physical_object_types_dict.c.physical_object_type_id)),
+    Column("level", Integer, nullable=False),
     Column("list_label", String(20), nullable=False),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
@@ -52,6 +56,8 @@ Indicators dict:
 - name_full string(200)
 - name_short string(200)
 - measurement_unit_id foreign key int
+- service_type_id foreign key int
+- physical_object_type_Id foreign key int
 - level int
 - list_label string(20)
 - created_at timestamp

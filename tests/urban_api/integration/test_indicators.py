@@ -189,11 +189,11 @@ async def test_get_indicators_by_group_id(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, parent_id_param, parent_name_param",
+    "expected_status, error_message, parent_id_param, parent_name_param, type_id_param",
     [
-        (200, None, None, None),
-        (400, "Please, choose either parent_id or parent_name", 1, "test"),
-        (404, "not found", 1e9, None),
+        (200, None, None, None, None),
+        (400, "Please, choose either parent_id or parent_name", 1, "test", None),
+        (404, "not found", 1e9, None, None),
     ],
     ids=["success", "bad_request", "not_found"],
 )
@@ -205,6 +205,7 @@ async def test_get_indicators_by_parent(
     error_message: str | None,
     parent_id_param: int | None,
     parent_name_param: str | None,
+    type_id_param: int | None,
 ):
     """Test GET /indicators_by_parent method."""
 
@@ -218,6 +219,9 @@ async def test_get_indicators_by_parent(
         params["parent_id"] = parent_id_param
     if parent_name_param is not None:
         params["parent_name"] = parent_name_param
+    if type_id_param is not None:
+        params["physical_object_type_id"] = type_id_param
+        params["service_type_id"] = type_id_param
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
@@ -277,6 +281,8 @@ async def test_add_indicator(
     urban_api_host: str,
     indicators_post_req: IndicatorPost,
     measurement_unit: dict[str, Any],
+    service_type: dict[str, Any],
+    physical_object_type: dict[str, Any],
     expected_status: int,
     error_message: str | None,
     measurement_unit_id_param: int | None,
@@ -289,6 +295,8 @@ async def test_add_indicator(
     new_indicator["name_full"] = "new name"
     new_indicator["measurement_unit_id"] = measurement_unit_id_param or measurement_unit["measurement_unit_id"]
     new_indicator["parent_id"] = parent_id_param
+    new_indicator["service_type_id"] = service_type["service_type_id"]
+    new_indicator["physical_object_type_id"] = physical_object_type["physical_object_type_id"]
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
@@ -323,6 +331,8 @@ async def test_put_indicator(
     new_indicator["name_full"] = "new name"
     new_indicator["measurement_unit_id"] = measurement_unit_id_param or measurement_unit["measurement_unit_id"]
     new_indicator["parent_id"] = parent_id_param
+    new_indicator["service_type_id"] = None
+    new_indicator["physical_object_type_id"] = None
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
@@ -388,6 +398,8 @@ async def test_delete_indicator(
     new_indicator["name_full"] = "indicator for deletion"
     new_indicator["measurement_unit_id"] = None
     new_indicator["parent_id"] = None
+    new_indicator["service_type_id"] = None
+    new_indicator["physical_object_type_id"] = None
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:

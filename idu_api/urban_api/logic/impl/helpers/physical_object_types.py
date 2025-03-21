@@ -5,12 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
     physical_object_functions_dict,
-    physical_object_types_dict,
+    physical_object_types_dict, service_types_dict, urban_functions_dict, object_service_types_dict,
 )
 from idu_api.urban_api.dto import (
     PhysicalObjectFunctionDTO,
     PhysicalObjectTypeDTO,
-    PhysicalObjectTypesHierarchyDTO,
+    PhysicalObjectTypesHierarchyDTO, ServiceTypeDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.utils import build_recursive_query, check_existence
@@ -23,7 +23,11 @@ from idu_api.urban_api.schemas import (
 )
 
 
-async def get_physical_object_types_from_db(conn: AsyncConnection) -> list[PhysicalObjectTypeDTO]:
+async def get_physical_object_types_from_db(
+    conn: AsyncConnection,
+    physical_object_function_id: int | None,
+    name: str | None = None,
+) -> list[PhysicalObjectTypeDTO]:
     """Get all physical object type objects."""
 
     statement = (
@@ -37,6 +41,11 @@ async def get_physical_object_types_from_db(conn: AsyncConnection) -> list[Physi
         )
         .order_by(physical_object_types_dict.c.physical_object_type_id)
     )
+
+    if physical_object_function_id is not None:
+        statement = statement.where(physical_object_types_dict.c.physical_object_function_id == physical_object_function_id)
+    if name is not None:
+        statement = statement.where(physical_object_types_dict.c.name.ilike(f"%{name}%"))
 
     return [PhysicalObjectTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
 
@@ -411,3 +420,33 @@ async def get_physical_object_types_hierarchy_from_db(
         return children
 
     return build_filtered_hierarchy()
+
+
+async def get_service_types_by_physical_object_type_id_from_db(
+    conn: AsyncConnection,
+    physical_object_type_id: int | None,
+) -> list[PhysicalObjectTypeDTO]:
+    """Get all available service types by physical object type identifier."""
+
+    if not await check_existence(
+        conn, physical_object_types_dict, conditions={"physical_object_type_id": physical_object_type_id}
+    ):
+        raise EntityNotFoundById(physical_object_type_id, "physical object type")
+
+    statement = (
+        select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
+        .select_from(
+            service_types_dict.join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+            .join(
+                object_service_types_dict,
+                object_service_types_dict.c.service_type_id == service_types_dict.c.service_type_id,
+            )
+        )
+        .where(object_service_types_dict.c.physical_object_type_id == physical_object_type_id)
+        .order_by(service_types_dict.c.service_type_id)
+    )
+
+    return [ServiceTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]

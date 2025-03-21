@@ -8,7 +8,7 @@ from idu_api.common.db.entities.indicators_dict import indicators_dict, measurem
 from idu_api.common.db.entities.indicators_groups import indicators_groups_data, indicators_groups_dict
 from idu_api.common.db.entities.living_buildings import buildings_data
 from idu_api.common.db.entities.object_geometries import object_geometries_data
-from idu_api.common.db.entities.physical_object_types import physical_object_functions_dict, physical_object_types_dict
+from idu_api.common.db.entities.physical_object_types import physical_object_functions_dict, physical_object_types_dict, object_service_types_dict
 from idu_api.common.db.entities.physical_objects import physical_objects_data
 from idu_api.common.db.entities.profiles_reclamation import profiles_reclamation_data
 from idu_api.common.db.entities.projects.functional_zones import projects_functional_zones

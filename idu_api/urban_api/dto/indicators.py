@@ -13,6 +13,10 @@ class IndicatorDTO:
     name_short: str
     measurement_unit_id: int | None
     measurement_unit_name: str | None
+    service_type_id: int | None
+    service_type_name: str | None
+    physical_object_type_id: int | None
+    physical_object_type_name: str | None
     level: int
     list_label: str
     parent_id: int

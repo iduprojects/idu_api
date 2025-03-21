@@ -13,7 +13,7 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsTypesHierarchy,
     PhysicalObjectType,
     PhysicalObjectTypePatch,
-    PhysicalObjectTypePost,
+    PhysicalObjectTypePost, ServiceType,
 )
 from tests.urban_api.helpers.utils import assert_response
 
@@ -23,12 +23,22 @@ from tests.urban_api.helpers.utils import assert_response
 
 
 @pytest.mark.asyncio
-async def test_get_physical_object_types(urban_api_host: str, physical_object_type: dict[str, Any]):
+async def test_get_physical_object_types(
+    urban_api_host: str,
+    physical_object_function: dict[str, Any],
+    physical_object_type: dict[str, Any],
+):
     """Test GET /physical_object_types method."""
+
+    # Arrange
+    params = {
+        "physical_object_function_id": physical_object_function["physical_object_function_id"],
+        "name": physical_object_type["name"],
+    }
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
-        response = await client.get("/physical_object_types")
+        response = await client.get("/physical_object_types", params=params)
 
     # Assert
     assert_response(response, 200, PhysicalObjectType, result_type="list")
@@ -350,3 +360,35 @@ async def test_get_physical_object_types_hierarchy(
         assert len(response.json()) > 0, "Hierarchy should contain at least one physical object type."
     else:
         assert_response(response, expected_status, PhysicalObjectsTypesHierarchy, error_message)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expected_status, error_message, type_id_param",
+    [
+        (200, None, None),
+        (404, "not found", 1e9),
+    ],
+    ids=["success", "not_found"],
+)
+async def test_get_service_types(
+    urban_api_host: str,
+    physical_object_type: dict[str, Any],
+    expected_status: int,
+    error_message: str | None,
+    type_id_param: str | None,
+):
+    """Test GET /physical_object_types/{physical_object_type_id}/service_types method."""
+
+    # Arrange
+    physical_object_type_id = type_id_param or physical_object_type["physical_object_type_id"]
+
+    # Act
+    async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
+        response = await client.get(f"/physical_object_types/{physical_object_type_id}/service_types")
+
+    # Assert
+    if response.status_code == 200:
+        assert_response(response, expected_status, ServiceType, result_type="list")
+    else:
+        assert_response(response, expected_status, ServiceType)

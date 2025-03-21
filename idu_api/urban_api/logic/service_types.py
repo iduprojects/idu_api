@@ -18,7 +18,7 @@ class ServiceTypesService(Protocol):
     """Service to manipulate service types objects."""
 
     @abc.abstractmethod
-    async def get_service_types(self, urban_function_id: int | None) -> list[ServiceTypeDTO]:
+    async def get_service_types(self, urban_function_id: int | None, name: str | None) -> list[ServiceTypeDTO]:
         """Get all service type objects."""
 
     @abc.abstractmethod
@@ -71,3 +71,7 @@ class ServiceTypesService(Protocol):
 
         If the list of identifiers was not passed, it returns the full hierarchy.
         """
+
+    @abc.abstractmethod
+    async def get_physical_object_types_by_service_type(self, service_type_id: int | None) -> list[ServiceTypeDTO]:
+        """Get available physical object types for given service type."""

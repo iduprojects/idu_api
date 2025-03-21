@@ -1,8 +1,9 @@
 """Projects scenarios internal logic is defined here."""
+from typing import Any
 
 import asyncio
 
-from sqlalchemy import RowMapping, delete, insert, literal, select, update
+from sqlalchemy import RowMapping, delete, insert, literal, select, update, case
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -195,20 +196,23 @@ async def copy_scenario_to_db(
     ).scalar_one()
 
     # copy urban objects
-    statement = select(
-        projects_urban_objects_data.c.public_urban_object_id,
-        projects_urban_objects_data.c.object_geometry_id,
-        projects_urban_objects_data.c.physical_object_id,
-        projects_urban_objects_data.c.service_id,
-        projects_urban_objects_data.c.public_object_geometry_id,
-        projects_urban_objects_data.c.public_physical_object_id,
-        projects_urban_objects_data.c.public_service_id,
-    ).where(projects_urban_objects_data.c.scenario_id == scenario_id)
-    old_urban_objects = (await conn.execute(statement)).mappings().all()
+    old_urban_objects = (
+        select(
+            projects_urban_objects_data.c.public_urban_object_id,
+            projects_urban_objects_data.c.object_geometry_id,
+            projects_urban_objects_data.c.physical_object_id,
+            projects_urban_objects_data.c.service_id,
+            projects_urban_objects_data.c.public_object_geometry_id,
+            projects_urban_objects_data.c.public_physical_object_id,
+            projects_urban_objects_data.c.public_service_id,
+        )
+        .where(projects_urban_objects_data.c.scenario_id == scenario_id)
+    ).cte(name="old_urban_objects")
+    result = (await conn.execute(select(old_urban_objects))).mappings().all()
 
-    geometry_ids = set(obj.object_geometry_id for obj in old_urban_objects if obj.object_geometry_id is not None)
-    physical_ids = set(obj.physical_object_id for obj in old_urban_objects if obj.physical_object_id is not None)
-    service_ids = set(obj.service_id for obj in old_urban_objects if obj.service_id is not None)
+    geometry_ids = set(obj.object_geometry_id for obj in result if obj.object_geometry_id is not None)
+    physical_ids = set(obj.physical_object_id for obj in result if obj.physical_object_id is not None)
+    service_ids = set(obj.service_id for obj in result if obj.service_id is not None)
 
     geometry_mapping, physical_mapping, service_mapping = await asyncio.gather(
         copy_geometries(conn, sorted(list(geometry_ids))),
@@ -216,37 +220,66 @@ async def copy_scenario_to_db(
         copy_services(conn, sorted(list(service_ids))),
     )
 
-    new_objects = []
-    for obj in old_urban_objects:
-        if obj.public_urban_object_id is not None:
-            new_obj = {
-                "scenario_id": new_scenario_id,
-                "object_geometry_id": None,
-                "physical_object_id": None,
-                "service_id": None,
-                "public_object_geometry_id": None,
-                "public_physical_object_id": None,
-                "public_service_id": None,
-                "public_urban_object_id": obj.public_urban_object_id,
-            }
-        else:
-            new_obj = {
-                "scenario_id": new_scenario_id,
-                "object_geometry_id": (
-                    geometry_mapping.get(obj.object_geometry_id) if obj.public_object_geometry_id is None else None
-                ),
-                "physical_object_id": (
-                    physical_mapping.get(obj.physical_object_id) if obj.public_physical_object_id is None else None
-                ),
-                "service_id": service_mapping.get(obj.service_id) if obj.public_service_id is None else None,
-                "public_object_geometry_id": obj.public_object_geometry_id,
-                "public_physical_object_id": obj.public_physical_object_id,
-                "public_service_id": obj.public_service_id,
-                "public_urban_object_id": None,
-            }
-        new_objects.append(new_obj)
-    if new_objects:
-        await conn.execute(insert(projects_urban_objects_data).values(new_objects))
+    await conn.execute(
+        insert(projects_urban_objects_data).from_select(
+            [
+                "scenario_id",
+                "public_urban_object_id",
+            ],
+            select(
+                literal(new_scenario_id).label("scenario_id"),
+                old_urban_objects.c.public_urban_object_id,
+            ).where(old_urban_objects.c.public_urban_object_id.isnot(None))
+        )
+    )
+
+    def build_case(column, mapping: dict[str, Any], default = None):
+        """Build case statement."""
+        if not mapping:
+            return literal(default)
+        return case(
+            *[(column == key, literal(value)) for key, value in mapping.items()],
+            else_=literal(default)
+        )
+
+    geometry_case = build_case(
+        old_urban_objects.c.object_geometry_id,
+        geometry_mapping,
+        default=None
+    )
+    physical_case = build_case(
+        old_urban_objects.c.physical_object_id,
+        physical_mapping,
+        default=None
+    )
+    service_case = build_case(
+        old_urban_objects.c.service_id,
+        service_mapping,
+        default=None
+    )
+
+    await conn.execute(
+        insert(projects_urban_objects_data).from_select(
+            [
+                "scenario_id",
+                "object_geometry_id",
+                "physical_object_id",
+                "service_id",
+                "public_object_geometry_id",
+                "public_physical_object_id",
+                "public_service_id",
+            ],
+            select(
+                literal(new_scenario_id),
+                geometry_case,
+                physical_case,
+                service_case,
+                old_urban_objects.c.public_object_geometry_id,
+                old_urban_objects.c.public_physical_object_id,
+                old_urban_objects.c.public_service_id,
+            ).where(old_urban_objects.c.public_urban_object_id.is_(None))
+        )
+    )
 
     # copy functional zones and indicators values
     await asyncio.gather(

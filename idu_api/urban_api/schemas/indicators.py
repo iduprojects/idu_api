@@ -17,7 +17,7 @@ from idu_api.urban_api.schemas.short_models import (
     MeasurementUnitBasic,
     ShortIndicatorInfo,
     ShortScenario,
-    ShortTerritory,
+    ShortTerritory, ServiceTypeBasic, PhysicalObjectTypeBasic,
 )
 
 
@@ -94,6 +94,8 @@ class Indicator(BaseModel):
     )
     name_short: str = Field(..., description="indicator unit short name", examples=["Численность населения"])
     measurement_unit: MeasurementUnitBasic | None
+    service_type: ServiceTypeBasic | None
+    physical_object_type: PhysicalObjectTypeBasic | None
     level: int = Field(..., description="number of indicator functions above in a tree + 1", examples=[1])
     list_label: str = Field(..., description="indicator marker in lists", examples=["1.1.1"])
     parent_id: int | None = Field(..., description="indicator parent identifier", examples=[1])
@@ -118,6 +120,14 @@ class Indicator(BaseModel):
                 if dto.measurement_unit_id is not None
                 else None
             ),
+            service_type=(
+                ServiceTypeBasic(id=dto.service_type_id, name=dto.service_type_name)
+                if dto.service_type_id is not None else None
+            ),
+            physical_object_type=(
+                PhysicalObjectTypeBasic(id=dto.physical_object_type_id, name=dto.physical_object_type_name)
+                if dto.physical_object_type_id is not None else None
+            ),
             level=dto.level,
             list_label=dto.list_label,
             parent_id=dto.parent_id,
@@ -136,6 +146,8 @@ class IndicatorPost(BaseModel):
     )
     name_short: str = Field(..., description="indicator unit short name", examples=["Численность населения"])
     measurement_unit_id: int | None = Field(..., description="indicator measurement unit identifier", examples=[1])
+    service_type_id: int | None = Field(..., description="indicator service type identifier", examples=[1])
+    physical_object_type_id: int | None = Field(..., description="indicator physical object type identifier", examples=[1])
     parent_id: int | None = Field(..., description="indicator parent identifier", examples=[1])
 
 
@@ -149,6 +161,8 @@ class IndicatorPut(BaseModel):
     )
     name_short: str = Field(..., description="indicator unit short name", examples=["Численность населения"])
     measurement_unit_id: int | None = Field(..., description="indicator measurement unit identifier", examples=[1])
+    service_type_id: int | None = Field(..., description="indicator service type identifier", examples=[1])
+    physical_object_type_id: int | None = Field(..., description="indicator physical object type identifier", examples=[1])
     parent_id: int | None = Field(..., description="indicator parent identifier", examples=[1])
 
 
@@ -162,6 +176,8 @@ class IndicatorsPatch(BaseModel):
     )
     name_short: str | None = Field(None, description="indicator unit short name", examples=["Численность населения"])
     measurement_unit_id: int | None = Field(None, description="indicator measurement unit identifier", examples=[1])
+    service_type_id: int | None = Field(None, description="indicator service type identifier", examples=[1])
+    physical_object_type_id: int | None = Field(None, description="indicator physical object type identifier", examples=[1])
     parent_id: int | None = Field(None, description="indicator parent identifier", examples=[1])
 
     @model_validator(mode="before")

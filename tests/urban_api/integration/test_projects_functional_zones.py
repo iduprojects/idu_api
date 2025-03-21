@@ -237,6 +237,7 @@ async def test_add_scenario_functional_zones(
         }
         async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
             response = await client.post(f"/scenarios/{base_scenario_id}", json=new_scenario, headers=headers)
+            print(response.json())
             scenario_id = response.json()["scenario_id"]
     else:
         scenario_id = scenario_id_param

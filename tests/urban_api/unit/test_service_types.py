@@ -5,8 +5,9 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy.sql import delete, insert, select, update
 
-from idu_api.common.db.entities import service_types_dict, urban_functions_dict
-from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from idu_api.common.db.entities import service_types_dict, urban_functions_dict, object_service_types_dict, \
+    physical_object_types_dict, physical_object_functions_dict
+from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO, PhysicalObjectTypeDTO
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.service_types import (
     add_service_type_to_db,
@@ -21,7 +22,7 @@ from idu_api.urban_api.logic.impl.helpers.service_types import (
     patch_service_type_to_db,
     patch_urban_function_to_db,
     put_service_type_to_db,
-    put_urban_function_to_db,
+    put_urban_function_to_db, get_physical_object_types_by_service_type_id_from_db,
 )
 from idu_api.urban_api.schemas import (
     ServiceType,
@@ -30,7 +31,7 @@ from idu_api.urban_api.schemas import (
     UrbanFunction,
     UrbanFunctionPatch,
     UrbanFunctionPost,
-    UrbanFunctionPut,
+    UrbanFunctionPut, PhysicalObjectType,
 )
 from tests.urban_api.helpers.connection import MockConnection
 
@@ -45,6 +46,7 @@ async def test_get_service_types_from_db(mock_conn: MockConnection):
 
     # Arrange
     urban_function_id = 1
+    name = "mock_string"
     statement = (
         select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
         .select_from(
@@ -53,12 +55,12 @@ async def test_get_service_types_from_db(mock_conn: MockConnection):
                 urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
             )
         )
-        .where(service_types_dict.c.urban_function_id == urban_function_id)
+        .where(service_types_dict.c.urban_function_id == urban_function_id, service_types_dict.c.name.ilike(f"%{name}%"))
         .order_by(service_types_dict.c.service_type_id)
     )
 
     # Act
-    result = await get_service_types_from_db(mock_conn, urban_function_id)
+    result = await get_service_types_from_db(mock_conn, urban_function_id, name)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
@@ -533,3 +535,47 @@ async def test_get_service_types_hierarchy_from_db(mock_conn: MockConnection):
         isinstance(item, ServiceTypesHierarchyDTO) for item in result
     ), "Each item should be a ServiceTypesHierarchyDTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
+
+
+@pytest.mark.asyncio
+async def test_get_service_types_by_physical_object_type_id_from_db(mock_conn: MockConnection):
+    """Test the get_service_types_by_physical_object_type_id_from_db function."""
+
+    # Arrange
+    async def check_service_type_id(conn, table, conditions, not_conditions=None):
+        if table == service_types_dict:
+            return False
+        return True
+
+    service_type_id = 1
+    statement = (
+        select(physical_object_types_dict, physical_object_functions_dict.c.name.label("physical_object_function_name"))
+        .select_from(
+            physical_object_types_dict.join(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
+            )
+            .join(
+                object_service_types_dict,
+                object_service_types_dict.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+        )
+        .where(object_service_types_dict.c.service_type_id == service_type_id)
+        .order_by(physical_object_types_dict.c.physical_object_type_id)
+    )
+
+    # Act
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.service_types.check_existence",
+        new=AsyncMock(side_effect=check_service_type_id),
+    ):
+        with pytest.raises(EntityNotFoundById):
+            await get_physical_object_types_by_service_type_id_from_db(mock_conn, service_type_id)
+    result = await get_physical_object_types_by_service_type_id_from_db(mock_conn, service_type_id)
+
+    # Assert
+    assert isinstance(result, list), "Result should be a list."
+    assert all(isinstance(item, PhysicalObjectTypeDTO) for item in result), "Each item should be a PhysicalObjectTypeDTO."
+    assert isinstance(PhysicalObjectType.from_dto(result[0]), PhysicalObjectType), "Couldn't create pydantic model from DTO."
+    mock_conn.execute_mock.assert_called_with(str(statement))

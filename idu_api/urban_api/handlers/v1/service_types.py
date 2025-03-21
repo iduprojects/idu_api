@@ -14,7 +14,7 @@ from idu_api.urban_api.schemas import (
     UrbanFunction,
     UrbanFunctionPatch,
     UrbanFunctionPost,
-    UrbanFunctionPut,
+    UrbanFunctionPut, PhysicalObjectType,
 )
 
 from .routers import service_types_router
@@ -28,6 +28,7 @@ from .routers import service_types_router
 async def get_service_types(
     request: Request,
     urban_function_id: int | None = Query(None, description="to filter by urban function", gt=0),
+    name: str | None = Query(None, description="to filter by name (case-insensitive)"),
 ) -> list[ServiceType]:
     """
     ## Get all service types.
@@ -37,7 +38,7 @@ async def get_service_types(
     """
     service_types_service: ServiceTypesService = request.state.service_types_service
 
-    service_types = await service_types_service.get_service_types(urban_function_id)
+    service_types = await service_types_service.get_service_types(urban_function_id, name)
 
     return [ServiceType.from_dto(service_type) for service_type in service_types]
 
@@ -342,3 +343,25 @@ async def get_service_types_hierarchy(
     hierarchy = await service_types_service.get_service_types_hierarchy(ids)
 
     return [ServiceTypesHierarchy.from_dto(node) for node in hierarchy]
+
+
+@service_types_router.get(
+    "/service_types/{service_type_id}/physical_object_types",
+    response_model=list[PhysicalObjectType],
+    status_code=status.HTTP_200_OK,
+)
+async def get_physical_object_types(
+    request: Request,
+    service_type_id: int = Path(..., description="physical object type identifier", gt=0),
+) -> list[PhysicalObjectType]:
+    """
+    ## Get all available physical object types for given service type.
+
+    ### Returns:
+    - **list[PhysicalObjectType]**: A list of physical object types.
+    """
+    service_types_service: ServiceTypesService = request.state.service_types_service
+
+    types = await service_types_service.get_physical_object_types_by_service_type(service_type_id)
+
+    return [PhysicalObjectType.from_dto(object_type) for object_type in types]

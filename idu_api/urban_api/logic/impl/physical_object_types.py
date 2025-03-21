@@ -4,7 +4,7 @@ from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.dto import (
     PhysicalObjectFunctionDTO,
     PhysicalObjectTypeDTO,
-    PhysicalObjectTypesHierarchyDTO,
+    PhysicalObjectTypesHierarchyDTO, ServiceTypeDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.physical_object_types import (
     add_physical_object_function_to_db,
@@ -16,7 +16,7 @@ from idu_api.urban_api.logic.impl.helpers.physical_object_types import (
     get_physical_object_types_hierarchy_from_db,
     patch_physical_object_function_to_db,
     patch_physical_object_type_to_db,
-    put_physical_object_function_to_db,
+    put_physical_object_function_to_db, get_service_types_by_physical_object_type_id_from_db,
 )
 from idu_api.urban_api.logic.physical_object_types import PhysicalObjectTypesService
 from idu_api.urban_api.schemas import (
@@ -37,9 +37,11 @@ class PhysicalObjectTypesServiceImpl(PhysicalObjectTypesService):
     def __init__(self, connection_manager: PostgresConnectionManager):
         self._connection_manager = connection_manager
 
-    async def get_physical_object_types(self) -> list[PhysicalObjectTypeDTO]:
+    async def get_physical_object_types(
+        self, physical_object_function_id: int | None, name: str | None,
+    ) -> list[PhysicalObjectTypeDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_physical_object_types_from_db(conn)
+            return await get_physical_object_types_from_db(conn, physical_object_function_id, name)
 
     async def add_physical_object_type(self, physical_object_type: PhysicalObjectTypePost) -> PhysicalObjectTypeDTO:
         async with self._connection_manager.get_connection() as conn:
@@ -91,3 +93,10 @@ class PhysicalObjectTypesServiceImpl(PhysicalObjectTypesService):
     async def get_physical_object_types_hierarchy(self, ids: set[int] | None) -> list[PhysicalObjectTypesHierarchyDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_physical_object_types_hierarchy_from_db(conn, ids)
+
+
+    async def get_service_types_by_physical_object_type(
+        self, physical_object_type_id: int | None
+    ) -> list[ServiceTypeDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_service_types_by_physical_object_type_id_from_db(conn, physical_object_type_id)

@@ -188,12 +188,14 @@ async def get_indicators_by_parent(
     ),
     name: str | None = Query(None, description="filter by indicator name"),
     territory_id: int | None = Query(None, description="filter by territory id (not including inner territories)"),
+    service_type_id: int | None = Query(None, description="filter by service type id"),
+    physical_object_type_id: int | None = Query(None, description="filter by physical object type id"),
     get_all_subtree: bool = Query(False, description="getting full subtree of indicators"),
 ) -> list[Indicator]:
     """
     ## Get a list of indicators by parent identifier or name.
 
-    **WARNING:** You only can get indicators by parent identifier or parent_name.
+    **WARNING:** You only can get indicators by parent identifier or parent name.
 
     ### Parameters:
     - **parent_id** (int | None, Query): Unique identifier of the parent indicator. If skipped, it returns the highest level indicators.
@@ -206,7 +208,7 @@ async def get_indicators_by_parent(
     - **list[Indicator]**: A list of indicators matching the filters.
 
     ### Errors:
-    - **400 Bad Request**: If both parent_id and parent_name are provided.
+    - **400 Bad Request**: If both parent_id and parent_name or service_type_id and physical_object_type_id are provided.
     - **404 Not Found**: If the indicator does not exist.
     """
     indicators_service: IndicatorsService = request.state.indicators_service
@@ -218,7 +220,7 @@ async def get_indicators_by_parent(
         )
 
     indicators = await indicators_service.get_indicators_by_parent(
-        parent_id, parent_name, name, territory_id, get_all_subtree
+        parent_id, parent_name, name, territory_id, service_type_id, physical_object_type_id, get_all_subtree
     )
 
     return [Indicator.from_dto(indicator) for indicator in indicators]

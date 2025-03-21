@@ -14,7 +14,7 @@ from idu_api.urban_api.schemas import (
     ServiceTypesHierarchy,
     UrbanFunction,
     UrbanFunctionPost,
-    UrbanFunctionPut,
+    UrbanFunctionPut, PhysicalObjectType,
 )
 from tests.urban_api.helpers.utils import assert_response
 
@@ -24,12 +24,18 @@ from tests.urban_api.helpers.utils import assert_response
 
 
 @pytest.mark.asyncio
-async def test_get_service_types(urban_api_host: str, service_type: dict[str, Any]):
+async def test_get_service_types(urban_api_host: str, service_type: dict[str, Any], urban_function: dict[str, Any]):
     """Test GET /service_types method."""
+
+    # Arrange
+    params = {
+        "urban_function": urban_function["urban_function_id"],
+        "name": service_type["name"],
+    }
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
-        response = await client.get("/service_types")
+        response = await client.get("/service_types", params=params)
 
     # Assert
     assert_response(response, 200, ServiceType, result_type="list")
@@ -381,3 +387,35 @@ async def test_get_service_types_hierarchy(
         assert len(response.json()) > 0, "Hierarchy should contain at least one service type."
     else:
         assert_response(response, expected_status, ServiceTypesHierarchy, error_message)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expected_status, error_message, type_id_param",
+    [
+        (200, None, None),
+        (404, "not found", 1e9),
+    ],
+    ids=["success", "not_found"],
+)
+async def test_get_physical_object_types(
+    urban_api_host: str,
+    service_type: dict[str, Any],
+    expected_status: int,
+    error_message: str | None,
+    type_id_param: str | None,
+):
+    """Test GET /service_types/{service_type_id}/physical_object_types method."""
+
+    # Arrange
+    service_type_id = type_id_param or service_type["service_type_id"]
+
+    # Act
+    async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
+        response = await client.get(f"/service_types/{service_type_id}/physical_object_types")
+
+    # Assert
+    if response.status_code == 200:
+        assert_response(response, expected_status, PhysicalObjectType, result_type="list")
+    else:
+        assert_response(response, expected_status, PhysicalObjectType)

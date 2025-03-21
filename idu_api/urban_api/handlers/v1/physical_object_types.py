@@ -13,7 +13,7 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsTypesHierarchy,
     PhysicalObjectType,
     PhysicalObjectTypePatch,
-    PhysicalObjectTypePost,
+    PhysicalObjectTypePost, ServiceType,
 )
 
 from .routers import physical_object_types_router
@@ -24,7 +24,11 @@ from .routers import physical_object_types_router
     response_model=list[PhysicalObjectType],
     status_code=status.HTTP_200_OK,
 )
-async def get_physical_object_types(request: Request) -> list[PhysicalObjectType]:
+async def get_physical_object_types(
+    request: Request,
+    physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
+    name: str | None = Query(None, description="to filter by name (case-insensitive)"),
+) -> list[PhysicalObjectType]:
     """
     ## Get all physical object types.
 
@@ -33,7 +37,7 @@ async def get_physical_object_types(request: Request) -> list[PhysicalObjectType
     """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
-    physical_object_types = await physical_object_types_service.get_physical_object_types()
+    physical_object_types = await physical_object_types_service.get_physical_object_types(physical_object_function_id, name)
 
     return [PhysicalObjectType.from_dto(object_type) for object_type in physical_object_types]
 
@@ -331,3 +335,26 @@ async def get_physical_object_types_hierarchy(
     hierarchy = await physical_object_types_service.get_physical_object_types_hierarchy(ids)
 
     return [PhysicalObjectsTypesHierarchy.from_dto(node) for node in hierarchy]
+
+
+@physical_object_types_router.get(
+    "/physical_object_types/{physical_object_type_id}/service_types",
+    response_model=list[ServiceType],
+    status_code=status.HTTP_200_OK,
+)
+async def get_service_types(
+    request: Request,
+    physical_object_type_id: int = Path(..., description="physical object type identifier", gt=0),
+) -> list[ServiceType]:
+    """
+    ## Get all available service types for given physical object type.
+
+    ### Returns:
+    - **list[ServiceType]**: A list of service types.
+    """
+    physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
+
+    service_types = await physical_object_types_service.get_service_types_by_physical_object_type(physical_object_type_id)
+
+    return [ServiceType.from_dto(service_type) for service_type in service_types]
+

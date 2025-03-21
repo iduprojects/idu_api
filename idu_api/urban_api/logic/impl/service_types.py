@@ -13,7 +13,7 @@ from idu_api.urban_api.logic.impl.helpers.service_types import (
     patch_service_type_to_db,
     patch_urban_function_to_db,
     put_service_type_to_db,
-    put_urban_function_to_db,
+    put_urban_function_to_db, get_physical_object_types_by_service_type_id_from_db,
 )
 from idu_api.urban_api.logic.service_types import ServiceTypesService
 from idu_api.urban_api.schemas import (
@@ -35,9 +35,9 @@ class ServiceTypesServiceImpl(ServiceTypesService):
     def __init__(self, connection_manager: PostgresConnectionManager):
         self._connection_manager = connection_manager
 
-    async def get_service_types(self, urban_function_id: int | None) -> list[ServiceTypeDTO]:
+    async def get_service_types(self, urban_function_id: int | None, name: str | None) -> list[ServiceTypeDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_service_types_from_db(conn, urban_function_id)
+            return await get_service_types_from_db(conn, urban_function_id, name)
 
     async def add_service_type(self, service_type: ServiceTypePost) -> ServiceTypeDTO:
         async with self._connection_manager.get_connection() as conn:
@@ -83,3 +83,7 @@ class ServiceTypesServiceImpl(ServiceTypesService):
     async def get_service_types_hierarchy(self, ids: set[int] | None) -> list[ServiceTypesHierarchyDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_service_types_hierarchy_from_db(conn, ids)
+
+    async def get_physical_object_types_by_service_type(self, service_type_id: int | None) -> list[ServiceTypeDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_physical_object_types_by_service_type_id_from_db(conn, service_type_id)
