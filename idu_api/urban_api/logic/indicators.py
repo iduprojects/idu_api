@@ -55,6 +55,8 @@ class IndicatorsService(Protocol):
         parent_name: str | None,
         name: str | None,
         territory_id: int | None,
+        service_type_id: int | None,
+        physical_object_type_id: int | None,
         get_all_subtree: bool,
     ) -> list[IndicatorDTO]:
         """Get an indicator or list of indicators by parent id or name."""

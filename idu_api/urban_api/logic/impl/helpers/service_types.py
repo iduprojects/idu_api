@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
     service_types_dict,
-    urban_functions_dict,
+    urban_functions_dict, physical_object_types_dict, physical_object_functions_dict, object_service_types_dict,
 )
-from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO, PhysicalObjectTypeDTO
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.utils import build_recursive_query, check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import (
@@ -27,6 +27,7 @@ func: Callable
 async def get_service_types_from_db(
     conn: AsyncConnection,
     urban_function_id: int | None,
+    name: str | None,
 ) -> list[ServiceTypeDTO]:
     """Get all service type objects."""
 
@@ -43,6 +44,8 @@ async def get_service_types_from_db(
 
     if urban_function_id is not None:
         statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
+    if name is not None:
+        statement = statement.where(service_types_dict.c.name.ilike(f"%{name}%"))
 
     return [ServiceTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
 
@@ -405,3 +408,32 @@ async def get_service_types_hierarchy_from_db(
         return children
 
     return build_filtered_hierarchy()
+
+
+async def get_physical_object_types_by_service_type_id_from_db(
+    conn: AsyncConnection,
+    service_type_id: int | None,
+) -> list[PhysicalObjectTypeDTO]:
+    """Get all available physical object types by service type identifier."""
+
+    if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
+        raise EntityNotFoundById(service_type_id, "service type")
+
+    statement = (
+        select(physical_object_types_dict, physical_object_functions_dict.c.name.label("physical_object_function_name"))
+        .select_from(
+            physical_object_types_dict.join(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
+            )
+            .join(
+                object_service_types_dict,
+                object_service_types_dict.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+            )
+        )
+        .where(object_service_types_dict.c.service_type_id == service_type_id)
+        .order_by(physical_object_types_dict.c.physical_object_type_id)
+    )
+
+    return [PhysicalObjectTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]

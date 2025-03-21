@@ -756,9 +756,7 @@ async def add_project_to_db(
             ~ST_IsEmpty(ST_Intersection(functional_zones_data.c.geometry, given_geometry)),
         )
         zones = (await conn.execute(statement)).mappings().all()
-        if not zones:
-            pass  # TODO: use external service to generate zones if there is no zones
-        else:
+        if zones:
             await conn.execute(
                 insert(projects_functional_zones).from_select(
                     [

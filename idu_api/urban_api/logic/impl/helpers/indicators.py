@@ -13,7 +13,7 @@ from idu_api.common.db.entities import (
     indicators_groups_dict,
     measurement_units_dict,
     territories_data,
-    territory_indicators_data,
+    territory_indicators_data, service_types_dict, physical_object_types_dict,
 )
 from idu_api.urban_api.dto import (
     IndicatorDTO,
@@ -75,6 +75,8 @@ async def get_indicators_groups_from_db(conn: AsyncConnection) -> list[Indicator
             indicators_groups_dict.c.name.label("group_name"),
             indicators_dict,
             measurement_units_dict.c.name.label("measurement_unit_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
         )
         .select_from(
             indicators_groups_dict.outerjoin(
@@ -85,6 +87,11 @@ async def get_indicators_groups_from_db(conn: AsyncConnection) -> list[Indicator
             .outerjoin(
                 measurement_units_dict,
                 indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
+            .outerjoin(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
             )
         )
         .order_by(indicators_groups_dict.c.indicators_group_id, indicators_dict.c.indicator_id)
@@ -114,10 +121,17 @@ async def add_indicators_group_to_db(
         select(
             indicators_dict,
             measurement_units_dict.c.name.label("measurement_unit_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
         ).select_from(
             indicators_dict.outerjoin(
                 measurement_units_dict,
                 indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
+            .outerjoin(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
             )
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
@@ -162,10 +176,17 @@ async def update_indicators_group_from_db(
         select(
             indicators_dict,
             measurement_units_dict.c.name.label("measurement_unit_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
         ).select_from(
             indicators_dict.outerjoin(
                 measurement_units_dict,
                 indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
+            .outerjoin(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
             )
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
@@ -216,7 +237,12 @@ async def get_indicators_by_group_id_from_db(conn: AsyncConnection, indicators_g
         raise EntityNotFoundById(indicators_group_id, "indicators group")
 
     statement = (
-        select(indicators_dict, measurement_units_dict.c.name.label("measurement_unit_name"))
+        select(
+            indicators_dict,
+            measurement_units_dict.c.name.label("measurement_unit_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+        )
         .select_from(
             indicators_groups_data.join(
                 indicators_dict,
@@ -224,6 +250,11 @@ async def get_indicators_by_group_id_from_db(conn: AsyncConnection, indicators_g
             ).outerjoin(
                 measurement_units_dict,
                 indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
+            .outerjoin(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
             )
         )
         .where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
@@ -239,6 +270,8 @@ async def get_indicators_by_parent_from_db(
     parent_name: str | None,
     name: str | None,
     territory_id: int | None,
+    service_type_id: int | None,
+    physical_object_type_id: int | None,
     get_all_subtree: bool,
 ) -> list[IndicatorDTO]:
     """Get an indicator or list of indicators by parent id or name."""
@@ -253,10 +286,23 @@ async def get_indicators_by_parent_from_db(
             raise EntityNotFoundByParams("indicator", parent_name)
         parent_id = parent_indicator_id
 
-    statement = select(indicators_dict, measurement_units_dict.c.name.label("measurement_unit_name")).select_from(
-        indicators_dict.outerjoin(
-            measurement_units_dict,
-            indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+    statement = (
+        select(
+            indicators_dict,
+            measurement_units_dict.c.name.label("measurement_unit_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+        )
+        .select_from(
+            indicators_dict.outerjoin(
+                measurement_units_dict,
+                indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
+            .outerjoin(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+            )
         )
     )
 
@@ -284,6 +330,11 @@ async def get_indicators_by_parent_from_db(
             requested_indicators.c.name_full.ilike(f"%{name}%") | requested_indicators.c.name_short.ilike(f"%{name}%")
         )
 
+    if service_type_id is not None:
+        statement = statement.where(requested_indicators.c.service_type_id == service_type_id)
+    if physical_object_type_id is not None:
+        statement = statement.where(requested_indicators.c.physical_object_type_id == physical_object_type_id)
+
     result = (await conn.execute(statement)).mappings().all()
 
     return [IndicatorDTO(**indicator) for indicator in result]
@@ -296,11 +347,18 @@ async def get_indicator_by_id_from_db(conn: AsyncConnection, indicator_id: int) 
         select(
             indicators_dict,
             measurement_units_dict.c.name.label("measurement_unit_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
         )
         .select_from(
             indicators_dict.outerjoin(
                 measurement_units_dict,
-                measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
+                indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
+            .outerjoin(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
             )
         )
         .where(indicators_dict.c.indicator_id == indicator_id)
@@ -326,6 +384,18 @@ async def add_indicator_to_db(conn: AsyncConnection, indicator: IndicatorPost) -
         ):
             raise EntityNotFoundById(indicator.measurement_unit_id, "measurement unit")
 
+    if indicator.service_type_id is not None:
+        if not await check_existence(
+            conn, service_types_dict, conditions={"service_type_id": indicator.service_type_id}
+        ):
+            raise EntityNotFoundById(indicator.service_type_id, "service type")
+
+    if indicator.physical_object_type_id is not None:
+        if not await check_existence(
+            conn, physical_object_types_dict, conditions={"physical_object_type_id": indicator.physical_object_type_id}
+        ):
+            raise EntityNotFoundById(indicator.physical_object_type_id, "physical object type")
+
     if await check_existence(conn, indicators_dict, conditions={"name_full": indicator.name_full}):
         raise EntityAlreadyExists("indicator", indicator.name_full)
 
@@ -349,6 +419,18 @@ async def put_indicator_to_db(conn: AsyncConnection, indicator: IndicatorPut) ->
             conn, measurement_units_dict, conditions={"measurement_unit_id": indicator.measurement_unit_id}
         ):
             raise EntityNotFoundById(indicator.measurement_unit_id, "measurement unit")
+
+    if indicator.service_type_id is not None:
+        if not await check_existence(
+            conn, service_types_dict, conditions={"service_type_id": indicator.service_type_id}
+        ):
+            raise EntityNotFoundById(indicator.service_type_id, "service type")
+
+    if indicator.physical_object_type_id is not None:
+        if not await check_existence(
+            conn, physical_object_types_dict, conditions={"physical_object_type_id": indicator.physical_object_type_id}
+        ):
+            raise EntityNotFoundById(indicator.physical_object_type_id, "physical object type")
 
     if await check_existence(conn, indicators_dict, conditions={"name_full": indicator.name_full}):
         values = extract_values_from_model(indicator, to_update=True)
@@ -382,6 +464,18 @@ async def patch_indicator_to_db(conn: AsyncConnection, indicator_id: int, indica
             conn, measurement_units_dict, conditions={"measurement_unit_id": indicator.measurement_unit_id}
         ):
             raise EntityNotFoundById(indicator.measurement_unit_id, "measurement unit")
+
+    if indicator.service_type_id is not None:
+        if not await check_existence(
+            conn, service_types_dict, conditions={"service_type_id": indicator.service_type_id}
+        ):
+            raise EntityNotFoundById(indicator.service_type_id, "service type")
+
+    if indicator.physical_object_type_id is not None:
+        if not await check_existence(
+            conn, physical_object_types_dict, conditions={"physical_object_type_id": indicator.physical_object_type_id}
+        ):
+            raise EntityNotFoundById(indicator.physical_object_type_id, "physical object type")
 
     if indicator.name_full is not None:
         if await check_existence(

@@ -79,11 +79,20 @@ class IndicatorsServiceImpl(IndicatorsService):
         parent_name: str | None,
         name: str | None,
         territory_id: int | None,
+        service_type_id: int | None,
+        physical_object_type_id: int | None,
         get_all_subtree: bool,
     ) -> list[IndicatorDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_indicators_by_parent_from_db(
-                conn, parent_id, parent_name, name, territory_id, get_all_subtree
+                conn,
+                parent_id,
+                parent_name,
+                name,
+                territory_id,
+                service_type_id,
+                physical_object_type_id,
+                get_all_subtree,
             )
 
     async def get_indicator_by_id(self, indicator_id: int) -> IndicatorDTO:

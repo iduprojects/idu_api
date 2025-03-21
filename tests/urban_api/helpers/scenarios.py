@@ -39,7 +39,7 @@ def scenario(urban_api_host, project, functional_zone_type, superuser_token) -> 
             headers=headers,
         )
 
-    assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}."
+    assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}.\n{response.json()}"
     return response.json()
 
 

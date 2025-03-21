@@ -12,7 +12,7 @@ from idu_api.common.db.entities import (
     indicators_groups_data,
     measurement_units_dict,
     territories_data,
-    territory_indicators_data,
+    territory_indicators_data, service_types_dict, physical_object_types_dict,
 )
 from idu_api.urban_api.dto import IndicatorDTO, IndicatorValueDTO, TerritoryWithIndicatorsDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
@@ -38,13 +38,24 @@ async def test_get_indicators_by_territory_id_from_db(mock_conn: MockConnection)
     # Arrange
     territory_id = 1
     statement = (
-        select(indicators_dict, measurement_units_dict.c.name.label("measurement_unit_name"))
+        select(
+            indicators_dict,
+            measurement_units_dict.c.name.label("measurement_unit_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+        )
         .select_from(
             territory_indicators_data.join(
-                indicators_dict, territory_indicators_data.c.indicator_id == indicators_dict.c.indicator_id
+                indicators_dict,
+                indicators_dict.c.indicator_id == territory_indicators_data.c.indicator_id,
             ).outerjoin(
                 measurement_units_dict,
-                measurement_units_dict.c.measurement_unit_id == indicators_dict.c.measurement_unit_id,
+                indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
+            )
+            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
+            .outerjoin(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
             )
         )
         .where(territory_indicators_data.c.territory_id == territory_id)

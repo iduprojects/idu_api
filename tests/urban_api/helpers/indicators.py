@@ -61,8 +61,10 @@ def indicator(urban_api_host, measurement_unit) -> dict[str, Any]:
     indicators_post_req = IndicatorPost(
         name_full="Test Indicator Full Name",
         name_short="Test Indicator Short Name",
-        measurement_unit_id=measurement_unit["measurement_unit_id"],
         parent_id=None,
+        measurement_unit_id=measurement_unit["measurement_unit_id"],
+        service_type_id=None,
+        physical_object_type_id=None,
     )
 
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
@@ -157,8 +159,10 @@ def indicators_post_req() -> IndicatorPost:
     return IndicatorPost(
         name_full="Test Indicator Full Name",
         name_short="Test Indicator Short Name",
-        measurement_unit_id=1,
         parent_id=2,
+        measurement_unit_id=1,
+        service_type_id=1,
+        physical_object_type_id=1,
     )
 
 
@@ -169,8 +173,10 @@ def indicators_put_req() -> IndicatorPut:
     return IndicatorPut(
         name_full="Updated Test Indicator Full Name",
         name_short="Updated Test Indicator Short Namе",
-        measurement_unit_id=1,
         parent_id=2,
+        measurement_unit_id=1,
+        service_type_id=1,
+        physical_object_type_id=1,
     )
 
 
@@ -182,6 +188,8 @@ def indicators_patch_req() -> IndicatorsPatch:
         name_full="New Patched Indicator Full Name",
         parent_id=1,
         measurement_unit_id=1,
+        service_type_id=1,
+        physical_object_type_id=1,
     )
 
 

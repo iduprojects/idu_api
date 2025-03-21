@@ -132,7 +132,7 @@ async def get_services_by_territory_id_from_db(
         )
         functions_cte = functions_cte.union_all(
             select(urban_functions_dict.c.urban_function_id).where(
-                urban_functions_dict.c.parent_urban_function_id == functions_cte.c.urban_function_id
+                urban_functions_dict.c.parent_id == functions_cte.c.urban_function_id
             )
         )
         statement = statement.where(service_types_dict.c.urban_function_id.in_(select(functions_cte)))
@@ -244,7 +244,7 @@ async def get_services_with_geometry_by_territory_id_from_db(
         )
         functions_cte = functions_cte.union_all(
             select(urban_functions_dict.c.urban_function_id).where(
-                urban_functions_dict.c.parent_urban_function_id == functions_cte.c.urban_function_id
+                urban_functions_dict.c.parent_id == functions_cte.c.urban_function_id
             )
         )
         statement = statement.where(service_types_dict.c.urban_function_id.in_(select(functions_cte)))
