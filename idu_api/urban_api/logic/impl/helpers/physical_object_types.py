@@ -4,13 +4,17 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    object_service_types_dict,
     physical_object_functions_dict,
-    physical_object_types_dict, service_types_dict, urban_functions_dict, object_service_types_dict,
+    physical_object_types_dict,
+    service_types_dict,
+    urban_functions_dict,
 )
 from idu_api.urban_api.dto import (
     PhysicalObjectFunctionDTO,
     PhysicalObjectTypeDTO,
-    PhysicalObjectTypesHierarchyDTO, ServiceTypeDTO,
+    PhysicalObjectTypesHierarchyDTO,
+    ServiceTypeDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.utils import build_recursive_query, check_existence
@@ -43,7 +47,9 @@ async def get_physical_object_types_from_db(
     )
 
     if physical_object_function_id is not None:
-        statement = statement.where(physical_object_types_dict.c.physical_object_function_id == physical_object_function_id)
+        statement = statement.where(
+            physical_object_types_dict.c.physical_object_function_id == physical_object_function_id
+        )
     if name is not None:
         statement = statement.where(physical_object_types_dict.c.name.ilike(f"%{name}%"))
 
@@ -439,8 +445,7 @@ async def get_service_types_by_physical_object_type_id_from_db(
             service_types_dict.join(
                 urban_functions_dict,
                 urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
-            )
-            .join(
+            ).join(
                 object_service_types_dict,
                 object_service_types_dict.c.service_type_id == service_types_dict.c.service_type_id,
             )

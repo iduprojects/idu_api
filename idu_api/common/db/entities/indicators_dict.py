@@ -11,8 +11,8 @@ from typing import Callable
 from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Sequence, String, Table, func
 
 from idu_api.common.db import metadata
-from idu_api.common.db.entities.service_types import service_types_dict
 from idu_api.common.db.entities.physical_object_types import physical_object_types_dict
+from idu_api.common.db.entities.service_types import service_types_dict
 
 func: Callable
 

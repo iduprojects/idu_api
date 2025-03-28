@@ -1,11 +1,12 @@
 """Service types handlers are defined here."""
 
-from fastapi import Path, Query, Request, HTTPException
+from fastapi import HTTPException, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.service_types import ServiceTypesService
 from idu_api.urban_api.schemas import (
     OkResponse,
+    PhysicalObjectType,
     ServiceType,
     ServiceTypePatch,
     ServiceTypePost,
@@ -14,7 +15,7 @@ from idu_api.urban_api.schemas import (
     UrbanFunction,
     UrbanFunctionPatch,
     UrbanFunctionPost,
-    UrbanFunctionPut, PhysicalObjectType,
+    UrbanFunctionPut, SocGroupWithServiceTypes,
 )
 
 from .routers import service_types_router
@@ -32,6 +33,10 @@ async def get_service_types(
 ) -> list[ServiceType]:
     """
     ## Get all service types.
+
+    ### Parameters:
+    - **urban_function_id** (int, Query): Filter results by urban function.
+    - **name** (str | None, Query): Filters service types by a case-insensitive substring match.
 
     ### Returns:
     - **list[ServiceType]**: A list of all service types.
@@ -357,6 +362,9 @@ async def get_physical_object_types(
     """
     ## Get all available physical object types for given service type.
 
+    ### Parameters:
+    - **service_type_id** (int, Path): Unique identifier of the service type.
+
     ### Returns:
     - **list[PhysicalObjectType]**: A list of physical object types.
     """
@@ -365,3 +373,29 @@ async def get_physical_object_types(
     types = await service_types_service.get_physical_object_types_by_service_type(service_type_id)
 
     return [PhysicalObjectType.from_dto(object_type) for object_type in types]
+
+
+@service_types_router.get(
+    "/service_types/{service_type_id}/social_groups",
+    response_model=list[SocGroupWithServiceTypes],
+    status_code=status.HTTP_200_OK,
+)
+async def get_social_groups(
+    request: Request,
+    service_type_id: int = Path(..., description="physical object type identifier", gt=0),
+) -> list[SocGroupWithServiceTypes]:
+    """
+    ## Get all social groups for which given service type is important.
+
+    ### Parameters:
+    - **service_type_id** (int, Path): Unique identifier of the service type.
+
+    ### Returns:
+    - **list[SocGroupWithServiceTypes]**: A list of social groups with associated service types.
+    """
+    service_types_service: ServiceTypesService = request.state.service_types_service
+
+    soc_groups = await service_types_service.get_social_groups_by_service_type_id(service_type_id)
+
+    return [SocGroupWithServiceTypes.from_dto(group) for group in soc_groups]
+

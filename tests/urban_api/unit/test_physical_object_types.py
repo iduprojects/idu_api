@@ -5,10 +5,19 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from sqlalchemy.sql import delete, insert, select, update
 
-from idu_api.common.db.entities import physical_object_functions_dict, physical_object_types_dict, \
-    object_service_types_dict, service_types_dict, urban_functions_dict
-from idu_api.urban_api.dto import PhysicalObjectFunctionDTO, PhysicalObjectTypeDTO, PhysicalObjectTypesHierarchyDTO, \
-    ServiceTypeDTO
+from idu_api.common.db.entities import (
+    object_service_types_dict,
+    physical_object_functions_dict,
+    physical_object_types_dict,
+    service_types_dict,
+    urban_functions_dict,
+)
+from idu_api.urban_api.dto import (
+    PhysicalObjectFunctionDTO,
+    PhysicalObjectTypeDTO,
+    PhysicalObjectTypesHierarchyDTO,
+    ServiceTypeDTO,
+)
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.physical_object_types import (
     add_physical_object_function_to_db,
@@ -20,9 +29,10 @@ from idu_api.urban_api.logic.impl.helpers.physical_object_types import (
     get_physical_object_type_by_id_from_db,
     get_physical_object_types_from_db,
     get_physical_object_types_hierarchy_from_db,
+    get_service_types_by_physical_object_type_id_from_db,
     patch_physical_object_function_to_db,
     patch_physical_object_type_to_db,
-    put_physical_object_function_to_db, get_service_types_by_physical_object_type_id_from_db,
+    put_physical_object_function_to_db,
 )
 from idu_api.urban_api.schemas import (
     PhysicalObjectFunction,
@@ -31,7 +41,8 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectFunctionPut,
     PhysicalObjectType,
     PhysicalObjectTypePatch,
-    PhysicalObjectTypePost, ServiceType,
+    PhysicalObjectTypePost,
+    ServiceType,
 )
 from tests.urban_api.helpers.connection import MockConnection
 
@@ -557,8 +568,7 @@ async def test_get_service_types_by_physical_object_type_id_from_db(mock_conn: M
             service_types_dict.join(
                 urban_functions_dict,
                 urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
-            )
-            .join(
+            ).join(
                 object_service_types_dict,
                 object_service_types_dict.c.service_type_id == service_types_dict.c.service_type_id,
             )

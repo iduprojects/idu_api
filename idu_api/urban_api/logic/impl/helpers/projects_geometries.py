@@ -5,12 +5,11 @@ from collections import defaultdict
 from geoalchemy2.functions import (
     ST_AsEWKB,
     ST_Centroid,
-    ST_GeomFromWKB,
     ST_Intersection,
     ST_Intersects,
     ST_Within,
 )
-from sqlalchemy import case, delete, insert, literal, or_, select, text, update
+from sqlalchemy import case, delete, insert, literal, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (

@@ -16,7 +16,7 @@ from .routers import territories_router
 )
 async def get_territory_types(request: Request) -> list[TerritoryType]:
     """
-    ## Get the list of territory types.
+    ## Get a list of territory types.
 
     ### Returns:
     - **list[TerritoryType]**: A list of territory types.
@@ -60,7 +60,7 @@ async def add_territory_type(request: Request, territory_type: TerritoryTypePost
 )
 async def get_target_city_types(request: Request) -> list[TargetCityType]:
     """
-    ## Get the list of target city types.
+    ## Get a list of target city types.
 
     ### Returns:
     - **list[TargetCityType]**: A list of target city types.

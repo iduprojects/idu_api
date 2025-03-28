@@ -16,5 +16,6 @@ from .projects import *
 from .scenarios import *
 from .service_types import *
 from .services import *
+from .soc_groups import *
 from .territories import *
 from .urban_objects import *

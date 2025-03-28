@@ -5,7 +5,14 @@ from typing import Any
 import httpx
 import pytest
 
-from idu_api.urban_api.schemas import ScenarioService, Service, ServicePut, ScenarioServicePost, OkResponse, ScenarioUrbanObject
+from idu_api.urban_api.schemas import (
+    OkResponse,
+    ScenarioService,
+    ScenarioServicePost,
+    ScenarioUrbanObject,
+    Service,
+    ServicePut,
+)
 from tests.urban_api.helpers.utils import assert_response
 
 ####################################################################################
@@ -42,7 +49,7 @@ async def test_get_services_by_scenario_id(
     params = {"service_type_id": scenario_service["service_type"]["service_type_id"]}
     if expected_status == 400:
         params["urban_function_id"] = scenario_service["service_type"]["urban_function"]["id"]
-    
+
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(f"/scenarios/{scenario_id}/services", headers=headers, params=params)
@@ -56,8 +63,8 @@ async def test_get_services_by_scenario_id(
         ), "Response should contain created service."
     else:
         assert_response(response, expected_status, ScenarioService, error_message)
-        
-        
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "expected_status, error_message, project_id_param",
@@ -87,7 +94,7 @@ async def test_get_context_services(
     params = {"service_type_id": service["service_type"]["service_type_id"]}
     if expected_status == 400:
         params["urban_function_id"] = service["service_type"]["urban_function"]["id"]
-        
+
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(f"/projects/{project_id}/context/services", headers=headers, params=params)
@@ -148,9 +155,13 @@ async def test_add_service(
             response = await client.post(f"/scenarios/{base_scenario_id}", json=new_scenario, headers=headers)
             scenario_id = response.json()["scenario_id"]
     new_service = scenario_service_post_req.model_dump()
-    new_service["object_geometry_id"] = scenario_geometry["object_geometry_id"] if is_scenario_param else object_geometry["object_geometry_id"]
+    new_service["object_geometry_id"] = (
+        scenario_geometry["object_geometry_id"] if is_scenario_param else object_geometry["object_geometry_id"]
+    )
     new_service["is_scenario_geometry"] = is_scenario_param
-    new_service["physical_object_id"] = scenario_physical_object["physical_object_id"] if is_scenario_param else physical_object["physical_object_id"]
+    new_service["physical_object_id"] = (
+        scenario_physical_object["physical_object_id"] if is_scenario_param else physical_object["physical_object_id"]
+    )
     new_service["is_scenario_physical_object"] = is_scenario_param
     new_service["service_type_id"] = scenario_service["service_type"]["service_type_id"]
     new_service["territory_type_id"] = scenario_service["territory_type"]["territory_type_id"]
@@ -160,7 +171,8 @@ async def test_add_service(
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.post(
             f"/scenarios/{scenario_id}/services",
-            json=new_service, headers=headers,
+            json=new_service,
+            headers=headers,
         )
 
     # Assert
@@ -336,23 +348,27 @@ async def test_delete_service(
         if expected_status == 200 and is_scenario_param:
             response = await client.post(
                 f"scenarios/{scenario_id}/services",
-                json=new_service, headers=headers,
+                json=new_service,
+                headers=headers,
             )
             service_id = response.json()["service"]["service_id"]
             response = await client.delete(
                 f"/scenarios/{scenario_id}/services/{service_id}",
-                headers=headers, params=params,
+                headers=headers,
+                params=params,
             )
         elif not is_scenario_param:
             service_id = service["service_id"]
             response = await client.delete(
                 f"/scenarios/{scenario_id}/services/{service_id}",
-                headers=headers, params=params,
+                headers=headers,
+                params=params,
             )
         else:
             response = await client.delete(
                 f"/scenarios/{scenario_id}/services/1",
-                headers=headers, params=params,
+                headers=headers,
+                params=params,
             )
 
     # Assert

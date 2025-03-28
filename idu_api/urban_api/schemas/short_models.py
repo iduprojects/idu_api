@@ -12,7 +12,7 @@ from idu_api.urban_api.dto import (
     ShortScenarioServiceDTO,
     ShortServiceDTO,
 )
-from idu_api.urban_api.schemas.enums import NormativeType
+from idu_api.urban_api.schemas.enums import InfrastructureType, NormativeType
 
 
 class FunctionalZoneTypeBasic(BaseModel):
@@ -391,3 +391,25 @@ class ShortIndicatorInfo(BaseModel):
     measurement_unit: MeasurementUnitBasic | None
     level: int = Field(..., description="number of indicator functions above in a tree + 1", examples=[1])
     list_label: str = Field(..., description="indicator marker in lists", examples=["1.1.1"])
+
+
+class SocGroupBasic(BaseModel):
+    """Social group with only id and name."""
+
+    id: int
+    name: str
+
+
+class SocValueBasic(BaseModel):
+    """Social value with only id and name."""
+
+    id: int
+    name: str
+
+
+class ServiceTypeForSocGroup(BaseModel):
+    """Service type model to encapsulate in SocGroup model."""
+
+    id: int
+    name: str
+    infrastructure_type: InfrastructureType

@@ -12,7 +12,6 @@ from idu_api.common.db import metadata
 from idu_api.common.db.entities.enums import InfrastructureType
 
 urban_functions_dict_id_seq = Sequence("urban_functions_dict_id_seq")
-
 urban_functions_dict = Table(
     "urban_functions_dict",
     metadata,

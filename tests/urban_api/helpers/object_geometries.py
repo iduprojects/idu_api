@@ -22,13 +22,13 @@ __all__ = [
 
 
 @pytest.fixture(scope="session")
-def object_geometry(urban_api_host, urban_object) -> dict[str, Any]:
+def object_geometry(urban_object) -> dict[str, Any]:
     """Returns created object geometry."""
     return urban_object["object_geometry"]
 
 
 @pytest.fixture(scope="session")
-def scenario_geometry(urban_api_host, scenario_urban_object) -> dict[str, Any]:
+def scenario_geometry(scenario_urban_object) -> dict[str, Any]:
     """Returns created object geometry."""
     return scenario_urban_object["object_geometry"]
 

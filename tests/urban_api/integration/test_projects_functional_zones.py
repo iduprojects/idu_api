@@ -7,7 +7,6 @@ import pytest
 from pydantic import ValidationError
 
 from idu_api.urban_api.schemas import (
-    FunctionalZone,
     FunctionalZoneSource,
     FunctionalZoneWithoutGeometry,
     OkResponse,
@@ -15,7 +14,6 @@ from idu_api.urban_api.schemas import (
     ScenarioFunctionalZonePost,
     ScenarioFunctionalZonePut,
     ScenarioFunctionalZoneWithoutGeometry,
-    ScenarioPost,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.utils import assert_response

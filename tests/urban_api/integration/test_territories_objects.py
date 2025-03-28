@@ -1,6 +1,5 @@
 """Integration tests for territories are defined here."""
 
-from datetime import date
 from typing import Any
 
 import httpx

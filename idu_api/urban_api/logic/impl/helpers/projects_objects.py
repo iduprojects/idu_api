@@ -47,7 +47,7 @@ from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, Proj
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
-from idu_api.urban_api.logic.impl.helpers.utils import SRID, extract_values_from_model, check_existence
+from idu_api.urban_api.logic.impl.helpers.utils import SRID, check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
@@ -616,7 +616,9 @@ async def add_project_to_db(
         parent_scenario_id = (
             await conn.execute(
                 select(scenarios_data.c.scenario_id)
-                .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
+                .select_from(
+                    scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id)
+                )
                 .where(
                     projects_data.c.territory_id == project.territory_id,
                     projects_data.c.is_regional.is_(True),

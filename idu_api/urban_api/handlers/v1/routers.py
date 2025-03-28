@@ -20,6 +20,8 @@ physical_objects_router = APIRouter(tags=["physical_objects"], prefix="/v1")
 
 object_geometries_router = APIRouter(tags=["object_geometries"], prefix="/v1")
 
+soc_groups_router = APIRouter(tags=["social_groups"], prefix="/v1")
+
 services_router = APIRouter(tags=["services"], prefix="/v1")
 
 urban_objects_router = APIRouter(tags=["urban_objects"], prefix="/v1")
@@ -32,6 +34,7 @@ routers_list = [
     physical_objects_router,
     object_geometries_router,
     service_types_router,
+    soc_groups_router,
     urban_objects_router,
     *territories_routers,
     *projects_routers,

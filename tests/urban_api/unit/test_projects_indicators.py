@@ -267,12 +267,16 @@ async def test_put_scenario_indicator_value_to_db(
         .where(
             projects_indicators_data.c.indicator_id == scenario_indicator_value_put_req.indicator_id,
             projects_indicators_data.c.scenario_id == scenario_id,
-            projects_indicators_data.c.territory_id == scenario_indicator_value_put_req.territory_id
-            if scenario_indicator_value_put_req.territory_id is not None
-            else projects_indicators_data.c.territory_id.is_(None),
-            projects_indicators_data.c.hexagon_id == scenario_indicator_value_put_req.hexagon_id
-            if scenario_indicator_value_put_req.hexagon_id is not None
-            else projects_indicators_data.c.hexagon_id.is_(None),
+            (
+                projects_indicators_data.c.territory_id == scenario_indicator_value_put_req.territory_id
+                if scenario_indicator_value_put_req.territory_id is not None
+                else projects_indicators_data.c.territory_id.is_(None)
+            ),
+            (
+                projects_indicators_data.c.hexagon_id == scenario_indicator_value_put_req.hexagon_id
+                if scenario_indicator_value_put_req.hexagon_id is not None
+                else projects_indicators_data.c.hexagon_id.is_(None)
+            ),
         )
         .values(**scenario_indicator_value_put_req.model_dump(), updated_at=datetime.now(timezone.utc))
         .returning(projects_indicators_data.c.indicator_value_id)

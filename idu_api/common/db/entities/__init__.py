@@ -8,7 +8,11 @@ from idu_api.common.db.entities.indicators_dict import indicators_dict, measurem
 from idu_api.common.db.entities.indicators_groups import indicators_groups_data, indicators_groups_dict
 from idu_api.common.db.entities.living_buildings import buildings_data
 from idu_api.common.db.entities.object_geometries import object_geometries_data
-from idu_api.common.db.entities.physical_object_types import physical_object_functions_dict, physical_object_types_dict, object_service_types_dict
+from idu_api.common.db.entities.physical_object_types import (
+    object_service_types_dict,
+    physical_object_functions_dict,
+    physical_object_types_dict,
+)
 from idu_api.common.db.entities.physical_objects import physical_objects_data
 from idu_api.common.db.entities.profiles_reclamation import profiles_reclamation_data
 from idu_api.common.db.entities.projects.functional_zones import projects_functional_zones
@@ -25,6 +29,12 @@ from idu_api.common.db.entities.projects.urban_objects import projects_urban_obj
 from idu_api.common.db.entities.service_types import service_types_dict, urban_functions_dict
 from idu_api.common.db.entities.service_types_normatives import service_types_normatives_data
 from idu_api.common.db.entities.services import services_data
+from idu_api.common.db.entities.soc_groups import (
+    soc_group_value_indicators_data,
+    soc_group_values_data,
+    soc_groups_dict,
+    soc_values_dict,
+)
 from idu_api.common.db.entities.territories import target_city_types_dict, territories_data, territory_types_dict
 from idu_api.common.db.entities.territory_indicators import territory_indicators_data
 from idu_api.common.db.entities.urban_objects import urban_objects_data

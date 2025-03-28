@@ -14,7 +14,6 @@ from idu_api.urban_api.schemas import (
     FunctionalZoneType,
     FunctionalZoneTypePost,
     ProfilesReclamationData,
-    ProfilesReclamationDataDelete,
     ProfilesReclamationDataPost,
     ProfilesReclamationDataPut,
     ScenarioFunctionalZone,

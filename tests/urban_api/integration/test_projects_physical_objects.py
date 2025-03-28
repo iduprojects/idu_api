@@ -4,10 +4,15 @@ from typing import Any
 
 import httpx
 import pytest
-from pydantic import ValidationError
 
-from idu_api.urban_api.schemas import ScenarioPhysicalObject, PhysicalObject, PhysicalObjectPut, \
-    PhysicalObjectWithGeometryPost, OkResponse, ScenarioUrbanObject
+from idu_api.urban_api.schemas import (
+    OkResponse,
+    PhysicalObject,
+    PhysicalObjectPut,
+    PhysicalObjectWithGeometryPost,
+    ScenarioPhysicalObject,
+    ScenarioUrbanObject,
+)
 from tests.urban_api.helpers.utils import assert_response
 
 ####################################################################################
@@ -45,7 +50,7 @@ async def test_get_physical_objects_by_scenario_id(
     if expected_status == 400:
         physical_object_function = scenario_physical_object["physical_object_type"]["physical_object_function"]
         params["physical_object_function_id"] = physical_object_function["id"]
-    
+
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(f"/scenarios/{scenario_id}/physical_objects", headers=headers, params=params)
@@ -59,8 +64,8 @@ async def test_get_physical_objects_by_scenario_id(
         ), "Response should contain created physical_object."
     else:
         assert_response(response, expected_status, ScenarioPhysicalObject, error_message)
-        
-        
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "expected_status, error_message, project_id_param",
@@ -91,7 +96,7 @@ async def test_get_context_physical_objects(
     if expected_status == 400:
         physical_object_function = physical_object["physical_object_type"]["physical_object_function"]
         params["physical_object_function_id"] = physical_object_function["id"]
-        
+
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(f"/projects/{project_id}/context/physical_objects", headers=headers, params=params)
@@ -142,7 +147,8 @@ async def test_add_physical_object_with_geometry(
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.post(
             f"/scenarios/{scenario_id}/physical_objects",
-            json=new_object, headers=headers,
+            json=new_object,
+            headers=headers,
         )
 
     # Assert
@@ -200,7 +206,9 @@ async def test_update_physical_objects_by_function_id(
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.post(
             f"/scenarios/{scenario_id}/all_physical_objects",
-            json=[new_object], headers=headers, params=params,
+            json=[new_object],
+            headers=headers,
+            params=params,
         )
 
     # Assert
@@ -209,7 +217,7 @@ async def test_update_physical_objects_by_function_id(
     else:
         assert_response(response, expected_status, ScenarioUrbanObject, error_message)
 
-        
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "expected_status, error_message, scenario_id_param, is_scenario_param",
@@ -239,7 +247,9 @@ async def test_put_scenario_physical_object(
 
     # Arrange
     scenario_id = scenario_id_param or scenario["scenario_id"]
-    physical_object_id = scenario_physical_object["physical_object_id"] if is_scenario_param else physical_object["physical_object_id"]
+    physical_object_id = (
+        scenario_physical_object["physical_object_id"] if is_scenario_param else physical_object["physical_object_id"]
+    )
     new_object = physical_object_put_req.model_dump()
     new_object["physical_object_type_id"] = scenario_physical_object["physical_object_type"]["physical_object_type_id"]
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
@@ -300,7 +310,9 @@ async def test_patch_scenario_physical_object(
         async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
             response = await client.post(f"/scenarios/{base_scenario_id}", json=new_scenario, headers=headers)
             scenario_id = response.json()["scenario_id"]
-    physical_object_id = scenario_physical_object["physical_object_id"] if is_scenario_param else physical_object["physical_object_id"]
+    physical_object_id = (
+        scenario_physical_object["physical_object_id"] if is_scenario_param else physical_object["physical_object_id"]
+    )
     new_object = physical_object_put_req.model_dump()
     new_object["physical_object_type_id"] = scenario_physical_object["physical_object_type"]["physical_object_type_id"]
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
@@ -372,23 +384,27 @@ async def test_delete_physical_object(
         if expected_status == 200 and is_scenario_param:
             response = await client.post(
                 f"scenarios/{scenario_id}/physical_objects",
-                json=new_object, headers=headers,
+                json=new_object,
+                headers=headers,
             )
             physical_object_id = response.json()["physical_object"]["physical_object_id"]
             response = await client.delete(
                 f"/scenarios/{scenario_id}/physical_objects/{physical_object_id}",
-                headers=headers, params=params,
+                headers=headers,
+                params=params,
             )
         elif not is_scenario_param:
             physical_object_id = physical_object["physical_object_id"]
             response = await client.delete(
                 f"/scenarios/{scenario_id}/physical_objects/{physical_object_id}",
-                headers=headers, params=params,
+                headers=headers,
+                params=params,
             )
         else:
             response = await client.delete(
                 f"/scenarios/{scenario_id}/physical_objects/1",
-                headers=headers, params=params,
+                headers=headers,
+                params=params,
             )
 
     # Assert

@@ -43,6 +43,13 @@ from .services import (
     ShortScenarioServiceDTO,
     ShortServiceDTO,
 )
+from .soc_groups import (
+    SocGroupDTO,
+    SocGroupIndicatorValueDTO,
+    SocGroupWithServiceTypesDTO,
+    SocValueDTO,
+    SocValueWithSocGroupsDTO,
+)
 from .territories import (
     TargetCityTypeDTO,
     TerritoryDTO,
@@ -109,4 +116,9 @@ __all__ = [
     "FunctionalZoneSourceDTO",
     "ProjectWithTerritoryDTO",
     "TargetCityTypeDTO",
+    "SocGroupDTO",
+    "SocGroupWithServiceTypesDTO",
+    "SocValueDTO",
+    "SocValueWithSocGroupsDTO",
+    "SocGroupIndicatorValueDTO",
 ]

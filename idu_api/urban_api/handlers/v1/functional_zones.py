@@ -1,6 +1,6 @@
 """Functional zones endpoints are defined here."""
 
-from fastapi import Path, Query, Request, HTTPException
+from fastapi import HTTPException, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.functional_zones import FunctionalZonesService
@@ -99,7 +99,7 @@ async def get_profiles_reclamation_data_matrix(
         try:
             labels_array = [int(label.strip()) for label in labels.split(",")]
         except ValueError as exc:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     profiles_reclamation_matrix = await functional_zones_service.get_profiles_reclamation_data_matrix(
         labels_array, territory_id

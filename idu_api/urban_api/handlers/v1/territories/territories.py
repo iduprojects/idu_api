@@ -15,7 +15,7 @@ from idu_api.urban_api.schemas import (
     TerritoryWithoutGeometry,
 )
 from idu_api.urban_api.schemas.enums import OrderByField, Ordering
-from idu_api.urban_api.schemas.geometries import Feature, GeoJSONResponse, Geometry, AllPossibleGeometry
+from idu_api.urban_api.schemas.geometries import AllPossibleGeometry, Feature, GeoJSONResponse
 from idu_api.urban_api.schemas.pages import Page
 from idu_api.urban_api.utils.pagination import paginate
 

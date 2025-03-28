@@ -7,9 +7,12 @@ import pytest
 from pydantic import ValidationError
 
 from idu_api.urban_api.schemas import (
+    HexagonWithIndicators,
     OkResponse,
-    ScenarioIndicatorValuePost, ScenarioIndicatorValue, ScenarioIndicatorValuePut,
-    ScenarioIndicatorValuePatch, HexagonWithIndicators,
+    ScenarioIndicatorValue,
+    ScenarioIndicatorValuePatch,
+    ScenarioIndicatorValuePost,
+    ScenarioIndicatorValuePut,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.utils import assert_response
@@ -175,7 +178,8 @@ async def test_patch_scenario_indicator_value(
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.patch(
             f"/scenarios/{scenario_id}/indicators_values/{indicator_value_id}",
-            headers=headers, json=new_value,
+            headers=headers,
+            json=new_value,
         )
 
     # Assert
@@ -263,16 +267,15 @@ async def test_delete_scenario_indicator_value_by_id(
         if scenario_id_param is None:
             response = await client.post(
                 f"/scenarios/{scenario_id}/indicators_values",
-                headers={"Authorization": f"Bearer {superuser_token}"}, json=new_value,
+                headers={"Authorization": f"Bearer {superuser_token}"},
+                json=new_value,
             )
             indicator_value_id = response.json()["indicator_value_id"]
             response = await client.delete(
                 f"/scenarios/{scenario_id}/indicators_values/{indicator_value_id}", headers=headers
             )
         else:
-            response = await client.delete(
-                f"/scenarios/{scenario_id_param}/indicators_values/1", headers=headers
-            )
+            response = await client.delete(f"/scenarios/{scenario_id_param}/indicators_values/1", headers=headers)
 
     # Assert
     assert_response(response, expected_status, OkResponse, error_message)
@@ -308,7 +311,8 @@ async def test_get_hexagons_with_indicators_values_by_scenario_id(
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(
             f"/scenarios/{scenario_id}/indicators_values/hexagons",
-            headers=headers, params=params,
+            headers=headers,
+            params=params,
         )
         result = response.json()
 
@@ -321,7 +325,5 @@ async def test_get_hexagons_with_indicators_values_by_scenario_id(
         except ValidationError as e:
             pytest.fail(f"Pydantic validation error: {str(e)}")
         assert any(
-            scenario_indicator_value["hexagon_id"] == item["properties"]["hexagon_id"]
-            for item in result["features"]
+            scenario_indicator_value["hexagon_id"] == item["properties"]["hexagon_id"] for item in result["features"]
         ), "Response should contain created hexagon."
-

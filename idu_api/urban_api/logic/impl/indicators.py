@@ -30,10 +30,10 @@ from idu_api.urban_api.logic.impl.helpers.indicators import (
 )
 from idu_api.urban_api.logic.indicators import IndicatorsService
 from idu_api.urban_api.schemas import (
-    IndicatorsGroupPost,
-    IndicatorsPatch,
     IndicatorPost,
     IndicatorPut,
+    IndicatorsGroupPost,
+    IndicatorsPatch,
     IndicatorValuePost,
     IndicatorValuePut,
     MeasurementUnitPost,
@@ -115,19 +115,9 @@ class IndicatorsServiceImpl(IndicatorsService):
         async with self._connection_manager.get_connection() as conn:
             return await delete_indicator_from_db(conn, indicator_id)
 
-    async def get_indicator_value_by_id(
-        self,
-        indicator_id: int,
-        territory_id: int,
-        date_type: str,
-        date_value: datetime,
-        value_type: str,
-        information_source: str,
-    ) -> IndicatorValueDTO:
+    async def get_indicator_value_by_id(self, indicator_value_id: int) -> IndicatorValueDTO:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_indicator_value_by_id_from_db(
-                conn, indicator_id, territory_id, date_type, date_value, value_type, information_source
-            )
+            return await get_indicator_value_by_id_from_db(conn, indicator_value_id)
 
     async def add_indicator_value(self, indicator_value: IndicatorValuePost) -> IndicatorValueDTO:
         async with self._connection_manager.get_connection() as conn:
@@ -137,19 +127,9 @@ class IndicatorsServiceImpl(IndicatorsService):
         async with self._connection_manager.get_connection() as conn:
             return await put_indicator_value_to_db(conn, indicator_value)
 
-    async def delete_indicator_value(
-        self,
-        indicator_id: int,
-        territory_id: int,
-        date_type: str,
-        date_value: datetime,
-        value_type: str,
-        information_source: str,
-    ) -> dict:
+    async def delete_indicator_value(self, indicator_value_id) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await delete_indicator_value_from_db(
-                conn, indicator_id, territory_id, date_type, date_value, value_type, information_source
-            )
+            return await delete_indicator_value_from_db(conn, indicator_value_id)
 
     async def get_indicator_values_by_id(
         self,

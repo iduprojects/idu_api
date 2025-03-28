@@ -6,10 +6,21 @@ from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    object_service_types_dict,
+    physical_object_functions_dict,
+    physical_object_types_dict,
     service_types_dict,
-    urban_functions_dict, physical_object_types_dict, physical_object_functions_dict, object_service_types_dict,
+    soc_group_values_data,
+    soc_groups_dict,
+    urban_functions_dict,
 )
-from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO, PhysicalObjectTypeDTO
+from idu_api.urban_api.dto import (
+    PhysicalObjectTypeDTO,
+    ServiceTypeDTO,
+    ServiceTypesHierarchyDTO,
+    SocGroupWithServiceTypesDTO,
+    UrbanFunctionDTO,
+)
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.utils import build_recursive_query, check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import (
@@ -426,14 +437,57 @@ async def get_physical_object_types_by_service_type_id_from_db(
                 physical_object_functions_dict,
                 physical_object_functions_dict.c.physical_object_function_id
                 == physical_object_types_dict.c.physical_object_function_id,
-            )
-            .join(
+            ).join(
                 object_service_types_dict,
-                object_service_types_dict.c.physical_object_type_id == physical_object_types_dict.c.physical_object_type_id,
+                object_service_types_dict.c.physical_object_type_id
+                == physical_object_types_dict.c.physical_object_type_id,
             )
         )
         .where(object_service_types_dict.c.service_type_id == service_type_id)
         .order_by(physical_object_types_dict.c.physical_object_type_id)
+        .distinct()
     )
 
     return [PhysicalObjectTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
+
+
+async def get_social_groups_by_service_type_id_from_db(
+    conn: AsyncConnection,
+    service_type_id: int,
+) -> list[SocGroupWithServiceTypesDTO]:
+    """Get all social groups by service type identifier."""
+
+    if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
+        raise EntityNotFoundById(service_type_id, "service type")
+
+    statement = (
+        select(
+            soc_groups_dict,
+            service_types_dict.c.service_type_id.label("id"),
+            service_types_dict.c.name.label("service_type_name"),
+            soc_group_values_data.c.infrastructure_type,
+        )
+        .select_from(
+            service_types_dict.join(
+                soc_group_values_data,
+                soc_group_values_data.c.service_type_id == service_types_dict.c.service_type_id,
+            ).join(soc_groups_dict, soc_groups_dict.c.soc_group_id == soc_group_values_data.c.soc_group_id)
+        )
+        .where(service_types_dict.c.service_type_id == service_type_id)
+        .order_by(soc_groups_dict.c.soc_group_id)
+        .distinct()
+    )
+
+    result = (await conn.execute(statement)).mappings().all()
+    if not result:
+        return []
+
+    service_types = [
+        {"id": row["id"], "name": row["service_type_name"], "infrastructure_type": row["infrastructure_type"]}
+        for row in result
+    ]
+
+    return [
+        SocGroupWithServiceTypesDTO(soc_group_id=row["soc_group_id"], name=row["name"], service_types=service_types)
+        for row in result
+    ]

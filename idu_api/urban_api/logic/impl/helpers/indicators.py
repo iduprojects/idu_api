@@ -12,8 +12,10 @@ from idu_api.common.db.entities import (
     indicators_groups_data,
     indicators_groups_dict,
     measurement_units_dict,
+    physical_object_types_dict,
+    service_types_dict,
     territories_data,
-    territory_indicators_data, service_types_dict, physical_object_types_dict,
+    territory_indicators_data,
 )
 from idu_api.urban_api.dto import (
     IndicatorDTO,
@@ -29,10 +31,10 @@ from idu_api.urban_api.exceptions.logic.common import (
 )
 from idu_api.urban_api.logic.impl.helpers.utils import build_recursive_query, check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import (
-    IndicatorsGroupPost,
-    IndicatorsPatch,
     IndicatorPost,
     IndicatorPut,
+    IndicatorsGroupPost,
+    IndicatorsPatch,
     IndicatorValuePost,
     IndicatorValuePut,
     MeasurementUnitPost,
@@ -91,7 +93,7 @@ async def get_indicators_groups_from_db(conn: AsyncConnection) -> list[Indicator
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
         .order_by(indicators_groups_dict.c.indicators_group_id, indicators_dict.c.indicator_id)
@@ -131,7 +133,7 @@ async def add_indicators_group_to_db(
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
@@ -186,7 +188,7 @@ async def update_indicators_group_from_db(
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group.indicators_ids))
@@ -247,14 +249,15 @@ async def get_indicators_by_group_id_from_db(conn: AsyncConnection, indicators_g
             indicators_groups_data.join(
                 indicators_dict,
                 indicators_dict.c.indicator_id == indicators_groups_data.c.indicator_id,
-            ).outerjoin(
+            )
+            .outerjoin(
                 measurement_units_dict,
                 indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
             )
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
         .where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
@@ -286,23 +289,20 @@ async def get_indicators_by_parent_from_db(
             raise EntityNotFoundByParams("indicator", parent_name)
         parent_id = parent_indicator_id
 
-    statement = (
-        select(
-            indicators_dict,
-            measurement_units_dict.c.name.label("measurement_unit_name"),
-            service_types_dict.c.name.label("service_type_name"),
-            physical_object_types_dict.c.name.label("physical_object_type_name"),
+    statement = select(
+        indicators_dict,
+        measurement_units_dict.c.name.label("measurement_unit_name"),
+        service_types_dict.c.name.label("service_type_name"),
+        physical_object_types_dict.c.name.label("physical_object_type_name"),
+    ).select_from(
+        indicators_dict.outerjoin(
+            measurement_units_dict,
+            indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
         )
-        .select_from(
-            indicators_dict.outerjoin(
-                measurement_units_dict,
-                indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
-            )
-            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
-            .outerjoin(
-                physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
-            )
+        .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
+        .outerjoin(
+            physical_object_types_dict,
+            physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
         )
     )
 
@@ -358,7 +358,7 @@ async def get_indicator_by_id_from_db(conn: AsyncConnection, indicator_id: int) 
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
         .where(indicators_dict.c.indicator_id == indicator_id)
@@ -509,15 +509,7 @@ async def delete_indicator_from_db(conn: AsyncConnection, indicator_id: int) -> 
     return {"status": "ok"}
 
 
-async def get_indicator_value_by_id_from_db(
-    conn: AsyncConnection,
-    indicator_id: int,
-    territory_id: int,
-    date_type: str,
-    date_value: datetime,
-    value_type: str,
-    information_source: str,
-) -> IndicatorValueDTO:
+async def get_indicator_value_by_id_from_db(conn: AsyncConnection, indicator_value_id: int) -> IndicatorValueDTO:
     """Get indicator value object by id."""
 
     statement = (
@@ -542,26 +534,11 @@ async def get_indicator_value_by_id_from_db(
             )
             .join(territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id)
         )
-        .where(
-            territory_indicators_data.c.indicator_id == indicator_id,
-            territory_indicators_data.c.territory_id == territory_id,
-            territory_indicators_data.c.date_type == date_type,
-            territory_indicators_data.c.date_value == date_value,
-            territory_indicators_data.c.value_type == value_type,
-            territory_indicators_data.c.information_source == information_source,
-        )
+        .where(territory_indicators_data.c.indicator_value_id == indicator_value_id)
     )
     result = (await conn.execute(statement)).mappings().one_or_none()
     if result is None:
-        raise EntityNotFoundByParams(
-            "indicator value",
-            indicator_id,
-            territory_id,
-            date_type,
-            date_value,
-            value_type,
-            information_source,
-        )
+        raise EntityNotFoundById(indicator_value_id, "indicator value")
 
     return IndicatorValueDTO(**result)
 
@@ -656,21 +633,15 @@ async def add_indicator_value_to_db(
         )
 
     statement = (
-        insert(territory_indicators_data).values(**indicator_value.model_dump()).returning(territory_indicators_data)
+        insert(territory_indicators_data)
+        .values(**indicator_value.model_dump())
+        .returning(territory_indicators_data.c.indicator_value_id)
     )
-    result = (await conn.execute(statement)).mappings().one()
+    indicator_value_id = (await conn.execute(statement)).scalar_one()
 
     await conn.commit()
 
-    return await get_indicator_value_by_id_from_db(
-        conn,
-        result.indicator_id,
-        result.territory_id,
-        result.date_type,
-        result.date_value,
-        result.value_type,
-        result.information_source,
-    )
+    return await get_indicator_value_by_id_from_db(conn, indicator_value_id)
 
 
 async def put_indicator_value_to_db(conn: AsyncConnection, indicator_value: IndicatorValuePut) -> IndicatorValueDTO:
@@ -705,64 +676,33 @@ async def put_indicator_value_to_db(conn: AsyncConnection, indicator_value: Indi
                 territory_indicators_data.c.value_type == indicator_value.value_type,
                 territory_indicators_data.c.information_source == indicator_value.information_source,
             )
+            .returning(territory_indicators_data.c.indicator_value_id)
         )
     else:
-        statement = insert(territory_indicators_data).values(**indicator_value.model_dump())
+        statement = (
+            insert(territory_indicators_data)
+            .values(**indicator_value.model_dump())
+            .returning(territory_indicators_data.c.indicator_value_id)
+        )
 
-    await conn.execute(statement)
+    indicator_value_id = (await conn.execute(statement)).scalar_one()
     await conn.commit()
 
-    return await get_indicator_value_by_id_from_db(
-        conn,
-        indicator_value.indicator_id,
-        indicator_value.territory_id,
-        indicator_value.date_type,
-        indicator_value.date_value,
-        indicator_value.value_type,
-        indicator_value.information_source,
-    )
+    return await get_indicator_value_by_id_from_db(conn, indicator_value_id)
 
 
-async def delete_indicator_value_from_db(
-    conn: AsyncConnection,
-    indicator_id: int,
-    territory_id: int,
-    date_type: str,
-    date_value: datetime,
-    value_type: str,
-    information_source: str,
-) -> dict:
+async def delete_indicator_value_from_db(conn: AsyncConnection, indicator_value_id: int) -> dict:
     """Delete indicator value object by id."""
 
     if not await check_existence(
         conn,
         territory_indicators_data,
-        conditions={
-            "indicator_id": indicator_id,
-            "territory_id": territory_id,
-            "date_type": date_type,
-            "date_value": date_value,
-            "value_type": value_type,
-            "information_source": information_source,
-        },
+        conditions={"indicator_value_id": indicator_value_id},
     ):
-        raise EntityNotFoundByParams(
-            "indicator value",
-            indicator_id,
-            territory_id,
-            date_type,
-            date_value,
-            value_type,
-            information_source,
-        )
+        raise EntityNotFoundById(indicator_value_id, "indicator value")
 
     statement = delete(territory_indicators_data).where(
-        territory_indicators_data.c.indicator_id == indicator_id,
-        territory_indicators_data.c.territory_id == territory_id,
-        territory_indicators_data.c.date_type == date_type,
-        territory_indicators_data.c.date_value == date_value,
-        territory_indicators_data.c.value_type == value_type,
-        territory_indicators_data.c.information_source == information_source,
+        territory_indicators_data.c.indicator_value_id == indicator_value_id
     )
     await conn.execute(statement)
     await conn.commit()
