@@ -1,19 +1,21 @@
 """Service types/urban functions handlers logic of getting entities from the database is defined here."""
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
-from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO, \
+    SocGroupWithServiceTypesDTO
 from idu_api.urban_api.logic.impl.helpers.service_types import (
     add_service_type_to_db,
     add_urban_function_to_db,
     delete_service_type_from_db,
     delete_urban_function_from_db,
+    get_physical_object_types_by_service_type_id_from_db,
     get_service_types_from_db,
     get_service_types_hierarchy_from_db,
     get_urban_functions_by_parent_id_from_db,
     patch_service_type_to_db,
     patch_urban_function_to_db,
     put_service_type_to_db,
-    put_urban_function_to_db, get_physical_object_types_by_service_type_id_from_db,
+    put_urban_function_to_db, get_social_groups_by_service_type_id_from_db,
 )
 from idu_api.urban_api.logic.service_types import ServiceTypesService
 from idu_api.urban_api.schemas import (
@@ -87,3 +89,7 @@ class ServiceTypesServiceImpl(ServiceTypesService):
     async def get_physical_object_types_by_service_type(self, service_type_id: int | None) -> list[ServiceTypeDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_physical_object_types_by_service_type_id_from_db(conn, service_type_id)
+
+    async def get_social_groups_by_service_type_id(self, service_type_id: int) -> list[SocGroupWithServiceTypesDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_social_groups_by_service_type_id_from_db(conn, service_type_id)

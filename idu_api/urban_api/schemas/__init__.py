@@ -29,11 +29,11 @@ from .health_check import PingResponse
 from .hexagons import Hexagon, HexagonAttributes, HexagonPost, HexagonWithIndicators
 from .indicators import (
     Indicator,
+    IndicatorPost,
+    IndicatorPut,
     IndicatorsGroup,
     IndicatorsGroupPost,
     IndicatorsPatch,
-    IndicatorPost,
-    IndicatorPut,
     IndicatorValue,
     IndicatorValuePost,
     IndicatorValuePut,
@@ -113,6 +113,18 @@ from .services import (
     ServicePut,
     ServicesCountCapacity,
     ServiceWithGeometry,
+)
+from .soc_groups import (
+    SocGroup,
+    SocGroupIndicatorValue,
+    SocGroupIndicatorValuePost,
+    SocGroupIndicatorValuePut,
+    SocGroupPost,
+    SocGroupServiceTypePost,
+    SocGroupWithServiceTypes,
+    SocValue,
+    SocValuePost,
+    SocValueWithSocGroups,
 )
 from .territories import (
     TargetCityType,
@@ -248,4 +260,14 @@ __all__ = [
     "OkResponse",
     "TargetCityType",
     "TargetCityTypePost",
+    "SocGroup",
+    "SocGroupPost",
+    "SocValue",
+    "SocValuePost",
+    "SocGroupServiceTypePost",
+    "SocGroupIndicatorValue",
+    "SocGroupIndicatorValuePost",
+    "SocGroupIndicatorValuePut",
+    "SocValueWithSocGroups",
+    "SocGroupWithServiceTypes",
 ]

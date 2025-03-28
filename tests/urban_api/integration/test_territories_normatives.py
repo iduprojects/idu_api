@@ -1,6 +1,5 @@
 """Integration tests for territory-related indicators are defined here."""
 
-from datetime import date
 from typing import Any
 
 import httpx

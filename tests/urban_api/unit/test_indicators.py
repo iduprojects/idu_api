@@ -11,11 +11,13 @@ from idu_api.common.db.entities import (
     indicators_groups_data,
     indicators_groups_dict,
     measurement_units_dict,
+    physical_object_types_dict,
+    service_types_dict,
     territories_data,
-    territory_indicators_data, service_types_dict, physical_object_types_dict,
+    territory_indicators_data,
 )
 from idu_api.urban_api.dto import IndicatorDTO, IndicatorsGroupDTO, IndicatorValueDTO, MeasurementUnitDTO
-from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
+from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.indicators import (
     add_indicator_to_db,
     add_indicator_value_to_db,
@@ -124,7 +126,7 @@ async def test_get_indicators_groups_from_db(mock_conn: MockConnection):
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
         .order_by(indicators_groups_dict.c.indicators_group_id, indicators_dict.c.indicator_id)
@@ -160,7 +162,7 @@ async def test_add_indicators_group_to_db(mock_conn: MockConnection, indicators_
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group_post_req.indicators_ids))
@@ -214,7 +216,7 @@ async def test_update_indicators_group_from_db(
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
     ).where(indicators_dict.c.indicator_id.in_(indicators_group_post_req.indicators_ids))
@@ -257,14 +259,15 @@ async def test_get_indicators_by_group_id_from_db(mock_conn: MockConnection):
             indicators_groups_data.join(
                 indicators_dict,
                 indicators_dict.c.indicator_id == indicators_groups_data.c.indicator_id,
-            ).outerjoin(
+            )
+            .outerjoin(
                 measurement_units_dict,
                 indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
             )
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
         .where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
@@ -295,23 +298,20 @@ async def test_get_indicators_by_parent_from_db(mock_conn: MockConnection):
         return True
 
     parent_id = 1
-    statement = (
-        select(
-            indicators_dict,
-            measurement_units_dict.c.name.label("measurement_unit_name"),
-            service_types_dict.c.name.label("service_type_name"),
-            physical_object_types_dict.c.name.label("physical_object_type_name"),
+    statement = select(
+        indicators_dict,
+        measurement_units_dict.c.name.label("measurement_unit_name"),
+        service_types_dict.c.name.label("service_type_name"),
+        physical_object_types_dict.c.name.label("physical_object_type_name"),
+    ).select_from(
+        indicators_dict.outerjoin(
+            measurement_units_dict,
+            indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
         )
-        .select_from(
-            indicators_dict.outerjoin(
-                measurement_units_dict,
-                indicators_dict.c.measurement_unit_id == measurement_units_dict.c.measurement_unit_id,
-            )
-            .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
-            .outerjoin(
-                physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
-            )
+        .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
+        .outerjoin(
+            physical_object_types_dict,
+            physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
         )
     )
     cte_statement = statement.where(
@@ -378,7 +378,7 @@ async def test_get_indicator_by_id_from_db(mock_conn: MockConnection):
             .outerjoin(service_types_dict, service_types_dict.c.service_type_id == indicators_dict.c.service_type_id)
             .outerjoin(
                 physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id
+                physical_object_types_dict.c.physical_object_type_id == indicators_dict.c.physical_object_type_id,
             )
         )
         .where(indicators_dict.c.indicator_id == indicator_id)
@@ -733,6 +733,7 @@ async def test_get_indicator_value_by_id_from_db(
     """Test the get_indicator_value_by_id_from_db function."""
 
     # Arrange
+    indicator_value_id = 1
     statement = (
         select(
             territory_indicators_data,
@@ -755,26 +756,11 @@ async def test_get_indicator_value_by_id_from_db(
             )
             .join(territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id)
         )
-        .where(
-            territory_indicators_data.c.indicator_id == indicator_value_post_req.indicator_id,
-            territory_indicators_data.c.territory_id == indicator_value_post_req.territory_id,
-            territory_indicators_data.c.date_type == indicator_value_post_req.date_type,
-            territory_indicators_data.c.date_value == indicator_value_post_req.date_value,
-            territory_indicators_data.c.value_type == indicator_value_post_req.value_type,
-            territory_indicators_data.c.information_source == indicator_value_post_req.information_source,
-        )
+        .where(territory_indicators_data.c.indicator_value_id == indicator_value_id)
     )
 
     # Act
-    result = await get_indicator_value_by_id_from_db(
-        mock_conn,
-        indicator_value_post_req.indicator_id,
-        indicator_value_post_req.territory_id,
-        indicator_value_post_req.date_type,
-        indicator_value_post_req.date_value,
-        indicator_value_post_req.value_type,
-        indicator_value_post_req.information_source,
-    )
+    result = await get_indicator_value_by_id_from_db(mock_conn, indicator_value_id)
 
     # Assert
     assert isinstance(result, IndicatorValueDTO), "Result should be an IndicatorValueDTO."
@@ -805,7 +791,7 @@ async def test_add_indicator_value_to_db(mock_conn: MockConnection, indicator_va
     statement = (
         insert(territory_indicators_data)
         .values(**indicator_value_post_req.model_dump())
-        .returning(territory_indicators_data)
+        .returning(territory_indicators_data.c.indicator_value_id)
     )
 
     # Act
@@ -868,6 +854,7 @@ async def test_put_indicator_value_to_db(mock_conn: MockConnection, indicator_va
             territory_indicators_data.c.value_type == indicator_value_put_req.value_type,
             territory_indicators_data.c.information_source == indicator_value_put_req.information_source,
         )
+        .returning(territory_indicators_data.c.indicator_value_id)
     )
 
     # Act
@@ -899,41 +886,21 @@ async def test_put_indicator_value_to_db(mock_conn: MockConnection, indicator_va
 
 
 @pytest.mark.asyncio
-async def test_delete_indicator_value_from_db(mock_conn: MockConnection, indicator_value_post_req: IndicatorValuePost):
+async def test_delete_indicator_value_from_db(mock_conn: MockConnection):
     """Test the delete_indicator_value_from_db function."""
 
     # Arrange
+    indicator_value_id = 1
     statement = delete(territory_indicators_data).where(
-        territory_indicators_data.c.indicator_id == indicator_value_post_req.indicator_id,
-        territory_indicators_data.c.territory_id == indicator_value_post_req.territory_id,
-        territory_indicators_data.c.date_type == indicator_value_post_req.date_type,
-        territory_indicators_data.c.date_value == indicator_value_post_req.date_value,
-        territory_indicators_data.c.value_type == indicator_value_post_req.value_type,
-        territory_indicators_data.c.information_source == indicator_value_post_req.information_source,
+        territory_indicators_data.c.indicator_value_id == indicator_value_id
     )
 
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.indicators.check_existence") as mock_check_existence:
-        result = await delete_indicator_value_from_db(
-            mock_conn,
-            indicator_value_post_req.indicator_id,
-            indicator_value_post_req.territory_id,
-            indicator_value_post_req.date_type,
-            indicator_value_post_req.date_value,
-            indicator_value_post_req.value_type,
-            indicator_value_post_req.information_source,
-        )
+        result = await delete_indicator_value_from_db(mock_conn, indicator_value_id)
         mock_check_existence.return_value = False
-        with pytest.raises(EntityNotFoundByParams):
-            await delete_indicator_value_from_db(
-                mock_conn,
-                indicator_value_post_req.indicator_id,
-                indicator_value_post_req.territory_id,
-                indicator_value_post_req.date_type,
-                indicator_value_post_req.date_value,
-                indicator_value_post_req.value_type,
-                indicator_value_post_req.information_source,
-            )
+        with pytest.raises(EntityNotFoundById):
+            await delete_indicator_value_from_db(mock_conn, indicator_value_id)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."

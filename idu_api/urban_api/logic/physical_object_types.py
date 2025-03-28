@@ -6,7 +6,8 @@ from typing import Protocol
 from idu_api.urban_api.dto import (
     PhysicalObjectFunctionDTO,
     PhysicalObjectTypeDTO,
-    PhysicalObjectTypesHierarchyDTO, ServiceTypeDTO,
+    PhysicalObjectTypesHierarchyDTO,
+    ServiceTypeDTO,
 )
 from idu_api.urban_api.schemas import (
     PhysicalObjectFunctionPatch,
@@ -22,7 +23,9 @@ class PhysicalObjectTypesService(Protocol):
 
     @abc.abstractmethod
     async def get_physical_object_types(
-        self, physical_object_function_id: int | None, name: str | None,
+        self,
+        physical_object_function_id: int | None,
+        name: str | None,
     ) -> list[PhysicalObjectTypeDTO]:
         """Get all physical object type objects."""
 

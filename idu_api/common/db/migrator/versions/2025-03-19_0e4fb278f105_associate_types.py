@@ -8,9 +8,8 @@ Create Date: 2025-03-19 14:14:48.762295
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0e4fb278f105"
@@ -35,7 +34,9 @@ def upgrade() -> None:
             ["service_types_dict.service_type_id"],
             name=op.f("objects_service_types_data_fk_service_type_id"),
         ),
-        sa.PrimaryKeyConstraint("physical_object_type_id", "service_type_id", name=op.f("objects_service_types_dict_pk")),
+        sa.PrimaryKeyConstraint(
+            "physical_object_type_id", "service_type_id", name=op.f("objects_service_types_dict_pk")
+        ),
     )
 
     # add `service_type_id` and `physical_object_type_id` to `indicators_dict` table

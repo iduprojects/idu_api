@@ -1,7 +1,6 @@
 """Projects physical objects internal logic is defined here."""
 
 from collections import defaultdict
-from datetime import datetime, timezone
 
 from geoalchemy2.functions import ST_GeomFromWKB, ST_Intersects, ST_Within
 from sqlalchemy import delete, insert, literal, or_, select, text, update

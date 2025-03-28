@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sqlalchemy import delete, insert, literal, select, update, case
+from sqlalchemy import case, delete, insert, literal, select, update
 
 from idu_api.common.db.entities import (
     functional_zone_types_dict,
@@ -160,15 +160,19 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
         .values(**scenario_post_req.model_dump(), parent_id=1, is_based=False)
         .returning(scenarios_data.c.scenario_id)
     )
-    old_urban_objects = select(
-        projects_urban_objects_data.c.public_urban_object_id,
-        projects_urban_objects_data.c.object_geometry_id,
-        projects_urban_objects_data.c.physical_object_id,
-        projects_urban_objects_data.c.service_id,
-        projects_urban_objects_data.c.public_object_geometry_id,
-        projects_urban_objects_data.c.public_physical_object_id,
-        projects_urban_objects_data.c.public_service_id,
-    ).where(projects_urban_objects_data.c.scenario_id == scenario_id).cte(name="old_urban_objects")
+    old_urban_objects = (
+        select(
+            projects_urban_objects_data.c.public_urban_object_id,
+            projects_urban_objects_data.c.object_geometry_id,
+            projects_urban_objects_data.c.physical_object_id,
+            projects_urban_objects_data.c.service_id,
+            projects_urban_objects_data.c.public_object_geometry_id,
+            projects_urban_objects_data.c.public_physical_object_id,
+            projects_urban_objects_data.c.public_service_id,
+        )
+        .where(projects_urban_objects_data.c.scenario_id == scenario_id)
+        .cte(name="old_urban_objects")
+    )
     urban_objects_statement = select(old_urban_objects)
     insert_urban_objects_statement = insert(projects_urban_objects_data).from_select(
         [
@@ -178,7 +182,7 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
         select(
             literal(1).label("scenario_id"),
             old_urban_objects.c.public_urban_object_id,
-        ).where(old_urban_objects.c.public_urban_object_id.isnot(None))
+        ).where(old_urban_objects.c.public_urban_object_id.isnot(None)),
     )
     insert_functional_zones_statement = insert(projects_functional_zones).from_select(
         [
@@ -245,7 +249,6 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
     mock_conn.execute_mock.assert_any_call(str(insert_scenario_statement))
     mock_conn.execute_mock.assert_any_call(str(urban_objects_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_urban_objects_statement))
-    mock_conn.execute_mock.assert_any_call(str(insert_statement_with_mapping))
     mock_conn.execute_mock.assert_any_call(str(insert_functional_zones_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_indicators_statement))
     mock_conn.commit_mock.assert_called_once()

@@ -5,7 +5,7 @@ from typing import Any
 import httpx
 import pytest
 
-from idu_api.urban_api.schemas import Scenario, ScenarioPost, ScenarioPut, OkResponse
+from idu_api.urban_api.schemas import OkResponse, Scenario, ScenarioPost, ScenarioPut
 from tests.urban_api.helpers.utils import assert_response
 
 ####################################################################################
@@ -49,8 +49,8 @@ async def test_get_scenario_by_id(
         for k, v in scenario.items():
             if k in result:
                 assert result[k] == v, f"Mismatch for {k}: {result[k]} != {v}."
-                
-                
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "expected_status, error_message, project_id_param",
@@ -76,7 +76,7 @@ async def test_add_scenario(
 
     # Arrange
     new_scenario = scenario_post_req.model_dump()
-    new_scenario["project_id"] = project_id_param or project["territory_id"]
+    new_scenario["project_id"] = project_id_param or project["project_id"]
     new_scenario["functional_zone_type_id"] = functional_zone_type["functional_zone_type_id"]
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
@@ -98,7 +98,7 @@ async def test_add_scenario(
     ],
     ids=["success", "forbidden", "not_found"],
 )
-async def test_add_scenario(
+async def test_copy_scenario(
     urban_api_host: str,
     scenario_post_req: ScenarioPost,
     project: dict[str, Any],

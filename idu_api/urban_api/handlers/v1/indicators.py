@@ -8,11 +8,11 @@ from starlette import status
 from idu_api.urban_api.logic.indicators import IndicatorsService
 from idu_api.urban_api.schemas import (
     Indicator,
+    IndicatorPost,
+    IndicatorPut,
     IndicatorsGroup,
     IndicatorsGroupPost,
     IndicatorsPatch,
-    IndicatorPost,
-    IndicatorPut,
     IndicatorValue,
     IndicatorValuePost,
     IndicatorValuePut,
@@ -202,6 +202,8 @@ async def get_indicators_by_parent(
     - **parent_name** (str | None, Query): Full name of the parent indicator.
     - **name** (str | None, Query): Filters results by indicator name.
     - **territory_id** (int | None, Query): Filters results by territory identifier.
+    - **service_type_id** (int | None, Query): Filters results by service type identifier.
+    - **physical_object_type_id** (int | None, Query): Filters results by physical object type identifier.
     - **get_all_subtree** (bool, Query): If True, gets the entire subtree of indicators.
 
     ### Returns:
@@ -368,41 +370,29 @@ async def delete_indicator(
 
 
 @indicators_router.get(
-    "/indicator_value",
+    "/indicator_value/{indicator_value_id}",
     response_model=IndicatorValue,
     status_code=status.HTTP_200_OK,
 )
 async def get_indicator_value_by_id(
     request: Request,
-    indicator_id: int = Query(..., description="indicator identifier", gt=0),
-    territory_id: int = Query(..., description="territory identifier", gt=0),
-    date_type: DateType = Query(..., description="date type"),
-    date_value: date = Query(..., description="time value"),
-    value_type: ValueType = Query(..., description="value type"),
-    information_source: str = Query(..., description="information source"),
+    indicator_value_id: int = Path(..., description="indicator value identifier", gt=0),
 ) -> IndicatorValue:
     """
-    ## Get an indicator value for a given territory, date, value type, and source.
+    ## Get an indicator value by identifier.
 
     ### Parameters:
-    - **indicator_id** (int, Query): Unique identifier of the indicator.
-    - **territory_id** (int, Query): Unique identifier of the territory.
-    - **date_type** (DateType, Query): Specifies the date type.
-    - **date_value** (date, Query): Specifies the time period.
-    - **value_type** (ValueType, Query): Specifies the value type.
-    - **information_source** (str, Query): Filters results by information source.
+    - **indicator_value_id** (int, Path): Unique identifier of the indicator value.
 
     ### Returns:
     - **IndicatorValue**: The requested indicator value.
 
     ### Errors:
-    - **404 Not Found**: If an indicator value with the such parameters does not exist.
+    - **404 Not Found**: If the indicator value does not exist.
     """
     indicators_service: IndicatorsService = request.state.indicators_service
 
-    indicator_value = await indicators_service.get_indicator_value_by_id(
-        indicator_id, territory_id, date_type.value, date_value, value_type.value, information_source
-    )
+    indicator_value = await indicators_service.get_indicator_value_by_id(indicator_value_id)
 
     return IndicatorValue.from_dto(indicator_value)
 
@@ -462,41 +452,29 @@ async def put_indicator_value(request: Request, indicator_value: IndicatorValueP
 
 
 @indicators_router.delete(
-    "/indicator_value",
+    "/indicator_value/{indicator_value_id}",
     response_model=OkResponse,
     status_code=status.HTTP_200_OK,
 )
 async def delete_indicator_value(
     request: Request,
-    indicator_id: int = Query(..., description="indicator identifier", gt=0),
-    territory_id: int = Query(..., description="territory identifier", gt=0),
-    date_type: DateType = Query(..., description="date type"),
-    date_value: date = Query(..., description="time value"),
-    value_type: ValueType = Query(..., description="value type"),
-    information_source: str = Query(..., description="information source"),
+    indicator_value_id: int = Path(..., description="indicator value identifier", gt=0),
 ) -> OkResponse:
     """
-    ## Delete an indicator value by its parameters.
+    ## Delete an indicator value by identifier.
 
     ### Parameters:
-    - **indicator_id** (int, Query): Unique identifier of the indicator.
-    - **territory_id** (int, Query): Unique identifier of the territory.
-    - **date_type** (DateType, Query): Specifies the date type.
-    - **date_value** (date, Query): Specifies the time period.
-    - **value_type** (ValueType, Query): Specifies the value type.
-    - **information_source** (str, Query): Specifies the information source.
+    - **indicator_value_id** (int, Path): Unique identifier of the indicator value.
 
     ### Returns:
     - **OkResponse**: A confirmation message of the deletion.
 
     ### Errors:
-    - **404 Not Found**: If an indicator value with the such parameters does not exist.
+    - **404 Not Found**: If the indicator value does not exist.
     """
     indicators_service: IndicatorsService = request.state.indicators_service
 
-    await indicators_service.delete_indicator_value(
-        indicator_id, territory_id, date_type.value, date_value, value_type.value, information_source
-    )
+    await indicators_service.delete_indicator_value(indicator_value_id)
 
     return OkResponse()
 

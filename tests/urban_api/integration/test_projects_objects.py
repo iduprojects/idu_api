@@ -7,8 +7,17 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from idu_api.urban_api.schemas import Page, ProjectTerritory, Scenario, Project, MinioImagesURL, ProjectPost, \
-    ProjectPut, OkResponse, MinioImageURL
+from idu_api.urban_api.schemas import (
+    MinioImagesURL,
+    MinioImageURL,
+    OkResponse,
+    Page,
+    Project,
+    ProjectPost,
+    ProjectPut,
+    ProjectTerritory,
+    Scenario,
+)
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.utils import assert_response
 
@@ -267,7 +276,7 @@ async def test_get_preview_project_images(
         assert "attachment; filename=project_previews.zip" in response.headers["Content-Disposition"]
     else:
         result = response.json()
-        assert isinstance(result, dict), f"Result should be a dict."
+        assert isinstance(result, dict), "Result should be a dict."
         assert "detail" in result, "Response should contain a 'detail' field with the error message"
         assert error_message in result["detail"]
 
@@ -513,7 +522,8 @@ async def test_upload_project_image(
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.put(
             f"/projects/{project_id}/image",
-            headers=headers, files=files,
+            headers=headers,
+            files=files,
         )
 
     # Assert
@@ -555,7 +565,7 @@ async def test_get_full_project_image(
         assert response.headers["Content-Type"] == "image/jpeg"
     else:
         result = response.json()
-        assert isinstance(result, dict), f"Result should be a dict."
+        assert isinstance(result, dict), "Result should be a dict."
         assert "detail" in result, "Response should contain a 'detail' field with the error message"
         assert error_message in result["detail"]
 
@@ -595,7 +605,7 @@ async def test_get_preview_project_image(
         assert response.headers["Content-Type"] == "image/png"
     else:
         result = response.json()
-        assert isinstance(result, dict), f"Result should be a dict."
+        assert isinstance(result, dict), "Result should be a dict."
         assert "detail" in result, "Response should contain a 'detail' field with the error message"
         assert error_message in result["detail"]
 
@@ -632,10 +642,10 @@ async def test_get_full_project_image_url(
     # Assert
     assert response.status_code == expected_status, f"Invalid status code: {response.status_code}."
     if expected_status == 200:
-        assert isinstance(response.json(), str), f"Result should be a string."
+        assert isinstance(response.json(), str), "Result should be a string."
     else:
         result = response.json()
-        assert isinstance(result, dict), f"Result should be a dict."
+        assert isinstance(result, dict), "Result should be a dict."
         assert "detail" in result, "Response should contain a 'detail' field with the error message"
         assert error_message in result["detail"]
 
@@ -672,9 +682,9 @@ async def test_get_preview_project_image_url(
     # Assert
     assert response.status_code == expected_status, f"Invalid status code: {response.status_code}."
     if expected_status == 200:
-        assert isinstance(response.json(), str), f"Result should be a string."
+        assert isinstance(response.json(), str), "Result should be a string."
     else:
         result = response.json()
-        assert isinstance(result, dict), f"Result should be a dict."
+        assert isinstance(result, dict), "Result should be a dict."
         assert "detail" in result, "Response should contain a 'detail' field with the error message"
         assert error_message in result["detail"]

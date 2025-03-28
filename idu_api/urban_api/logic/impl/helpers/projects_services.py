@@ -259,7 +259,6 @@ async def get_services_by_scenario_id_from_db(
         territory = {"territory_id": obj["territory_id"], "name": obj["territory_name"]}
         grouped_objects[key]["territories"].append(territory)
 
-
     return [ScenarioServiceDTO(**row) for row in grouped_objects.values()]
 
 

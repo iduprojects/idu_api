@@ -35,13 +35,13 @@ __all__ = [
 
 
 @pytest.fixture(scope="session")
-def physical_object(urban_api_host, urban_object) -> dict[str, Any]:
+def physical_object(urban_object) -> dict[str, Any]:
     """Returns created physical object."""
     return urban_object["physical_object"]
 
 
 @pytest.fixture(scope="session")
-def scenario_physical_object(urban_api_host, scenario_urban_object) -> dict[str, Any]:
+def scenario_physical_object(scenario_urban_object) -> dict[str, Any]:
     """Returns created physical object."""
     return scenario_urban_object["physical_object"]
 

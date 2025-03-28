@@ -30,6 +30,7 @@ class IndicatorDTO:
 
 @dataclass(frozen=True)
 class IndicatorValueDTO:  # pylint: disable=too-many-instance-attributes
+    indicator_value_id: int
     indicator_id: int
     parent_id: int
     name_full: str
@@ -41,7 +42,7 @@ class IndicatorValueDTO:  # pylint: disable=too-many-instance-attributes
     territory_name: str
     date_type: Literal["year", "half_year", "quarter", "month", "day"]
     date_value: datetime
-    value: int
+    value: float
     value_type: Literal["real", "forecast", "target"]
     information_source: str
     created_at: datetime
@@ -70,7 +71,7 @@ class ShortScenarioIndicatorValueDTO:
     indicator_id: int
     name_full: str
     measurement_unit_name: str | None
-    value: int
+    value: float
     comment: str | None
 
 
@@ -89,7 +90,7 @@ class ScenarioIndicatorValueDTO:  # pylint: disable=too-many-instance-attributes
     territory_id: int | None
     territory_name: str | None
     hexagon_id: int | None
-    value: int
+    value: float
     comment: str | None
     information_source: str | None
     properties: dict[str, Any]

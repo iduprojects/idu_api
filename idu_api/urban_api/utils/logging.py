@@ -55,6 +55,7 @@ def configure_logging(
 
     return logger
 
+
 def get_handler_from_path(path: str) -> str:
     parts = path.split("/")
     return "/".join(part if not part.rstrip(".0").isdigit() else "*" for part in parts)

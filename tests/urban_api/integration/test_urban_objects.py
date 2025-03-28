@@ -69,7 +69,7 @@ async def test_get_urban_objects_by_physical_object_id(
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(
-            f"/urban_objects_by_physical_object", params={"physical_object_id": physical_object_id}
+            "/urban_objects_by_physical_object", params={"physical_object_id": physical_object_id}
         )
 
     # Assert
@@ -104,7 +104,7 @@ async def test_get_urban_objects_by_object_geometry_id(
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(
-            f"/urban_objects_by_object_geometry", params={"object_geometry_id": object_geometry_id}
+            "/urban_objects_by_object_geometry", params={"object_geometry_id": object_geometry_id}
         )
 
     # Assert
@@ -138,7 +138,7 @@ async def test_get_urban_objects_by_service_id(
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
-        response = await client.get(f"/urban_objects_by_service_id", params={"service_id": service_id})
+        response = await client.get("/urban_objects_by_service_id", params={"service_id": service_id})
 
     # Assert
     if response.status_code == 200:
@@ -215,7 +215,7 @@ async def test_get_urban_objects_by_territory_id(
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
-        response = await client.get(f"/urban_objects_by_territory_id", params=params)
+        response = await client.get("/urban_objects_by_territory_id", params=params)
 
     # Assert
     if response.status_code == 200:

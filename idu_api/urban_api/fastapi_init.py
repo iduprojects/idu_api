@@ -31,6 +31,7 @@ from idu_api.urban_api.utils.auth_client import AuthenticationClient
 from idu_api.urban_api.utils.logging import configure_logging
 
 from .handlers import list_of_routers
+from .logic.impl.soc_groups import SocGroupsServiceImpl
 from .version import LAST_UPDATE, VERSION
 
 
@@ -111,6 +112,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
         physical_objects_service=ignore_kwargs(PhysicalObjectsServiceImpl),
         service_types_service=ignore_kwargs(ServiceTypesServiceImpl),
         services_data_service=ignore_kwargs(ServicesDataServiceImpl),
+        soc_groups_service=ignore_kwargs(SocGroupsServiceImpl),
         territories_service=ignore_kwargs(TerritoriesServiceImpl),
         urban_objects_service=ignore_kwargs(UrbanObjectsServiceImpl),
         user_project_service=UserProjectServiceImpl,

@@ -163,7 +163,7 @@ async def get_services_by_territory_id_from_db(
             territory = {"territory_id": row["territory_id"], "name": row["territory_name"]}
             grouped_data[key]["territories"].append(territory)
 
-        return [ServiceDTO(**phys_obj) for phys_obj in grouped_data.values()]
+        return [ServiceDTO(**service) for service in grouped_data.values()]
 
     if paginate:
         return await paginate_dto(conn, statement, transformer=group_objects)

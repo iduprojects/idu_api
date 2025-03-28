@@ -1,9 +1,9 @@
 """Projects scenarios internal logic is defined here."""
-from typing import Any
 
 import asyncio
+from typing import Any
 
-from sqlalchemy import RowMapping, delete, insert, literal, select, update, case
+from sqlalchemy import RowMapping, case, delete, insert, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -205,8 +205,7 @@ async def copy_scenario_to_db(
             projects_urban_objects_data.c.public_object_geometry_id,
             projects_urban_objects_data.c.public_physical_object_id,
             projects_urban_objects_data.c.public_service_id,
-        )
-        .where(projects_urban_objects_data.c.scenario_id == scenario_id)
+        ).where(projects_urban_objects_data.c.scenario_id == scenario_id)
     ).cte(name="old_urban_objects")
     result = (await conn.execute(select(old_urban_objects))).mappings().all()
 
@@ -229,34 +228,19 @@ async def copy_scenario_to_db(
             select(
                 literal(new_scenario_id).label("scenario_id"),
                 old_urban_objects.c.public_urban_object_id,
-            ).where(old_urban_objects.c.public_urban_object_id.isnot(None))
+            ).where(old_urban_objects.c.public_urban_object_id.isnot(None)),
         )
     )
 
-    def build_case(column, mapping: dict[str, Any], default = None):
+    def build_case(column, mapping: dict[str, Any], default=None):
         """Build case statement."""
         if not mapping:
             return literal(default)
-        return case(
-            *[(column == key, literal(value)) for key, value in mapping.items()],
-            else_=literal(default)
-        )
+        return case(*[(column == key, literal(value)) for key, value in mapping.items()], else_=literal(default))
 
-    geometry_case = build_case(
-        old_urban_objects.c.object_geometry_id,
-        geometry_mapping,
-        default=None
-    )
-    physical_case = build_case(
-        old_urban_objects.c.physical_object_id,
-        physical_mapping,
-        default=None
-    )
-    service_case = build_case(
-        old_urban_objects.c.service_id,
-        service_mapping,
-        default=None
-    )
+    geometry_case = build_case(old_urban_objects.c.object_geometry_id, geometry_mapping, default=None)
+    physical_case = build_case(old_urban_objects.c.physical_object_id, physical_mapping, default=None)
+    service_case = build_case(old_urban_objects.c.service_id, service_mapping, default=None)
 
     await conn.execute(
         insert(projects_urban_objects_data).from_select(
@@ -277,7 +261,7 @@ async def copy_scenario_to_db(
                 old_urban_objects.c.public_object_geometry_id,
                 old_urban_objects.c.public_physical_object_id,
                 old_urban_objects.c.public_service_id,
-            ).where(old_urban_objects.c.public_urban_object_id.is_(None))
+            ).where(old_urban_objects.c.public_urban_object_id.is_(None)),
         )
     )
 

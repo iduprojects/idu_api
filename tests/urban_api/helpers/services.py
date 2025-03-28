@@ -27,13 +27,13 @@ __all__ = [
 
 
 @pytest.fixture
-def service(urban_api_host, urban_object) -> dict[str, Any]:
+def service(urban_object) -> dict[str, Any]:
     """Returns created service."""
     return urban_object["service"]
 
 
 @pytest.fixture
-def scenario_service(urban_api_host, scenario_urban_object) -> dict[str, Any]:
+def scenario_service(scenario_urban_object) -> dict[str, Any]:
     """Returns created service."""
     return scenario_urban_object["service"]
 

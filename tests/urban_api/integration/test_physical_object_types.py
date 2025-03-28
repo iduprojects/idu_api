@@ -13,7 +13,8 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsTypesHierarchy,
     PhysicalObjectType,
     PhysicalObjectTypePatch,
-    PhysicalObjectTypePost, ServiceType,
+    PhysicalObjectTypePost,
+    ServiceType,
 )
 from tests.urban_api.helpers.utils import assert_response
 
@@ -180,7 +181,7 @@ async def test_get_physical_object_functions_by_parent_id(
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
-        response = await client.get(f"/physical_object_functions_by_parent", params=params)
+        response = await client.get("/physical_object_functions_by_parent", params=params)
 
     # Assert
     if response.status_code == 200:

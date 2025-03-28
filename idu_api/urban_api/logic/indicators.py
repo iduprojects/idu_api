@@ -11,10 +11,10 @@ from idu_api.urban_api.dto import (
     MeasurementUnitDTO,
 )
 from idu_api.urban_api.schemas import (
-    IndicatorsGroupPost,
-    IndicatorsPatch,
     IndicatorPost,
     IndicatorPut,
+    IndicatorsGroupPost,
+    IndicatorsPatch,
     IndicatorValuePost,
     IndicatorValuePut,
     MeasurementUnitPost,
@@ -82,15 +82,7 @@ class IndicatorsService(Protocol):
         """Delete indicator object by id."""
 
     @abc.abstractmethod
-    async def get_indicator_value_by_id(
-        self,
-        indicator_id: int,
-        territory_id: int,
-        date_type: str,
-        date_value: datetime,
-        value_type: str,
-        information_source: str,
-    ) -> IndicatorValueDTO:
+    async def get_indicator_value_by_id(self, indicator_value_id: int) -> IndicatorValueDTO:
         """Get indicator value object by id."""
 
     @abc.abstractmethod
@@ -102,15 +94,7 @@ class IndicatorsService(Protocol):
         """Update indicator value object."""
 
     @abc.abstractmethod
-    async def delete_indicator_value(
-        self,
-        indicator_id: int,
-        territory_id: int,
-        date_type: str,
-        date_value: datetime,
-        value_type: str,
-        information_source: str,
-    ) -> dict:
+    async def delete_indicator_value(self, indicator_value_id: int) -> dict:
         """Delete indicator value object by id."""
 
     @abc.abstractmethod

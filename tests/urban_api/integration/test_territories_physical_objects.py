@@ -77,18 +77,16 @@ async def test_get_physical_objects_by_territory_id(
     # Arrange
     territory_id = territory_id_param or urban_object["object_geometry"]["territory"]["id"]
     params = {
-        "physical_object_type_id": urban_object["physical_object"]["physical_object_type"][
-            "physical_object_type_id"
-        ],
+        "physical_object_type_id": urban_object["physical_object"]["physical_object_type"]["physical_object_type_id"],
         "name": urban_object["physical_object"]["name"],
         "include_child_territories": expected_status != 400 and version == "v1",
         "cities_only": expected_status == 400 and version == "v1",
         "page_size": 1,
     }
     if expected_status == 400 and version == "v2":
-        params["physical_object_function_id"] = urban_object["physical_object"][
-            "physical_object_type"
-        ]["physical_object_function"]["id"]
+        params["physical_object_function_id"] = urban_object["physical_object"]["physical_object_type"][
+            "physical_object_function"
+        ]["id"]
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/{version}") as client:
@@ -133,18 +131,16 @@ async def test_get_physical_objects_with_geometry_by_territory_id(
     # Arrange
     territory_id = territory_id_param or urban_object["object_geometry"]["territory"]["id"]
     params = {
-        "physical_object_type_id": urban_object["physical_object"]["physical_object_type"][
-            "physical_object_type_id"
-        ],
+        "physical_object_type_id": urban_object["physical_object"]["physical_object_type"]["physical_object_type_id"],
         "name": urban_object["physical_object"]["name"],
         "include_child_territories": expected_status != 400 and version == "v1",
         "cities_only": expected_status == 400 and version == "v1",
         "page_size": 1,
     }
     if expected_status == 400 and version == "v2":
-        params["physical_object_function_id"] = urban_object["physical_object"][
-            "physical_object_type"
-        ]["physical_object_function"]["id"]
+        params["physical_object_function_id"] = urban_object["physical_object"]["physical_object_type"][
+            "physical_object_function"
+        ]["id"]
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/{version}") as client:
@@ -188,17 +184,15 @@ async def test_get_physical_objects_geojson_by_territory_id(
     # Arrange
     territory_id = territory_id_param or urban_object["object_geometry"]["territory"]["id"]
     params = {
-        "physical_object_type_id": urban_object["physical_object"]["physical_object_type"][
-            "physical_object_type_id"
-        ],
+        "physical_object_type_id": urban_object["physical_object"]["physical_object_type"]["physical_object_type_id"],
         "name": urban_object["physical_object"]["name"],
         "include_child_territories": expected_status != 400 and version == 1,
         "cities_only": expected_status == 400 and version == 1,
     }
     if expected_status == 400 and version == 2:
-        params["physical_object_function_id"] = urban_object["physical_object"][
-            "physical_object_type"
-        ]["physical_object_function"]["id"]
+        params["physical_object_function_id"] = urban_object["physical_object"]["physical_object_type"][
+            "physical_object_function"
+        ]["id"]
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:

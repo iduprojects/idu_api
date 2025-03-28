@@ -1,6 +1,6 @@
 """Physical object type handlers are defined here."""
 
-from fastapi import Path, Query, Request, HTTPException
+from fastapi import HTTPException, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.physical_object_types import PhysicalObjectTypesService
@@ -13,7 +13,8 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectsTypesHierarchy,
     PhysicalObjectType,
     PhysicalObjectTypePatch,
-    PhysicalObjectTypePost, ServiceType,
+    PhysicalObjectTypePost,
+    ServiceType,
 )
 
 from .routers import physical_object_types_router
@@ -32,12 +33,18 @@ async def get_physical_object_types(
     """
     ## Get all physical object types.
 
+    ### Parameters:
+    - **physical_object_function_id** (int, Query): Filter results by physical object function.
+    - **name** (str | None, Query): Filters service types by a case-insensitive substring match.
+
     ### Returns:
     - **list[PhysicalObjectType]**: A list of all physical object types.
     """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
-    physical_object_types = await physical_object_types_service.get_physical_object_types(physical_object_function_id, name)
+    physical_object_types = await physical_object_types_service.get_physical_object_types(
+        physical_object_function_id, name
+    )
 
     return [PhysicalObjectType.from_dto(object_type) for object_type in physical_object_types]
 
@@ -354,7 +361,8 @@ async def get_service_types(
     """
     physical_object_types_service: PhysicalObjectTypesService = request.state.physical_object_types_service
 
-    service_types = await physical_object_types_service.get_service_types_by_physical_object_type(physical_object_type_id)
+    service_types = await physical_object_types_service.get_service_types_by_physical_object_type(
+        physical_object_type_id
+    )
 
     return [ServiceType.from_dto(service_type) for service_type in service_types]
-

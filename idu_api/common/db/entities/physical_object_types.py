@@ -5,7 +5,7 @@ Current list is:
 - functional_zones_data
 """
 
-from sqlalchemy import Column, ForeignKey, Integer, Sequence, String, Table, PrimaryKeyConstraint
+from sqlalchemy import Column, ForeignKey, Integer, PrimaryKeyConstraint, Sequence, String, Table
 
 from idu_api.common.db import metadata
 from idu_api.common.db.entities.service_types import service_types_dict

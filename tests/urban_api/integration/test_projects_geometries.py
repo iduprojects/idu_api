@@ -6,8 +6,16 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from idu_api.urban_api.schemas import ScenarioGeometryAttributes, ScenarioAllObjects, GeometryAttributes, AllObjects, \
-    ObjectGeometryPut, ScenarioObjectGeometry, OkResponse, PhysicalObjectWithGeometryPost
+from idu_api.urban_api.schemas import (
+    AllObjects,
+    GeometryAttributes,
+    ObjectGeometryPut,
+    OkResponse,
+    PhysicalObjectWithGeometryPost,
+    ScenarioAllObjects,
+    ScenarioGeometryAttributes,
+    ScenarioObjectGeometry,
+)
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.utils import assert_response
 
@@ -225,7 +233,9 @@ async def test_put_scenario_geometry(
 
     # Arrange
     scenario_id = scenario_id_param or scenario["scenario_id"]
-    object_geometry_id = scenario_geometry["object_geometry_id"] if is_scenario_param else object_geometry["object_geometry_id"]
+    object_geometry_id = (
+        scenario_geometry["object_geometry_id"] if is_scenario_param else object_geometry["object_geometry_id"]
+    )
     new_object_geometry = object_geometries_put_req.model_dump()
     new_object_geometry["territory_id"] = scenario_geometry["territory"]["id"]
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
@@ -286,7 +296,9 @@ async def test_patch_scenario_geometry(
         async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
             response = await client.post(f"/scenarios/{base_scenario_id}", json=new_scenario, headers=headers)
             scenario_id = response.json()["scenario_id"]
-    object_geometry_id = scenario_geometry["object_geometry_id"] if is_scenario_param else object_geometry["object_geometry_id"]
+    object_geometry_id = (
+        scenario_geometry["object_geometry_id"] if is_scenario_param else object_geometry["object_geometry_id"]
+    )
     new_object_geometry = object_geometries_put_req.model_dump()
     new_object_geometry["territory_id"] = scenario_geometry["territory"]["id"]
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
@@ -358,23 +370,27 @@ async def test_delete_object_geometry(
         if expected_status == 200 and is_scenario_param:
             response = await client.post(
                 f"scenarios/{scenario_id}/physical_objects",
-                json=new_object, headers=headers,
+                json=new_object,
+                headers=headers,
             )
             object_geometry_id = response.json()["object_geometry"]["object_geometry_id"]
             response = await client.delete(
                 f"/scenarios/{scenario_id}/geometries/{object_geometry_id}",
-                headers=headers, params=params,
+                headers=headers,
+                params=params,
             )
         elif not is_scenario_param:
             object_geometry_id = object_geometry["object_geometry_id"]
             response = await client.delete(
                 f"/scenarios/{scenario_id}/geometries/{object_geometry_id}",
-                headers=headers, params=params,
+                headers=headers,
+                params=params,
             )
         else:
             response = await client.delete(
                 f"/scenarios/{scenario_id}/geometries/1",
-                headers=headers, params=params,
+                headers=headers,
+                params=params,
             )
 
     # Assert

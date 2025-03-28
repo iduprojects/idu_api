@@ -214,7 +214,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Create a new scenario from another scenario (copy) by its identifier."""
 
     @abc.abstractmethod
-    async def put_scenario(self, scenario: ScenarioPut, scenario_id: int, user_id) -> ScenarioDTO:
+    async def put_scenario(self, scenario: ScenarioPut, scenario_id: int, user: UserDTO) -> ScenarioDTO:
         """Put project object."""
 
     @abc.abstractmethod

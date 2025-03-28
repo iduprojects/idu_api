@@ -15,9 +15,11 @@ from idu_api.urban_api.dto import (
 )
 from idu_api.urban_api.schemas.short_models import (
     MeasurementUnitBasic,
+    PhysicalObjectTypeBasic,
+    ServiceTypeBasic,
     ShortIndicatorInfo,
     ShortScenario,
-    ShortTerritory, ServiceTypeBasic, PhysicalObjectTypeBasic,
+    ShortTerritory,
 )
 
 
@@ -122,11 +124,13 @@ class Indicator(BaseModel):
             ),
             service_type=(
                 ServiceTypeBasic(id=dto.service_type_id, name=dto.service_type_name)
-                if dto.service_type_id is not None else None
+                if dto.service_type_id is not None
+                else None
             ),
             physical_object_type=(
                 PhysicalObjectTypeBasic(id=dto.physical_object_type_id, name=dto.physical_object_type_name)
-                if dto.physical_object_type_id is not None else None
+                if dto.physical_object_type_id is not None
+                else None
             ),
             level=dto.level,
             list_label=dto.list_label,
@@ -146,8 +150,10 @@ class IndicatorPost(BaseModel):
     )
     name_short: str = Field(..., description="indicator unit short name", examples=["Численность населения"])
     measurement_unit_id: int | None = Field(..., description="indicator measurement unit identifier", examples=[1])
-    service_type_id: int | None = Field(..., description="indicator service type identifier", examples=[1])
-    physical_object_type_id: int | None = Field(..., description="indicator physical object type identifier", examples=[1])
+    service_type_id: int | None = Field(None, description="indicator service type identifier", examples=[1])
+    physical_object_type_id: int | None = Field(
+        None, description="indicator physical object type identifier", examples=[1]
+    )
     parent_id: int | None = Field(..., description="indicator parent identifier", examples=[1])
 
 
@@ -162,7 +168,9 @@ class IndicatorPut(BaseModel):
     name_short: str = Field(..., description="indicator unit short name", examples=["Численность населения"])
     measurement_unit_id: int | None = Field(..., description="indicator measurement unit identifier", examples=[1])
     service_type_id: int | None = Field(..., description="indicator service type identifier", examples=[1])
-    physical_object_type_id: int | None = Field(..., description="indicator physical object type identifier", examples=[1])
+    physical_object_type_id: int | None = Field(
+        ..., description="indicator physical object type identifier", examples=[1]
+    )
     parent_id: int | None = Field(..., description="indicator parent identifier", examples=[1])
 
 
@@ -177,7 +185,9 @@ class IndicatorsPatch(BaseModel):
     name_short: str | None = Field(None, description="indicator unit short name", examples=["Численность населения"])
     measurement_unit_id: int | None = Field(None, description="indicator measurement unit identifier", examples=[1])
     service_type_id: int | None = Field(None, description="indicator service type identifier", examples=[1])
-    physical_object_type_id: int | None = Field(None, description="indicator physical object type identifier", examples=[1])
+    physical_object_type_id: int | None = Field(
+        None, description="indicator physical object type identifier", examples=[1]
+    )
     parent_id: int | None = Field(None, description="indicator parent identifier", examples=[1])
 
     @model_validator(mode="before")
@@ -192,6 +202,7 @@ class IndicatorsPatch(BaseModel):
 class IndicatorValue(BaseModel):
     """Indicator value with all its attributes."""
 
+    indicator_value_id: int = Field(..., description="indicator value identifier", examples=[1])
     indicator: ShortIndicatorInfo
     territory: ShortTerritory
     date_type: Literal["year", "half_year", "quarter", "month", "day"] = Field(
@@ -243,6 +254,7 @@ class IndicatorValue(BaseModel):
         Construct from DTO.
         """
         return cls(
+            indicator_value_id=dto.indicator_value_id,
             indicator=ShortIndicatorInfo(
                 indicator_id=dto.indicator_id,
                 parent_id=dto.parent_id,

@@ -126,7 +126,8 @@ def scenario_indicator_value(urban_api_host, scenario, indicator, city, hexagon,
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
         response = client.post(
             f"scenarios/{scenario_id}/indicators_values",
-            json=scenario_indicator_value_post_req, headers=headers,
+            json=scenario_indicator_value_post_req,
+            headers=headers,
         )
 
     assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}."

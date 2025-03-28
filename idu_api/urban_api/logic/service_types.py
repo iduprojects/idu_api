@@ -3,7 +3,8 @@
 import abc
 from typing import Protocol
 
-from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
+from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO, \
+    SocGroupWithServiceTypesDTO
 from idu_api.urban_api.schemas import (
     ServiceTypePatch,
     ServiceTypePost,
@@ -75,3 +76,8 @@ class ServiceTypesService(Protocol):
     @abc.abstractmethod
     async def get_physical_object_types_by_service_type(self, service_type_id: int | None) -> list[ServiceTypeDTO]:
         """Get available physical object types for given service type."""
+
+    @abc.abstractmethod
+    async def get_social_groups_by_service_type_id(self, service_type_id: int) -> list[SocGroupWithServiceTypesDTO]:
+        """Get all social groups by service type identifier."""
+
