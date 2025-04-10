@@ -10,6 +10,7 @@ from sqlalchemy.sql.selectable import CTE, Select
 from idu_api.common.db.entities import projects_data, territories_data
 from idu_api.urban_api.dto import UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 
 # The maximum number of records that can be returned in methods that accept a list of IDs as input.
@@ -230,9 +231,7 @@ async def get_context_territories_geometry(
         AccessDeniedError: If user does not have permission to access the project.
     """
     # Retrieve the project with proper user access control
-    statement = select(projects_data.c.user_id, projects_data.c.public, projects_data.c.properties).where(
-        projects_data.c.project_id == project_id
-    )
+    statement = select(projects_data).where(projects_data.c.project_id == project_id)
     project = (await conn.execute(statement)).mappings().one_or_none()
     if project is None:
         raise EntityNotFoundById(project_id, "project")
@@ -241,6 +240,8 @@ async def get_context_territories_geometry(
             raise AccessDeniedError(project_id, "project")
     elif project.user_id != user.id and not project.public and not user.is_superuser:
         raise AccessDeniedError(project_id, "project")
+    elif project.is_regional:
+        raise NotAllowedInRegionalScenario('context')
 
     # Get union geometry of all context territories
     unified_geometry = (

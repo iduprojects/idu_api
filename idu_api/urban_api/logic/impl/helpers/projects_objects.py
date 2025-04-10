@@ -5,7 +5,7 @@ import os
 import zipfile
 from collections.abc import Callable
 from datetime import date, datetime, timezone
-from typing import Literal
+from typing import Literal, Any
 
 import aiohttp
 import structlog
@@ -23,7 +23,7 @@ from geoalchemy2.functions import (
     ST_Within,
 )
 from PIL import Image
-from sqlalchemy import cast, delete, func, insert, literal, select, text, update
+from sqlalchemy import cast, delete, func, insert, literal, select, text, update, ScalarSelect
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -57,6 +57,11 @@ from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
+
+
+####################################################################################
+#                           Main business-logic                                    #
+####################################################################################
 
 
 async def check_project(conn: AsyncConnection, project_id: int, user: UserDTO | None, to_edit: bool = False) -> None:
@@ -530,274 +535,34 @@ async def get_user_preview_projects_images_url_from_minio(
 async def add_project_to_db(
     conn: AsyncConnection, project: ProjectPost, user: UserDTO, logger: structlog.stdlib.BoundLogger
 ) -> ProjectDTO:
-    """Create project object, its territory and base scenario."""
 
     given_geometry = select(
         ST_GeomFromWKB(project.territory.geometry.as_shapely_geometry().wkb, text(str(SRID))).label("geometry")
     ).scalar_subquery()
 
-    if not project.is_regional:
-        if not await check_existence(conn, territories_data, conditions={"territory_id": project.territory_id}):
-            raise EntityNotFoundById(project.territory_id, "territory")
-        buffer_meters = 3000
-        buffered_project_geometry = select(
-            cast(
-                ST_Buffer(
-                    cast(
-                        given_geometry,
-                        Geography(srid=SRID),
-                    ),
-                    buffer_meters,
-                ),
-                Geometry(srid=SRID),
-            ).label("geometry")
-        ).scalar_subquery()
+    await add_context_territories(conn, project, given_geometry)
 
-        base_cte = (
-            select(
-                territories_data.c.territory_id,
-                territories_data.c.name,
-                territories_data.c.is_city,
-                territories_data.c.level,
-                territories_data.c.geometry,
-            )
-            .where(territories_data.c.territory_id == project.territory_id)
-            .cte(name="territories_cte", recursive=True)
-        )
-        recursive_query = select(
-            territories_data.c.territory_id,
-            territories_data.c.name,
-            territories_data.c.is_city,
-            territories_data.c.level,
-            territories_data.c.geometry,
-        ).where(territories_data.c.parent_id == base_cte.c.territory_id)
-        territories_cte = base_cte.union_all(recursive_query)
-        cities_level = (
-            select(territories_cte.c.level)
-            .where(territories_cte.c.is_city.is_(True))
-            .order_by(territories_cte.c.level.desc())
-            .limit(1)
-            .cte(name="cities_level")
-        )
-        intersecting_territories = select(territories_cte.c.name).where(
-            territories_cte.c.level == (cities_level.c.level - 1),
-            ST_Intersects(territories_cte.c.geometry, given_geometry),
-        )
-        intersecting_district = select(territories_cte.c.name).where(
-            territories_cte.c.level == (cities_level.c.level - 2),
-            ST_Intersects(territories_cte.c.geometry, given_geometry),
-        )
-        context_territories = select(territories_cte.c.territory_id).where(
-            territories_cte.c.level == (cities_level.c.level - 1),
-            ST_Intersects(territories_cte.c.geometry, buffered_project_geometry),
-        )
-        project.properties.update(
-            {
-                "territories": list((await conn.execute(intersecting_territories)).scalars().all()),
-                "districts": list((await conn.execute(intersecting_district)).scalars().all()),
-                "context": list((await conn.execute(context_territories)).scalars().all()),
-            }
-        )
-
-    statement_for_project = (
+    statement = (
         insert(projects_data)
         .values(**project.model_dump(exclude={"territory"}), user_id=user.id)
         .returning(projects_data.c.project_id)
     )
-    project_id = (await conn.execute(statement_for_project)).scalar_one()
+    project_id =  (await conn.execute(statement)).scalar_one()
 
     project_territory = extract_values_from_model(project.territory)
     await conn.execute(insert(projects_territory_data).values(**project_territory, project_id=project_id))
 
-    # fixme: use the real parent scenario identifier from the user
-    #  instead of using the basic regional scenario by default
-    parent_scenario_id = None
-    if not project.is_regional:
-        parent_scenario_id = (
-            await conn.execute(
-                select(scenarios_data.c.scenario_id)
-                .select_from(
-                    scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id)
-                )
-                .where(
-                    projects_data.c.territory_id == project.territory_id,
-                    projects_data.c.is_regional.is_(True),
-                    scenarios_data.c.is_based.is_(True),
-                )
-            )
-        ).scalar_one_or_none()
-        if parent_scenario_id is None:
-            raise EntityNotFoundByParams("parent scenario", project.territory_id)
+    scenario_id = await create_project_base_scenario(conn, project_id, project.territory_id)
 
-    scenario_id = (
-        await conn.execute(
-            insert(scenarios_data)
-            .values(
-                project_id=project_id,
-                functional_zone_type_id=None,
-                name="Исходный пользовательский сценарий",
-                is_based=True,
-                parent_id=parent_scenario_id,
-            )
-            .returning(scenarios_data.c.scenario_id)
-        )
-    ).scalar_one()
+    id_mapping = await insert_intersecting_geometries(conn, given_geometry)
 
-    # TODO: get geometries and urban objects from regional scenario
+    await insert_urban_objects(conn, scenario_id, id_mapping)
 
-    # 1. Find all objects for territories from the first step (partially included at given percent)
-    # where the geometry is not completely included in the passed
-    area_percent = 0.01
-    objects_intersecting = (
-        select(object_geometries_data.c.object_geometry_id)
-        .select_from(
-            object_geometries_data.join(
-                urban_objects_data,
-                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            )
-            .join(
-                physical_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            )
-            .join(
-                physical_object_types_dict,
-                physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
-            )
-        )
-        .where(
-            ST_Intersects(object_geometries_data.c.geometry, given_geometry),
-            ~ST_Within(object_geometries_data.c.geometry, given_geometry),
-            ST_Area(ST_Intersection(object_geometries_data.c.geometry, given_geometry))
-            >= area_percent * ST_Area(object_geometries_data.c.geometry),
-            physical_object_types_dict.c.physical_object_function_id != 1,  # fixme: remove hardcode to skip buildings
-        )
-        .distinct()
-    ).cte("objects_intersecting")
+    await insert_functional_zones(conn, scenario_id, given_geometry)
 
-    # 2. Crop and insert geometries from the first step
-    insert_geometries = (
-        insert(projects_object_geometries_data)
-        .from_select(
-            [
-                projects_object_geometries_data.c.public_object_geometry_id,
-                projects_object_geometries_data.c.territory_id,
-                projects_object_geometries_data.c.geometry,
-                projects_object_geometries_data.c.centre_point,
-                projects_object_geometries_data.c.address,
-                projects_object_geometries_data.c.osm_id,
-            ],
-            select(
-                object_geometries_data.c.object_geometry_id.label("public_object_geometry_id"),
-                object_geometries_data.c.territory_id,
-                ST_Intersection(object_geometries_data.c.geometry, given_geometry).label("geometry"),
-                ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, given_geometry)).label("centre_point"),
-                object_geometries_data.c.address,
-                object_geometries_data.c.osm_id,
-            ).where(object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting))),
-        )
-        .returning(
-            projects_object_geometries_data.c.object_geometry_id,
-            projects_object_geometries_data.c.public_object_geometry_id,
-        )
-    )
-    inserted_geometries = (await conn.execute(insert_geometries)).mappings().all()
-    id_mapping = {row.public_object_geometry_id: row.object_geometry_id for row in inserted_geometries}
-
-    # 3. Insert cropped geometries from the second step to `projects_urban_objects_data`
-    urban_objects_select = select(
-        urban_objects_data.c.urban_object_id.label("public_urban_object_id"),
-        urban_objects_data.c.physical_object_id.label("public_physical_object_id"),
-        urban_objects_data.c.service_id.label("public_service_id"),
-        urban_objects_data.c.object_geometry_id,
-    ).where(urban_objects_data.c.object_geometry_id.in_(select(objects_intersecting)))
-    urban_objects = (await conn.execute(urban_objects_select)).mappings().all()
-    if urban_objects:
-        await conn.execute(
-            insert(projects_urban_objects_data).values(
-                [
-                    {
-                        "public_urban_object_id": row.public_urban_object_id,
-                        "scenario_id": scenario_id,
-                    }
-                    for row in urban_objects
-                ]
-            )
-        )
-        await conn.execute(
-            insert(projects_urban_objects_data).values(
-                [
-                    {
-                        "public_physical_object_id": row.public_physical_object_id,
-                        "public_service_id": row.public_service_id,
-                        "object_geometry_id": id_mapping[row.object_geometry_id],
-                        "scenario_id": scenario_id,
-                    }
-                    for row in urban_objects
-                ]
-            )
-        )
-
-    # 4. Find all functional zones for the project
-    # TODO: If we get at least one urban object from regional scenario
-    # or we haven't got any functional zones for the project territory from public schema,
-    # it's needed to generate new functional zones else get it from public schema
-    if not project.is_regional:
-        statement = select(
-            literal(scenario_id).label("scenario_id"),
-            functional_zones_data.c.functional_zone_type_id,
-            ST_Intersection(functional_zones_data.c.geometry, given_geometry).label("geometry"),
-            functional_zones_data.c.year,
-            functional_zones_data.c.source,
-            functional_zones_data.c.properties,
-        ).where(
-            functional_zones_data.c.territory_id.in_(select(territories_data.c.territory_id)),
-            ST_Intersects(functional_zones_data.c.geometry, given_geometry),
-            ST_GeometryType(ST_Intersection(functional_zones_data.c.geometry, given_geometry)).in_(
-                ("ST_Polygon", "ST_MultiPolygon")
-            ),
-            ~ST_IsEmpty(ST_Intersection(functional_zones_data.c.geometry, given_geometry)),
-        )
-        zones = (await conn.execute(statement)).mappings().all()
-        if zones:
-            await conn.execute(
-                insert(projects_functional_zones).from_select(
-                    [
-                        projects_functional_zones.c.scenario_id,
-                        projects_functional_zones.c.functional_zone_type_id,
-                        projects_functional_zones.c.geometry,
-                        projects_functional_zones.c.year,
-                        projects_functional_zones.c.source,
-                        projects_functional_zones.c.properties,
-                    ],
-                    statement,
-                )
-            )
+    await save_indicators(project_id, scenario_id, logger)
 
     await conn.commit()
-
-    config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
-
-    if not project.is_regional:
-        async with aiohttp.ClientSession() as session:
-            params = {"scenario_id": scenario_id, "project_id": project_id, "background": "true"}
-            try:
-                response = await session.put(
-                    f"{config.external.hextech_api}/hextech/indicators_saving/save_all",
-                    params=params,
-                )
-                response.raise_for_status()
-            except aiohttp.ClientResponseError as exc:
-                await logger.awarning(
-                    "failed to save indicators",
-                    status=exc.status,
-                    message=exc.message,
-                    url=exc.request_info.url,
-                    params=params,
-                )
-            except aiohttp.ClientConnectorError as exc:
-                await logger.awarning("request failed", reason=str(exc), params=params)
-            except Exception:  # pylint: disable=broad-except
-                await logger.aexception("unexpected error occurred")
 
     return await get_project_by_id_from_db(conn, project_id, user)
 
@@ -991,3 +756,403 @@ async def get_project_image_url_from_minio(
     object_name = f"projects/{project_id}/image.jpg" if image_type == "origin" else f"projects/{project_id}/preview.jpg"
 
     return (await minio_client.generate_presigned_urls([object_name], logger))[0]
+
+
+####################################################################################
+#                            Helper functions                                      #
+####################################################################################
+
+
+async def add_context_territories(
+    conn: AsyncConnection,
+    project: ProjectPost,
+    geometry: ScalarSelect[Any],
+) -> None:
+    """
+    Update project properties with additional territorial context:
+    - Add a list of intersecting districts (e.g., municipalities),
+    - Add the nearest territories (e.g., city neighborhoods),
+    - Add context territories within a buffer zone (e.g., nearby areas).
+    """
+
+    # Check if the given territory exists in the database; raise an error if it doesn't.
+    if not await check_existence(conn, territories_data, conditions={"territory_id": project.territory_id}):
+        raise EntityNotFoundById(project.territory_id, "territory")
+
+    # Define a 3000-meter buffer zone around the project's geometry to find nearby (context) territories.
+    buffer_meters = 3000
+    buffered_project_geometry = select(
+        cast(
+            ST_Buffer(
+                cast(
+                    geometry,
+                    Geography(srid=SRID), # Convert geometry to geography for accurate distance-based buffering.
+                ),
+                buffer_meters, # Distance of buffer in meters.
+            ),
+            Geometry(srid=SRID), # Cast back to geometry type with SRID.
+        ).label("geometry")
+    ).scalar_subquery()
+
+    # Create a recursive CTE to collect the hierarchy of territories starting from the project's territory.
+    base_cte = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.name,
+            territories_data.c.is_city,
+            territories_data.c.level,
+            territories_data.c.geometry,
+        )
+        .where(territories_data.c.territory_id == project.territory_id)
+        .cte(name="territories_cte", recursive=True)
+    )
+
+    # Recursive part: include all children territories of the current territory in the hierarchy.
+    recursive_query = select(
+        territories_data.c.territory_id,
+        territories_data.c.name,
+        territories_data.c.is_city,
+        territories_data.c.level,
+        territories_data.c.geometry,
+    ).where(territories_data.c.parent_id == base_cte.c.territory_id)
+
+    # Union base with recursive to get full hierarchy of territories under the current one.
+    territories_cte = base_cte.union_all(recursive_query)
+
+    # Determine the highest city-level (e.g., city) in the territory hierarchy.
+    cities_level = (
+        select(territories_cte.c.level)
+        .where(territories_cte.c.is_city.is_(True))
+        .order_by(territories_cte.c.level.desc())
+        .limit(1)
+        .cte(name="cities_level")
+    )
+
+    # Get names of territories one level below the city that intersect with the project geometry (e.g., neighborhoods).
+    intersecting_territories = select(territories_cte.c.name).where(
+        territories_cte.c.level == (cities_level.c.level - 1),
+        ST_Intersects(territories_cte.c.geometry, geometry),
+    )
+
+    # Get names of territories two levels below the city that intersect with the project geometry (e.g., districts).
+    intersecting_district = select(territories_cte.c.name).where(
+        territories_cte.c.level == (cities_level.c.level - 2),
+        ST_Intersects(territories_cte.c.geometry, geometry),
+    )
+
+    # Get IDs of territories one level below the city that intersect with the buffered (3 km) geometry (context areas).
+    context_territories = select(territories_cte.c.territory_id).where(
+        territories_cte.c.level == (cities_level.c.level - 1),
+        ST_Intersects(territories_cte.c.geometry, buffered_project_geometry),
+        territories_cte.c.is_city.is_(False),
+    )
+
+    # Update the project’s properties dictionary with gathered information.
+    project.properties.update(
+        {
+            "territories": list((await conn.execute(intersecting_territories)).scalars().all()),
+            "districts": list((await conn.execute(intersecting_district)).scalars().all()),
+            "context": list((await conn.execute(context_territories)).scalars().all()),
+        }
+    )
+
+
+async def create_project_base_scenario(
+    conn: AsyncConnection,
+    project_id: int,
+    territory_id: int,
+    parent_id: int | None = None,
+) -> int:
+    """
+    Create a base scenario for a given project.
+
+    If `parent_id` is not provided, the function will attempt to find a regional base scenario
+    associated with the same territory. If no such scenario exists, an error will be raised.
+
+    Args:
+        conn (AsyncConnection): Active database connection.
+        project_id (int): ID of the current project.
+        territory_id (int): ID of the territory the scenario is related to.
+        parent_id (int | None): Optional ID of the parent (regional) scenario.
+
+    Returns:
+        int: ID of the newly created scenario.
+
+    Raises:
+        EntityNotFoundByParams: If no regional base scenario is found when expected.
+    """
+
+    # If no parent scenario ID is explicitly provided, try to find the appropriate one.
+    if parent_id is None:
+        # Look for an existing regional base scenario for the same territory.
+        parent_id = (
+            await conn.execute(
+                select(scenarios_data.c.scenario_id)
+                .select_from(
+                    scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id)
+                )
+                .where(
+                    projects_data.c.territory_id == territory_id,
+                    projects_data.c.is_regional.is_(True),  # Regional projects only.
+                    scenarios_data.c.is_based.is_(True),    # Must be a base scenario.
+                )
+            )
+        ).scalar_one_or_none()
+
+        # If no parent scenario is found, raise an informative error.
+        if parent_id is None:
+            raise EntityNotFoundByParams("parent regional scenario", territory_id)
+
+    # Insert a new base scenario for the user project with the found or given parent.
+    scenario_id = (
+        await conn.execute(
+            insert(scenarios_data)
+            .values(
+                project_id=project_id,
+                functional_zone_type_id=None,  # Base scenario doesn't have a predefined profile type.
+                name="Исходный пользовательский сценарий",  # Default name (in Russian).
+                is_based=True,
+                parent_id=parent_id,
+            )
+            .returning(scenarios_data.c.scenario_id)
+        )
+    ).scalar_one()
+
+    # Return the ID of the newly created scenario.
+    return scenario_id
+
+
+async def insert_intersecting_geometries(conn: AsyncConnection, geometry: ScalarSelect[Any]) -> dict[int, int]:
+    """
+    Identify geometries that intersect the given geometry, crop them,
+    and insert the resulting geometries into the `user_projects` schema.
+
+    The function filters geometries that intersect (but are not fully within) the given geometry
+    and have an overlapping area greater than a minimum threshold. It excludes building-type objects.
+    After inserting the cropped geometries, it returns a mapping from the public object geometry IDs
+    to their corresponding new project-specific geometry IDs.
+
+    Args:
+        conn (AsyncConnection): Active asynchronous database connection.
+        geometry (ScalarSelect[Any]): Geometry used as a mask to crop intersecting geometries.
+
+    Returns:
+        dict[int, int]: A mapping of public object geometry IDs to inserted project object geometry IDs.
+    """
+
+    area_percent = 0.01  # Minimum intersection threshold as a fraction of original area.
+
+    # Step 1: Identify object geometries that intersect the given geometry
+    # but are not fully within it, and have at least 1% overlapping area.
+    # Also exclude objects of type "building".
+    objects_intersecting_cte = (
+        select(object_geometries_data.c.object_geometry_id)
+        .select_from(
+            object_geometries_data
+            .join(urban_objects_data, urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id)
+            .join(physical_objects_data, physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id)
+            .join(physical_object_types_dict, physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id)
+        )
+        .where(
+            ST_Intersects(object_geometries_data.c.geometry, geometry),
+            ~ST_Within(object_geometries_data.c.geometry, geometry),
+            ST_Area(ST_Intersection(object_geometries_data.c.geometry, geometry)) >=
+                area_percent * ST_Area(object_geometries_data.c.geometry),
+            ~physical_object_types_dict.c.name.ilike("%здание%"),  # Exclude buildings
+        )
+        .distinct()
+        .cte("objects_intersecting")
+    )
+
+    # Step 2: Crop geometries using the given geometry and insert the cropped
+    # versions into the `user_projects.object_geometries_data` table.
+    insert_stmt = (
+        insert(projects_object_geometries_data)
+        .from_select(
+            [
+                projects_object_geometries_data.c.public_object_geometry_id,
+                projects_object_geometries_data.c.territory_id,
+                projects_object_geometries_data.c.geometry,
+                projects_object_geometries_data.c.centre_point,
+                projects_object_geometries_data.c.address,
+                projects_object_geometries_data.c.osm_id,
+            ],
+            select(
+                object_geometries_data.c.object_geometry_id.label("public_object_geometry_id"),
+                object_geometries_data.c.territory_id,
+                ST_Intersection(object_geometries_data.c.geometry, geometry).label("geometry"),
+                ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, geometry)).label("centre_point"),
+                object_geometries_data.c.address,
+                object_geometries_data.c.osm_id,
+            ).where(object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting_cte)))
+        )
+        .returning(
+            projects_object_geometries_data.c.object_geometry_id,
+            projects_object_geometries_data.c.public_object_geometry_id,
+        )
+    )
+
+    # Step 3: Execute the insertion and build a mapping of public IDs to new project-specific IDs.
+    result = await conn.execute(insert_stmt)
+    return {
+        row.public_object_geometry_id: row.object_geometry_id
+        for row in result.mappings().all()
+    }
+
+
+async def insert_urban_objects(conn: AsyncConnection, scenario_id: int, id_mapping: dict[int, int]) -> None:
+    """
+    Insert cropped urban objects into the `user_projects.urban_objects_data` table for a specific scenario.
+
+    This function does the following:
+    1. Selects urban objects related to the provided geometry mapping.
+    2. Inserts both public and detailed data using `INSERT FROM SELECT` directly,
+       applying the provided geometry ID mapping in a SQL-compliant way.
+
+    Args:
+        conn (AsyncConnection): Asynchronous database connection.
+        scenario_id (int): The scenario to which the urban objects should be linked.
+        id_mapping (dict[int, int]): Mapping from original object_geometry_id to newly inserted project-specific geometry_id.
+    """
+
+    if not id_mapping:
+        return
+
+    # Step 1: Common base query for selecting matched urban objects and joining mapping
+    base_query_cte = (
+        select(
+            urban_objects_data.c.urban_object_id.label("public_urban_object_id"),
+            urban_objects_data.c.physical_object_id.label("public_physical_object_id"),
+            urban_objects_data.c.service_id.label("public_service_id"),
+            projects_object_geometries_data.c.object_geometry_id.label("object_geometry_id"),
+        )
+        .select_from(
+            urban_objects_data.join(
+                projects_object_geometries_data,
+                urban_objects_data.c.object_geometry_id == projects_object_geometries_data.c.public_object_geometry_id
+            )
+        )
+        .where(urban_objects_data.c.object_geometry_id.in_(id_mapping.keys()))
+    ).cte(name="base_query")
+
+    # Step 2: Insert basic public urban object references
+    insert_public = insert(projects_urban_objects_data).from_select(
+        ["public_urban_object_id", "scenario_id"],
+        select(
+            base_query_cte.c.public_urban_object_id,
+            literal(scenario_id).label("scenario_id"),
+        )
+    )
+
+    # Step 3: Insert detailed urban object data with mapped geometries
+    insert_detailed = insert(projects_urban_objects_data).from_select(
+        ["public_physical_object_id", "public_service_id", "object_geometry_id", "scenario_id"],
+        select(
+            base_query_cte.c.public_physical_object_id,
+            base_query_cte.c.public_service_id,
+            base_query_cte.c.object_geometry_id,
+            literal(scenario_id).label("scenario_id")
+        )
+    )
+
+    # Execute inserts
+    await conn.execute(insert_public)
+    await conn.execute(insert_detailed)
+
+
+async def insert_functional_zones(conn: AsyncConnection, scenario_id: int, geometry: ScalarSelect[Any]) -> None:
+    """
+    Insert functional zones intersecting the given geometry into the specified scenario.
+
+    This function performs the following steps:
+    1. Finds functional zones from the `functional_zones_data` table that intersect with the given geometry.
+    2. Computes the intersection geometry using ST_Intersection.
+    3. Filters out invalid geometries (empty or non-polygonal).
+    4. Inserts the resulting intersected zones into the `projects_functional_zones` table for the specified scenario.
+
+    Args:
+        conn (AsyncConnection): Asynchronous database connection.
+        scenario_id (int): Target scenario ID to associate the functional zones with.
+        geometry (ScalarSelect[Any]): A subquery returning the project's geometry to intersect with.
+    """
+
+    # Step 1: Define the SELECT statement to fetch intersecting functional zones
+    intersecting_zones_select = (
+        select(
+            literal(scenario_id).label("scenario_id"),
+            functional_zones_data.c.functional_zone_type_id,
+            ST_Intersection(functional_zones_data.c.geometry, geometry).label("geometry"),
+            functional_zones_data.c.year,
+            functional_zones_data.c.source,
+            functional_zones_data.c.properties,
+        )
+        .where(
+            # Must intersect with the given geometry
+            ST_Intersects(functional_zones_data.c.geometry, geometry),
+
+            # Filter only valid polygonal geometries
+            ST_GeometryType(ST_Intersection(functional_zones_data.c.geometry, geometry)).in_(
+                ("ST_Polygon", "ST_MultiPolygon")
+            ),
+
+            # Ensure geometry is not empty
+            ~ST_IsEmpty(ST_Intersection(functional_zones_data.c.geometry, geometry)),
+        )
+    )
+
+    # Step 2: Insert results into the `user_projects.functional_zones` table using INSERT FROM SELECT
+    await conn.execute(
+        insert(projects_functional_zones).from_select(
+            [
+                projects_functional_zones.c.scenario_id,
+                projects_functional_zones.c.functional_zone_type_id,
+                projects_functional_zones.c.geometry,
+                projects_functional_zones.c.year,
+                projects_functional_zones.c.source,
+                projects_functional_zones.c.properties,
+            ],
+            intersecting_zones_select
+        )
+    )
+
+
+async def save_indicators(project_id: int, scenario_id: int, logger: structlog.stdlib.BoundLogger) -> None:
+    """
+    Update all indicators for the specified project via the external Hextech service.
+
+    This function interacts with the Hextech API to save indicators related to a specific project and scenario.
+    It handles different exceptions and logs relevant information in case of errors.
+
+    Args:
+        project_id (int): The ID of the project for which indicators are being saved.
+        scenario_id (int): The ID of the scenario within the project.
+        logger (structlog.stdlib.BoundLogger): The logger used to record warning and error logs.
+    """
+
+    # Load configuration settings from a file or default environment variables
+    config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
+    params = {"scenario_id": scenario_id, "project_id": project_id, "background": "true"}
+
+    # Create an asynchronous HTTP client session
+    async with aiohttp.ClientSession() as session:
+        try:
+            response = await session.put(
+                f"{config.external.hextech_api}/hextech/indicators_saving/save_all", params=params
+            )
+            response.raise_for_status()
+
+        # Handle errors related to the response (e.g., 4xx or 5xx errors)
+        except aiohttp.ClientResponseError as exc:
+            await logger.awarning(
+                "Failed to save indicators",
+                status=exc.status, message=exc.message, url=exc.request_info.url, params=params
+            )
+
+        # Handle connection errors (e.g., network issues)
+        except aiohttp.ClientConnectorError as exc:
+            await logger.awarning("Request failed due to connection error", reason=str(exc), params=params)
+
+        # Handle any other unexpected exceptions
+        except Exception:
+            await logger.aexception("Unexpected error occurred while saving indicators")
+

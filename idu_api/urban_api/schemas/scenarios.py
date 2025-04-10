@@ -64,7 +64,6 @@ class ScenarioPost(BaseModel):
     """Scenario schema for POST requests."""
 
     project_id: int = Field(..., description="project identifier for the scenario", examples=[1])
-    # TODO: parent_id: int | None = Field(..., description="parent regional scenario identifier", examples[1])
     functional_zone_type_id: int | None = Field(
         ..., description="target profile identifier for the scenario", examples=[1]
     )

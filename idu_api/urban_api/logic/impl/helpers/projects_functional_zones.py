@@ -13,7 +13,8 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.dto import FunctionalZoneDTO, FunctionalZoneSourceDTO, ScenarioFunctionalZoneDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
-from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
+from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario, get_project_by_scenario_id
 from idu_api.urban_api.logic.impl.helpers.utils import (
     OBJECTS_NUMBER_LIMIT,
     check_existence,
@@ -34,7 +35,9 @@ async def get_functional_zones_sources_by_scenario_id_from_db(
 ) -> list[FunctionalZoneSourceDTO]:
     """Get list of pairs year + source for functional zones for given scenario."""
 
-    await check_scenario(conn, scenario_id, user)
+    project = await get_project_by_scenario_id(conn, scenario_id, user)
+    if project.is_regional:
+        raise NotAllowedInRegionalScenario('Functional zones')
 
     statement = (
         select(projects_functional_zones.c.year, projects_functional_zones.c.source)
@@ -56,7 +59,9 @@ async def get_functional_zones_by_scenario_id_from_db(
 ) -> list[ScenarioFunctionalZoneDTO]:
     """Get list of functional zone objects by scenario identifier."""
 
-    await check_scenario(conn, scenario_id, user)
+    project = await get_project_by_scenario_id(conn, scenario_id, user)
+    if project.is_regional:
+        raise NotAllowedInRegionalScenario('Functional zones')
 
     statement = (
         select(
