@@ -139,6 +139,7 @@ from .territories import (
     TerritoryWithIndicators,
     TerritoryWithNormatives,
     TerritoryWithoutGeometry,
+    TerritoryTreeWithoutGeometry,
 )
 from .urban_objects import ScenarioUrbanObject, UrbanObject, UrbanObjectPatch
 

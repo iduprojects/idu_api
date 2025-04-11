@@ -28,6 +28,7 @@ from idu_api.urban_api.dto import (
     TerritoryWithIndicatorsDTO,
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
+    TerritoryTreeWithoutGeometryDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_buildings import (
     get_buildings_with_geometry_by_territory_id_from_db,
@@ -95,6 +96,7 @@ from idu_api.urban_api.schemas import (
     TerritoryPut,
     TerritoryTypePost,
 )
+from idu_api.urban_api.logic.impl.helpers.utils import build_territory_trees_without_parent
 
 Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString
 
@@ -466,6 +468,33 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
                 ordering,
                 paginate,
             )
+
+    async def get_territories_trees_without_geometry_by_parent_id(
+        self,
+        parent_id: int | None,
+        get_all_levels: bool,
+        territory_type_id: int | None,
+        name: str | None,
+        cities_only: bool,
+        created_at: date | None,
+        paginate: bool,
+    ) -> list[TerritoryTreeWithoutGeometryDTO]:
+        """Returns List of TerritoryTreeWithoutGeometryDTO objects with nested children, representing the hierarchy:
+        where each root node contains its child territories recursively (parent isn't included)"""
+
+        territories_list = await self.get_territories_without_geometry_by_parent_id(
+            parent_id,
+            get_all_levels,
+            territory_type_id,
+            name,
+            cities_only,
+            created_at,
+            order_by=None,
+            ordering=None,
+            paginate=paginate
+        )
+
+        return build_territory_trees_without_parent(territories_list)
 
     async def get_common_territory_for_geometry(self, geometry: Geom) -> TerritoryDTO | None:
         async with self._connection_manager.get_ro_connection() as conn:

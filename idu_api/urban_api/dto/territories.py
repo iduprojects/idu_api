@@ -114,6 +114,12 @@ class TerritoryWithoutGeometryDTO:  # pylint: disable=too-many-instance-attribut
     created_at: datetime
     updated_at: datetime
 
+@dataclass(frozen=True)
+class TerritoryTreeWithoutGeometryDTO(TerritoryWithoutGeometryDTO): # pylint: disable=too-many-instance-attributes
+    """Territories Tree DTO used to transfer territory data without geometry."""
+    children: list["TerritoryTreeWithoutGeometryDTO"]
+
+
 
 @dataclass
 class TerritoryWithIndicatorDTO:
