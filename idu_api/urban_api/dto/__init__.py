@@ -58,6 +58,7 @@ from .territories import (
     TerritoryWithIndicatorsDTO,
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
+    TerritoryTreeWithoutGeometryDTO,
 )
 from .urban_objects import ScenarioUrbanObjectDTO, UrbanObjectDTO
 from .users import TokensTuple, UserDTO

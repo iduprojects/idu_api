@@ -12,6 +12,7 @@ from idu_api.urban_api.schemas import (
     TerritoryPatch,
     TerritoryPost,
     TerritoryPut,
+    TerritoryTreeWithoutGeometry,
     TerritoryWithoutGeometry,
 )
 from idu_api.urban_api.schemas.enums import OrderByField, Ordering
@@ -432,6 +433,66 @@ async def get_all_territories_without_geometry_by_parent_id(
     )
 
     return [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
+
+
+@territories_router.get(
+    "/all_territories_trees_without_geometry",
+    response_model=list[TerritoryTreeWithoutGeometry],
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_terriories_trees_without_geometry(
+    request: Request,
+    parent_id: int | None = Query(
+        None, description="parent territory identifier to filter, should be skipped to get top level territories", gt=0
+    ),
+    get_all_levels: bool = Query(
+        False, description="getting full subtree of territories (unsafe for high level parents)"
+    ),
+    territory_type_id: int | None = Query(None, description="to filter by territory type", gt=0),
+    name: str | None = Query(None, description="to filter territories by name substring (case-insensitive)"),
+    cities_only: bool = Query(False, description="to get only for cities"),
+    created_at: date | None = Query(None, description="to filter by created date"),
+) -> list[TerritoryTreeWithoutGeometry]:
+    """
+    ## Get a list of trees of all territories without geometry by parent identifier (parent isn't included).
+
+    **WARNING:** Set `cities_only = True` only if you want to get entities from all levels.
+
+    ### Parameters:
+    - **parent_id** (int | None, Query): Unique identifier of the parent territory. If None, returns top-level territories.
+    - **get_all_levels** (bool, Query): If True, retrieves full territory subtree (default: false).
+      Warning: May cause performance issues for high-level parents.
+    - **territory_type_id** (int | None, Query): Filters territories by type identifier (references territory_types_dict).
+    - **name** (str | None, Query): Filters by case-insensitive name substring match.
+    - **cities_only** (bool, Query): If True, returns only city-type territories (default: false).
+    - **created_at** (date | None, Query): Filters territories created on specified date.
+
+    ### Returns:
+    - **list[TerritoryTreeWithoutGeometry]**: Hierarchical tree structures of territories without geometry data.
+      Each root node contains nested children territories recursively.
+
+    ### Errors:
+    - **400 Bad Request**: If `cities_only` is True while `get_all_levels` is False.
+    - **404 Not Found**: If specified parent territory doesn't exist.
+    """
+    territories_service: TerritoriesService = request.state.territories_service
+
+    if not get_all_levels and cities_only:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You can use cities_only parameter only with including all levels",
+        )
+
+    territories_trees = await territories_service.get_territories_trees_without_geometry_by_parent_id(
+        parent_id,
+        get_all_levels,
+        territory_type_id,
+        name,
+        cities_only,
+        created_at,
+    )
+
+    return [TerritoryTreeWithoutGeometry.from_dto(territories_tree) for territories_tree in territories_trees]
 
 
 @territories_router.post(

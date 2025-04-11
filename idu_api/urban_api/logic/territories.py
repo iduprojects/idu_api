@@ -24,6 +24,7 @@ from idu_api.urban_api.dto import (
     ServiceWithGeometryDTO,
     TargetCityTypeDTO,
     TerritoryDTO,
+    TerritoryTreeWithoutGeometryDTO,
     TerritoryTypeDTO,
     TerritoryWithIndicatorsDTO,
     TerritoryWithNormativesDTO,
@@ -307,6 +308,19 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
     ) -> list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]:
         """Get a territory or list of territories without geometry by parent,
         ordering and filters can be specified in parameters."""
+
+    @abc.abstractmethod
+    async def get_territories_trees_without_geometry_by_parent_id(
+        self,
+        parent_id: int | None,
+        get_all_levels: bool,
+        territory_type_id: int | None,
+        name: str | None,
+        cities_only: bool,
+        created_at: date | None,
+    ) -> TerritoryTreeWithoutGeometryDTO:
+        """Returns List of TerritoryTreeWithoutGeometryDTO objects with nested children, representing the hierarchy:
+        where each root node contains its child territories recursively (parent isn't included)"""
 
     @abc.abstractmethod
     async def get_common_territory_for_geometry(self, geometry: Geom) -> TerritoryDTO | None:
