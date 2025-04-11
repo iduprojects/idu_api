@@ -26,7 +26,7 @@ from idu_api.urban_api.dto import (
     UserDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
-from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario, NotAllowedInProjectScenario
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInProjectScenario
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario, get_project_by_scenario_id
 from idu_api.urban_api.logic.impl.helpers.utils import check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import ScenarioIndicatorValuePatch, ScenarioIndicatorValuePost, ScenarioIndicatorValuePut
@@ -330,7 +330,7 @@ async def get_hexagons_with_indicators_by_scenario_id_from_db(
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
     if not project.is_regional:
-        raise NotAllowedInProjectScenario('Hexagons')
+        raise NotAllowedInProjectScenario("Hexagons")
 
     statement = (
         select(

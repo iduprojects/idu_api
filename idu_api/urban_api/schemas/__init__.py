@@ -133,6 +133,7 @@ from .territories import (
     TerritoryPatch,
     TerritoryPost,
     TerritoryPut,
+    TerritoryTreeWithoutGeometry,
     TerritoryType,
     TerritoryTypePost,
     TerritoryWithIndicator,

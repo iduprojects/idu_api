@@ -1,6 +1,7 @@
 """Unit tests for internal logic helper functions are defined here."""
 
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from geoalchemy2.functions import ST_GeomFromWKB, ST_Union
@@ -9,8 +10,10 @@ from sqlalchemy.sql.selectable import CTE, ScalarSelect, Select
 
 from idu_api.common.db.entities import projects_data, territories_data
 from idu_api.urban_api.dto import UserDTO
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.logic.impl.helpers.utils import (
     SRID,
+    build_hierarchy,
     build_recursive_query,
     check_existence,
     extract_values_from_model,
@@ -18,7 +21,7 @@ from idu_api.urban_api.logic.impl.helpers.utils import (
     include_child_territories_cte,
 )
 from idu_api.urban_api.schemas import TerritoryPatch, TerritoryPost, TerritoryPut
-from tests.urban_api.helpers.connection import MockConnection
+from tests.urban_api.helpers.connection import MockConnection, MockResult, MockRow
 
 
 @pytest.mark.asyncio
@@ -146,9 +149,7 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
     # Arrange
     project_id = 1
     user = UserDTO("mock_string", is_superuser=False)
-    statement = select(projects_data.c.user_id, projects_data.c.public, projects_data.c.properties).where(
-        projects_data.c.project_id == project_id
-    )
+    statement = select(projects_data).where(projects_data.c.project_id == project_id)
     unified_geometry = (
         select(ST_Union(territories_data.c.geometry).label("geometry"))
         .where(territories_data.c.territory_id.in_([1]))
@@ -156,7 +157,24 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
     )
 
     # Act
-    result = await get_context_territories_geometry(mock_conn, project_id, user)
+    with pytest.raises(NotAllowedInRegionalScenario):
+        await get_context_territories_geometry(mock_conn, project_id, user)
+    with patch("tests.urban_api.helpers.connection.mock_conn") as new_mock_conn:
+        new_mock_conn.execute = AsyncMock(
+            return_value=MockResult(
+                [
+                    MockRow(
+                        **{
+                            "user_id": "mock_string",
+                            "public": True,
+                            "is_regional": False,
+                            "properties": {"context": [1]},
+                        }
+                    )
+                ]
+            )
+        )
+        result = await get_context_territories_geometry(new_mock_conn, project_id, user)
 
     # Assert
     assert isinstance(result, tuple), "Result should be a dictionary."
@@ -166,4 +184,31 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
     assert str(result[0]) == str(unified_geometry), "The ScalarSelect should be a unified geometry."
     assert isinstance(result[1], list), "The second item in result should be a list of context identifiers."
     assert all(isinstance(idx, int) for idx in result[1]), "Each item in list of identifiers should be an integer."
-    mock_conn.execute_mock.assert_called_once_with(str(statement))
+    mock_conn.execute_mock.assert_any_call(str(statement))
+
+
+def test_build_hierarchy(sample_dtos, expected_hierarchy):
+    """Test the build_hierarchy function."""
+
+    # Arrange
+    input_dtos = sample_dtos
+    output_model = expected_hierarchy["output_model"]
+    expected_result = expected_hierarchy["expected_result"]
+
+    # Act
+    result = build_hierarchy(input_dtos, output_model)
+
+    # Assert
+    assert isinstance(result, list), "Result should be a list."
+    assert all(isinstance(item, output_model) for item in result), "All items should be instances of the output model."
+
+    def serialize(obj):
+        """Helper to recursively serialize hierarchy to dicts for easy comparison."""
+        data = obj.__dict__.copy()
+        data["children"] = [serialize(child) for child in getattr(obj, "children", [])]
+        return data
+
+    actual_serialized = [serialize(item) for item in result]
+    expected_serialized = [serialize(item) for item in expected_result]
+
+    assert actual_serialized == expected_serialized, "Hierarchy structure does not match expected result."

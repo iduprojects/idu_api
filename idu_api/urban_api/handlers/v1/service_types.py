@@ -12,10 +12,11 @@ from idu_api.urban_api.schemas import (
     ServiceTypePost,
     ServiceTypePut,
     ServiceTypesHierarchy,
+    SocGroupWithServiceTypes,
     UrbanFunction,
     UrbanFunctionPatch,
     UrbanFunctionPost,
-    UrbanFunctionPut, SocGroupWithServiceTypes,
+    UrbanFunctionPut,
 )
 
 from .routers import service_types_router
@@ -398,4 +399,3 @@ async def get_social_groups(
     soc_groups = await service_types_service.get_social_groups_by_service_type_id(service_type_id)
 
     return [SocGroupWithServiceTypes.from_dto(group) for group in soc_groups]
-

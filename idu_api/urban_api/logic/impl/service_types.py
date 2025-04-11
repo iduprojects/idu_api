@@ -1,8 +1,12 @@
 """Service types/urban functions handlers logic of getting entities from the database is defined here."""
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
-from idu_api.urban_api.dto import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO, \
-    SocGroupWithServiceTypesDTO
+from idu_api.urban_api.dto import (
+    ServiceTypeDTO,
+    ServiceTypesHierarchyDTO,
+    SocGroupWithServiceTypesDTO,
+    UrbanFunctionDTO,
+)
 from idu_api.urban_api.logic.impl.helpers.service_types import (
     add_service_type_to_db,
     add_urban_function_to_db,
@@ -11,11 +15,12 @@ from idu_api.urban_api.logic.impl.helpers.service_types import (
     get_physical_object_types_by_service_type_id_from_db,
     get_service_types_from_db,
     get_service_types_hierarchy_from_db,
+    get_social_groups_by_service_type_id_from_db,
     get_urban_functions_by_parent_id_from_db,
     patch_service_type_to_db,
     patch_urban_function_to_db,
     put_service_type_to_db,
-    put_urban_function_to_db, get_social_groups_by_service_type_id_from_db,
+    put_urban_function_to_db,
 )
 from idu_api.urban_api.logic.service_types import ServiceTypesService
 from idu_api.urban_api.schemas import (

@@ -10,10 +10,17 @@ from idu_api.common.db.entities import (
     physical_object_functions_dict,
     physical_object_types_dict,
     service_types_dict,
-    urban_functions_dict, soc_groups_dict, soc_group_values_data,
+    soc_group_values_data,
+    soc_groups_dict,
+    urban_functions_dict,
 )
-from idu_api.urban_api.dto import PhysicalObjectTypeDTO, ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO, \
-    SocGroupWithServiceTypesDTO
+from idu_api.urban_api.dto import (
+    PhysicalObjectTypeDTO,
+    ServiceTypeDTO,
+    ServiceTypesHierarchyDTO,
+    SocGroupWithServiceTypesDTO,
+    UrbanFunctionDTO,
+)
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.service_types import (
     add_service_type_to_db,
@@ -24,22 +31,24 @@ from idu_api.urban_api.logic.impl.helpers.service_types import (
     get_service_type_by_id_from_db,
     get_service_types_from_db,
     get_service_types_hierarchy_from_db,
+    get_social_groups_by_service_type_id_from_db,
     get_urban_function_by_id_from_db,
     get_urban_functions_by_parent_id_from_db,
     patch_service_type_to_db,
     patch_urban_function_to_db,
     put_service_type_to_db,
-    put_urban_function_to_db, get_social_groups_by_service_type_id_from_db,
+    put_urban_function_to_db,
 )
 from idu_api.urban_api.schemas import (
     PhysicalObjectType,
     ServiceType,
     ServiceTypePatch,
     ServiceTypePost,
+    SocGroupWithServiceTypes,
     UrbanFunction,
     UrbanFunctionPatch,
     UrbanFunctionPost,
-    UrbanFunctionPut, SocGroupWithServiceTypes,
+    UrbanFunctionPut,
 )
 from tests.urban_api.helpers.connection import MockConnection
 
@@ -594,7 +603,6 @@ async def test_get_physical_object_types_by_service_type_id_from_db(mock_conn: M
         PhysicalObjectType.from_dto(result[0]), PhysicalObjectType
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_called_with(str(statement))
-
 
 
 @pytest.mark.asyncio

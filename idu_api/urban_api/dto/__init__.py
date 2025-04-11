@@ -53,6 +53,7 @@ from .soc_groups import (
 from .territories import (
     TargetCityTypeDTO,
     TerritoryDTO,
+    TerritoryTreeWithoutGeometryDTO,
     TerritoryTypeDTO,
     TerritoryWithIndicatorDTO,
     TerritoryWithIndicatorsDTO,
