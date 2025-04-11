@@ -24,11 +24,11 @@ from idu_api.urban_api.dto import (
     ServiceWithGeometryDTO,
     TargetCityTypeDTO,
     TerritoryDTO,
+    TerritoryTreeWithoutGeometryDTO,
     TerritoryTypeDTO,
     TerritoryWithIndicatorsDTO,
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
-    TerritoryTreeWithoutGeometryDTO
 )
 from idu_api.urban_api.schemas import (
     HexagonPost,
@@ -318,11 +318,9 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
         name: str | None,
         cities_only: bool,
         created_at: date | None,
-        paginate: bool,
     ) -> TerritoryTreeWithoutGeometryDTO:
         """Returns List of TerritoryTreeWithoutGeometryDTO objects with nested children, representing the hierarchy:
         where each root node contains its child territories recursively (parent isn't included)"""
-
 
     @abc.abstractmethod
     async def get_common_territory_for_geometry(self, geometry: Geom) -> TerritoryDTO | None:

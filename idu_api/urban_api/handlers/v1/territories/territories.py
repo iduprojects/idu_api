@@ -12,8 +12,8 @@ from idu_api.urban_api.schemas import (
     TerritoryPatch,
     TerritoryPost,
     TerritoryPut,
-    TerritoryWithoutGeometry,
     TerritoryTreeWithoutGeometry,
+    TerritoryWithoutGeometry,
 )
 from idu_api.urban_api.schemas.enums import OrderByField, Ordering
 from idu_api.urban_api.schemas.geometries import AllPossibleGeometry, Feature, GeoJSONResponse
@@ -434,6 +434,7 @@ async def get_all_territories_without_geometry_by_parent_id(
 
     return [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
 
+
 @territories_router.get(
     "/all_territories_trees_without_geometry",
     response_model=list[TerritoryTreeWithoutGeometry],
@@ -459,7 +460,7 @@ async def get_all_terriories_trees_without_geometry(
 
     ### Parameters:
     - **parent_id** (int | None, Query): Unique identifier of the parent territory. If None, returns top-level territories.
-    - **get_all_levels** (bool, Query): If True, retrieves full territory subtree (default: false). 
+    - **get_all_levels** (bool, Query): If True, retrieves full territory subtree (default: false).
       Warning: May cause performance issues for high-level parents.
     - **territory_type_id** (int | None, Query): Filters territories by type identifier (references territory_types_dict).
     - **name** (str | None, Query): Filters by case-insensitive name substring match.
@@ -489,10 +490,10 @@ async def get_all_terriories_trees_without_geometry(
         name,
         cities_only,
         created_at,
-        paginate=False,
     )
 
     return [TerritoryTreeWithoutGeometry.from_dto(territories_tree) for territories_tree in territories_trees]
+
 
 @territories_router.post(
     "/common_territory",

@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.selectable import CTE, Select
 
 from idu_api.common.db.entities import projects_data, territories_data
-from idu_api.urban_api.dto import UserDTO, TerritoryTreeWithoutGeometryDTO, TerritoryWithoutGeometryDTO, PageDTO
+from idu_api.urban_api.dto import TerritoryTreeWithoutGeometryDTO, TerritoryWithoutGeometryDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
@@ -241,7 +241,7 @@ async def get_context_territories_geometry(
     elif project.user_id != user.id and not project.public and not user.is_superuser:
         raise AccessDeniedError(project_id, "project")
     elif project.is_regional:
-        raise NotAllowedInRegionalScenario('context')
+        raise NotAllowedInRegionalScenario("context")
 
     # Get union geometry of all context territories
     unified_geometry = (
@@ -252,8 +252,9 @@ async def get_context_territories_geometry(
 
     return unified_geometry, project.properties["context"]
 
+
 def build_territory_trees_without_parent(
-    territories: list[TerritoryWithoutGeometryDTO] | PageDTO[TerritoryWithoutGeometryDTO]
+    territories: list[TerritoryWithoutGeometryDTO],
 ) -> list[TerritoryTreeWithoutGeometryDTO]:
     """
     Returns forest of territories trees
@@ -264,10 +265,7 @@ def build_territory_trees_without_parent(
     territory_map: dict[int, TerritoryTreeWithoutGeometryDTO] = {}
 
     for territory in territories:
-        territory_map[territory.territory_id] = TerritoryTreeWithoutGeometryDTO(
-            **territory.__dict__,
-            children=[]
-        )
+        territory_map[territory.territory_id] = TerritoryTreeWithoutGeometryDTO(**territory.__dict__, children=[])
 
     for territory in territories:
         current = territory_map[territory.territory_id]

@@ -24,11 +24,11 @@ from idu_api.urban_api.dto import (
     ServiceWithGeometryDTO,
     TargetCityTypeDTO,
     TerritoryDTO,
+    TerritoryTreeWithoutGeometryDTO,
     TerritoryTypeDTO,
     TerritoryWithIndicatorsDTO,
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
-    TerritoryTreeWithoutGeometryDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.territories_buildings import (
     get_buildings_with_geometry_by_territory_id_from_db,
@@ -84,6 +84,7 @@ from idu_api.urban_api.logic.impl.helpers.territories_types import (
     get_target_city_types_from_db,
     get_territory_types_from_db,
 )
+from idu_api.urban_api.logic.impl.helpers.utils import build_territory_trees_without_parent
 from idu_api.urban_api.logic.territories import TerritoriesService
 from idu_api.urban_api.schemas import (
     HexagonPost,
@@ -96,7 +97,6 @@ from idu_api.urban_api.schemas import (
     TerritoryPut,
     TerritoryTypePost,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import build_territory_trees_without_parent
 
 Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString
 
@@ -477,7 +477,6 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
         name: str | None,
         cities_only: bool,
         created_at: date | None,
-        paginate: bool,
     ) -> list[TerritoryTreeWithoutGeometryDTO]:
         """Returns List of TerritoryTreeWithoutGeometryDTO objects with nested children, representing the hierarchy:
         where each root node contains its child territories recursively (parent isn't included)"""
@@ -491,7 +490,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
             created_at,
             order_by=None,
             ordering=None,
-            paginate=paginate
+            paginate=False,
         )
 
         return build_territory_trees_without_parent(territories_list)
