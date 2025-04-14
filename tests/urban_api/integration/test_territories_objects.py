@@ -6,7 +6,14 @@ import httpx
 import pytest
 from pydantic import ValidationError
 
-from idu_api.urban_api.schemas import Page, Territory, TerritoryPost, TerritoryPut, TerritoryWithoutGeometry
+from idu_api.urban_api.schemas import (
+    Page,
+    Territory,
+    TerritoryPost,
+    TerritoryPut,
+    TerritoryTreeWithoutGeometry,
+    TerritoryWithoutGeometry,
+)
 from idu_api.urban_api.schemas.geometries import AllPossibleGeometry, GeoJSONResponse
 from tests.urban_api.helpers.utils import assert_response
 
@@ -243,7 +250,6 @@ async def test_get_all_territories_by_parent_id(
         "created_at": city["created_at"][:10],
         "get_all_levels": expected_status != 400,
         "cities_only": expected_status == 400,
-        "page_size": 1,
     }
     if territory_id_param is not None:
         params["parent_id"] = territory_id_param
@@ -340,7 +346,6 @@ async def test_get_all_territories_without_geometry_by_parent_id(
         "created_at": city["created_at"][:10],
         "get_all_levels": expected_status != 400,
         "cities_only": expected_status == 400,
-        "page_size": 1,
     }
     if territory_id_param is not None:
         params["parent_id"] = territory_id_param
@@ -354,6 +359,42 @@ async def test_get_all_territories_without_geometry_by_parent_id(
         assert_response(response, expected_status, TerritoryWithoutGeometry, error_message, result_type="list")
     else:
         assert_response(response, expected_status, TerritoryWithoutGeometry, error_message)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expected_status, error_message, territory_id_param",
+    [
+        (200, None, None),
+        (404, "not found", 1e9),
+    ],
+    ids=["success", "not_found"],
+)
+async def test_get_all_territories_hierarchy_without_geometry_by_parent_id(
+    urban_api_host: str,
+    expected_status: int,
+    error_message: str | None,
+    territory_id_param: int | None,
+):
+    """Test GET /all_territories_without_geometry method."""
+
+    # Arrange
+    params = {
+        "order_by": "created_at",
+        "ordering": "asc",
+    }
+    if territory_id_param is not None:
+        params["parent_id"] = territory_id_param
+
+    # Act
+    async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
+        response = await client.get("/all_territories_without_geometry/hierarchy", params=params)
+
+    # Assert
+    if response.status_code == 200:
+        assert_response(response, expected_status, TerritoryTreeWithoutGeometry, error_message, result_type="list")
+    else:
+        assert_response(response, expected_status, TerritoryTreeWithoutGeometry, error_message)
 
 
 @pytest.mark.asyncio

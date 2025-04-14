@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, TypeVar
+from typing import Any, Type, TypeVar
 
 from geoalchemy2.functions import ST_GeomFromWKB, ST_Union
 from pydantic import BaseModel
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.selectable import CTE, Select
 
 from idu_api.common.db.entities import projects_data, territories_data
-from idu_api.urban_api.dto import UserDTO
+from idu_api.urban_api.dto import TerritoryTreeWithoutGeometryDTO, TerritoryWithoutGeometryDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
@@ -23,6 +23,8 @@ OBJECTS_NUMBER_TO_INSERT_LIMIT = 7_000
 SRID = 4326
 
 UrbanAPIModel = TypeVar("UrbanAPIModel", bound=BaseModel)
+InputDTOType = TypeVar("InputDTOType")
+OutputDTOType = TypeVar("OutputDTOType")
 
 
 async def check_existence(
@@ -241,7 +243,7 @@ async def get_context_territories_geometry(
     elif project.user_id != user.id and not project.public and not user.is_superuser:
         raise AccessDeniedError(project_id, "project")
     elif project.is_regional:
-        raise NotAllowedInRegionalScenario('context')
+        raise NotAllowedInRegionalScenario("context")
 
     # Get union geometry of all context territories
     unified_geometry = (
@@ -251,3 +253,53 @@ async def get_context_territories_geometry(
     )
 
     return unified_geometry, project.properties["context"]
+
+
+def build_hierarchy(
+    input_dtos: list[InputDTOType],
+    output_model: Type[OutputDTOType],
+    id_attr: str = "id",
+    parent_id_attr: str = "parent_id",
+    children_attr: str = "children",
+) -> list[OutputDTOType]:
+    """
+    Creates trees hierarchy for entities based on the list of DTOs.
+
+    Parameters:
+    - input_dtos: A list of DTO entities with the id and parent_id attributes.
+    - output_model: The class used to create tree nodes (must contain the children attribute).
+    - id_attr: The name of the attribute of the entity identifier.
+    - parent_id_attr: The name of the attribute of the parent ID.
+    - children_attr: The name of the attribute for the list of children.
+
+    Retrieves the list of root nodes of the trees.
+    """
+
+    # Initialization of data structures
+    node_map: dict[Any, OutputDTOType] = {}
+    id_to_parent: dict[int, int] = {}
+    root_nodes: list[OutputDTOType] = []
+
+    # Creating nodes
+    for dto in input_dtos:
+        dto_id = getattr(dto, id_attr)
+        parent_id = getattr(dto, parent_id_attr)
+
+        # Keep the connection ID -> parent_id
+        id_to_parent[dto_id] = parent_id
+
+        # Creating a node with preset children
+        node_data = {**dto.__dict__, children_attr: []}
+        node_map[dto_id] = output_model(**node_data)
+
+    # Building connections between nodes
+    for dto_id, node in node_map.items():
+        parent_id = id_to_parent.get(dto_id)
+
+        if parent_id in node_map:
+            parent_node = node_map[parent_id]
+            getattr(parent_node, children_attr).append(node)
+        else:
+            root_nodes.append(node)
+
+    return root_nodes

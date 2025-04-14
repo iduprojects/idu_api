@@ -1,6 +1,6 @@
 """Social groups handlers are defined here."""
 
-from fastapi import Path, Query, Request, HTTPException
+from fastapi import HTTPException, Path, Query, Request
 from starlette import status
 
 from idu_api.urban_api.logic.soc_groups import SocGroupsService

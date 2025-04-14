@@ -37,7 +37,7 @@ async def get_functional_zones_sources_by_scenario_id_from_db(
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
     if project.is_regional:
-        raise NotAllowedInRegionalScenario('Functional zones')
+        raise NotAllowedInRegionalScenario("Functional zones")
 
     statement = (
         select(projects_functional_zones.c.year, projects_functional_zones.c.source)
@@ -61,7 +61,7 @@ async def get_functional_zones_by_scenario_id_from_db(
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
     if project.is_regional:
-        raise NotAllowedInRegionalScenario('Functional zones')
+        raise NotAllowedInRegionalScenario("Functional zones")
 
     statement = (
         select(

@@ -5,7 +5,7 @@ import os
 import zipfile
 from collections.abc import Callable
 from datetime import date, datetime, timezone
-from typing import Literal, Any
+from typing import Any, Literal
 
 import aiohttp
 import structlog
@@ -23,7 +23,7 @@ from geoalchemy2.functions import (
     ST_Within,
 )
 from PIL import Image
-from sqlalchemy import cast, delete, func, insert, literal, select, text, update, ScalarSelect
+from sqlalchemy import ScalarSelect, cast, delete, func, insert, literal, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -547,7 +547,7 @@ async def add_project_to_db(
         .values(**project.model_dump(exclude={"territory"}), user_id=user.id)
         .returning(projects_data.c.project_id)
     )
-    project_id =  (await conn.execute(statement)).scalar_one()
+    project_id = (await conn.execute(statement)).scalar_one()
 
     project_territory = extract_values_from_model(project.territory)
     await conn.execute(insert(projects_territory_data).values(**project_territory, project_id=project_id))
@@ -786,11 +786,11 @@ async def add_context_territories(
             ST_Buffer(
                 cast(
                     geometry,
-                    Geography(srid=SRID), # Convert geometry to geography for accurate distance-based buffering.
+                    Geography(srid=SRID),  # Convert geometry to geography for accurate distance-based buffering.
                 ),
-                buffer_meters, # Distance of buffer in meters.
+                buffer_meters,  # Distance of buffer in meters.
             ),
-            Geometry(srid=SRID), # Cast back to geometry type with SRID.
+            Geometry(srid=SRID),  # Cast back to geometry type with SRID.
         ).label("geometry")
     ).scalar_subquery()
 
@@ -894,7 +894,7 @@ async def create_project_base_scenario(
                 .where(
                     projects_data.c.territory_id == territory_id,
                     projects_data.c.is_regional.is_(True),  # Regional projects only.
-                    scenarios_data.c.is_based.is_(True),    # Must be a base scenario.
+                    scenarios_data.c.is_based.is_(True),  # Must be a base scenario.
                 )
             )
         ).scalar_one_or_none()
@@ -948,16 +948,24 @@ async def insert_intersecting_geometries(conn: AsyncConnection, geometry: Scalar
     objects_intersecting_cte = (
         select(object_geometries_data.c.object_geometry_id)
         .select_from(
-            object_geometries_data
-            .join(urban_objects_data, urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id)
-            .join(physical_objects_data, physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id)
-            .join(physical_object_types_dict, physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id)
+            object_geometries_data.join(
+                urban_objects_data,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+            )
+            .join(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
+            )
         )
         .where(
             ST_Intersects(object_geometries_data.c.geometry, geometry),
             ~ST_Within(object_geometries_data.c.geometry, geometry),
-            ST_Area(ST_Intersection(object_geometries_data.c.geometry, geometry)) >=
-                area_percent * ST_Area(object_geometries_data.c.geometry),
+            ST_Area(ST_Intersection(object_geometries_data.c.geometry, geometry))
+            >= area_percent * ST_Area(object_geometries_data.c.geometry),
             ~physical_object_types_dict.c.name.ilike("%здание%"),  # Exclude buildings
         )
         .distinct()
@@ -984,7 +992,7 @@ async def insert_intersecting_geometries(conn: AsyncConnection, geometry: Scalar
                 ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, geometry)).label("centre_point"),
                 object_geometries_data.c.address,
                 object_geometries_data.c.osm_id,
-            ).where(object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting_cte)))
+            ).where(object_geometries_data.c.object_geometry_id.in_(select(objects_intersecting_cte))),
         )
         .returning(
             projects_object_geometries_data.c.object_geometry_id,
@@ -994,10 +1002,7 @@ async def insert_intersecting_geometries(conn: AsyncConnection, geometry: Scalar
 
     # Step 3: Execute the insertion and build a mapping of public IDs to new project-specific IDs.
     result = await conn.execute(insert_stmt)
-    return {
-        row.public_object_geometry_id: row.object_geometry_id
-        for row in result.mappings().all()
-    }
+    return {row.public_object_geometry_id: row.object_geometry_id for row in result.mappings().all()}
 
 
 async def insert_urban_objects(conn: AsyncConnection, scenario_id: int, id_mapping: dict[int, int]) -> None:
@@ -1029,7 +1034,7 @@ async def insert_urban_objects(conn: AsyncConnection, scenario_id: int, id_mappi
         .select_from(
             urban_objects_data.join(
                 projects_object_geometries_data,
-                urban_objects_data.c.object_geometry_id == projects_object_geometries_data.c.public_object_geometry_id
+                urban_objects_data.c.object_geometry_id == projects_object_geometries_data.c.public_object_geometry_id,
             )
         )
         .where(urban_objects_data.c.object_geometry_id.in_(id_mapping.keys()))
@@ -1041,7 +1046,7 @@ async def insert_urban_objects(conn: AsyncConnection, scenario_id: int, id_mappi
         select(
             base_query_cte.c.public_urban_object_id,
             literal(scenario_id).label("scenario_id"),
-        )
+        ),
     )
 
     # Step 3: Insert detailed urban object data with mapped geometries
@@ -1051,8 +1056,8 @@ async def insert_urban_objects(conn: AsyncConnection, scenario_id: int, id_mappi
             base_query_cte.c.public_physical_object_id,
             base_query_cte.c.public_service_id,
             base_query_cte.c.object_geometry_id,
-            literal(scenario_id).label("scenario_id")
-        )
+            literal(scenario_id).label("scenario_id"),
+        ),
     )
 
     # Execute inserts
@@ -1077,27 +1082,22 @@ async def insert_functional_zones(conn: AsyncConnection, scenario_id: int, geome
     """
 
     # Step 1: Define the SELECT statement to fetch intersecting functional zones
-    intersecting_zones_select = (
-        select(
-            literal(scenario_id).label("scenario_id"),
-            functional_zones_data.c.functional_zone_type_id,
-            ST_Intersection(functional_zones_data.c.geometry, geometry).label("geometry"),
-            functional_zones_data.c.year,
-            functional_zones_data.c.source,
-            functional_zones_data.c.properties,
-        )
-        .where(
-            # Must intersect with the given geometry
-            ST_Intersects(functional_zones_data.c.geometry, geometry),
-
-            # Filter only valid polygonal geometries
-            ST_GeometryType(ST_Intersection(functional_zones_data.c.geometry, geometry)).in_(
-                ("ST_Polygon", "ST_MultiPolygon")
-            ),
-
-            # Ensure geometry is not empty
-            ~ST_IsEmpty(ST_Intersection(functional_zones_data.c.geometry, geometry)),
-        )
+    intersecting_zones_select = select(
+        literal(scenario_id).label("scenario_id"),
+        functional_zones_data.c.functional_zone_type_id,
+        ST_Intersection(functional_zones_data.c.geometry, geometry).label("geometry"),
+        functional_zones_data.c.year,
+        functional_zones_data.c.source,
+        functional_zones_data.c.properties,
+    ).where(
+        # Must intersect with the given geometry
+        ST_Intersects(functional_zones_data.c.geometry, geometry),
+        # Filter only valid polygonal geometries
+        ST_GeometryType(ST_Intersection(functional_zones_data.c.geometry, geometry)).in_(
+            ("ST_Polygon", "ST_MultiPolygon")
+        ),
+        # Ensure geometry is not empty
+        ~ST_IsEmpty(ST_Intersection(functional_zones_data.c.geometry, geometry)),
     )
 
     # Step 2: Insert results into the `user_projects.functional_zones` table using INSERT FROM SELECT
@@ -1111,7 +1111,7 @@ async def insert_functional_zones(conn: AsyncConnection, scenario_id: int, geome
                 projects_functional_zones.c.source,
                 projects_functional_zones.c.properties,
             ],
-            intersecting_zones_select
+            intersecting_zones_select,
         )
     )
 
@@ -1145,7 +1145,10 @@ async def save_indicators(project_id: int, scenario_id: int, logger: structlog.s
         except aiohttp.ClientResponseError as exc:
             await logger.awarning(
                 "Failed to save indicators",
-                status=exc.status, message=exc.message, url=exc.request_info.url, params=params
+                status=exc.status,
+                message=exc.message,
+                url=exc.request_info.url,
+                params=params,
             )
 
         # Handle connection errors (e.g., network issues)
@@ -1155,4 +1158,3 @@ async def save_indicators(project_id: int, scenario_id: int, logger: structlog.s
         # Handle any other unexpected exceptions
         except Exception:
             await logger.aexception("Unexpected error occurred while saving indicators")
-

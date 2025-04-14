@@ -13,6 +13,7 @@ from .object_geometries import *
 from .physical_object_types import *
 from .physical_objects import *
 from .projects import *
+from .samples import *
 from .scenarios import *
 from .service_types import *
 from .services import *

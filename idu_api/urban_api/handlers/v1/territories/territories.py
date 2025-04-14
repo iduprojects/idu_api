@@ -12,6 +12,7 @@ from idu_api.urban_api.schemas import (
     TerritoryPatch,
     TerritoryPost,
     TerritoryPut,
+    TerritoryTreeWithoutGeometry,
     TerritoryWithoutGeometry,
 )
 from idu_api.urban_api.schemas.enums import OrderByField, Ordering
@@ -432,6 +433,49 @@ async def get_all_territories_without_geometry_by_parent_id(
     )
 
     return [TerritoryWithoutGeometry.from_dto(territory) for territory in territories]
+
+
+@territories_router.get(
+    "/all_territories_without_geometry/hierarchy",
+    response_model=list[TerritoryTreeWithoutGeometry],
+    status_code=status.HTTP_200_OK,
+)
+async def get_all_territories_without_geometry_hierarchy(
+    request: Request,
+    parent_id: int | None = Query(
+        None, description="parent territory identifier to filter, should be skipped to get top level territories", gt=0
+    ),
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+        None, description="attribute to set ordering (created_at or updated_at)"
+    ),
+    ordering: Ordering = Query(
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
+    ),
+) -> list[TerritoryTreeWithoutGeometry]:
+    """
+    ## Get a list of trees of all territories without geometry by parent identifier (parent isn't included).
+
+    ### Parameters:
+    - **parent_id** (int | None, Query): Unique identifier of the parent territory. If None, returns top-level territories.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - territory_id (default), created_at or updated_at.
+    - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
+
+    ### Returns:
+    - **list[TerritoryTreeWithoutGeometry]**: Hierarchical tree structures of territories without geometry data.
+      Each root node contains nested children territories recursively.
+
+    ### Errors:
+    - **404 Not Found**: If specified parent territory doesn't exist.
+    """
+    territories_service: TerritoriesService = request.state.territories_service
+
+    order_by_value = order_by.value if order_by is not None else None
+
+    territories_trees = await territories_service.get_territories_trees_without_geometry_by_parent_id(
+        parent_id, order_by_value, ordering.value
+    )
+
+    return [TerritoryTreeWithoutGeometry.from_dto(territories_tree) for territories_tree in territories_trees]
 
 
 @territories_router.post(

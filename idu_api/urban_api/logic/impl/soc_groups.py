@@ -80,7 +80,7 @@ class SocGroupsServiceImpl(SocGroupsService):
         self, soc_group_id: int, service_type_id: int, soc_value_id: int
     ) -> SocValueWithSocGroupsDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_value_to_social_group_from_db(conn, soc_group_id, soc_value_id, service_type_id)
+            return await add_value_to_social_group_from_db(conn, soc_group_id, service_type_id, soc_value_id)
 
     async def delete_social_value(self, soc_value_id: int) -> dict[str, str]:
         async with self._connection_manager.get_connection() as conn:

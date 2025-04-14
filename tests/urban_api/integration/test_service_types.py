@@ -12,9 +12,10 @@ from idu_api.urban_api.schemas import (
     ServiceTypePost,
     ServiceTypePut,
     ServiceTypesHierarchy,
+    SocGroupWithServiceTypes,
     UrbanFunction,
     UrbanFunctionPost,
-    UrbanFunctionPut, SocGroupWithServiceTypes,
+    UrbanFunctionPut,
 )
 from tests.urban_api.helpers.utils import assert_response
 

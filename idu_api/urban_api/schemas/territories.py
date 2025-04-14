@@ -5,7 +5,13 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from idu_api.urban_api.dto import TargetCityTypeDTO, TerritoryDTO, TerritoryTypeDTO, TerritoryWithoutGeometryDTO
+from idu_api.urban_api.dto import (
+    TargetCityTypeDTO,
+    TerritoryDTO,
+    TerritoryTreeWithoutGeometryDTO,
+    TerritoryTypeDTO,
+    TerritoryWithoutGeometryDTO,
+)
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
 from idu_api.urban_api.schemas.short_models import (
     ShortIndicatorValueInfo,
@@ -252,6 +258,47 @@ class TerritoryWithoutGeometry(BaseModel):
             is_city=dto.is_city,
             created_at=dto.created_at,
             updated_at=dto.updated_at,
+        )
+
+
+class TerritoryTreeWithoutGeometry(TerritoryWithoutGeometry):
+    """
+    Territory with all its attributes, but without center and geometry
+
+    which also contains child territories."""
+
+    children: list["TerritoryTreeWithoutGeometry"] = Field(default_factory=list)
+
+    @classmethod
+    def from_dto(cls, dto: TerritoryTreeWithoutGeometryDTO) -> "TerritoryTreeWithoutGeometry":
+        """Construct from DTO with nested children."""
+        return cls(
+            territory_id=dto.territory_id,
+            territory_type=TerritoryTypeBasic(id=dto.territory_type_id, name=dto.territory_type_name),
+            parent=(ShortTerritory(id=dto.parent_id, name=dto.parent_name) if dto.parent_id is not None else None),
+            name=dto.name,
+            level=dto.level,
+            properties=dto.properties,
+            admin_center=(
+                ShortTerritory(id=dto.admin_center_id, name=dto.admin_center_name)
+                if dto.admin_center_id is not None
+                else None
+            ),
+            target_city_type=(
+                TargetCityTypeBasic(
+                    id=dto.target_city_type_id,
+                    name=dto.target_city_type_name,
+                    description=dto.target_city_type_description,
+                )
+                if dto.target_city_type_id is not None
+                else None
+            ),
+            okato_code=dto.okato_code,
+            oktmo_code=dto.oktmo_code,
+            is_city=dto.is_city,
+            created_at=dto.created_at,
+            updated_at=dto.updated_at,
+            children=[TerritoryTreeWithoutGeometry.from_dto(child_dto) for child_dto in dto.children],
         )
 
 
