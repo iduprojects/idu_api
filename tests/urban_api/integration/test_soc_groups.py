@@ -15,6 +15,7 @@ from idu_api.urban_api.schemas import (
     SocValue,
     SocValuePost,
     SocValueWithSocGroups,
+    ServiceType
 )
 from tests.urban_api.helpers.utils import assert_response
 
@@ -341,7 +342,6 @@ async def test_get_social_group_indicator_values(
         "soc_value_id": social_group_indicator["soc_value"]["id"],
         "territory_id": social_group_indicator["territory"]["id"],
         "year": social_group_indicator["year"],
-        "value_type": social_group_indicator["value_type"],
         "last_only": expected_status == 422,
     }
 
@@ -384,7 +384,6 @@ async def test_add_social_group_indicator_value(
     json_data["soc_value_id"] = social_group_indicator["soc_value"]["id"]
     json_data["territory_id"] = social_group_indicator["territory"]["id"]
     json_data["year"] = social_group_indicator["year"]
-    json_data["value_type"] = "real"
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
@@ -419,7 +418,6 @@ async def test_put_social_group_indicator_value(
     json_data["soc_value_id"] = social_group_indicator["soc_value"]["id"]
     json_data["territory_id"] = social_group_indicator["territory"]["id"]
     json_data["year"] = social_group_indicator["year"]
-    json_data["value_type"] = "real"
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
@@ -453,7 +451,6 @@ async def test_delete_social_group_indicator_values(
         "soc_value_id": social_group_indicator["soc_value"]["id"],
         "territory_id": social_group_indicator["territory"]["id"],
         "year": social_group_indicator["year"],
-        "value_type": "real",
     }
 
     # Act
@@ -462,3 +459,37 @@ async def test_delete_social_group_indicator_values(
 
     # Assert
     assert_response(response, expected_status, OkResponse, error_message)
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expected_status, error_message",
+    [
+        (200, None),
+        (404, "not found"),
+    ],
+    ids=["success", "not_found"],
+)
+async def test_get_service_types_by_social_value_id(
+        urban_api_host: str,
+        expected_status: int,
+        error_message: str | None,
+        social_value_id: int,
+):
+    """Test GET /social_values/{social_value}/service_types"""
+
+    # Arrange
+    params = {
+        "ordering": "desc"
+    }
+    # Act
+    async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
+        response = await client.get(f"/social_values/{social_value_id}/service_types", params=params)
+        result = response.json()
+
+    # Assert
+    if expected_status == 200:
+        assert_response(response, expected_status, ServiceType, error_message, result_type="list")
+        assert len(result) > 0, "At least one service type was returned."
+    else:
+        assert_response(response, expected_status, ServiceType, error_message)
+

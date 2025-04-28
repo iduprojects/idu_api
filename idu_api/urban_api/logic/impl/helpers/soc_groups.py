@@ -13,9 +13,12 @@ from idu_api.common.db.entities import (
     soc_group_values_data,
     soc_groups_dict,
     soc_values_dict,
+    soc_values_service_types_dict,
     territories_data,
+    urban_functions_dict
 )
 from idu_api.urban_api.dto import (
+    ServiceTypeDTO,
     SocGroupDTO,
     SocGroupIndicatorValueDTO,
     SocGroupWithServiceTypesDTO,
@@ -161,6 +164,9 @@ async def get_social_value_by_id_from_db(conn: AsyncConnection, soc_value_id: in
             service_types_dict.c.service_type_id.label("id"),
             service_types_dict.c.name.label("service_type_name"),
             soc_group_values_data.c.infrastructure_type,
+            soc_values_dict.c.rank,
+            soc_values_dict.c.normative_value,
+            soc_values_dict.c.decree_value,
         )
         .select_from(
             soc_values_dict.outerjoin(
@@ -201,7 +207,12 @@ async def get_social_value_by_id_from_db(conn: AsyncConnection, soc_value_id: in
         return [SocGroupWithServiceTypesDTO(**group) for group in grouped_data.values()]
 
     return SocValueWithSocGroupsDTO(
-        soc_value_id=result[0]["soc_value_id"], name=result[0]["name"], soc_groups=group_objects(result)
+        soc_value_id=result[0]["soc_value_id"],
+        name=result[0]["name"],
+        soc_groups=group_objects(result),
+        rank=result[0]["rank"],
+        normative_value=result[0]["normative_value"],
+        decree_value=result[0]["decree_value"]
     )
 
 
@@ -290,7 +301,6 @@ async def get_social_group_indicator_values_from_db(
     soc_value_id: int | None,
     territory_id: int | None,
     year: int | None,
-    value_type: Literal["real", "forecast", "target"] | None,
     last_only: bool,
 ) -> list[SocGroupIndicatorValueDTO]:
     """Get social group's indicator values by social group identifier."""
@@ -299,10 +309,7 @@ async def get_social_group_indicator_values_from_db(
         raise EntityNotFoundById(soc_group_id, "social group")
 
     select_from = (
-        soc_group_value_indicators_data.join(
-            soc_groups_dict,
-            soc_groups_dict.c.soc_group_id == soc_group_value_indicators_data.c.soc_group_id,
-        )
+        soc_group_value_indicators_data
         .join(
             soc_values_dict,
             soc_values_dict.c.soc_value_id == soc_group_value_indicators_data.c.soc_value_id,
@@ -313,27 +320,21 @@ async def get_social_group_indicator_values_from_db(
     if last_only:
         subquery = (
             select(
-                soc_group_value_indicators_data.c.soc_group_id,
                 soc_group_value_indicators_data.c.soc_value_id,
                 soc_group_value_indicators_data.c.territory_id,
-                soc_group_value_indicators_data.c.value_type,
                 func.max(soc_group_value_indicators_data.c.year).label("max_date"),
             )
             .group_by(
-                soc_group_value_indicators_data.c.soc_group_id,
                 soc_group_value_indicators_data.c.soc_value_id,
                 soc_group_value_indicators_data.c.territory_id,
-                soc_group_value_indicators_data.c.value_type,
             )
             .subquery()
         )
 
         select_from = select_from.join(
             subquery,
-            (soc_group_value_indicators_data.c.soc_group_id == subquery.c.soc_group_id)
-            & (soc_group_value_indicators_data.c.soc_value_id == subquery.c.soc_value_id)
+            (soc_group_value_indicators_data.c.soc_value_id == subquery.c.soc_value_id)
             & (soc_group_value_indicators_data.c.territory_id == subquery.c.territory_id)
-            & (soc_group_value_indicators_data.c.value_type == subquery.c.value_type)
             & (soc_group_value_indicators_data.c.year == subquery.c.max_date),
         )
 
@@ -345,7 +346,6 @@ async def get_social_group_indicator_values_from_db(
             territories_data.c.name.label("territory_name"),
         )
         .select_from(select_from)
-        .where(soc_group_value_indicators_data.c.soc_group_id == soc_group_id)
     )
 
     if soc_value_id is not None:
@@ -354,13 +354,11 @@ async def get_social_group_indicator_values_from_db(
         statement = statement.where(soc_group_value_indicators_data.c.territory_id == territory_id)
     if year is not None:
         statement = statement.where(soc_group_value_indicators_data.c.year == year)
-    if value_type is not None:
-        statement = statement.where(soc_group_value_indicators_data.c.value_type == value_type)
 
     result = (await conn.execute(statement)).mappings().all()
     if not result:
         raise EntityNotFoundByParams(
-            "social group indicator value", soc_group_id, soc_value_id, territory_id, year, value_type
+            "social group indicator value", soc_group_id, soc_value_id, territory_id, year
         )
 
     return [SocGroupIndicatorValueDTO(**indicator) for indicator in result]
@@ -386,11 +384,9 @@ async def add_social_group_indicator_value_to_db(
         conn,
         soc_group_value_indicators_data,
         conditions={
-            "soc_group_id": soc_group_id,
             "soc_value_id": soc_group_indicator.soc_value_id,
             "territory_id": soc_group_indicator.territory_id,
             "year": soc_group_indicator.year,
-            "value_type": soc_group_indicator.value_type,
         },
     ):
         raise EntityAlreadyExists(
@@ -399,12 +395,11 @@ async def add_social_group_indicator_value_to_db(
             soc_group_indicator.soc_value_id,
             soc_group_indicator.territory_id,
             soc_group_indicator.year,
-            soc_group_indicator.value_type,
         )
 
     statement = (
         insert(soc_group_value_indicators_data)
-        .values(soc_group_id=soc_group_id, **soc_group_indicator.model_dump())
+        .values(**soc_group_indicator.model_dump())
         .returning(soc_group_value_indicators_data)
     )
 
@@ -418,7 +413,6 @@ async def add_social_group_indicator_value_to_db(
             result.soc_value_id,
             result.territory_id,
             result.year,
-            result.value_type,
             last_only=False,
         )
     )[0]
@@ -444,22 +438,18 @@ async def put_social_group_indicator_value_to_db(
         conn,
         soc_group_value_indicators_data,
         conditions={
-            "soc_group_id": soc_group_id,
             "soc_value_id": soc_group_indicator.soc_value_id,
             "territory_id": soc_group_indicator.territory_id,
             "year": soc_group_indicator.year,
-            "value_type": soc_group_indicator.value_type,
         },
     ):
         statement = (
             update(soc_group_value_indicators_data)
-            .values(soc_group_id=soc_group_id, **extract_values_from_model(soc_group_indicator, to_update=True))
+            .values(**extract_values_from_model(soc_group_indicator, to_update=True))
             .where(
-                soc_group_value_indicators_data.c.soc_group_id == soc_group_id,
                 soc_group_value_indicators_data.c.soc_value_id == soc_group_indicator.soc_value_id,
                 soc_group_value_indicators_data.c.territory_id == soc_group_indicator.territory_id,
                 soc_group_value_indicators_data.c.year == soc_group_indicator.year,
-                soc_group_value_indicators_data.c.value_type == soc_group_indicator.value_type,
             )
             .returning(soc_group_value_indicators_data)
         )
@@ -467,7 +457,7 @@ async def put_social_group_indicator_value_to_db(
     else:
         statement = (
             insert(soc_group_value_indicators_data)
-            .values(soc_group_id=soc_group_id, **soc_group_indicator.model_dump())
+            .values(**soc_group_indicator.model_dump())
             .returning(soc_group_value_indicators_data)
         )
 
@@ -481,7 +471,6 @@ async def put_social_group_indicator_value_to_db(
             result.soc_value_id,
             result.territory_id,
             result.year,
-            result.value_type,
             last_only=False,
         )
     )[0]
@@ -489,11 +478,9 @@ async def put_social_group_indicator_value_to_db(
 
 async def delete_social_group_indicator_value_from_db(
     conn: AsyncConnection,
-    soc_group_id: int,
     soc_value_id: int,
     territory_id: int,
     year: int,
-    value_type: Literal["real", "forecast", "target"],
 ) -> dict[str, str]:
     """Delete social group indicator value."""
 
@@ -501,25 +488,21 @@ async def delete_social_group_indicator_value_from_db(
         conn,
         soc_group_value_indicators_data,
         conditions={
-            "soc_group_id": soc_group_id,
             "soc_value_id": soc_value_id,
             "territory_id": territory_id,
             "year": year,
-            "value_type": value_type,
         },
     ):
         raise EntityNotFoundByParams(
-            "social group indicator value", soc_group_id, soc_value_id, territory_id, year, value_type
+            "social group indicator value", soc_value_id, territory_id, year
         )
 
     statement = (
         delete(soc_group_value_indicators_data)
         .where(
-            soc_group_value_indicators_data.c.soc_group_id == soc_group_id,
             soc_group_value_indicators_data.c.soc_value_id == soc_value_id,
             soc_group_value_indicators_data.c.territory_id == territory_id,
             soc_group_value_indicators_data.c.year == year,
-            soc_group_value_indicators_data.c.value_type == value_type,
         )
         .returning(soc_group_value_indicators_data)
     )
@@ -528,3 +511,43 @@ async def delete_social_group_indicator_value_from_db(
     await conn.commit()
 
     return {"status": "ok"}
+
+
+async def get_service_types_by_social_value_id_from_db(
+        conn: AsyncConnection,
+        social_value_id: int,
+        ordering: Literal["asc", "desc"] | None = None
+) -> list[ServiceTypeDTO]:
+    """Get all service type objects by social_value_id."""
+
+    if not await check_existence(
+        conn,
+        soc_values_service_types_dict,
+        conditions={
+            "soc_value_id": social_value_id,
+        },
+    ):
+        raise EntityNotFoundByParams(
+            "social value", social_value_id
+        )
+
+    statement = (
+        select(
+            service_types_dict,
+            urban_functions_dict.c.name.label("urban_function_name")
+        )
+        .select_from(
+            soc_values_service_types_dict
+            .join(service_types_dict, service_types_dict.c.service_type_id == soc_values_service_types_dict.c.service_type_id)
+            .join(urban_functions_dict, urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id)
+        )
+        .where(soc_values_service_types_dict.c.soc_value_id == social_value_id)
+    )
+
+    if ordering == "desc":
+        statement = statement.order_by(service_types_dict.c.service_type_id.desc())
+    else:
+        statement = statement.order_by(service_types_dict.c.service_type_id)
+
+    result = await conn.execute(statement)
+    return [ServiceTypeDTO(**service_type) for service_type in result.mappings().all()]

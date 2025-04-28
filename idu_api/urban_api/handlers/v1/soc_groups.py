@@ -16,8 +16,9 @@ from idu_api.urban_api.schemas import (
     SocValue,
     SocValuePost,
     SocValueWithSocGroups,
+    ServiceType,
 )
-from idu_api.urban_api.schemas.enums import ValueType
+from idu_api.urban_api.schemas.enums import Ordering
 
 from .routers import soc_groups_router
 
@@ -224,6 +225,34 @@ async def add_social_value(request: Request, soc_value: SocValuePost) -> SocValu
 
     return SocValueWithSocGroups.from_dto(new_soc_value)
 
+@soc_groups_router.get(
+    "/social_values/{soc_value_id}/service_types",
+    status_code=status.HTTP_200_OK
+)
+async def get_service_types(
+    request: Request,
+    social_value_id: int,
+    ordering: Ordering = Query(
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
+    ),
+) -> list[ServiceType]:
+    """
+    ## Get all service types by social value id.
+
+    ### Parameters:
+    - **social_value_id** (int, Path): Social value identifier.
+
+    ### Returns:
+    - **list[ServiceType]**: All ServiceTypes connected with this social value.
+
+    ### Errors:
+    - **404 Not Found**: If the social value does not exist.
+    """
+    soc_groups_service: SocGroupsService = request.state.soc_groups_service
+
+    result = await soc_groups_service.get_service_types_by_social_value_id(social_value_id, ordering.value)
+
+    return [ServiceType.from_dto(service_type_dto) for service_type_dto in result]
 
 @soc_groups_router.post(
     "/social_groups/{soc_group_id}/values",
@@ -297,7 +326,6 @@ async def get_social_group_indicator_values(
     soc_value_id: int | None = Query(None, description="social value identifier", gt=0),
     territory_id: int | None = Query(None, description="territory identifier", gt=0),
     year: int | None = Query(None, description="year when value was modeled (skip to get values for all years)", gt=0),
-    value_type: ValueType = Query(None, description="value type"),
     last_only: bool = Query(False, description="to get only the last values"),
 ) -> list[SocGroupIndicatorValue]:
     """
@@ -310,7 +338,6 @@ async def get_social_group_indicator_values(
     - **soc_value_id** (int, Query): Filter results by social value.
     - **territory_id** (int, Query): Filter results by territory.
     - **year** (int, Query): Filter results by specified year.
-    - **value_type** (ValueType, Query): Filter results by value type (real, forecast or target).
     - **last_only** (int, Query): To get only the last indicator value for each social group's value.
 
     ### Returns:
@@ -329,7 +356,7 @@ async def get_social_group_indicator_values(
         )
 
     soc_group_indicators = await soc_groups_service.get_social_group_indicator_values(
-        soc_group_id, soc_value_id, territory_id, year, value_type, last_only
+        soc_group_id, soc_value_id, territory_id, year, last_only
     )
 
     return [SocGroupIndicatorValue.from_dto(value) for value in soc_group_indicators]
@@ -414,7 +441,6 @@ async def delete_social_group_indicator_value(
     soc_value_id: int | None = Query(None, description="social value identifier", gt=0),
     territory_id: int | None = Query(None, description="territory identifier", gt=0),
     year: int | None = Query(None, description="year when value was modeled (skip to get values for all years)", gt=0),
-    value_type: ValueType = Query(None, description="value type"),
 ) -> OkResponse:
     """
     ## Delete social group's indicator value by given parameters.
@@ -424,7 +450,6 @@ async def delete_social_group_indicator_value(
     - **soc_value_id** (int, Query): Social value identifier.
     - **territory_id** (int, Query): Territory identifier.
     - **year** (int, Query): Specified year when value was modeled.
-    - **value_type** (ValueType, Query): Value type (real, forecast or target).
 
     ### Returns:
     - **OkResponse**: A confirmation message of the deletion.
@@ -435,7 +460,7 @@ async def delete_social_group_indicator_value(
     soc_groups_service: SocGroupsService = request.state.soc_groups_service
 
     await soc_groups_service.delete_social_group_indicator_value_from_db(
-        soc_group_id, soc_value_id, territory_id, year, value_type
+        soc_group_id, soc_value_id, territory_id, year
     )
 
     return OkResponse()

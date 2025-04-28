@@ -4,6 +4,7 @@ from typing import Literal
 
 from idu_api.common.db.connection import PostgresConnectionManager
 from idu_api.urban_api.dto import (
+    ServiceTypeDTO,
     SocGroupDTO,
     SocGroupIndicatorValueDTO,
     SocGroupWithServiceTypesDTO,
@@ -25,6 +26,7 @@ from idu_api.urban_api.logic.impl.helpers.soc_groups import (
     get_social_value_by_id_from_db,
     get_social_values_from_db,
     put_social_group_indicator_value_to_db,
+    get_service_types_by_social_value_id_from_db,
 )
 from idu_api.urban_api.logic.soc_groups import SocGroupsService
 from idu_api.urban_api.schemas import (
@@ -92,12 +94,11 @@ class SocGroupsServiceImpl(SocGroupsService):
         soc_value_id: int | None,
         territory_id: int | None,
         year: int | None,
-        value_type: Literal["real", "forecast", "target"] | None,
         last_only: bool,
     ) -> list[SocGroupIndicatorValueDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_social_group_indicator_values_from_db(
-                conn, soc_group_id, soc_value_id, territory_id, year, value_type, last_only
+                conn, soc_group_id, soc_value_id, territory_id, year, last_only
             )
 
     async def add_social_group_indicator_value(
@@ -118,9 +119,12 @@ class SocGroupsServiceImpl(SocGroupsService):
         soc_value_id: int | None,
         territory_id: int | None,
         year: int | None,
-        value_type: Literal["real", "forecast", "target"] | None,
     ) -> dict[str, str]:
         async with self._connection_manager.get_connection() as conn:
             return await delete_social_group_indicator_value_from_db(
-                conn, soc_group_id, soc_value_id, territory_id, year, value_type
+                conn, soc_group_id, soc_value_id, territory_id, year
             )
+
+    async def get_service_types_by_social_value_id(self, social_value_id: int, ordering: Literal["asc", "desc"] | None) -> list[ServiceTypeDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_service_types_by_social_value_id_from_db(conn, social_value_id, ordering)

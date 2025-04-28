@@ -34,6 +34,7 @@ from idu_api.common.db.entities.soc_groups import (
     soc_group_values_data,
     soc_groups_dict,
     soc_values_dict,
+    soc_values_service_types_dict
 )
 from idu_api.common.db.entities.territories import target_city_types_dict, territories_data, territory_types_dict
 from idu_api.common.db.entities.territory_indicators import territory_indicators_data

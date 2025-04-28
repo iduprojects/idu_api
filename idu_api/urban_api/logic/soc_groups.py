@@ -1,7 +1,7 @@
 """Social groups and values handlers logic of getting entities from the database is defined here."""
 
 import abc
-from typing import Literal, Protocol
+from typing import Protocol, Literal
 
 from idu_api.urban_api.dto import (
     SocGroupDTO,
@@ -9,6 +9,7 @@ from idu_api.urban_api.dto import (
     SocGroupWithServiceTypesDTO,
     SocValueDTO,
     SocValueWithSocGroupsDTO,
+    ServiceTypeDTO
 )
 from idu_api.urban_api.schemas import (
     SocGroupIndicatorValuePost,
@@ -73,7 +74,6 @@ class SocGroupsService(Protocol):
         soc_value_id: int | None,
         territory_id: int | None,
         year: int | None,
-        value_type: Literal["real", "forecast", "target"] | None,
         last_only: bool,
     ) -> list[SocGroupIndicatorValueDTO]:
         """Get social group's indicator values by social group identifier."""
@@ -97,6 +97,9 @@ class SocGroupsService(Protocol):
         soc_value_id: int | None,
         territory_id: int | None,
         year: int | None,
-        value_type: Literal["real", "forecast", "target"] | None,
     ) -> dict[str, str]:
         """Delete social group's indicator value."""
+
+    @abc.abstractmethod
+    async def get_service_types_by_social_value_id(self, social_value_id: int, ordering: Literal["asc", "desc"] | None) -> list[ServiceTypeDTO]:
+        """Get all service types by social value id"""
