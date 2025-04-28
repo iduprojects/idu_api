@@ -11,6 +11,7 @@ from idu_api.urban_api.schemas import (
     ServiceTypePost,
     ServiceTypePut,
     ServiceTypesHierarchy,
+    SocValueWithServiceTypes,
     UrbanFunction,
     UrbanFunctionPatch,
     UrbanFunctionPost,

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal
 
+from idu_api.urban_api.dto import ServiceTypeDTO
+
 
 @dataclass(frozen=True)
 class SocGroupDTO:
@@ -15,32 +17,35 @@ class SocGroupDTO:
 class SocGroupWithServiceTypesDTO:
     soc_group_id: int
     name: str
-    service_types: list[dict[str, Any]]
+    service_types: list[ServiceTypeDTO]
 
 
 @dataclass(frozen=True)
 class SocValueDTO:
     soc_value_id: int
     name: str
+    rank: int
+    normative_value: float
+    decree_value: float
 
 
 @dataclass(frozen=True)
-class SocValueWithSocGroupsDTO:
-    soc_value_id: int
-    name: str
-    soc_groups: list[SocGroupWithServiceTypesDTO]
-
-
-@dataclass(frozen=True)
-class SocGroupIndicatorValueDTO:
-    soc_group_id: int
-    soc_group_name: str
+class SocValueIndicatorValueDTO:
     soc_value_id: int
     soc_value_name: str
     territory_id: int
     territory_name: str
     year: int
     value: float
-    value_type: Literal["real", "forecast", "target"]
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True)
+class SocValueWithServiceTypesDTO:
+    soc_value_id: int
+    name: str
+    rank: int
+    normative_value: float
+    decree_value: float
+    service_types: list[ServiceTypeDTO]

@@ -5,6 +5,7 @@ from idu_api.urban_api.dto import (
     ServiceTypeDTO,
     ServiceTypesHierarchyDTO,
     SocGroupWithServiceTypesDTO,
+    SocValueDTO,
     UrbanFunctionDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.service_types import (
@@ -16,6 +17,7 @@ from idu_api.urban_api.logic.impl.helpers.service_types import (
     get_service_types_from_db,
     get_service_types_hierarchy_from_db,
     get_social_groups_by_service_type_id_from_db,
+    get_social_values_by_service_type_id_from_db,
     get_urban_functions_by_parent_id_from_db,
     patch_service_type_to_db,
     patch_urban_function_to_db,
@@ -98,3 +100,7 @@ class ServiceTypesServiceImpl(ServiceTypesService):
     async def get_social_groups_by_service_type_id(self, service_type_id: int) -> list[SocGroupWithServiceTypesDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_social_groups_by_service_type_id_from_db(conn, service_type_id)
+
+    async def get_social_values_by_service_type_id(self, service_type_id: int) -> list[SocValueDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_social_values_by_service_type_id_from_db(conn, service_type_id)
