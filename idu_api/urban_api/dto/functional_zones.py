@@ -24,6 +24,7 @@ class FunctionalZoneDTO:  # pylint: disable=too-many-instance-attributes
     functional_zone_type_id: int
     functional_zone_type_name: str
     functional_zone_type_nickname: str
+    functional_zone_type_description: str
     name: str | None
     geometry: geom.Polygon | geom.MultiPolygon
     year: int
@@ -43,6 +44,7 @@ class FunctionalZoneDTO:  # pylint: disable=too-many-instance-attributes
             "id": zone.pop("functional_zone_type_id"),
             "name": zone.pop("functional_zone_type_name"),
             "nickname": zone.pop("functional_zone_type_nickname"),
+            "description": zone.pop("functional_zone_type_description"),
         }
         return zone
 
@@ -55,6 +57,7 @@ class ScenarioFunctionalZoneDTO:  # pylint: disable=too-many-instance-attributes
     functional_zone_type_id: int
     functional_zone_type_name: str
     functional_zone_type_nickname: str
+    functional_zone_type_description: str
     name: str | None
     geometry: geom.Polygon | geom.MultiPolygon
     year: int
@@ -73,6 +76,7 @@ class ScenarioFunctionalZoneDTO:  # pylint: disable=too-many-instance-attributes
             "id": profile.pop("functional_zone_type_id"),
             "name": profile.pop("functional_zone_type_name"),
             "nickname": profile.pop("functional_zone_type_nickname"),
+            "description": profile.pop("functional_zone_type_description"),
         }
         return profile
 

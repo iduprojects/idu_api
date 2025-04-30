@@ -71,6 +71,7 @@ async def get_functional_zones_by_scenario_id_from_db(
             projects_functional_zones.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
+            functional_zone_types_dict.c.description.label("functional_zone_type_description"),
             projects_functional_zones.c.name,
             ST_AsEWKB(projects_functional_zones.c.geometry).label("geometry"),
             projects_functional_zones.c.year,
@@ -148,6 +149,7 @@ async def get_context_functional_zones_from_db(
             functional_zones_data.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
+            functional_zone_types_dict.c.description.label("functional_zone_type_description"),
             functional_zones_data.c.name,
             ST_AsEWKB(
                 case(
@@ -205,6 +207,7 @@ async def get_functional_zone_by_ids(conn: AsyncConnection, ids: list[int]) -> l
             projects_functional_zones.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
+            functional_zone_types_dict.c.description.label("functional_zone_type_description"),
             projects_functional_zones.c.name,
             ST_AsEWKB(projects_functional_zones.c.geometry).label("geometry"),
             projects_functional_zones.c.year,

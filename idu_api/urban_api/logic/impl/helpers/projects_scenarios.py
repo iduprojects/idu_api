@@ -91,6 +91,7 @@ async def get_scenarios_by_project_id_from_db(
             territories_data.c.name.label("territory_name"),
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
+            functional_zone_types_dict.c.description.label("functional_zone_type_description"),
         )
         .select_from(
             scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id)
@@ -125,6 +126,7 @@ async def get_scenario_by_id_from_db(conn: AsyncConnection, scenario_id: int, us
             territories_data.c.name.label("territory_name"),
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
+            functional_zone_types_dict.c.description.label("functional_zone_type_description"),
         )
         .select_from(
             scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id)

@@ -48,6 +48,7 @@ class Scenario(BaseModel):
                     id=dto.functional_zone_type_id,
                     name=dto.functional_zone_type_name,
                     nickname=dto.functional_zone_type_nickname,
+                    description=dto.functional_zone_type_description,
                 )
                 if dto.functional_zone_type_id is not None
                 else None
