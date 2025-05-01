@@ -7,6 +7,7 @@ import pytest
 
 from idu_api.urban_api.schemas import (
     OkResponse,
+    ServiceType,
     SocGroup,
     SocGroupIndicatorValue,
     SocGroupIndicatorValuePost,
@@ -15,7 +16,6 @@ from idu_api.urban_api.schemas import (
     SocValue,
     SocValuePost,
     SocValueWithSocGroups,
-    ServiceType
 )
 from tests.urban_api.helpers.utils import assert_response
 
@@ -460,6 +460,7 @@ async def test_delete_social_group_indicator_values(
     # Assert
     assert_response(response, expected_status, OkResponse, error_message)
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "expected_status, error_message",
@@ -470,17 +471,15 @@ async def test_delete_social_group_indicator_values(
     ids=["success", "not_found"],
 )
 async def test_get_service_types_by_social_value_id(
-        urban_api_host: str,
-        expected_status: int,
-        error_message: str | None,
-        social_value_id: int,
+    urban_api_host: str,
+    expected_status: int,
+    error_message: str | None,
+    social_value_id: int,
 ):
     """Test GET /social_values/{social_value}/service_types"""
 
     # Arrange
-    params = {
-        "ordering": "desc"
-    }
+    params = {"ordering": "desc"}
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(f"/social_values/{social_value_id}/service_types", params=params)
@@ -492,4 +491,3 @@ async def test_get_service_types_by_social_value_id(
         assert len(result) > 0, "At least one service type was returned."
     else:
         assert_response(response, expected_status, ServiceType, error_message)
-

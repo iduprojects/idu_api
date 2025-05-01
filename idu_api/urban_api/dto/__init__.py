@@ -48,8 +48,8 @@ from .soc_groups import (
     SocGroupIndicatorValueDTO,
     SocGroupWithServiceTypesDTO,
     SocValueDTO,
+    SocValueServiceTypeDTO,
     SocValueWithSocGroupsDTO,
-    SocValueServiceTypeDTO
 )
 from .territories import (
     TargetCityTypeDTO,

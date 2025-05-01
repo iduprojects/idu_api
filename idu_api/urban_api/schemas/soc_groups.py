@@ -73,17 +73,18 @@ class SocValue(BaseModel):
     soc_value_id: int = Field(..., description="social value identifier", examples=[1])
     name: str = Field(..., description="social value name", examples=["Ценность"])
     rank: int = Field(..., description="rank", examples=[3])
-    normative_value: float = Field(..., description="normative_value", examples=[0.56])
-    decree_value: float = Field(..., description="decree_value", examples=[0.75])
+    normative_value: float = Field(..., description="normative value", examples=[0.56])
+    decree_value: float = Field(..., description="decree value", examples=[0.75])
 
     @classmethod
     def from_dto(cls, dto: SocValueDTO) -> "SocValue":
         """Construct from DTO."""
-        return cls(soc_value_id=dto.soc_value_id,
+        return cls(
+            soc_value_id=dto.soc_value_id,
             name=dto.name,
             rank=dto.rank,
             normative_value=dto.normative_value,
-            decree_value=dto.decree_value
+            decree_value=dto.decree_value,
         )
 
 
@@ -121,6 +122,7 @@ class SocValuePost(BaseModel):
 
 class SocGroupIndicatorValue(BaseModel):
     """Social group's indicator value with all its attributes."""
+
     soc_value: SocValueBasic
     territory: ShortTerritory
     year: int = Field(..., description="year when value was modeled", examples=[date.today().year])
@@ -148,6 +150,7 @@ class SocGroupIndicatorValue(BaseModel):
 
 class SocGroupIndicatorValuePost(BaseModel):
     """Schema of social group's indicator value for POST request."""
+
     soc_value_id: int = Field(..., description="social value identifier", examples=[1])
     territory_id: int = Field(..., description="territory identifier", examples=[1])
     year: int = Field(date.today().year, description="year when value was modeled", examples=[date.today().year])
@@ -156,6 +159,7 @@ class SocGroupIndicatorValuePost(BaseModel):
 
 class SocGroupIndicatorValuePut(BaseModel):
     """Schema of social group's indicator value for PATCH request."""
+
     soc_value_id: int = Field(..., description="social value identifier", examples=[1])
     territory_id: int = Field(..., description="territory identifier", examples=[1])
     year: int = Field(..., description="year when value was modeled", examples=[date.today().year])

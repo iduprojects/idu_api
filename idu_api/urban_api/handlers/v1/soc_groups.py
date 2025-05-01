@@ -6,6 +6,7 @@ from starlette import status
 from idu_api.urban_api.logic.soc_groups import SocGroupsService
 from idu_api.urban_api.schemas import (
     OkResponse,
+    ServiceType,
     SocGroup,
     SocGroupIndicatorValue,
     SocGroupIndicatorValuePost,
@@ -16,7 +17,6 @@ from idu_api.urban_api.schemas import (
     SocValue,
     SocValuePost,
     SocValueWithSocGroups,
-    ServiceType,
 )
 from idu_api.urban_api.schemas.enums import Ordering
 
@@ -225,10 +225,8 @@ async def add_social_value(request: Request, soc_value: SocValuePost) -> SocValu
 
     return SocValueWithSocGroups.from_dto(new_soc_value)
 
-@soc_groups_router.get(
-    "/social_values/{soc_value_id}/service_types",
-    status_code=status.HTTP_200_OK
-)
+
+@soc_groups_router.get("/social_values/{soc_value_id}/service_types", status_code=status.HTTP_200_OK)
 async def get_service_types(
     request: Request,
     social_value_id: int,
@@ -243,7 +241,7 @@ async def get_service_types(
     - **social_value_id** (int, Path): Social value identifier.
 
     ### Returns:
-    - **list[ServiceType]**: All ServiceTypes connected with this social value.
+    - **list[ServiceType]**: All service types connected with this social value.
 
     ### Errors:
     - **404 Not Found**: If the social value does not exist.
@@ -253,6 +251,7 @@ async def get_service_types(
     result = await soc_groups_service.get_service_types_by_social_value_id(social_value_id, ordering.value)
 
     return [ServiceType.from_dto(service_type_dto) for service_type_dto in result]
+
 
 @soc_groups_router.post(
     "/social_groups/{soc_group_id}/values",
@@ -459,8 +458,6 @@ async def delete_social_group_indicator_value(
     """
     soc_groups_service: SocGroupsService = request.state.soc_groups_service
 
-    await soc_groups_service.delete_social_group_indicator_value_from_db(
-        soc_group_id, soc_value_id, territory_id, year
-    )
+    await soc_groups_service.delete_social_group_indicator_value_from_db(soc_group_id, soc_value_id, territory_id, year)
 
     return OkResponse()

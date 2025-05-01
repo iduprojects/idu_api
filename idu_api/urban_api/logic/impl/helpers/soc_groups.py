@@ -15,7 +15,7 @@ from idu_api.common.db.entities import (
     soc_values_dict,
     soc_values_service_types_dict,
     territories_data,
-    urban_functions_dict
+    urban_functions_dict,
 )
 from idu_api.urban_api.dto import (
     ServiceTypeDTO,
@@ -212,7 +212,7 @@ async def get_social_value_by_id_from_db(conn: AsyncConnection, soc_value_id: in
         soc_groups=group_objects(result),
         rank=result[0]["rank"],
         normative_value=result[0]["normative_value"],
-        decree_value=result[0]["decree_value"]
+        decree_value=result[0]["decree_value"],
     )
 
 
@@ -308,14 +308,10 @@ async def get_social_group_indicator_values_from_db(
     if not await check_existence(conn, soc_groups_dict, conditions={"soc_group_id": soc_group_id}):
         raise EntityNotFoundById(soc_group_id, "social group")
 
-    select_from = (
-        soc_group_value_indicators_data
-        .join(
-            soc_values_dict,
-            soc_values_dict.c.soc_value_id == soc_group_value_indicators_data.c.soc_value_id,
-        )
-        .join(territories_data, territories_data.c.territory_id == soc_group_value_indicators_data.c.territory_id)
-    )
+    select_from = soc_group_value_indicators_data.join(
+        soc_values_dict,
+        soc_values_dict.c.soc_value_id == soc_group_value_indicators_data.c.soc_value_id,
+    ).join(territories_data, territories_data.c.territory_id == soc_group_value_indicators_data.c.territory_id)
 
     if last_only:
         subquery = (
@@ -338,15 +334,12 @@ async def get_social_group_indicator_values_from_db(
             & (soc_group_value_indicators_data.c.year == subquery.c.max_date),
         )
 
-    statement = (
-        select(
-            soc_group_value_indicators_data,
-            soc_groups_dict.c.name.label("soc_group_name"),
-            soc_values_dict.c.name.label("soc_value_name"),
-            territories_data.c.name.label("territory_name"),
-        )
-        .select_from(select_from)
-    )
+    statement = select(
+        soc_group_value_indicators_data,
+        soc_groups_dict.c.name.label("soc_group_name"),
+        soc_values_dict.c.name.label("soc_value_name"),
+        territories_data.c.name.label("territory_name"),
+    ).select_from(select_from)
 
     if soc_value_id is not None:
         statement = statement.where(soc_group_value_indicators_data.c.soc_value_id == soc_value_id)
@@ -357,9 +350,7 @@ async def get_social_group_indicator_values_from_db(
 
     result = (await conn.execute(statement)).mappings().all()
     if not result:
-        raise EntityNotFoundByParams(
-            "social group indicator value", soc_group_id, soc_value_id, territory_id, year
-        )
+        raise EntityNotFoundByParams("social group indicator value", soc_group_id, soc_value_id, territory_id, year)
 
     return [SocGroupIndicatorValueDTO(**indicator) for indicator in result]
 
@@ -493,9 +484,7 @@ async def delete_social_group_indicator_value_from_db(
             "year": year,
         },
     ):
-        raise EntityNotFoundByParams(
-            "social group indicator value", soc_value_id, territory_id, year
-        )
+        raise EntityNotFoundByParams("social group indicator value", soc_value_id, territory_id, year)
 
     statement = (
         delete(soc_group_value_indicators_data)
@@ -514,9 +503,7 @@ async def delete_social_group_indicator_value_from_db(
 
 
 async def get_service_types_by_social_value_id_from_db(
-        conn: AsyncConnection,
-        social_value_id: int,
-        ordering: Literal["asc", "desc"] | None = None
+    conn: AsyncConnection, social_value_id: int, ordering: Literal["asc", "desc"] | None = None
 ) -> list[ServiceTypeDTO]:
     """Get all service type objects by social_value_id."""
 
@@ -527,19 +514,17 @@ async def get_service_types_by_social_value_id_from_db(
             "soc_value_id": social_value_id,
         },
     ):
-        raise EntityNotFoundByParams(
-            "social value", social_value_id
-        )
+        raise EntityNotFoundByParams("social value", social_value_id)
 
     statement = (
-        select(
-            service_types_dict,
-            urban_functions_dict.c.name.label("urban_function_name")
-        )
+        select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
         .select_from(
-            soc_values_service_types_dict
-            .join(service_types_dict, service_types_dict.c.service_type_id == soc_values_service_types_dict.c.service_type_id)
-            .join(urban_functions_dict, urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id)
+            soc_values_service_types_dict.join(
+                service_types_dict,
+                service_types_dict.c.service_type_id == soc_values_service_types_dict.c.service_type_id,
+            ).join(
+                urban_functions_dict, urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id
+            )
         )
         .where(soc_values_service_types_dict.c.soc_value_id == social_value_id)
     )

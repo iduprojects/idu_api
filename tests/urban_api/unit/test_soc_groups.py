@@ -13,17 +13,17 @@ from idu_api.common.db.entities import (
     soc_group_values_data,
     soc_groups_dict,
     soc_values_dict,
-    territories_data,
     soc_values_service_types_dict,
+    territories_data,
     urban_functions_dict,
 )
 from idu_api.urban_api.dto import (
+    ServiceTypeDTO,
     SocGroupDTO,
     SocGroupIndicatorValueDTO,
     SocGroupWithServiceTypesDTO,
     SocValueDTO,
     SocValueWithSocGroupsDTO,
-    ServiceTypeDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.logic.impl.helpers.soc_groups import (
@@ -35,16 +35,17 @@ from idu_api.urban_api.logic.impl.helpers.soc_groups import (
     delete_social_group_from_db,
     delete_social_group_indicator_value_from_db,
     delete_social_value_from_db,
+    get_service_types_by_social_value_id_from_db,
     get_social_group_by_id_from_db,
     get_social_group_indicator_values_from_db,
     get_social_groups_from_db,
     get_social_value_by_id_from_db,
     get_social_values_from_db,
     put_social_group_indicator_value_to_db,
-    get_service_types_by_social_value_id_from_db
 )
 from idu_api.urban_api.logic.impl.helpers.utils import extract_values_from_model
 from idu_api.urban_api.schemas import (
+    ServiceType,
     SocGroup,
     SocGroupIndicatorValue,
     SocGroupIndicatorValuePost,
@@ -55,7 +56,6 @@ from idu_api.urban_api.schemas import (
     SocValue,
     SocValuePost,
     SocValueWithSocGroups,
-    ServiceType
 )
 from tests.urban_api.helpers.connection import MockConnection
 
@@ -409,14 +409,10 @@ async def test_get_social_group_indicator_values_from_db(mock_conn: MockConnecti
     # Arrange
     soc_group_id = 1
 
-    select_from = (
-        soc_group_value_indicators_data
-        .join(
-            soc_values_dict,
-            soc_values_dict.c.soc_value_id == soc_group_value_indicators_data.c.soc_value_id,
-        )
-        .join(territories_data, territories_data.c.territory_id == soc_group_value_indicators_data.c.territory_id)
-    )
+    select_from = soc_group_value_indicators_data.join(
+        soc_values_dict,
+        soc_values_dict.c.soc_value_id == soc_group_value_indicators_data.c.soc_value_id,
+    ).join(territories_data, territories_data.c.territory_id == soc_group_value_indicators_data.c.territory_id)
     subquery = (
         select(
             soc_group_value_indicators_data.c.soc_value_id,
@@ -435,24 +431,18 @@ async def test_get_social_group_indicator_values_from_db(mock_conn: MockConnecti
         & (soc_group_value_indicators_data.c.territory_id == subquery.c.territory_id)
         & (soc_group_value_indicators_data.c.year == subquery.c.max_date),
     )
-    statement = (
-        select(
-            soc_group_value_indicators_data,
-            soc_groups_dict.c.name.label("soc_group_name"),
-            soc_values_dict.c.name.label("soc_value_name"),
-            territories_data.c.name.label("territory_name"),
-        )
-        .select_from(select_from)
-    )
-    last_only_statement = (
-        select(
-            soc_group_value_indicators_data,
-            soc_groups_dict.c.name.label("soc_group_name"),
-            soc_values_dict.c.name.label("soc_value_name"),
-            territories_data.c.name.label("territory_name"),
-        )
-        .select_from(last_only_select_from)
-    )
+    statement = select(
+        soc_group_value_indicators_data,
+        soc_groups_dict.c.name.label("soc_group_name"),
+        soc_values_dict.c.name.label("soc_value_name"),
+        territories_data.c.name.label("territory_name"),
+    ).select_from(select_from)
+    last_only_statement = select(
+        soc_group_value_indicators_data,
+        soc_groups_dict.c.name.label("soc_group_name"),
+        soc_values_dict.c.name.label("soc_value_name"),
+        territories_data.c.name.label("territory_name"),
+    ).select_from(last_only_select_from)
     params = {"soc_value_id": 1, "territory_id": 1, "year": date.today().year}
     statement_with_filters = statement.where(
         soc_group_value_indicators_data.c.soc_value_id == params["soc_value_id"],
@@ -654,34 +644,32 @@ async def test_delete_social_group_indicator_value_from_db(mock_conn: MockConnec
 
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.soc_groups.check_existence") as mock_check_existence:
-        result = await delete_social_group_indicator_value_from_db(
-            mock_conn, soc_value_id, territory_id, year
-        )
+        result = await delete_social_group_indicator_value_from_db(mock_conn, soc_value_id, territory_id, year)
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundByParams):
-            await delete_social_group_indicator_value_from_db(
-                mock_conn, soc_value_id, territory_id, year
-            )
+            await delete_social_group_indicator_value_from_db(mock_conn, soc_value_id, territory_id, year)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
     mock_conn.execute_mock.assert_called_once_with(str(statement))
     mock_conn.commit_mock.assert_called_once()
 
+
 @pytest.mark.asyncio
 async def test_get_service_types_by_social_value_id_from_db(mock_conn: MockConnection):
-    """Test the get_service_types_by_social_value_id_from_db function. """
+    """Test the get_service_types_by_social_value_id_from_db function."""
 
     # Arrange
     social_value_id = 1
     statement = (
         select(service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
         .select_from(
-            soc_values_service_types_dict
-            .join(service_types_dict,
-                  service_types_dict.c.service_type_id == soc_values_service_types_dict.c.service_type_id)
-            .join(urban_functions_dict,
-                  urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id)
+            soc_values_service_types_dict.join(
+                service_types_dict,
+                service_types_dict.c.service_type_id == soc_values_service_types_dict.c.service_type_id,
+            ).join(
+                urban_functions_dict, urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id
+            )
         )
         .where(soc_values_service_types_dict.c.soc_value_id == social_value_id)
         .order_by(service_types_dict.c.service_type_id)
@@ -692,9 +680,7 @@ async def test_get_service_types_by_social_value_id_from_db(mock_conn: MockConne
         result = await get_service_types_by_social_value_id_from_db(mock_conn, social_value_id)
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundByParams):
-            await get_service_types_by_social_value_id_from_db(
-                mock_conn, social_value_id
-            )
+            await get_service_types_by_social_value_id_from_db(mock_conn, social_value_id)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."

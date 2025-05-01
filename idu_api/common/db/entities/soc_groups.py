@@ -54,7 +54,7 @@ soc_values_dict = Table(
     Column("name", String(200), nullable=False, unique=True),
     Column("rank", Integer),
     Column("normative_value", Float),
-    Column("decree_value", Float)
+    Column("decree_value", Float),
 )
 
 """
@@ -98,7 +98,7 @@ soc_group_value_indicators_data = Table(
     Column("value", Float(53), nullable=False),
     Column("created_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), server_default=func.now(), nullable=False),
-    PrimaryKeyConstraint("soc_value_id", "territory_id"),
+    PrimaryKeyConstraint("soc_value_id", "territory_id", "year"),
 )
 
 """
@@ -116,7 +116,7 @@ soc_values_service_types_dict = Table(
     metadata,
     Column("soc_value_id", ForeignKey(soc_values_dict.c.soc_value_id, ondelete="CASCADE"), nullable=False),
     Column("service_type_id", ForeignKey(service_types_dict.c.service_type_id, ondelete="CASCADE"), nullable=False),
-    PrimaryKeyConstraint("soc_value_id", "service_type_id")
+    PrimaryKeyConstraint("soc_value_id", "service_type_id"),
 )
 
 """

@@ -7,8 +7,9 @@ Create Date: 2025-04-24 15:43:12.510143
 
 """
 from typing import Sequence, Union
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
@@ -20,32 +21,27 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # add rank, normative_value, decree_value to soc_values_dict
-    op.add_column('soc_values_dict',
-        sa.Column('rank', sa.Integer(), nullable=True, comment='Ранг')
+    op.add_column("soc_values_dict", sa.Column("rank", sa.Integer(), nullable=True))
+    op.add_column(
+        "soc_values_dict", sa.Column("normative_value", sa.Float(10, 2), nullable=True)
     )
-    op.add_column('soc_values_dict',
-        sa.Column('normative_value', sa.Float(10,2), nullable=True, comment='Значение по нормативу')
-    )
-    op.add_column('soc_values_dict',
-        sa.Column('decree_value', sa.Float(10,2), nullable=True, comment='Значение архетипа по указу')
+    op.add_column(
+        "soc_values_dict",
+        sa.Column("decree_value", sa.Float(10, 2), nullable=True, comment="meaning of the archetype by decree"),
     )
 
     # remove pk from soc_group_indicators_data
-    op.drop_constraint(
-        'soc_group_values_indicators_data_pk',
-        'soc_group_value_indicators_data',
-        type_='primary'
-    )
+    op.drop_constraint("soc_group_values_indicators_data_pk", "soc_group_value_indicators_data", type_="primary")
 
     # remove soc_group_id, value_type columns from soc_group_indicators_data
-    op.drop_column('soc_group_value_indicators_data', 'soc_group_id')
-    op.drop_column('soc_group_value_indicators_data', 'value_type')
+    op.drop_column("soc_group_value_indicators_data", "soc_group_id")
+    op.drop_column("soc_group_value_indicators_data", "value_type")
 
     # create new pk in soc_group_indicators_data
     op.create_primary_key(
-        'soc_group_values_indicators_data_pk',
-        'soc_group_value_indicators_data',
-        ['soc_value_id', 'territory_id']
+        "soc_group_values_indicators_data_pk",
+        "soc_group_value_indicators_data",
+        ["soc_value_id", "territory_id", "year"],
     )
 
     # create soc_values_service_types_dict table
@@ -73,28 +69,24 @@ def downgrade() -> None:
     # drop soc_values_service_types_dict table
     op.drop_table("soc_values_service_types_dict")
 
-
     # revert changes for soc_group_value_indicators_data
-    op.drop_constraint(
-        'soc_group_values_indicators_data_pk',
-        'soc_group_value_indicators_data',
-        type_='primary'
-    )
+    op.drop_constraint("soc_group_values_indicators_data_pk", "soc_group_value_indicators_data", type_="primary")
 
-    op.add_column('soc_group_value_indicators_data',
-        sa.Column('soc_group_id', sa.INTEGER(), autoincrement=False, nullable=True)
+    op.add_column(
+        "soc_group_value_indicators_data", sa.Column("soc_group_id", sa.INTEGER(), autoincrement=False, nullable=True)
     )
-    op.add_column('soc_group_value_indicators_data',
-        sa.Column('value_type', sa.VARCHAR(length=50), autoincrement=False, nullable=True)
+    op.add_column(
+        "soc_group_value_indicators_data",
+        sa.Column("value_type", sa.VARCHAR(length=50), autoincrement=False, nullable=True),
     )
 
     op.create_primary_key(
-        'soc_group_values_indicators_data_pk',
-        'soc_group_value_indicators_data',
-        ['soc_group_id', 'soc_value_id', 'value_type']
+        "soc_group_values_indicators_data_pk",
+        "soc_group_value_indicators_data",
+        ["soc_group_id", "soc_value_id", "year", "value_type"],
     )
 
     # revert adding new columns in soc_values_dict
-    op.drop_column('soc_values_dict', 'decree_value')
-    op.drop_column('soc_values_dict', 'normative_value')
-    op.drop_column('soc_values_dict', 'rank')
+    op.drop_column("soc_values_dict", "decree_value")
+    op.drop_column("soc_values_dict", "normative_value")
+    op.drop_column("soc_values_dict", "rank")
