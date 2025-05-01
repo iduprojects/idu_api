@@ -66,6 +66,7 @@ def scenario_req() -> Scenario:
                 id=1,
                 name="Test Functional Zone Type",
                 nickname="Test Functional Zone Type Nickname",
+                description="Test Functional Zone Type Description",
             )
         ),
         name="Test Scenario",

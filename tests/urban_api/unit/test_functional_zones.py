@@ -380,6 +380,7 @@ async def test_get_functional_zone_by_id(mock_conn: MockConnection):
             functional_zones_data.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
+            functional_zone_types_dict.c.description.label("functional_zone_type_description"),
             functional_zones_data.c.name,
             ST_AsEWKB(functional_zones_data.c.geometry).label("geometry"),
             functional_zones_data.c.year,
