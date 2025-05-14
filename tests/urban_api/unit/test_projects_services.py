@@ -1,11 +1,11 @@
 """Unit tests for scenario services objects are defined here."""
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
-from geoalchemy2.functions import ST_Intersects, ST_Within
-from sqlalchemy import delete, insert, literal, or_, select, update
+from geoalchemy2.functions import ST_Intersects, ST_Within, ST_AsEWKB
+from sqlalchemy import delete, insert, literal, or_, select, update, ScalarSelect
 
 from idu_api.common.db.entities import (
     object_geometries_data,
@@ -20,7 +20,8 @@ from idu_api.common.db.entities import (
     urban_functions_dict,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import ScenarioServiceDTO, ScenarioUrbanObjectDTO, ServiceDTO, UserDTO
+from idu_api.urban_api.dto import ScenarioServiceDTO, ScenarioUrbanObjectDTO, ServiceDTO, UserDTO, \
+    ScenarioServiceWithGeometryDTO, ServiceWithGeometryDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_services import (
     add_service_to_db,
@@ -29,7 +30,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_services import (
     get_scenario_service_by_id_from_db,
     get_services_by_scenario_id_from_db,
     patch_service_to_db,
-    put_service_to_db,
+    put_service_to_db, get_services_with_geometry_by_scenario_id_from_db, get_context_services_with_geometry_from_db,
 )
 from idu_api.urban_api.logic.impl.helpers.utils import get_context_territories_geometry
 from idu_api.urban_api.schemas import (
@@ -38,8 +39,9 @@ from idu_api.urban_api.schemas import (
     ScenarioUrbanObject,
     Service,
     ServicePatch,
-    ServicePut,
+    ServicePut, ScenarioServiceWithGeometryAttributes,
 )
+from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection
 
 ####################################################################################
@@ -199,6 +201,178 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
 
 
 @pytest.mark.asyncio
+async def test_get_services_with_geometry_by_scenario_id_from_db(mock_conn: MockConnection):
+    """Test the get_services_with_geometry_by_scenario_id_from_db function."""
+
+    # Arrange
+    scenario_id = 1
+    user = UserDTO(id="mock_string", is_superuser=False)
+    service_type_id = 1
+    urban_function_id = None
+
+    public_urban_object_ids = (
+        select(projects_urban_objects_data.c.public_urban_object_id)
+        .where(projects_urban_objects_data.c.scenario_id == scenario_id)
+        .where(projects_urban_objects_data.c.public_urban_object_id.isnot(None))
+    ).cte(name="public_urban_object_ids")
+
+    project_geometry = (
+        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == 1)
+    ).scalar_subquery()
+
+    public_urban_objects_query = (
+        select(
+            services_data,
+            service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
+            service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties.label("service_type_properties"),
+            territory_types_dict.c.name.label("territory_type_name"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+            object_geometries_data.c.object_geometry_id,
+            object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
+        )
+        .select_from(
+            urban_objects_data.join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
+            .join(
+                service_types_dict,
+                service_types_dict.c.service_type_id == services_data.c.service_type_id,
+            )
+            .outerjoin(
+                territory_types_dict,
+                territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
+            )
+            .join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+        )
+        .where(
+            urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
+            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            service_types_dict.c.service_type_id == service_type_id,
+        )
+    )
+
+    scenario_urban_objects_query = (
+        select(
+            projects_services_data.c.service_id,
+            projects_services_data.c.name,
+            projects_services_data.c.capacity,
+            projects_services_data.c.is_capacity_real,
+            projects_services_data.c.properties,
+            projects_services_data.c.created_at,
+            projects_services_data.c.updated_at,
+            projects_object_geometries_data.c.object_geometry_id,
+            projects_object_geometries_data.c.address,
+            projects_object_geometries_data.c.osm_id,
+            ST_AsEWKB(projects_object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(projects_object_geometries_data.c.centre_point).label("centre_point"),
+            services_data.c.service_id.label("public_service_id"),
+            services_data.c.name.label("public_name"),
+            services_data.c.capacity.label("public_capacity"),
+            services_data.c.is_capacity_real.label("public_is_capacity_real"),
+            services_data.c.properties.label("public_properties"),
+            services_data.c.created_at.label("public_created_at"),
+            services_data.c.updated_at.label("public_updated_at"),
+            object_geometries_data.c.object_geometry_id.label("public_object_geometry_id"),
+            object_geometries_data.c.address.label("public_address"),
+            object_geometries_data.c.osm_id.label("public_osm_id"),
+            ST_AsEWKB(object_geometries_data.c.geometry).label("public_geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("public_centre_point"),
+            service_types_dict.c.service_type_id,
+            service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
+            service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties.label("service_type_properties"),
+            territory_types_dict.c.territory_type_id,
+            territory_types_dict.c.name.label("territory_type_name"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+        )
+        .select_from(
+            projects_urban_objects_data.outerjoin(
+                projects_services_data, projects_services_data.c.service_id == projects_urban_objects_data.c.service_id
+            )
+            .outerjoin(services_data, services_data.c.service_id == projects_urban_objects_data.c.public_service_id)
+            .outerjoin(
+                projects_object_geometries_data,
+                projects_object_geometries_data.c.object_geometry_id
+                == projects_urban_objects_data.c.object_geometry_id,
+            )
+            .outerjoin(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == projects_urban_objects_data.c.public_object_geometry_id,
+            )
+            .outerjoin(
+                territories_data,
+                or_(
+                    territories_data.c.territory_id == projects_object_geometries_data.c.territory_id,
+                    territories_data.c.territory_id == object_geometries_data.c.territory_id,
+                ),
+            )
+            .outerjoin(
+                service_types_dict,
+                or_(
+                    service_types_dict.c.service_type_id == projects_services_data.c.service_type_id,
+                    service_types_dict.c.service_type_id == services_data.c.service_type_id,
+                ),
+            )
+            .outerjoin(
+                territory_types_dict,
+                or_(
+                    territory_types_dict.c.territory_type_id == projects_services_data.c.territory_type_id,
+                    territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
+                ),
+            )
+            .outerjoin(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+        )
+        .where(
+            projects_urban_objects_data.c.scenario_id == scenario_id,
+            projects_urban_objects_data.c.public_urban_object_id.is_(None),
+            service_types_dict.c.service_type_id == service_type_id,
+        )
+    )
+
+    # Act
+    with patch("idu_api.urban_api.logic.impl.helpers.projects_services.get_project_by_scenario_id") as mock_check:
+        mock_check.return_value.is_regional = False
+        result = await get_services_with_geometry_by_scenario_id_from_db(mock_conn, scenario_id, user, service_type_id, urban_function_id)
+    geojson_result = await GeoJSONResponse.from_list([r.to_geojson_dict() for r in result])
+
+    # Assert
+    assert isinstance(result, list), "Result should be a list."
+    assert all(isinstance(item, ScenarioServiceWithGeometryDTO) for item in result), "Each item should be a ScenarioServiceWithGeometryDTO."
+    assert isinstance(
+        ScenarioServiceWithGeometryAttributes(**geojson_result.features[0].properties),
+        ScenarioServiceWithGeometryAttributes,
+    ), "Couldn't create pydantic model from geojson properties."
+    mock_conn.execute_mock.assert_any_call(str(public_urban_objects_query))
+    mock_conn.execute_mock.assert_any_call(str(scenario_urban_objects_query))
+
+
+@pytest.mark.asyncio
 async def test_get_context_services_from_db(mock_conn: MockConnection):
     """Test the get_context_services_from_db function."""
 
@@ -207,7 +381,7 @@ async def test_get_context_services_from_db(mock_conn: MockConnection):
     user = UserDTO(id="mock_string", is_superuser=False)
     service_type_id = 1
     urban_function_id = None
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
+    mock_geom = str(MagicMock(spec=ScalarSelect))
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .select_from(
@@ -217,8 +391,8 @@ async def test_get_context_services_from_db(mock_conn: MockConnection):
             ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
         .where(
-            object_geometries_data.c.territory_id.in_(context_ids)
-            | ST_Intersects(object_geometries_data.c.geometry, context_geom)
+            object_geometries_data.c.territory_id.in_([1])
+            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
         )
         .cte(name="objects_intersecting")
     )
@@ -267,12 +441,107 @@ async def test_get_context_services_from_db(mock_conn: MockConnection):
     )
 
     # Act
-    result = await get_context_services_from_db(mock_conn, project_id, user, service_type_id, urban_function_id)
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.projects_services.get_context_territories_geometry",
+        new_callable=AsyncMock,
+    ) as mock_get_context:
+        mock_get_context.return_value = mock_geom, [1]
+        result = await get_context_services_from_db(mock_conn, project_id, user, service_type_id, urban_function_id)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
     assert all(isinstance(item, ServiceDTO) for item in result), "Each item should be a ServiceDTO."
     assert isinstance(Service.from_dto(result[0]), Service), "Couldn't create pydantic model from DTO."
+    mock_conn.execute_mock.assert_any_call(str(statement))
+
+
+@pytest.mark.asyncio
+async def test_get_context_services_with_geometry_from_db(mock_conn: MockConnection):
+    """Test the get_context_services_with_geometry_from_db function."""
+
+    # Arrange
+    project_id = 1
+    user = UserDTO(id="mock_string", is_superuser=False)
+    service_type_id = 1
+    urban_function_id = None
+    mock_geom = str(MagicMock(spec=ScalarSelect))
+    objects_intersecting = (
+        select(object_geometries_data.c.object_geometry_id)
+        .select_from(
+            object_geometries_data.join(
+                urban_objects_data,
+                urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
+        )
+        .where(
+            object_geometries_data.c.territory_id.in_([1])
+            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
+        )
+        .cte(name="objects_intersecting")
+    )
+    statement = (
+        select(
+            services_data,
+            service_types_dict.c.urban_function_id,
+            urban_functions_dict.c.name.label("urban_function_name"),
+            service_types_dict.c.name.label("service_type_name"),
+            service_types_dict.c.capacity_modeled.label("service_type_capacity_modeled"),
+            service_types_dict.c.code.label("service_type_code"),
+            service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties.label("service_type_properties"),
+            territory_types_dict.c.name.label("territory_type_name"),
+            object_geometries_data.c.object_geometry_id,
+            object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
+            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
+            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+        ).select_from(
+            urban_objects_data.join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(
+                objects_intersecting,
+                objects_intersecting.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
+            .join(
+                service_types_dict,
+                service_types_dict.c.service_type_id == services_data.c.service_type_id,
+            )
+            .outerjoin(
+                territory_types_dict,
+                territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
+            )
+            .join(
+                urban_functions_dict,
+                urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id,
+            )
+        )
+        .where(service_types_dict.c.service_type_id == service_type_id)
+    )
+
+    # Act
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.projects_services.get_context_territories_geometry",
+        new_callable=AsyncMock,
+    ) as mock_get_context:
+        mock_get_context.return_value = mock_geom, [1]
+        result = await get_context_services_with_geometry_from_db(mock_conn, project_id, user, service_type_id, urban_function_id)
+    geojson_result = await GeoJSONResponse.from_list([r.to_geojson_dict() for r in result])
+
+    # Assert
+    assert isinstance(result, list), "Result should be a list."
+    assert all(isinstance(item, ServiceWithGeometryDTO) for item in result), "Each item should be a ServiceWithGeometryDTO."
+    assert isinstance(
+        Service(**geojson_result.features[0].properties), Service
+    ), "Couldn't create pydantic model from geojson properties."
     mock_conn.execute_mock.assert_any_call(str(statement))
 
 

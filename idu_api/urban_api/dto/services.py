@@ -130,3 +130,9 @@ class ScenarioServiceDTO(ServiceDTO):
     @classmethod
     def fields(cls) -> Iterable[str]:
         return cls.__annotations__.keys() | super().__annotations__.keys()
+
+
+@dataclass
+class ScenarioServiceWithGeometryDTO(ServiceWithGeometryDTO):
+    is_scenario_service: bool
+    is_scenario_geometry: bool

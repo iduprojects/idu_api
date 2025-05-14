@@ -76,6 +76,7 @@ from .physical_objects import (
     PhysicalObjectWithGeometry,
     PhysicalObjectWithGeometryPost,
     ScenarioPhysicalObject,
+    ScenarioPhysicalObjectWithGeometryAttributes,
 )
 from .profiles_reclamation import (
     ProfilesReclamationData,
@@ -107,6 +108,7 @@ from .service_types import (
 from .services import (
     ScenarioService,
     ScenarioServicePost,
+    ScenarioServiceWithGeometryAttributes,
     Service,
     ServicePatch,
     ServicePost,
@@ -271,4 +273,6 @@ __all__ = [
     "SocGroupIndicatorValuePut",
     "SocValueWithSocGroups",
     "SocGroupWithServiceTypes",
+    "ScenarioPhysicalObjectWithGeometryAttributes",
+    "ScenarioServiceWithGeometryAttributes",
 ]

@@ -155,3 +155,9 @@ class ScenarioPhysicalObjectDTO(PhysicalObjectDTO):
     @classmethod
     def fields(cls) -> Iterable[str]:
         return cls.__annotations__.keys() | super().__annotations__.keys()
+
+
+@dataclass
+class ScenarioPhysicalObjectWithGeometryDTO(PhysicalObjectWithGeometryDTO):
+    is_scenario_physical_object: bool
+    is_scenario_geometry: bool

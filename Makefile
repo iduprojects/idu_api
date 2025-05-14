@@ -10,8 +10,6 @@ lint-tests:
 format:
 	poetry run isort $(CODE)
 	poetry run black $(CODE)
-
-format-tests:
 	poetry run isort $(TEST)
 	poetry run black $(TEST)
 

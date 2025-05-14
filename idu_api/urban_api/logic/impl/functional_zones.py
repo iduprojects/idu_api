@@ -1,5 +1,7 @@
 """Functional zones handlers logic of getting entities from the database is defined here."""
 
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.dto import (
     FunctionalZoneDTO,
@@ -16,6 +18,7 @@ from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     delete_profiles_reclamation_data_from_db,
     get_all_sources_from_db,
     get_functional_zone_types_from_db,
+    get_functional_zones_around_from_db,
     get_profiles_reclamation_data_matrix_from_db,
     patch_functional_zone_to_db,
     put_functional_zone_to_db,
@@ -29,6 +32,8 @@ from idu_api.urban_api.schemas import (
     ProfilesReclamationDataPost,
     ProfilesReclamationDataPut,
 )
+
+Geom = Point | Polygon | MultiPolygon | LineString
 
 
 class FunctionalZonesServiceImpl(FunctionalZonesService):
@@ -95,3 +100,15 @@ class FunctionalZonesServiceImpl(FunctionalZonesService):
     async def delete_functional_zone(self, functional_zone_id: int) -> dict:
         async with self._connection_manager.get_connection() as conn:
             return await delete_functional_zone_from_db(conn, functional_zone_id)
+
+    async def get_functional_zones_around(
+        self,
+        geometry: Geom,
+        year: int,
+        source: str,
+        functional_zone_type_id: int | None,
+    ) -> list[FunctionalZoneDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_functional_zones_around_from_db(
+                conn, geometry, year, source, functional_zone_type_id, buffer_meters
+            )

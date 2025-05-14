@@ -28,6 +28,7 @@ from .physical_objects import (
     PhysicalObjectDTO,
     PhysicalObjectWithGeometryDTO,
     ScenarioPhysicalObjectDTO,
+    ScenarioPhysicalObjectWithGeometryDTO,
     ShortPhysicalObjectDTO,
     ShortScenarioPhysicalObjectDTO,
 )
@@ -37,6 +38,7 @@ from .scenarios import ScenarioDTO
 from .service_types import ServiceTypeDTO, ServiceTypesHierarchyDTO, UrbanFunctionDTO
 from .services import (
     ScenarioServiceDTO,
+    ScenarioServiceWithGeometryDTO,
     ServiceDTO,
     ServicesCountCapacityDTO,
     ServiceWithGeometryDTO,
@@ -122,4 +124,6 @@ __all__ = [
     "SocValueDTO",
     "SocValueWithSocGroupsDTO",
     "SocGroupIndicatorValueDTO",
+    "ScenarioPhysicalObjectWithGeometryDTO",
+    "ScenarioServiceWithGeometryDTO",
 ]
