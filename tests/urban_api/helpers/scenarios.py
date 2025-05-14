@@ -29,6 +29,8 @@ def scenario(urban_api_host, project, functional_zone_type, superuser_token) -> 
         project_id=project["project_id"],
         name="Test Scenario Name",
         functional_zone_type_id=functional_zone_type["functional_zone_type_id"],
+        phase="pre_design",
+        phase_percentage=100,
     )
     headers = {"Authorization": f"Bearer {superuser_token}"}
 
@@ -71,6 +73,8 @@ def scenario_req() -> Scenario:
         ),
         name="Test Scenario",
         is_based=True,
+        phase="pre_design",
+        phase_percentage=100,
         properties={},
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
@@ -85,6 +89,8 @@ def scenario_post_req() -> ScenarioPost:
         project_id=1,
         name="Test Scenario Name",
         functional_zone_type_id=1,
+        phase="pre_design",
+        phase_percentage=100,
         properties={},
     )
 
@@ -97,6 +103,8 @@ def scenario_put_req() -> ScenarioPut:
         name="Updated Test Scenario Name",
         functional_zone_type_id=1,
         is_based=True,
+        phase="pre_design",
+        phase_percentage=100,
         properties={},
     )
 
@@ -109,4 +117,6 @@ def scenario_patch_req() -> ScenarioPatch:
         name="New Patched Scenario Name",
         functional_zone_type_id=1,
         is_based=True,
+        phase="pre_design",
+        phase_percentage=100,
     )

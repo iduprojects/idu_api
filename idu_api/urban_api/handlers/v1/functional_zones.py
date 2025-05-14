@@ -19,6 +19,7 @@ from idu_api.urban_api.schemas import (
     ProfilesReclamationDataPut,
 )
 
+from ...schemas.geometries import AllPossibleGeometry
 from .routers import functional_zones_router
 
 
@@ -317,3 +318,45 @@ async def delete_functional_zone(
     await functional_zones_service.delete_functional_zone(functional_zone_id)
 
     return OkResponse()
+
+
+@functional_zones_router.post(
+    "/functional_zones/around",
+    response_model=list[FunctionalZone],
+    status_code=status.HTTP_200_OK,
+)
+async def get_functional_zones_intersects_geometry(
+    request: Request,
+    geometry: AllPossibleGeometry,
+    year: int = Query(..., description="to filter by year when zones were uploaded"),
+    source: str = Query(..., description="to filter by source from which zones were uploaded"),
+    functional_zone_type_id: int | None = Query(None, description="functional zone type identifier", gt=0),
+) -> list[FunctionalZone]:
+    """
+    ## Get functional zones intersects a specified area.
+
+    ### Parameters:
+    - **geometry** (AllPossibleGeometry, Body): Geometry defining the search area.
+      NOTE: The geometry must have **SRID=4326**.
+    - **year** (int, Query): Filters results by the year zones were uploaded.
+    - **source** (str, Query): Filters results by the source from which zones were uploaded.
+    - **functional_zone_type_id** (int | None, Query): Filters results by functional zone type.
+
+    ### Returns:
+    - **list[FunctionalZone]**: A list of functional zones intersects the specified area.
+
+    ## Errors:
+    - **400 Bad Request**: If an invalid geometry is specified.
+    """
+    functional_zones_service: FunctionalZonesService = request.state.functional_zones_service
+
+    try:
+        shapely_geom = geometry.as_shapely_geometry()
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+    zones = await functional_zones_service.get_functional_zones_around(
+        shapely_geom, year, source, functional_zone_type_id
+    )
+
+    return [FunctionalZone.from_dto(zone) for zone in zones]

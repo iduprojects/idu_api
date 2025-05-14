@@ -40,3 +40,12 @@ class InfrastructureType(str, Enum):
 class ProjectType(str, Enum):
     COMMON = "common"
     CITY = "city"
+
+
+class ScenarioPhase(str, Enum):
+    INVESTMENT = "investment"
+    PRE_DESIGN = "pre_design"
+    DESIGN = "design"
+    CONSTRUCTION = "construction"
+    OPERATION = "operation"
+    DECOMMISSION = "decommission"

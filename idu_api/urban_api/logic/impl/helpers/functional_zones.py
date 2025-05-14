@@ -1,7 +1,11 @@
 """Functional zones internal logic is defined here."""
 
-from geoalchemy2.functions import ST_AsEWKB
-from sqlalchemy import case, delete, insert, select, update
+from collections.abc import Callable
+
+from geoalchemy2 import Geography, Geometry
+from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+from sqlalchemy import case, cast, delete, func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
@@ -22,7 +26,7 @@ from idu_api.urban_api.exceptions.logic.common import (
     EntityNotFoundById,
     EntityNotFoundByParams,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import check_existence, extract_values_from_model
+from idu_api.urban_api.logic.impl.helpers.utils import SRID, check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import (
     FunctionalZonePatch,
     FunctionalZonePost,
@@ -32,6 +36,9 @@ from idu_api.urban_api.schemas import (
     ProfilesReclamationDataPost,
     ProfilesReclamationDataPut,
 )
+
+func: Callable
+Geom = Point | Polygon | MultiPolygon | LineString
 
 
 async def get_functional_zone_types_from_db(conn: AsyncConnection) -> list[FunctionalZoneTypeDTO]:
@@ -320,8 +327,8 @@ async def delete_profiles_reclamation_data_from_db(
     return {"status": "ok"}
 
 
-async def get_functional_zone_by_id(conn: AsyncConnection, functional_zone_id: int) -> FunctionalZoneDTO:
-    """Get functional zone by identifier."""
+async def get_functional_zone_by_ids(conn: AsyncConnection, ids: list[int]) -> list[FunctionalZoneDTO]:
+    """Get list of functional zones by identifiers."""
 
     statement = (
         select(
@@ -349,14 +356,22 @@ async def get_functional_zone_by_id(conn: AsyncConnection, functional_zone_id: i
                 functional_zone_types_dict.c.functional_zone_type_id == functional_zones_data.c.functional_zone_type_id,
             )
         )
-        .where(functional_zones_data.c.functional_zone_id == functional_zone_id)
+        .where(functional_zones_data.c.functional_zone_id.in_(ids))
     )
 
-    result = (await conn.execute(statement)).mappings().one_or_none()
-    if result is None:
-        raise EntityNotFoundById(functional_zone_id, "functional zone")
+    result = (await conn.execute(statement)).mappings().all()
+    if len(ids) == 1 and not result:
+        raise EntityNotFoundById(ids[0], "functional zone")
+    if not result:
+        raise EntitiesNotFoundByIds("functional zone")
 
-    return FunctionalZoneDTO(**result)
+    return [FunctionalZoneDTO(**zone) for zone in result]
+
+
+async def get_functional_zone_by_id(conn: AsyncConnection, functional_zone_id: int) -> FunctionalZoneDTO:
+    """Get functional zone by identifier."""
+
+    return (await get_functional_zone_by_ids(conn, [functional_zone_id]))[0]
 
 
 async def add_functional_zone_to_db(conn: AsyncConnection, functional_zone: FunctionalZonePost) -> FunctionalZoneDTO:
@@ -455,3 +470,33 @@ async def delete_functional_zone_from_db(conn: AsyncConnection, functional_zone_
     await conn.commit()
 
     return {"status": "ok"}
+
+
+async def get_functional_zones_around_from_db(
+    conn: AsyncConnection,
+    geometry: Geom,
+    year: int,
+    source: str,
+    functional_zone_type_id: int | None,
+) -> list[FunctionalZoneDTO]:
+    """Get functional zones which are in the given geometry."""
+
+    given_geometry = select(ST_GeomFromWKB(geometry.wkb, text(str(SRID)))).scalar_subquery()
+    statement = (
+        select(functional_zones_data.c.functional_zone_id)
+        .where(
+            functional_zones_data.c.year == year,
+            functional_zones_data.c.source == source,
+            func.ST_Intersects(functional_zones_data.c.geometry, given_geometry),
+        )
+        .distinct()
+    )
+    if functional_zone_type_id is not None:
+        statement = statement.where(functional_zones_data.c.functional_zone_type_id == functional_zone_type_id)
+
+    ids = (await conn.execute(statement)).scalars().all()
+
+    if len(ids) == 0:
+        return []
+
+    return await get_functional_zone_by_ids(conn, ids)

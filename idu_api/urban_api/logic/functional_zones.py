@@ -3,6 +3,8 @@
 import abc
 from typing import Protocol
 
+from shapely.geometry import LineString, MultiPolygon, Point, Polygon
+
 from idu_api.urban_api.dto import (
     FunctionalZoneDTO,
     FunctionalZoneTypeDTO,
@@ -17,6 +19,8 @@ from idu_api.urban_api.schemas import (
     ProfilesReclamationDataPost,
     ProfilesReclamationDataPut,
 )
+
+Geom = Point | Polygon | MultiPolygon | LineString
 
 
 class FunctionalZonesService(Protocol):
@@ -77,3 +81,13 @@ class FunctionalZonesService(Protocol):
     @abc.abstractmethod
     async def delete_functional_zone(self, functional_zone_id: int) -> dict:
         """Delete functional zone by identifier."""
+
+    @abc.abstractmethod
+    async def get_functional_zones_around(
+        self,
+        geometry: Geom,
+        year: int,
+        source: str,
+        functional_zone_type_id: int | None,
+    ) -> list[FunctionalZoneDTO]:
+        """Get functional zones which are in buffer area of the given geometry."""

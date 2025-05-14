@@ -252,3 +252,13 @@ class ScenarioService(Service):
             updated_at=dto.updated_at,
             is_scenario_object=dto.is_scenario_object,
         )
+
+
+class ScenarioServiceWithGeometryAttributes(Service):
+    """Scenario service with geometry attributes."""
+
+    object_geometry_id: int = Field(..., description="object geometry identifier", examples=[1])
+    address: str | None = Field(None, description="physical object address", examples=["--"])
+    osm_id: str | None = Field(None, description="open street map identifier", examples=["1"])
+    is_scenario_service: bool = Field(..., description="boolean parameter to determine scenario service")
+    is_scenario_geometry: bool = Field(..., description="boolean parameter to determine scenario geometry")

@@ -7,8 +7,6 @@ import pytest
 from geoalchemy2.functions import (
     ST_AsEWKB,
     ST_Buffer,
-    ST_CoveredBy,
-    ST_Covers,
     ST_GeomFromWKB,
     ST_Intersects,
 )
@@ -164,19 +162,6 @@ async def test_get_physical_objects_around_from_db(mock_conn: MockConnection, sh
             Geometry(srid=SRID),
         ).label("geometry"),
     ).cte("buffered_geometry_cte")
-    fine_territories_cte = (
-        select(territories_data.c.territory_id.label("territory_id"))
-        .where(ST_CoveredBy(territories_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()))
-        .cte("fine_territories_cte")
-    )
-    possible_territories_cte = (
-        select(territories_data.c.territory_id.label("territory_id"))
-        .where(
-            ST_Intersects(territories_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery())
-            | ST_Covers(territories_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery())
-        )
-        .cte("possible_territories_cte")
-    )
     statement = (
         select(physical_objects_data.c.physical_object_id)
         .select_from(
@@ -189,11 +174,7 @@ async def test_get_physical_objects_around_from_db(mock_conn: MockConnection, sh
             )
         )
         .where(
-            object_geometries_data.c.territory_id.in_(select(fine_territories_cte.c.territory_id).scalar_subquery())
-            | object_geometries_data.c.territory_id.in_(
-                select(possible_territories_cte.c.territory_id).scalar_subquery()
-            )
-            & ST_Intersects(
+            ST_Intersects(
                 object_geometries_data.c.geometry, select(buffered_geometry_cte.c.geometry).scalar_subquery()
             ),
         )

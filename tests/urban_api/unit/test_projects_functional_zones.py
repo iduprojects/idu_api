@@ -1,11 +1,11 @@
 """Unit tests for scenario functional zone objects are defined here."""
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
 from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB, ST_Intersection, ST_Intersects, ST_Within
-from sqlalchemy import case, delete, insert, select, text, update
+from sqlalchemy import case, delete, insert, select, text, update, ScalarSelect
 
 from idu_api.common.db.entities import (
     functional_zone_types_dict,
@@ -36,7 +36,6 @@ from idu_api.urban_api.logic.impl.helpers.utils import (
     OBJECTS_NUMBER_LIMIT,
     SRID,
     extract_values_from_model,
-    get_context_territories_geometry,
 )
 from idu_api.urban_api.schemas import (
     FunctionalZone,
@@ -53,8 +52,7 @@ from tests.urban_api.helpers.connection import MockConnection
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_functional_zones.check_scenario")
-async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_check: AsyncMock, mock_conn: MockConnection):
+async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_conn: MockConnection):
     """Test the get_functional_zones_sources_by_scenario_id_from_db function."""
 
     # Arrange
@@ -67,7 +65,9 @@ async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_check: A
     )
 
     # Act
-    result = await get_functional_zones_sources_by_scenario_id_from_db(mock_conn, scenario_id, user)
+    with patch("idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_project_by_scenario_id") as mock_check:
+        mock_check.return_value.is_regional = False
+        result = await get_functional_zones_sources_by_scenario_id_from_db(mock_conn, scenario_id, user)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
@@ -82,8 +82,7 @@ async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_check: A
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_functional_zones.check_scenario")
-async def test_get_functional_zones_by_scenario_id_from_db(mock_check: AsyncMock, mock_conn: MockConnection):
+async def test_get_functional_zones_by_scenario_id_from_db(mock_conn: MockConnection):
     """Test the get_functional_zones_by_scenario_id_from_db function."""
 
     # Arrange
@@ -91,7 +90,7 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_check: AsyncMock
     year = datetime.today().year
     source = "mock_sting"
     functional_zone_type_id = 1
-    user = "mock_sting"
+    user = UserDTO(id="mock_string", is_superuser=False)
     statement = (
         select(
             projects_functional_zones.c.functional_zone_id,
@@ -128,9 +127,11 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_check: AsyncMock
     )
 
     # Act
-    result = await get_functional_zones_by_scenario_id_from_db(
-        mock_conn, scenario_id, year, source, functional_zone_type_id, user
-    )
+    with patch("idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_project_by_scenario_id") as mock_check:
+        mock_check.return_value.is_regional = False
+        result = await get_functional_zones_by_scenario_id_from_db(
+            mock_conn, scenario_id, year, source, functional_zone_type_id, user
+        )
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
@@ -150,19 +151,24 @@ async def test_get_context_functional_zones_sources_from_db(mock_conn: MockConne
 
     # Arrange
     project_id = 1
+    mock_geom = str(MagicMock(spec=ScalarSelect))
     user = UserDTO(id="mock_string", is_superuser=False)
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
     statement = (
         select(functional_zones_data.c.year, functional_zones_data.c.source)
         .where(
-            (functional_zones_data.c.territory_id.in_(context_ids))
-            | (ST_Intersects(functional_zones_data.c.geometry, context_geom))
+            (functional_zones_data.c.territory_id.in_([1]))
+            | (ST_Intersects(functional_zones_data.c.geometry, mock_geom))
         )
         .distinct()
     )
 
     # Act
-    result = await get_context_functional_zones_sources_from_db(mock_conn, project_id, user)
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_context_territories_geometry",
+        new_callable=AsyncMock,
+    ) as mock_get_context:
+        mock_get_context.return_value = mock_geom, [1]
+        result = await get_context_functional_zones_sources_from_db(mock_conn, project_id, user)
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
@@ -184,8 +190,8 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
     year = datetime.today().year
     source = "mock_string"
     functional_zone_type_id = 1
+    mock_geom = str(MagicMock(spec=ScalarSelect))
     user = UserDTO(id="mock_string", is_superuser=False)
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
     statement = (
         select(
             functional_zones_data.c.functional_zone_id,
@@ -194,12 +200,13 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
             functional_zones_data.c.functional_zone_type_id,
             functional_zone_types_dict.c.name.label("functional_zone_type_name"),
             functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
+            functional_zone_types_dict.c.description.label("functional_zone_type_description"),
             functional_zones_data.c.name,
             ST_AsEWKB(
                 case(
                     (
-                        ~ST_Within(functional_zones_data.c.geometry, context_geom),
-                        ST_Intersection(functional_zones_data.c.geometry, context_geom),
+                        ~ST_Within(functional_zones_data.c.geometry, mock_geom),
+                        ST_Intersection(functional_zones_data.c.geometry, mock_geom),
                     ),
                     else_=functional_zones_data.c.geometry,
                 )
@@ -223,17 +230,22 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
             functional_zones_data.c.year == year,
             functional_zones_data.c.source == source,
             (
-                functional_zones_data.c.territory_id.in_(context_ids)
-                | ST_Intersects(functional_zones_data.c.geometry, context_geom)
+                functional_zones_data.c.territory_id.in_([1])
+                | ST_Intersects(functional_zones_data.c.geometry, mock_geom)
             ),
             functional_zones_data.c.functional_zone_type_id == functional_zone_type_id,
         )
     )
 
     # Act
-    result = await get_context_functional_zones_from_db(
-        mock_conn, project_id, year, source, functional_zone_type_id, user
-    )
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_context_territories_geometry",
+        new_callable=AsyncMock,
+    ) as mock_get_context:
+        mock_get_context.return_value = mock_geom, [1]
+        result = await get_context_functional_zones_from_db(
+            mock_conn, project_id, year, source, functional_zone_type_id, user
+        )
 
     # Assert
     assert isinstance(result, list), "Result should be a list."

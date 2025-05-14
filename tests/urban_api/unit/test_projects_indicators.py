@@ -414,7 +414,7 @@ async def test_delete_scenario_indicator_value_by_id_from_db(mock_check: AsyncMo
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_scenario")
+@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.get_project_by_scenario_id")
 async def test_get_hexagons_with_indicators_by_scenario_id_from_db(mock_check: AsyncMock, mock_conn: MockConnection):
     """Test the get_hexagons_with_indicators_by_scenario_id_from_db function."""
 

@@ -9,6 +9,7 @@ from idu_api.urban_api.dto import (
     HexagonWithIndicatorsDTO,
     PageDTO,
     PhysicalObjectDTO,
+    PhysicalObjectWithGeometryDTO,
     ProjectDTO,
     ProjectTerritoryDTO,
     ProjectWithTerritoryDTO,
@@ -18,9 +19,12 @@ from idu_api.urban_api.dto import (
     ScenarioGeometryWithAllObjectsDTO,
     ScenarioIndicatorValueDTO,
     ScenarioPhysicalObjectDTO,
+    ScenarioPhysicalObjectWithGeometryDTO,
     ScenarioServiceDTO,
+    ScenarioServiceWithGeometryDTO,
     ScenarioUrbanObjectDTO,
     ServiceDTO,
+    ServiceWithGeometryDTO,
     UserDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO, ObjectGeometryDTO
@@ -236,6 +240,16 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get list of physical objects by scenario identifier."""
 
     @abc.abstractmethod
+    async def get_physical_objects_with_geometry_by_scenario_id(
+        self,
+        scenario_id: int,
+        user: UserDTO | None,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
+    ) -> list[ScenarioPhysicalObjectWithGeometryDTO]:
+        """Get list of physical objects with geometry by scenario identifier."""
+
+    @abc.abstractmethod
     async def get_context_physical_objects(
         self,
         project_id: int,
@@ -244,6 +258,16 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         physical_object_function_id: int | None,
     ) -> list[PhysicalObjectDTO]:
         """Get list of physical objects for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def get_context_physical_objects_with_geometry(
+        self,
+        project_id: int,
+        user: UserDTO | None,
+        physical_object_type_id: int | None,
+        physical_object_function_id: int | None,
+    ) -> list[PhysicalObjectWithGeometryDTO]:
+        """Get list of physical objects with geometry for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def add_physical_object_with_geometry(
@@ -308,6 +332,16 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get list of services by scenario identifier."""
 
     @abc.abstractmethod
+    async def get_services_with_geometry_by_scenario_id(
+        self,
+        scenario_id: int,
+        user: UserDTO | None,
+        service_type_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[ScenarioServiceWithGeometryDTO]:
+        """Get list of services with geometry by scenario identifier."""
+
+    @abc.abstractmethod
     async def get_context_services(
         self,
         project_id: int,
@@ -316,6 +350,16 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         urban_function_id: int | None,
     ) -> list[ServiceDTO]:
         """Get list of services for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def get_context_services_with_geometry(
+        self,
+        project_id: int,
+        user: UserDTO | None,
+        service_type_id: int | None,
+        urban_function_id: int | None,
+    ) -> list[ServiceWithGeometryDTO]:
+        """Get list of services with geometry for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def add_service(

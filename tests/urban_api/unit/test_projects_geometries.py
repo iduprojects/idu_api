@@ -1,11 +1,11 @@
 """Unit tests for scenario geometries objects are defined here."""
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
 from geoalchemy2.functions import ST_AsEWKB, ST_Centroid, ST_GeomFromWKB, ST_Intersection, ST_Intersects, ST_Within
-from sqlalchemy import case, delete, insert, literal, or_, select, text, update
+from sqlalchemy import case, delete, insert, literal, or_, select, text, update, ScalarSelect
 
 from idu_api.common.db.entities import (
     buildings_data,
@@ -37,7 +37,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
     patch_object_geometry_to_db,
     put_object_geometry_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import SRID, get_context_territories_geometry
+from idu_api.urban_api.logic.impl.helpers.utils import SRID
 from idu_api.urban_api.schemas import (
     AllObjects,
     GeometryAttributes,
@@ -168,7 +168,9 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
     )
 
     # Act
-    result = await get_geometries_by_scenario_id_from_db(mock_conn, scenario_id, user, physical_object_id, service_id)
+    with patch("idu_api.urban_api.logic.impl.helpers.projects_geometries.get_project_by_scenario_id") as mock_check:
+        mock_check.return_value.is_regional = False
+        result = await get_geometries_by_scenario_id_from_db(mock_conn, scenario_id, user, physical_object_id, service_id)
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
     # Assert
@@ -392,9 +394,11 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
     )
 
     # Act
-    result = await get_geometries_with_all_objects_by_scenario_id_from_db(
-        mock_conn, scenario_id, user, physical_object_type_id, service_type_id, None, None
-    )
+    with patch("idu_api.urban_api.logic.impl.helpers.projects_geometries.get_project_by_scenario_id") as mock_check:
+        mock_check.return_value.is_regional = False
+        result = await get_geometries_with_all_objects_by_scenario_id_from_db(
+            mock_conn, scenario_id, user, physical_object_type_id, service_type_id, None, None
+        )
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
     # Assert
@@ -416,7 +420,7 @@ async def test_get_context_geometries_from_db(mock_conn: MockConnection):
     # Arrange
     project_id = 1
     user = UserDTO(id="mock_string", is_superuser=False)
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
+    mock_geom = str(MagicMock(spec=ScalarSelect))
     statement = (
         select(
             object_geometries_data.c.object_geometry_id,
@@ -427,8 +431,8 @@ async def test_get_context_geometries_from_db(mock_conn: MockConnection):
             ST_AsEWKB(
                 case(
                     (
-                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
-                        ST_Intersection(object_geometries_data.c.geometry, context_geom),
+                        ~ST_Within(object_geometries_data.c.geometry, mock_geom),
+                        ST_Intersection(object_geometries_data.c.geometry, mock_geom),
                     ),
                     else_=object_geometries_data.c.geometry,
                 )
@@ -436,8 +440,8 @@ async def test_get_context_geometries_from_db(mock_conn: MockConnection):
             ST_AsEWKB(
                 case(
                     (
-                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
-                        ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context_geom)),
+                        ~ST_Within(object_geometries_data.c.geometry, mock_geom),
+                        ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, mock_geom)),
                     ),
                     else_=object_geometries_data.c.centre_point,
                 )
@@ -455,14 +459,19 @@ async def test_get_context_geometries_from_db(mock_conn: MockConnection):
             )
         )
         .where(
-            object_geometries_data.c.territory_id.in_(context_ids)
-            | ST_Intersects(object_geometries_data.c.geometry, context_geom)
+            object_geometries_data.c.territory_id.in_([1])
+            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
         )
         .distinct()
     )
 
     # Act
-    result = await get_context_geometries_from_db(mock_conn, project_id, user, None, None)
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.projects_geometries.get_context_territories_geometry",
+        new_callable=AsyncMock,
+    ) as mock_get_context:
+        mock_get_context.return_value = mock_geom, [1]
+        result = await get_context_geometries_from_db(mock_conn, project_id, user, None, None)
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
     # Assert
@@ -483,7 +492,7 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
     user = UserDTO(id="mock_string", is_superuser=False)
     physical_object_type_id = 1
     service_type_id = 1
-    context_geom, context_ids = await get_context_territories_geometry(mock_conn, project_id, user)
+    mock_geom = str(MagicMock(spec=ScalarSelect))
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .select_from(
@@ -493,8 +502,8 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
             ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
         .where(
-            object_geometries_data.c.territory_id.in_(context_ids)
-            | ST_Intersects(object_geometries_data.c.geometry, context_geom)
+            object_geometries_data.c.territory_id.in_([1])
+            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
         )
         .cte(name="objects_intersecting")
     )
@@ -516,8 +525,8 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
             ST_AsEWKB(
                 case(
                     (
-                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
-                        ST_Intersection(object_geometries_data.c.geometry, context_geom),
+                        ~ST_Within(object_geometries_data.c.geometry, mock_geom),
+                        ST_Intersection(object_geometries_data.c.geometry, mock_geom),
                     ),
                     else_=object_geometries_data.c.geometry,
                 )
@@ -525,8 +534,8 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
             ST_AsEWKB(
                 case(
                     (
-                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
-                        ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context_geom)),
+                        ~ST_Within(object_geometries_data.c.geometry, mock_geom),
+                        ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, mock_geom)),
                     ),
                     else_=object_geometries_data.c.centre_point,
                 )
@@ -583,9 +592,14 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
     )
 
     # Act
-    result = await get_context_geometries_with_all_objects_from_db(
-        mock_conn, project_id, user, physical_object_type_id, service_type_id, None, None
-    )
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.projects_geometries.get_context_territories_geometry",
+        new_callable=AsyncMock,
+    ) as mock_get_context:
+        mock_get_context.return_value = mock_geom, [1]
+        result = await get_context_geometries_with_all_objects_from_db(
+            mock_conn, project_id, user, physical_object_type_id, service_type_id, None, None
+        )
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
     # Assert

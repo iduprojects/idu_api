@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 
 @dataclass(frozen=True)
@@ -21,6 +21,8 @@ class ScenarioDTO:  # pylint: disable=too-many-instance-attributes
     functional_zone_type_description: str | None
     name: str
     is_based: bool
+    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"]
+    phase_percentage: float
     properties: dict[str, Any]
     created_at: datetime
     updated_at: datetime

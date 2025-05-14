@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB
-from sqlalchemy import case, delete, insert, or_, select, text, update
+from shapely.geometry import LineString, MultiLineString, MultiPoint, MultiPolygon, Point, Polygon
+from sqlalchemy import case, delete, func, insert, or_, select, text, update
 
 from idu_api.common.db.entities import (
     functional_zone_types_dict,
@@ -34,6 +35,7 @@ from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     get_all_sources_from_db,
     get_functional_zone_by_id,
     get_functional_zone_types_from_db,
+    get_functional_zones_around_from_db,
     get_profiles_reclamation_data_by_id_from_db,
     get_profiles_reclamation_data_matrix_from_db,
     patch_functional_zone_to_db,
@@ -54,6 +56,8 @@ from idu_api.urban_api.schemas import (
     ProfilesReclamationDataPut,
 )
 from tests.urban_api.helpers.connection import MockConnection
+
+Geom = Point | Polygon | MultiPolygon | LineString | MultiLineString | MultiPoint
 
 ####################################################################################
 #                           Default use-case tests                                 #
@@ -398,7 +402,7 @@ async def test_get_functional_zone_by_id(mock_conn: MockConnection):
                 functional_zone_types_dict.c.functional_zone_type_id == functional_zones_data.c.functional_zone_type_id,
             )
         )
-        .where(functional_zones_data.c.functional_zone_id == functional_zone_id)
+        .where(functional_zones_data.c.functional_zone_id.in_([functional_zone_id]))
     )
 
     # Act
@@ -577,3 +581,33 @@ async def test_delete_functional_zone_from_db(mock_conn: MockConnection):
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
     mock_conn.execute_mock.assert_called_once_with(str(statement))
     mock_conn.commit_mock.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_get_functional_zones_around_from_db(mock_conn: MockConnection, shapely_geometry: Geom):
+    """Test the get_functional_zones_around_from_db function."""
+
+    # Arrange
+    year, source = 1, "mock_string"
+    functional_zone_type_id = None
+    given_geometry = select(ST_GeomFromWKB(shapely_geometry.wkb, text(str(SRID)))).scalar_subquery()
+    statement = (
+        select(functional_zones_data.c.functional_zone_id)
+        .where(
+            functional_zones_data.c.year == year,
+            functional_zones_data.c.source == source,
+            func.ST_Intersects(functional_zones_data.c.geometry, given_geometry),
+        )
+        .distinct()
+    )
+
+    # Act
+    result = await get_functional_zones_around_from_db(
+        mock_conn, shapely_geometry, year, source, functional_zone_type_id
+    )
+
+    # Assert
+    assert isinstance(result, list), "Result should be a list."
+    assert all(isinstance(obj, FunctionalZoneDTO) for obj in result), "Each item should be a FunctionalZoneDTO."
+    assert isinstance(FunctionalZone.from_dto(result[0]), FunctionalZone), "Couldn't create pydantic model from DTO."
+    mock_conn.execute_mock.assert_any_call(str(statement))
