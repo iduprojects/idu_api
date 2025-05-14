@@ -116,15 +116,15 @@ from .services import (
 )
 from .soc_groups import (
     SocGroup,
-    SocGroupIndicatorValue,
-    SocGroupIndicatorValuePost,
-    SocGroupIndicatorValuePut,
+    SocValueIndicatorValue,
+    SocValueIndicatorValuePost,
+    SocValueIndicatorValuePut,
     SocGroupPost,
-    SocGroupServiceTypePost,
+    SocServiceTypePost,
     SocGroupWithServiceTypes,
     SocValue,
     SocValuePost,
-    SocValueWithSocGroups,
+    SocValueWithServiceTypes,
 )
 from .territories import (
     TargetCityType,
@@ -265,10 +265,10 @@ __all__ = [
     "SocGroupPost",
     "SocValue",
     "SocValuePost",
-    "SocGroupServiceTypePost",
-    "SocGroupIndicatorValue",
-    "SocGroupIndicatorValuePost",
-    "SocGroupIndicatorValuePut",
-    "SocValueWithSocGroups",
+    "SocServiceTypePost",
+    "SocValueIndicatorValue",
+    "SocValueIndicatorValuePost",
+    "SocValueIndicatorValuePut",
     "SocGroupWithServiceTypes",
+    "SocValueWithServiceTypes",
 ]

@@ -45,10 +45,10 @@ from .services import (
 )
 from .soc_groups import (
     SocGroupDTO,
-    SocGroupIndicatorValueDTO,
+    SocValueIndicatorValueDTO,
     SocGroupWithServiceTypesDTO,
     SocValueDTO,
-    SocValueWithSocGroupsDTO,
+    SocValueWithServiceTypesDTO,
 )
 from .territories import (
     TargetCityTypeDTO,
@@ -118,8 +118,8 @@ __all__ = [
     "ProjectWithTerritoryDTO",
     "TargetCityTypeDTO",
     "SocGroupDTO",
-    "SocGroupWithServiceTypesDTO",
     "SocValueDTO",
-    "SocValueWithSocGroupsDTO",
-    "SocGroupIndicatorValueDTO",
+    "SocValueIndicatorValueDTO",
+    "SocGroupWithServiceTypesDTO",
+    "SocValueWithServiceTypesDTO",
 ]
