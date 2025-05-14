@@ -13,12 +13,16 @@ from idu_api.common.db.entities import (
     soc_group_values_data,
     soc_groups_dict,
     urban_functions_dict,
+    soc_values_dict,
+    soc_values_service_types_dict,
 )
 from idu_api.urban_api.dto import (
     PhysicalObjectTypeDTO,
     ServiceTypeDTO,
     ServiceTypesHierarchyDTO,
     SocGroupWithServiceTypesDTO,
+    SocValueWithServiceTypesDTO,
+    SocValueDTO,
     UrbanFunctionDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
@@ -489,5 +493,50 @@ async def get_social_groups_by_service_type_id_from_db(
 
     return [
         SocGroupWithServiceTypesDTO(soc_group_id=row["soc_group_id"], name=row["name"], service_types=service_types)
+        for row in result
+    ]
+
+
+async def get_social_values_by_service_type_id_from_db(
+    conn: AsyncConnection,
+    service_type_id: int,
+) -> list[SocValueDTO]:
+    """Get all social values by service type identifier."""
+
+    if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
+        raise EntityNotFoundById(service_type_id, "service type")
+
+
+    statement = (
+        select(
+            soc_values_service_types_dict,
+            soc_values_service_types_dict.c.soc_value_id,
+            soc_values_dict,
+            soc_values_dict.c.name,
+            soc_values_dict.c.rank,
+            soc_values_dict.c.normative_value,
+            soc_values_dict.c.decree_value
+        )
+        .join(
+            soc_values_dict,
+            soc_values_service_types_dict.c.soc_value_id == soc_values_dict.c.soc_value_id)
+        .where(
+            soc_values_service_types_dict.c.service_type_id == service_type_id
+        )
+    )
+
+    result = (await conn.execute(statement)).mappings().all()
+    if not result:
+        return []
+
+
+    return [
+        SocValueDTO(
+            soc_value_id=row["soc_value_id"],
+            name=row["name"],
+            rank=row["rank"],
+            normative_value=row["normative_value"],
+            decree_value=row["decree_value"]
+        )
         for row in result
     ]

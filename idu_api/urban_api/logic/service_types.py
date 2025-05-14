@@ -7,6 +7,7 @@ from idu_api.urban_api.dto import (
     ServiceTypeDTO,
     ServiceTypesHierarchyDTO,
     SocGroupWithServiceTypesDTO,
+    #SocValueWithServiceTypesDTO,
     UrbanFunctionDTO,
 )
 from idu_api.urban_api.schemas import (
@@ -84,3 +85,7 @@ class ServiceTypesService(Protocol):
     @abc.abstractmethod
     async def get_social_groups_by_service_type_id(self, service_type_id: int) -> list[SocGroupWithServiceTypesDTO]:
         """Get all social groups by service type identifier."""
+
+    @abc.abstractmethod
+    async def get_social_values_by_service_type_id(self, service_type_id: int): #-> list[SocValueWithServiceTypesDTO]:
+        """Get all social values by service type identifier."""

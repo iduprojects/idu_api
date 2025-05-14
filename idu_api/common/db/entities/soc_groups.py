@@ -75,7 +75,7 @@ soc_group_values_data = Table(
     Column("soc_group_value_id", Integer, primary_key=True, server_default=soc_group_values_data_id_seq.next_value()),
     Column("soc_group_id", ForeignKey(soc_groups_dict.c.soc_group_id, ondelete="CASCADE"), nullable=False),
     Column("service_type_id", ForeignKey(service_types_dict.c.service_type_id, ondelete="CASCADE"), nullable=False),
-    Column("soc_value_id", ForeignKey(soc_values_dict.c.soc_value_id, ondelete="CASCADE"), nullable=False),
+    Column("soc_value_id", ForeignKey(soc_values_dict.c.soc_value_id, ondelete="CASCADE"), nullable=True),
     Column("infrastructure_type", InfrastructureTypeEnum, default=InfrastructureType.basic, nullable=False),
 )
 

@@ -20,18 +20,17 @@ from idu_api.common.db.entities import (
 from idu_api.urban_api.dto import (
     ServiceTypeDTO,
     SocGroupDTO,
-    SocGroupIndicatorValueDTO,
+    SocValueIndicatorValueDTO,
     SocGroupWithServiceTypesDTO,
     SocValueDTO,
-    SocValueWithSocGroupsDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.logic.impl.helpers.utils import check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import (
-    SocGroupIndicatorValuePost,
-    SocGroupIndicatorValuePut,
+    SocValueIndicatorValuePost,
+    SocValueIndicatorValuePut,
     SocGroupPost,
-    SocGroupServiceTypePost,
+    SocServiceTypePost,
     SocValuePost,
 )
 
@@ -84,6 +83,33 @@ async def get_social_group_by_id_from_db(conn: AsyncConnection, soc_group_id: in
     )
 
 
+async def get_social_groups_by_social_value_id_from_db(conn: AsyncConnection, soc_value_id: int) -> list[SocGroupDTO]:
+    """Get social groups by social value identifier."""
+
+    if not await check_existence(conn, soc_values_dict, conditions={"soc_value_id": soc_value_id}):
+        raise EntityNotFoundById(soc_value_id, "social value")
+
+    statement = (
+        select(
+            soc_groups_dict,
+            soc_groups_dict.c.soc_group_id,
+            soc_groups_dict.c.name
+        )
+        .join(
+            soc_group_values_data,
+            soc_groups_dict.c.soc_group_id == soc_group_values_data.c.soc_group_id
+        )
+        .join(
+            soc_values_service_types_dict,
+            soc_group_values_data.c.service_type_id == soc_values_service_types_dict.c.service_type_id
+        )
+        .where(soc_values_service_types_dict.c.soc_value_id == soc_value_id)
+        .distinct()
+    )
+
+    result = (await conn.execute(statement)).mappings().all()
+    return [SocGroupDTO(group['soc_group_id'], group['name']) for group in result]
+
 async def add_social_group_to_db(conn: AsyncConnection, soc_group: SocGroupPost) -> SocGroupWithServiceTypesDTO:
     """Create a new social group."""
 
@@ -98,11 +124,44 @@ async def add_social_group_to_db(conn: AsyncConnection, soc_group: SocGroupPost)
 
     return await get_social_group_by_id_from_db(conn, soc_group_id)
 
+async def add_service_type_to_social_value_to_db(
+    conn: AsyncConnection,
+    soc_value_id: int,
+    service_type_id: int
+) -> SocValueDTO:
+    """Add service type to social group"""
 
-async def add_service_type_to_social_group_from_db(
+    if not await check_existence(conn, soc_values_dict, conditions={"soc_value_id": soc_value_id}):
+        raise EntityNotFoundById(soc_value_id, "social value")
+
+    if not await check_existence(
+        conn, service_types_dict, conditions={"service_type_id": service_type_id}
+    ):
+        raise EntityNotFoundById(service_type_id, "service type")
+
+    if await check_existence(
+        conn,
+        soc_values_service_types_dict,
+        conditions={"service_type_id": service_type_id, "soc_value_id": soc_value_id},
+    ):
+        raise EntityAlreadyExists("service type", service_type_id, soc_value_id)
+
+
+    statement = (
+        insert(soc_values_service_types_dict)
+        .values(soc_value_id=soc_value_id, service_type_id=service_type_id)
+        .returning(soc_values_service_types_dict.c.soc_value_id)
+    )
+    await conn.execute(statement)
+    await conn.commit()
+
+    return await get_social_value_by_id_from_db(conn, soc_value_id)
+
+
+async def add_service_type_to_social_group_to_db(
     conn: AsyncConnection,
     soc_group_id: int,
-    service_type: SocGroupServiceTypePost,
+    service_type: SocServiceTypePost,
 ) -> SocGroupWithServiceTypesDTO:
     """Add service type to social group."""
 
@@ -153,70 +212,31 @@ async def get_social_values_from_db(conn: AsyncConnection) -> list[SocValueDTO]:
     return [SocValueDTO(**value) for value in (await conn.execute(statement)).mappings().all()]
 
 
-async def get_social_value_by_id_from_db(conn: AsyncConnection, soc_value_id: int) -> SocValueWithSocGroupsDTO:
+async def get_social_value_by_id_from_db(conn: AsyncConnection, soc_value_id: int) -> SocValueDTO:
     """Get social value with associated social groups by identifier."""
 
     statement = (
         select(
             soc_values_dict,
-            soc_groups_dict.c.soc_group_id,
-            soc_groups_dict.c.name.label("soc_group_name"),
-            service_types_dict.c.service_type_id.label("id"),
-            service_types_dict.c.name.label("service_type_name"),
-            soc_group_values_data.c.infrastructure_type,
-            soc_values_dict.c.rank,
-            soc_values_dict.c.normative_value,
-            soc_values_dict.c.decree_value,
+        ).where(
+            soc_values_dict.c.soc_value_id == soc_value_id
         )
-        .select_from(
-            soc_values_dict.outerjoin(
-                soc_group_values_data,
-                soc_group_values_data.c.soc_value_id == soc_values_dict.c.soc_value_id,
-            )
-            .outerjoin(
-                service_types_dict, service_types_dict.c.service_type_id == soc_group_values_data.c.service_type_id
-            )
-            .outerjoin(soc_groups_dict, soc_groups_dict.c.soc_group_id == soc_group_values_data.c.soc_group_id)
-        )
-        .where(soc_values_dict.c.soc_value_id == soc_value_id)
-        .order_by(soc_groups_dict.c.soc_group_id)
-        .distinct()
     )
 
     result = (await conn.execute(statement)).mappings().all()
     if not result:
         raise EntityNotFoundById(soc_value_id, "social value")
 
-    def group_objects(rows: Sequence[RowMapping]) -> list[SocGroupDTO]:
-        """Group service types by social group identifier."""
-
-        grouped_data = defaultdict(lambda: {"service_types": []})
-        for row in rows:
-            key = row.soc_group_id
-            if key not in grouped_data and key is not None:
-                grouped_data[key].update({"soc_group_id": row["soc_group_id"], "name": row["soc_group_name"]})
-
-            if row["id"] is not None:
-                service_type = {
-                    "id": row["id"],
-                    "name": row["service_type_name"],
-                    "infrastructure_type": row["infrastructure_type"],
-                }
-                grouped_data[key]["service_types"].append(service_type)
-
-        return [SocGroupWithServiceTypesDTO(**group) for group in grouped_data.values()]
-
-    return SocValueWithSocGroupsDTO(
+    return SocValueDTO(
         soc_value_id=result[0]["soc_value_id"],
         name=result[0]["name"],
-        soc_groups=group_objects(result),
         rank=result[0]["rank"],
         normative_value=result[0]["normative_value"],
-        decree_value=result[0]["decree_value"],
+        decree_value=result[0]["decree_value"]
     )
 
 
-async def add_social_value_to_db(conn: AsyncConnection, soc_value: SocValuePost) -> SocValueWithSocGroupsDTO:
+async def add_social_value_to_db(conn: AsyncConnection, soc_value: SocValuePost) -> SocValueDTO:
     """Create a new social value."""
 
     if await check_existence(conn, soc_values_dict, conditions={"name": soc_value.name}):
@@ -236,7 +256,7 @@ async def add_value_to_social_group_from_db(
     soc_group_id: int,
     service_type_id: int,
     soc_value_id: int,
-) -> SocValueWithSocGroupsDTO:
+) -> SocValueDTO:
     """Add value to social group."""
 
     if not await check_existence(conn, soc_groups_dict, conditions={"soc_group_id": soc_group_id}):
@@ -295,23 +315,28 @@ async def delete_social_value_from_db(conn: AsyncConnection, soc_value_id: int) 
     return {"status": "ok"}
 
 
-async def get_social_group_indicator_values_from_db(
+async def get_social_value_indicator_values_from_db(
     conn: AsyncConnection,
-    soc_group_id: int,
-    soc_value_id: int | None,
+    soc_value_id: int,
     territory_id: int | None,
     year: int | None,
     last_only: bool,
-) -> list[SocGroupIndicatorValueDTO]:
-    """Get social group's indicator values by social group identifier."""
+) -> list[SocValueIndicatorValueDTO]:
+    """Get social value's indicator values by social group identifier."""
 
-    if not await check_existence(conn, soc_groups_dict, conditions={"soc_group_id": soc_group_id}):
-        raise EntityNotFoundById(soc_group_id, "social group")
+    if not await check_existence(conn, soc_values_dict, conditions={"soc_value_id": soc_value_id}):
+        raise EntityNotFoundById(soc_value_id, "social value id")
 
-    select_from = soc_group_value_indicators_data.join(
-        soc_values_dict,
-        soc_values_dict.c.soc_value_id == soc_group_value_indicators_data.c.soc_value_id,
-    ).join(territories_data, territories_data.c.territory_id == soc_group_value_indicators_data.c.territory_id)
+    select_from = (
+        soc_group_value_indicators_data
+        .join(
+            soc_values_dict,
+            soc_values_dict.c.soc_value_id == soc_group_value_indicators_data.c.soc_value_id,
+        )
+        .join(
+            territories_data,
+            territories_data.c.territory_id == soc_group_value_indicators_data.c.territory_id)
+    )
 
     if last_only:
         subquery = (
@@ -336,13 +361,10 @@ async def get_social_group_indicator_values_from_db(
 
     statement = select(
         soc_group_value_indicators_data,
-        soc_groups_dict.c.name.label("soc_group_name"),
         soc_values_dict.c.name.label("soc_value_name"),
         territories_data.c.name.label("territory_name"),
-    ).select_from(select_from)
+    ).select_from(select_from).where(soc_group_value_indicators_data.c.soc_value_id == soc_value_id)
 
-    if soc_value_id is not None:
-        statement = statement.where(soc_group_value_indicators_data.c.soc_value_id == soc_value_id)
     if territory_id is not None:
         statement = statement.where(soc_group_value_indicators_data.c.territory_id == territory_id)
     if year is not None:
@@ -350,20 +372,16 @@ async def get_social_group_indicator_values_from_db(
 
     result = (await conn.execute(statement)).mappings().all()
     if not result:
-        raise EntityNotFoundByParams("social group indicator value", soc_group_id, soc_value_id, territory_id, year)
+        raise EntityNotFoundByParams("social value indicator value", soc_value_id, territory_id, year)
 
-    return [SocGroupIndicatorValueDTO(**indicator) for indicator in result]
+    return [SocValueIndicatorValueDTO(**indicator) for indicator in result]
 
 
-async def add_social_group_indicator_value_to_db(
+async def add_social_value_indicator_value_to_db(
     conn: AsyncConnection,
-    soc_group_id: int,
-    soc_group_indicator: SocGroupIndicatorValuePost,
-) -> SocGroupIndicatorValueDTO:
-    """Create a new social group indicator value."""
-
-    if not await check_existence(conn, soc_groups_dict, conditions={"soc_group_id": soc_group_id}):
-        raise EntityNotFoundById(soc_group_id, "social group")
+    soc_group_indicator: SocValueIndicatorValuePost,
+) -> SocValueIndicatorValueDTO:
+    """Create a new social value indicator value."""
 
     if not await check_existence(conn, soc_values_dict, conditions={"soc_value_id": soc_group_indicator.soc_value_id}):
         raise EntityNotFoundById(soc_group_indicator.soc_value_id, "social value")
@@ -381,8 +399,7 @@ async def add_social_group_indicator_value_to_db(
         },
     ):
         raise EntityAlreadyExists(
-            "social group indicator value",
-            soc_group_id,
+            "social value indicator value",
             soc_group_indicator.soc_value_id,
             soc_group_indicator.territory_id,
             soc_group_indicator.year,
@@ -398,9 +415,8 @@ async def add_social_group_indicator_value_to_db(
     await conn.commit()
 
     return (
-        await get_social_group_indicator_values_from_db(
+        await get_social_value_indicator_values_from_db(
             conn,
-            soc_group_id,
             result.soc_value_id,
             result.territory_id,
             result.year,
@@ -409,15 +425,11 @@ async def add_social_group_indicator_value_to_db(
     )[0]
 
 
-async def put_social_group_indicator_value_to_db(
+async def put_social_value_indicator_value_to_db(
     conn: AsyncConnection,
-    soc_group_id: int,
-    soc_group_indicator: SocGroupIndicatorValuePut,
-) -> SocGroupIndicatorValueDTO:
-    """Update or create a social group indicator value."""
-
-    if not await check_existence(conn, soc_groups_dict, conditions={"soc_group_id": soc_group_id}):
-        raise EntityNotFoundById(soc_group_id, "social group")
+    soc_group_indicator: SocValueIndicatorValuePut,
+) -> SocValueIndicatorValueDTO:
+    """Update or create a social value indicator value."""
 
     if not await check_existence(conn, soc_values_dict, conditions={"soc_value_id": soc_group_indicator.soc_value_id}):
         raise EntityNotFoundById(soc_group_indicator.soc_value_id, "social value")
@@ -456,9 +468,8 @@ async def put_social_group_indicator_value_to_db(
     await conn.commit()
 
     return (
-        await get_social_group_indicator_values_from_db(
+        await get_social_value_indicator_values_from_db(
             conn,
-            soc_group_id,
             result.soc_value_id,
             result.territory_id,
             result.year,
@@ -467,34 +478,53 @@ async def put_social_group_indicator_value_to_db(
     )[0]
 
 
-async def delete_social_group_indicator_value_from_db(
+async def delete_social_value_indicator_value_from_db(
     conn: AsyncConnection,
     soc_value_id: int,
-    territory_id: int,
-    year: int,
+    territory_id: int | None,
+    year: int | None,
 ) -> dict[str, str]:
-    """Delete social group indicator value."""
+    """Delete social value indicator value."""
+
+    conditions = {
+        "soc_value_id": soc_value_id,
+    }
+
+    if not await check_existence(conn, soc_values_dict, conditions={"soc_value_id": soc_value_id}):
+        raise EntityNotFoundById(soc_value_id, "social value id")
+
+    if territory_id is not None:
+        conditions["territory_id"] = territory_id
+        if not await check_existence(conn, territories_data, conditions={"territory_id": territory_id}):
+            raise EntityNotFoundById(territory_id, "territory")
+
+    if year is not None:
+        conditions["year"] = year
 
     if not await check_existence(
         conn,
         soc_group_value_indicators_data,
-        conditions={
-            "soc_value_id": soc_value_id,
-            "territory_id": territory_id,
-            "year": year,
-        },
+        conditions=conditions
     ):
-        raise EntityNotFoundByParams("social group indicator value", soc_value_id, territory_id, year)
+        raise EntityNotFoundByParams("social value indicator value", soc_value_id, territory_id, year)
 
     statement = (
         delete(soc_group_value_indicators_data)
         .where(
-            soc_group_value_indicators_data.c.soc_value_id == soc_value_id,
-            soc_group_value_indicators_data.c.territory_id == territory_id,
+            soc_group_value_indicators_data.c.soc_value_id == soc_value_id
+        )
+    )
+
+    if territory_id is not None:
+        statement = statement.where(
+            soc_group_value_indicators_data.c.territory_id == territory_id
+        )
+    if year is not None:
+        statement = statement.where(
             soc_group_value_indicators_data.c.year == year,
         )
-        .returning(soc_group_value_indicators_data)
-    )
+
+    statement = statement.returning(soc_group_value_indicators_data)
 
     await conn.execute(statement)
     await conn.commit()

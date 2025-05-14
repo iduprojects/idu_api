@@ -28,18 +28,7 @@ class SocValueDTO:
 
 
 @dataclass(frozen=True)
-class SocValueWithSocGroupsDTO:
-    soc_value_id: int
-    name: str
-    rank: int
-    normative_value: float
-    decree_value: float
-    soc_groups: list[SocGroupWithServiceTypesDTO]
-
-
-@dataclass(frozen=True)
-class SocGroupIndicatorValueDTO:
-    soc_group_name: str
+class SocValueIndicatorValueDTO:
     soc_value_id: int
     soc_value_name: str
     territory_id: int
@@ -51,6 +40,8 @@ class SocGroupIndicatorValueDTO:
 
 
 @dataclass(frozen=True)
-class SocValueServiceTypeDTO:
+class SocValueWithServiceTypesDTO:
     soc_value_id: int
     service_type_id: int
+    service_types: list[dict[str, Any]]
+

@@ -8,12 +8,12 @@ from pydantic import BaseModel, Field, field_validator
 
 from idu_api.urban_api.dto import (
     SocGroupDTO,
-    SocGroupIndicatorValueDTO,
+    SocValueIndicatorValueDTO,
+    SocValueWithServiceTypesDTO,
     SocGroupWithServiceTypesDTO,
     SocValueDTO,
-    SocValueWithSocGroupsDTO,
 )
-from idu_api.urban_api.schemas.short_models import ServiceTypeForSocGroup, ShortTerritory, SocGroupBasic, SocValueBasic
+from idu_api.urban_api.schemas.short_models import SocServiceType, ShortTerritory, SocGroupBasic, SocValueBasic
 
 
 class SocGroup(BaseModel):
@@ -33,7 +33,7 @@ class SocGroupWithServiceTypes(BaseModel):
 
     soc_group_id: int = Field(..., description="social group identifier", examples=[1])
     name: str = Field(..., description="social group name", examples=["Трудоспособные"])
-    service_types: list[ServiceTypeForSocGroup]
+    service_types: list[SocServiceType]
 
     @classmethod
     def from_dto(cls, dto: SocGroupWithServiceTypesDTO) -> "SocGroupWithServiceTypes":
@@ -42,7 +42,7 @@ class SocGroupWithServiceTypes(BaseModel):
             soc_group_id=dto.soc_group_id,
             name=dto.name,
             service_types=[
-                ServiceTypeForSocGroup(
+                SocServiceType(
                     id=service_type["id"],
                     name=service_type["name"],
                     infrastructure_type=service_type["infrastructure_type"],
@@ -52,14 +52,37 @@ class SocGroupWithServiceTypes(BaseModel):
         )
 
 
+class SocValueWithServiceTypes(BaseModel):
+    """Social value with all its attributes and list of service types."""
+
+    soc_value_id: int = Field(..., description="social value identifier", examples=[1])
+    name: str = Field(..., description="social value name", examples=["Ценность"])
+    service_types: list[SocServiceType]
+
+    @classmethod
+    def from_dto(cls, dto: SocValueWithServiceTypesDTO) -> "SocValueWithServiceTypes":
+        """Construct from DTO."""
+        return cls(
+            soc_value_id=dto.soc_value_id,
+            name=dto.name,
+            service_types=[
+                SocServiceType(
+                    id=service_type["id"],
+                    name=service_type["name"],
+                    infrastructure_type=service_type["infrastructure_type"],
+                )
+                for service_type in dto.service_types
+            ],
+        )
+
 class SocGroupPost(BaseModel):
     """Schema of social group for POST request."""
 
     name: str = Field(..., description="social group name", examples=["Трудоспособные"])
 
 
-class SocGroupServiceTypePost(BaseModel):
-    """Schema of social group's service type for POST request."""
+class SocServiceTypePost(BaseModel):
+    """Schema of social service type for POST request."""
 
     service_type_id: int = Field(..., description="service type identifier", examples=[1])
     infrastructure_type: Literal["basic", "additional", "comfort"] = Field(
@@ -88,29 +111,6 @@ class SocValue(BaseModel):
         )
 
 
-class SocValueWithSocGroups(BaseModel):
-    """Social value with all its attributes and list of social groups (with service types)."""
-
-    soc_value_id: int = Field(..., description="social value identifier", examples=[1])
-    name: str = Field(..., description="social value name", examples=["Ценность"])
-    rank: int = Field(..., description="rank", examples=[3])
-    normative_value: float = Field(..., description="normative_value", examples=[0.56])
-    decree_value: float = Field(..., description="decree_value", examples=[0.75])
-    soc_groups: list[SocGroupWithServiceTypes]
-
-    @classmethod
-    def from_dto(cls, dto: SocValueWithSocGroupsDTO) -> "SocValueWithSocGroups":
-        """Construct from DTO."""
-        return cls(
-            soc_value_id=dto.soc_value_id,
-            name=dto.name,
-            rank=dto.rank,
-            normative_value=dto.normative_value,
-            decree_value=dto.decree_value,
-            soc_groups=[SocGroupWithServiceTypes.from_dto(group) for group in dto.soc_groups],
-        )
-
-
 class SocValuePost(BaseModel):
     """Schema of social value for POST request."""
 
@@ -120,8 +120,8 @@ class SocValuePost(BaseModel):
     decree_value: float = Field(..., description="decree_value", examples=[0.75])
 
 
-class SocGroupIndicatorValue(BaseModel):
-    """Social group's indicator value with all its attributes."""
+class SocValueIndicatorValue(BaseModel):
+    """Social value's indicator value with all its attributes."""
 
     soc_value: SocValueBasic
     territory: ShortTerritory
@@ -136,7 +136,7 @@ class SocGroupIndicatorValue(BaseModel):
     )
 
     @classmethod
-    def from_dto(cls, dto: SocGroupIndicatorValueDTO) -> "SocGroupIndicatorValue":
+    def from_dto(cls, dto: SocValueIndicatorValueDTO) -> "SocValueIndicatorValue":
         """Construct from DTO."""
         return cls(
             soc_value=SocValueBasic(id=dto.soc_value_id, name=dto.soc_value_name),
@@ -148,8 +148,8 @@ class SocGroupIndicatorValue(BaseModel):
         )
 
 
-class SocGroupIndicatorValuePost(BaseModel):
-    """Schema of social group's indicator value for POST request."""
+class SocValueIndicatorValuePost(BaseModel):
+    """Schema of social value's indicator value for POST request."""
 
     soc_value_id: int = Field(..., description="social value identifier", examples=[1])
     territory_id: int = Field(..., description="territory identifier", examples=[1])
@@ -157,8 +157,8 @@ class SocGroupIndicatorValuePost(BaseModel):
     value: float = Field(..., description="indicator value for social group and territory at time", examples=[23.5])
 
 
-class SocGroupIndicatorValuePut(BaseModel):
-    """Schema of social group's indicator value for PATCH request."""
+class SocValueIndicatorValuePut(BaseModel):
+    """Schema of social value's indicator value for PATCH request."""
 
     soc_value_id: int = Field(..., description="social value identifier", examples=[1])
     territory_id: int = Field(..., description="territory identifier", examples=[1])
