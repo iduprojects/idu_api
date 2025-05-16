@@ -18,7 +18,9 @@ class Scenario(BaseModel):
     functional_zone_type: FunctionalZoneTypeBasic | None
     name: str = Field(..., description="name of the scenario", examples=["--"])
     is_based: bool = Field(..., description="boolean parameter to determine base scenario")
-    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(..., description="phase of the scenario", examples=["pre-study"])
+    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(
+        ..., description="phase of the scenario", examples=["pre-study"]
+    )
     phase_percentage: float | None = Field(..., description="percentage of the phase", examples=[100])
     properties: dict[str, Any] = Field(
         default_factory=dict,
@@ -73,7 +75,9 @@ class ScenarioPost(BaseModel):
         ..., description="target profile identifier for the scenario", examples=[1]
     )
     name: str = Field(..., description="name of the scenario", examples=["--"])
-    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(None, description="phase of the scenario", examples=["pre-study"])
+    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(
+        None, description="phase of the scenario", examples=["pre-study"]
+    )
     phase_percentage: float | None = Field(None, description="percentage of the phase", examples=[100])
     properties: dict[str, Any] = Field(
         default_factory=dict,
@@ -90,7 +94,9 @@ class ScenarioPut(BaseModel):
     )
     name: str = Field(..., description="name of the scenario", examples=["--"])
     is_based: bool = Field(..., description="boolean parameter to determine base scenario")
-    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(..., description="phase of the scenario", examples=["pre-study"])
+    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(
+        ..., description="phase of the scenario", examples=["pre-study"]
+    )
     phase_percentage: float | None = Field(..., description="percentage of the phase", examples=[100])
     properties: dict[str, Any] = Field(
         ...,
@@ -107,7 +113,9 @@ class ScenarioPatch(BaseModel):
     )
     name: str | None = Field(None, description="name of the scenario", examples=["--"])
     is_based: bool | None = Field(None, description="boolean parameter to determine base scenario")
-    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(None, description="phase of the scenario", examples=["pre-study"])
+    phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(
+        None, description="phase of the scenario", examples=["pre-study"]
+    )
     phase_percentage: float | None = Field(None, description="percentage of the phase", examples=[100])
     properties: dict[str, Any] | None = Field(
         None,

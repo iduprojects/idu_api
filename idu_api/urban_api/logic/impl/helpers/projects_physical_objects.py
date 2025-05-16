@@ -42,7 +42,14 @@ from idu_api.urban_api.logic.impl.helpers.utils import (
     extract_values_from_model,
     get_context_territories_geometry,
 )
-from idu_api.urban_api.schemas import PhysicalObjectPatch, PhysicalObjectPut, PhysicalObjectWithGeometryPost
+from idu_api.urban_api.schemas import (
+    PhysicalObjectPatch,
+    PhysicalObjectPut,
+    PhysicalObjectWithGeometryPost,
+    ScenarioBuildingPatch,
+    ScenarioBuildingPost,
+    ScenarioBuildingPut,
+)
 
 
 async def get_physical_objects_by_scenario_id_from_db(
@@ -120,6 +127,7 @@ async def get_physical_objects_by_scenario_id_from_db(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
             ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
         )
+        .distinct()
     )
 
     # Шаг 3: Собрать все записи из user_projects.urban_objects_data для данного сценария
@@ -206,6 +214,7 @@ async def get_physical_objects_by_scenario_id_from_db(
             projects_urban_objects_data.c.scenario_id == scenario_id,
             projects_urban_objects_data.c.public_urban_object_id.is_(None),
         )
+        .distinct()
     )
 
     if physical_object_type_id is not None:
@@ -1494,3 +1503,546 @@ async def update_physical_objects_by_function_id_to_db(
     await conn.commit()
 
     return await get_scenario_urban_object_by_ids_from_db(conn, list(urban_object_ids))
+
+
+async def add_building_to_db(
+    conn: AsyncConnection,
+    building: ScenarioBuildingPost,
+    scenario_id: int,
+    user: UserDTO,
+) -> ScenarioPhysicalObjectDTO:
+    """Add building to physical object for given scenario."""
+
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
+
+    if not await check_existence(
+        conn,
+        projects_physical_objects_data if building.is_scenario_object else physical_objects_data,
+        conditions={"physical_object_id": building.physical_object_id},
+    ):
+        raise EntityNotFoundById(building.physical_object_id, "physical object")
+
+    if not building.is_scenario_object:
+        statement = (
+            select(projects_physical_objects_data.c.physical_object_id)
+            .select_from(
+                projects_urban_objects_data.join(
+                    projects_physical_objects_data,
+                    projects_physical_objects_data.c.physical_object_id
+                    == projects_urban_objects_data.c.physical_object_id,
+                )
+            )
+            .where(
+                projects_urban_objects_data.c.scenario_id == scenario_id,
+                projects_physical_objects_data.c.public_physical_object_id == building.physical_object_id,
+            )
+            .limit(1)
+        )
+        public_physical_object = (await conn.execute(statement)).scalar_one_or_none()
+        if public_physical_object is not None:
+            raise EntityAlreadyExists("scenario physical object", building.physical_object_id)
+
+    if await check_existence(
+        conn,
+        projects_buildings_data if building.is_scenario_object else buildings_data,
+        conditions={"physical_object_id": building.physical_object_id},
+    ):
+        raise EntityAlreadyExists("building", building.physical_object_id)
+
+    if building.is_scenario_object:
+        statement = insert(projects_buildings_data).values(**building.model_dump(exclude={"is_scenario_object"}))
+        await conn.execute(statement)
+        await conn.commit()
+        return await get_scenario_physical_object_by_id_from_db(conn, building.physical_object_id)
+
+    statement = (
+        insert(projects_physical_objects_data)
+        .from_select(
+            [
+                "physical_object_type_id",
+                "name",
+                "properties",
+                "public_physical_object_id",
+            ],
+            select(
+                physical_objects_data.c.physical_object_type_id,
+                physical_objects_data.c.name,
+                physical_objects_data.c.properties,
+                literal(building.physical_object_id).label("public_physical_object_id"),
+            ).where(physical_objects_data.c.physical_object_id == building.physical_object_id),
+        )
+        .returning(projects_physical_objects_data.c.physical_object_id)
+    )
+    scenario_physical_object_id = (await conn.execute(statement)).scalar_one()
+
+    project_geometry = (
+        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+    ).alias("project_geometry")
+
+    public_urban_object_ids = (
+        select(projects_urban_objects_data.c.public_urban_object_id.label("urban_object_id"))
+        .where(
+            projects_urban_objects_data.c.scenario_id == scenario_id,
+            projects_urban_objects_data.c.public_urban_object_id.is_not(None),
+        )
+        .alias("public_urban_object_ids")
+    )
+
+    statement = (
+        select(urban_objects_data)
+        .select_from(
+            urban_objects_data.join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+        )
+        .where(
+            urban_objects_data.c.physical_object_id == building.physical_object_id,
+            urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids.c.urban_object_id)),
+            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+        )
+    )
+    urban_objects = (await conn.execute(statement)).mappings().all()
+    if urban_objects:
+        await conn.execute(
+            insert(projects_urban_objects_data).values(
+                [
+                    {
+                        "public_urban_object_id": row.urban_object_id,
+                        "scenario_id": scenario_id,
+                    }
+                    for row in urban_objects
+                ]
+            )
+        )
+        await conn.execute(
+            insert(projects_urban_objects_data).values(
+                [
+                    {
+                        "physical_object_id": scenario_physical_object_id,
+                        "public_service_id": row.service_id,
+                        "public_object_geometry_id": row.object_geometry_id,
+                        "scenario_id": scenario_id,
+                    }
+                    for row in urban_objects
+                ]
+            )
+        )
+    await conn.execute(
+        (
+            update(projects_urban_objects_data)
+            .where(projects_urban_objects_data.c.public_physical_object_id == building.physical_object_id)
+            .values(physical_object_id=scenario_physical_object_id, public_physical_object_id=None)
+        )
+    )
+
+    statement = insert(projects_buildings_data).values(
+        **building.model_dump(exclude={"is_scenario_object", "physical_object_id"}),
+        physical_object_id=scenario_physical_object_id,
+    )
+
+    await conn.execute(statement)
+    await conn.commit()
+    return await get_scenario_physical_object_by_id_from_db(conn, scenario_physical_object_id)
+
+
+async def put_building_to_db(
+    conn: AsyncConnection,
+    building: ScenarioBuildingPut,
+    scenario_id: int,
+    user: UserDTO,
+) -> ScenarioPhysicalObjectDTO:
+    """Update or create building for given scenario."""
+
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
+
+    if not await check_existence(
+        conn,
+        projects_physical_objects_data if building.is_scenario_object else physical_objects_data,
+        conditions={"physical_object_id": building.physical_object_id},
+    ):
+        raise EntityNotFoundById(building.physical_object_id, "physical object")
+
+    if not building.is_scenario_object:
+        statement = (
+            select(projects_physical_objects_data.c.physical_object_id)
+            .select_from(
+                projects_urban_objects_data.join(
+                    projects_physical_objects_data,
+                    projects_physical_objects_data.c.physical_object_id
+                    == projects_urban_objects_data.c.physical_object_id,
+                )
+            )
+            .where(
+                projects_urban_objects_data.c.scenario_id == scenario_id,
+                projects_physical_objects_data.c.public_physical_object_id == building.physical_object_id,
+            )
+            .limit(1)
+        )
+        public_physical_object = (await conn.execute(statement)).scalar_one_or_none()
+        if public_physical_object is not None:
+            raise EntityAlreadyExists("scenario physical object", building.physical_object_id)
+
+    if building.is_scenario_object:
+        if not await check_existence(
+            conn,
+            projects_buildings_data if building.is_scenario_object else buildings_data,
+            conditions={"physical_object_id": building.physical_object_id},
+        ):
+            statement = insert(projects_buildings_data).values(**building.model_dump(exclude={"is_scenario_object"}))
+        else:
+            statement = (
+                update(projects_buildings_data)
+                .where(projects_buildings_data.c.physical_object_id == building.physical_object_id)
+                .values(**building.model_dump(exclude={"is_scenario_object"}))
+            )
+        await conn.execute(statement)
+        await conn.commit()
+        return await get_scenario_physical_object_by_id_from_db(conn, building.physical_object_id)
+
+    statement = (
+        insert(projects_physical_objects_data)
+        .from_select(
+            [
+                "physical_object_type_id",
+                "name",
+                "properties",
+                "public_physical_object_id",
+            ],
+            select(
+                physical_objects_data.c.physical_object_type_id,
+                physical_objects_data.c.name,
+                physical_objects_data.c.properties,
+                literal(building.physical_object_id).label("public_physical_object_id"),
+            ).where(physical_objects_data.c.physical_object_id == building.physical_object_id),
+        )
+        .returning(projects_physical_objects_data.c.physical_object_id)
+    )
+    scenario_physical_object_id = (await conn.execute(statement)).scalar_one()
+
+    project_geometry = (
+        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+    ).alias("project_geometry")
+
+    public_urban_object_ids = (
+        select(projects_urban_objects_data.c.public_urban_object_id.label("urban_object_id"))
+        .where(
+            projects_urban_objects_data.c.scenario_id == scenario_id,
+            projects_urban_objects_data.c.public_urban_object_id.is_not(None),
+        )
+        .alias("public_urban_object_ids")
+    )
+
+    statement = (
+        select(urban_objects_data)
+        .select_from(
+            urban_objects_data.join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+        )
+        .where(
+            urban_objects_data.c.physical_object_id == building.physical_object_id,
+            urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids.c.urban_object_id)),
+            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+        )
+    )
+    urban_objects = (await conn.execute(statement)).mappings().all()
+    if urban_objects:
+        await conn.execute(
+            insert(projects_urban_objects_data).values(
+                [
+                    {
+                        "public_urban_object_id": row.urban_object_id,
+                        "scenario_id": scenario_id,
+                    }
+                    for row in urban_objects
+                ]
+            )
+        )
+        await conn.execute(
+            insert(projects_urban_objects_data).values(
+                [
+                    {
+                        "physical_object_id": scenario_physical_object_id,
+                        "public_service_id": row.service_id,
+                        "public_object_geometry_id": row.object_geometry_id,
+                        "scenario_id": scenario_id,
+                    }
+                    for row in urban_objects
+                ]
+            )
+        )
+    await conn.execute(
+        (
+            update(projects_urban_objects_data)
+            .where(projects_urban_objects_data.c.public_physical_object_id == building.physical_object_id)
+            .values(physical_object_id=scenario_physical_object_id, public_physical_object_id=None)
+        )
+    )
+
+    statement = insert(projects_buildings_data).values(
+        **building.model_dump(exclude={"is_scenario_object", "physical_object_id"}),
+        physical_object_id=scenario_physical_object_id,
+    )
+
+    await conn.execute(statement)
+    await conn.commit()
+    return await get_scenario_physical_object_by_id_from_db(conn, scenario_physical_object_id)
+
+
+async def patch_building_to_db(
+    conn: AsyncConnection,
+    building: ScenarioBuildingPatch,
+    scenario_id: int,
+    building_id: int,
+    is_scenario_object: bool,
+    user: UserDTO,
+) -> ScenarioPhysicalObjectDTO:
+    """Update building for given scenario."""
+
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
+
+    if is_scenario_object:
+        statement = select(projects_buildings_data).where(projects_buildings_data.c.building_id == building_id)
+    else:
+        statement = select(buildings_data).where(buildings_data.c.building_id == building_id)
+    requested_building = (await conn.execute(statement)).mappings().one_or_none()
+    if requested_building is None:
+        raise EntityNotFoundById(building_id, "building")
+
+    if not await check_existence(
+        conn,
+        projects_buildings_data if is_scenario_object else buildings_data,
+        conditions={"building_id": building_id},
+    ):
+        raise EntityNotFoundById(building_id, "building")
+
+    values = extract_values_from_model(building, exclude_unset=True)
+
+    if is_scenario_object:
+        statement = (
+            update(projects_buildings_data)
+            .where(projects_buildings_data.c.building_id == building_id)
+            .values(**values)
+            .returning(projects_buildings_data.c.physical_object_id)
+        )
+        scenario_physical_object_id = (await conn.execute(statement)).scalar_one()
+    else:
+        statement = (
+            insert(projects_physical_objects_data)
+            .from_select(
+                [
+                    "physical_object_type_id",
+                    "name",
+                    "properties",
+                    "public_physical_object_id",
+                ],
+                select(
+                    physical_objects_data.c.physical_object_type_id,
+                    physical_objects_data.c.name,
+                    physical_objects_data.c.properties,
+                    literal(requested_building.physical_object_id).label("public_physical_object_id"),
+                ).where(physical_objects_data.c.physical_object_id == requested_building.physical_object_id),
+            )
+            .returning(projects_physical_objects_data.c.physical_object_id)
+        )
+        scenario_physical_object_id = (await conn.execute(statement)).scalar_one()
+
+        project_geometry = (
+            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+        ).alias("project_geometry")
+
+        public_urban_object_ids = (
+            select(projects_urban_objects_data.c.public_urban_object_id.label("urban_object_id"))
+            .where(
+                projects_urban_objects_data.c.scenario_id == scenario_id,
+                projects_urban_objects_data.c.public_urban_object_id.is_not(None),
+            )
+            .alias("public_urban_object_ids")
+        )
+
+        statement = (
+            select(urban_objects_data)
+            .select_from(
+                urban_objects_data.join(
+                    object_geometries_data,
+                    object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+                )
+            )
+            .where(
+                urban_objects_data.c.physical_object_id == requested_building.physical_object_id,
+                urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids.c.urban_object_id)),
+                ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            )
+        )
+        urban_objects = (await conn.execute(statement)).mappings().all()
+        if urban_objects:
+            await conn.execute(
+                insert(projects_urban_objects_data).values(
+                    [
+                        {
+                            "public_urban_object_id": row.urban_object_id,
+                            "scenario_id": scenario_id,
+                        }
+                        for row in urban_objects
+                    ]
+                )
+            )
+            await conn.execute(
+                insert(projects_urban_objects_data).values(
+                    [
+                        {
+                            "physical_object_id": scenario_physical_object_id,
+                            "public_service_id": row.service_id,
+                            "public_object_geometry_id": row.object_geometry_id,
+                            "scenario_id": scenario_id,
+                        }
+                        for row in urban_objects
+                    ]
+                )
+            )
+        await conn.execute(
+            (
+                update(projects_urban_objects_data)
+                .where(projects_urban_objects_data.c.public_physical_object_id == requested_building.physical_object_id)
+                .values(physical_object_id=scenario_physical_object_id, public_physical_object_id=None)
+            )
+        )
+
+        statement = insert(projects_buildings_data).values(
+            physical_object_id=scenario_physical_object_id,
+            properties=values.get("properties", requested_building.properties),
+            floors=values.get("floors", requested_building.floors),
+            building_area_official=values.get("building_area_official", requested_building.building_area_official),
+            building_area_modeled=values.get("building_area_modeled", requested_building.building_area_modeled),
+            project_type=values.get("project_type", requested_building.project_type),
+            floor_type=values.get("floor_type", requested_building.floor_type),
+            wall_material=values.get("wall_material", requested_building.wall_material),
+            built_year=values.get("built_year", requested_building.built_year),
+            exploitation_start_year=values.get("exploitation_start_year", requested_building.exploitation_start_year),
+        )
+
+        await conn.execute(statement)
+
+    await conn.commit()
+    return await get_scenario_physical_object_by_id_from_db(conn, scenario_physical_object_id)
+
+
+async def delete_building_from_db(
+    conn: AsyncConnection,
+    scenario_id: int,
+    building_id: int,
+    is_scenario_object: bool,
+    user: UserDTO,
+) -> ScenarioPhysicalObjectDTO:
+    """Delete building for given scenario."""
+
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
+
+    if is_scenario_object:
+        statement = select(projects_buildings_data).where(projects_buildings_data.c.building_id == building_id)
+    else:
+        statement = select(buildings_data).where(buildings_data.c.building_id == building_id)
+    requested_building = (await conn.execute(statement)).mappings().one_or_none()
+    if requested_building is None:
+        raise EntityNotFoundById(building_id, "building")
+
+    if not await check_existence(
+        conn,
+        projects_buildings_data if is_scenario_object else buildings_data,
+        conditions={"building_id": building_id},
+    ):
+        raise EntityNotFoundById(building_id, "building")
+
+    if is_scenario_object:
+        statement = (
+            delete(projects_buildings_data)
+            .where(projects_buildings_data.c.building_id == building_id)
+            .returning(projects_buildings_data.c.physical_object_id)
+        )
+        scenario_physical_object_id = (await conn.execute(statement)).scalar_one()
+    else:
+        statement = (
+            insert(projects_physical_objects_data)
+            .from_select(
+                [
+                    "physical_object_type_id",
+                    "name",
+                    "properties",
+                    "public_physical_object_id",
+                ],
+                select(
+                    physical_objects_data.c.physical_object_type_id,
+                    physical_objects_data.c.name,
+                    physical_objects_data.c.properties,
+                    literal(requested_building.physical_object_id).label("public_physical_object_id"),
+                ).where(physical_objects_data.c.physical_object_id == requested_building.physical_object_id),
+            )
+            .returning(projects_physical_objects_data.c.physical_object_id)
+        )
+        scenario_physical_object_id = (await conn.execute(statement)).scalar_one()
+
+        project_geometry = (
+            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+        ).alias("project_geometry")
+
+        public_urban_object_ids = (
+            select(projects_urban_objects_data.c.public_urban_object_id.label("urban_object_id"))
+            .where(
+                projects_urban_objects_data.c.scenario_id == scenario_id,
+                projects_urban_objects_data.c.public_urban_object_id.is_not(None),
+            )
+            .alias("public_urban_object_ids")
+        )
+
+        statement = (
+            select(urban_objects_data)
+            .select_from(
+                urban_objects_data.join(
+                    object_geometries_data,
+                    object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+                )
+            )
+            .where(
+                urban_objects_data.c.physical_object_id == requested_building.physical_object_id,
+                urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids.c.urban_object_id)),
+                ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            )
+        )
+        urban_objects = (await conn.execute(statement)).mappings().all()
+        if urban_objects:
+            await conn.execute(
+                insert(projects_urban_objects_data).values(
+                    [
+                        {
+                            "public_urban_object_id": row.urban_object_id,
+                            "scenario_id": scenario_id,
+                        }
+                        for row in urban_objects
+                    ]
+                )
+            )
+            await conn.execute(
+                insert(projects_urban_objects_data).values(
+                    [
+                        {
+                            "physical_object_id": scenario_physical_object_id,
+                            "public_service_id": row.service_id,
+                            "public_object_geometry_id": row.object_geometry_id,
+                            "scenario_id": scenario_id,
+                        }
+                        for row in urban_objects
+                    ]
+                )
+            )
+        await conn.execute(
+            (
+                update(projects_urban_objects_data)
+                .where(projects_urban_objects_data.c.public_physical_object_id == requested_building.physical_object_id)
+                .values(physical_object_id=scenario_physical_object_id, public_physical_object_id=None)
+            )
+        )
+
+    await conn.commit()
+    return {"status": "ok"}

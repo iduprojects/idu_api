@@ -1,11 +1,11 @@
 """Unit tests for scenario physical objects are defined here."""
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from geoalchemy2.functions import ST_GeomFromWKB, ST_Intersects, ST_Within, ST_AsEWKB
-from sqlalchemy import delete, insert, literal, or_, select, text, update, ScalarSelect
+from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB, ST_Intersects, ST_Within
+from sqlalchemy import ScalarSelect, delete, insert, literal, or_, select, text, update
 
 from idu_api.common.db.entities import (
     buildings_data,
@@ -21,19 +21,26 @@ from idu_api.common.db.entities import (
     territories_data,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import PhysicalObjectDTO, ScenarioPhysicalObjectDTO, ScenarioUrbanObjectDTO, UserDTO, \
-    ScenarioPhysicalObjectWithGeometryDTO, PhysicalObjectWithGeometryDTO
+from idu_api.urban_api.dto import (
+    PhysicalObjectDTO,
+    PhysicalObjectWithGeometryDTO,
+    ScenarioPhysicalObjectDTO,
+    ScenarioPhysicalObjectWithGeometryDTO,
+    ScenarioUrbanObjectDTO,
+    UserDTO,
+)
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
     add_physical_object_with_geometry_to_db,
     delete_physical_object_from_db,
     get_context_physical_objects_from_db,
+    get_context_physical_objects_with_geometry_from_db,
     get_physical_objects_by_scenario_id_from_db,
+    get_physical_objects_with_geometry_by_scenario_id_from_db,
     get_scenario_physical_object_by_id_from_db,
     patch_physical_object_to_db,
     put_physical_object_to_db,
-    update_physical_objects_by_function_id_to_db, get_physical_objects_with_geometry_by_scenario_id_from_db,
-    get_context_physical_objects_with_geometry_from_db,
+    update_physical_objects_by_function_id_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.utils import SRID, get_context_territories_geometry
 from idu_api.urban_api.schemas import (
@@ -42,7 +49,8 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectPut,
     PhysicalObjectWithGeometryPost,
     ScenarioPhysicalObject,
-    ScenarioUrbanObject, ScenarioPhysicalObjectWithGeometryAttributes,
+    ScenarioPhysicalObjectWithGeometryAttributes,
+    ScenarioUrbanObject,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection
@@ -299,7 +307,7 @@ async def test_get_physical_objects_with_geometry_by_scenario_id_from_db(mock_co
         .where(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
             ST_Within(object_geometries_data.c.geometry, project_geometry),
-            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id
+            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
         )
     )
 
@@ -395,12 +403,14 @@ async def test_get_physical_objects_with_geometry_by_scenario_id_from_db(mock_co
         .where(
             projects_urban_objects_data.c.scenario_id == scenario_id,
             projects_urban_objects_data.c.public_urban_object_id.is_(None),
-            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id
+            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
         )
     )
 
     # Act
-    with patch("idu_api.urban_api.logic.impl.helpers.projects_physical_objects.get_project_by_scenario_id") as mock_check:
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.projects_physical_objects.get_project_by_scenario_id"
+    ) as mock_check:
         mock_check.return_value.is_regional = False
         result = await get_physical_objects_with_geometry_by_scenario_id_from_db(
             mock_conn, scenario_id, user, physical_object_type_id, physical_object_function_id
@@ -439,8 +449,7 @@ async def test_get_context_physical_objects_from_db(mock_conn: MockConnection):
             ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
         .where(
-            object_geometries_data.c.territory_id.in_([1])
-            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
+            object_geometries_data.c.territory_id.in_([1]) | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
         )
         .cte(name="objects_intersecting")
     )
@@ -532,8 +541,7 @@ async def test_get_context_physical_objects_with_geometry_from_db(mock_conn: Moc
             ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
         .where(
-            object_geometries_data.c.territory_id.in_([1])
-            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
+            object_geometries_data.c.territory_id.in_([1]) | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
         )
         .cte(name="objects_intersecting")
     )
@@ -554,7 +562,8 @@ async def test_get_context_physical_objects_with_geometry_from_db(mock_conn: Moc
             buildings_data.c.properties.label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-        ).select_from(
+        )
+        .select_from(
             urban_objects_data.join(
                 physical_objects_data,
                 physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
@@ -601,7 +610,9 @@ async def test_get_context_physical_objects_with_geometry_from_db(mock_conn: Moc
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
-    assert all(isinstance(item, PhysicalObjectWithGeometryDTO) for item in result), "Each item should be a PhysicalObjectWithGeometryDTO."
+    assert all(
+        isinstance(item, PhysicalObjectWithGeometryDTO) for item in result
+    ), "Each item should be a PhysicalObjectWithGeometryDTO."
     assert isinstance(
         PhysicalObject(**geojson_result.features[0].properties), PhysicalObject
     ), "Couldn't create pydantic model from geojson properties."

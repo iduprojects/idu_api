@@ -37,6 +37,9 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
+    ScenarioBuildingPatch,
+    ScenarioBuildingPost,
+    ScenarioBuildingPut,
     ScenarioFunctionalZonePatch,
     ScenarioFunctionalZonePost,
     ScenarioFunctionalZonePut,
@@ -320,6 +323,45 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         user: UserDTO,
     ) -> dict:
         """Delete scenario physical object."""
+
+    @abc.abstractmethod
+    async def add_building(
+        self,
+        building: ScenarioBuildingPost,
+        scenario_id: int,
+        user: UserDTO,
+    ) -> ScenarioPhysicalObjectDTO:
+        """Add building to physical object for given scenario."""
+
+    @abc.abstractmethod
+    async def put_building(
+        self,
+        building: ScenarioBuildingPut,
+        scenario_id: int,
+        user: UserDTO,
+    ) -> ScenarioPhysicalObjectDTO:
+        """Add building to physical object or update existing one for given scenario."""
+
+    @abc.abstractmethod
+    async def patch_building(
+        self,
+        building: ScenarioBuildingPatch,
+        scenario_id: int,
+        building_id: int,
+        is_scenario_object: bool,
+        user: UserDTO,
+    ) -> ScenarioPhysicalObjectDTO:
+        """Update scenario building."""
+
+    @abc.abstractmethod
+    async def delete_building(
+        self,
+        scenario_id: int,
+        building_id: int,
+        is_scenario_object: bool,
+        user: UserDTO,
+    ) -> dict[str, str]:
+        """Delete scenario building."""
 
     @abc.abstractmethod
     async def get_services_by_scenario_id(

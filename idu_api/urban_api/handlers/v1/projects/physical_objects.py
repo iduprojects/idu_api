@@ -15,6 +15,9 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectPatch,
     PhysicalObjectPut,
     PhysicalObjectWithGeometryPost,
+    ScenarioBuildingPatch,
+    ScenarioBuildingPost,
+    ScenarioBuildingPut,
     ScenarioPhysicalObject,
     ScenarioPhysicalObjectWithGeometryAttributes,
     ScenarioUrbanObject,
@@ -443,5 +446,145 @@ async def delete_physical_object(
     user_project_service: UserProjectService = request.state.user_project_service
 
     await user_project_service.delete_physical_object(scenario_id, physical_object_id, is_scenario_object, user)
+
+    return OkResponse()
+
+
+@projects_router.post(
+    "scenarios/{scenario_id}/buildings",
+    response_model=ScenarioPhysicalObject,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_building(
+    request: Request,
+    building: ScenarioBuildingPost,
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    user: UserDTO = Depends(get_user),
+) -> ScenarioPhysicalObject:
+    """
+    ## Create a new building for given scenario.
+
+    **WARNING:** There can only be one building per physical object.
+
+    ### Parameters:
+    - **building** (ScenarioBuildingPost, Body): Data for the new building.
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+
+    ### Returns:
+    - **ScenarioPhysicalObject**: Physical object with the new building information.
+
+    ## Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the physical object does not exist.
+    - **409 Conflict**: If a building already exists for this physical object.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    physical_object = await user_project_service.add_building(building, scenario_id, user)
+
+    return ScenarioPhysicalObject.from_dto(physical_object)
+
+
+@projects_router.put(
+    "scenarios/{scenario_id}/buildings",
+    response_model=PhysicalObject,
+    status_code=status.HTTP_200_OK,
+)
+async def put_building(
+    request: Request,
+    building: ScenarioBuildingPut,
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    user: UserDTO = Depends(get_user),
+) -> ScenarioPhysicalObject:
+    """
+    ## Create or update a building for given scenario.
+
+    **NOTE:** If a building for given physical object already exists, it will be updated.
+    Otherwise, a new building will be created.
+
+    ### Parameters:
+    - **building** (BuildingPut, Body): Data for updating or creating a building.
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+
+    ### Returns:
+    - **ScenarioPhysicalObject**: Physical object with the new building information.
+
+    ## Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the physical object does not exist.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    physical_object = await user_project_service.put_building(building, scenario_id, user)
+
+    return ScenarioPhysicalObject.from_dto(physical_object)
+
+
+@projects_router.patch(
+    "scenarios/{scenario_id}/buildings/{building_id}",
+    response_model=PhysicalObject,
+    status_code=status.HTTP_200_OK,
+)
+async def patch_building(
+    request: Request,
+    building: ScenarioBuildingPatch,
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    building_id: int = Path(..., description="building identifier", gt=0),
+    is_scenario_object: bool = Query(..., description="to determine scenario object"),
+    user: UserDTO = Depends(get_user),
+) -> ScenarioPhysicalObject:
+    """
+    ## Partially update a building for given scenario.
+
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **building_id** (int, Path): Unique identifier of the building.
+    - **building** (BuildingPatch, Body): Fields to update in the building.
+    - **is_scenario_object** (bool, Query): Flag to determine if the object is a scenario object.
+
+    ### Returns:
+    - **ScenarioPhysicalObject**: Physical object with the new building information.
+
+    ## Errors:
+    - **404 Not Found**: If the building (or related entity) does not exist.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    physical_object = await user_project_service.patch_building(
+        building, scenario_id, building_id, is_scenario_object, user
+    )
+
+    return ScenarioPhysicalObject.from_dto(physical_object)
+
+
+@projects_router.delete(
+    "scenarios/{scenario_id}/buildings/{building_id}",
+    response_model=OkResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def delete_building(
+    request: Request,
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
+    building_id: int = Path(..., description="building identifier", gt=0),
+    is_scenario_object: bool = Query(..., description="to determine scenario object"),
+    user: UserDTO = Depends(get_user),
+) -> OkResponse:
+    """
+    ## Delete a building by its identifier for given scenario.
+
+    ### Parameters:
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
+    - **building_id** (int, Path): Unique identifier of the building.
+    - **is_scenario_object** (bool, Query): Flag to determine if the object is a scenario object.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ## Errors:
+    - **404 Not Found**: If the building does not exist.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    await user_project_service.delete_building(scenario_id, building_id, is_scenario_object, user)
 
     return OkResponse()

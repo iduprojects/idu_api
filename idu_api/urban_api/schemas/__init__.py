@@ -9,6 +9,9 @@ from .buildings import (
     BuildingPost,
     BuildingPut,
     BuildingWithGeometry,
+    ScenarioBuildingPatch,
+    ScenarioBuildingPost,
+    ScenarioBuildingPut,
 )
 from .functional_zones import (
     FunctionalZone,
@@ -275,4 +278,7 @@ __all__ = [
     "SocGroupWithServiceTypes",
     "ScenarioPhysicalObjectWithGeometryAttributes",
     "ScenarioServiceWithGeometryAttributes",
+    "ScenarioBuildingPatch",
+    "ScenarioBuildingPost",
+    "ScenarioBuildingPut",
 ]

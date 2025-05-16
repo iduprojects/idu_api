@@ -82,13 +82,17 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     upload_project_image_to_minio,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
+    add_building_to_db,
     add_physical_object_with_geometry_to_db,
+    delete_building_from_db,
     delete_physical_object_from_db,
     get_context_physical_objects_from_db,
     get_context_physical_objects_with_geometry_from_db,
     get_physical_objects_by_scenario_id_from_db,
     get_physical_objects_with_geometry_by_scenario_id_from_db,
+    patch_building_to_db,
     patch_physical_object_to_db,
+    put_building_to_db,
     put_physical_object_to_db,
     update_physical_objects_by_function_id_to_db,
 )
@@ -121,6 +125,9 @@ from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
+    ScenarioBuildingPatch,
+    ScenarioBuildingPost,
+    ScenarioBuildingPut,
     ScenarioFunctionalZonePatch,
     ScenarioFunctionalZonePost,
     ScenarioFunctionalZonePut,
@@ -489,6 +496,45 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     ) -> dict:
         async with self._connection_manager.get_connection() as conn:
             return await delete_physical_object_from_db(conn, scenario_id, physical_object_id, is_scenario_object, user)
+
+    async def add_building(
+        self,
+        building: ScenarioBuildingPost,
+        scenario_id: int,
+        user: UserDTO,
+    ) -> ScenarioPhysicalObjectDTO:
+        async with self._connection_manager.get_connection() as conn:
+            return await add_building_to_db(conn, building, scenario_id, user)
+
+    async def put_building(
+        self,
+        building: ScenarioBuildingPut,
+        scenario_id: int,
+        user: UserDTO,
+    ) -> ScenarioPhysicalObjectDTO:
+        async with self._connection_manager.get_connection() as conn:
+            return await put_building_to_db(conn, building, scenario_id, user)
+
+    async def patch_building(
+        self,
+        building: ScenarioBuildingPatch,
+        scenario_id: int,
+        building_id: int,
+        is_scenario_object: bool,
+        user: UserDTO,
+    ) -> ScenarioPhysicalObjectDTO:
+        async with self._connection_manager.get_connection() as conn:
+            return await patch_building_to_db(conn, building, scenario_id, building_id, is_scenario_object, user)
+
+    async def delete_building(
+        self,
+        scenario_id: int,
+        building_id: int,
+        is_scenario_object: bool,
+        user: UserDTO,
+    ) -> dict[str, str]:
+        async with self._connection_manager.get_connection() as conn:
+            return await delete_building_from_db(conn, scenario_id, building_id, is_scenario_object, user)
 
     async def get_services_by_scenario_id(
         self,

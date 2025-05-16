@@ -246,7 +246,7 @@ async def put_living_building(request: Request, building: BuildingPut) -> Physic
 async def patch_living_building(
     request: Request,
     building: BuildingPatch,
-    building_id: int = Path(..., description="living building identifier", gt=0),
+    building_id: int = Path(..., description="building identifier", gt=0),
 ) -> PhysicalObject:
     """
     ## Partially update a living building.
@@ -280,7 +280,7 @@ async def patch_living_building(
 )
 async def delete_living_building(
     request: Request,
-    building_id: int = Path(..., description="living building identifier", gt=0),
+    building_id: int = Path(..., description="building identifier", gt=0),
 ) -> OkResponse:
     """
     ## Delete a living building by its identifier.
@@ -368,7 +368,7 @@ async def put_building(request: Request, building: BuildingPut) -> PhysicalObjec
 async def patch_building(
     request: Request,
     building: BuildingPatch,
-    building_id: int = Path(..., description="living building identifier", gt=0),
+    building_id: int = Path(..., description="building identifier", gt=0),
 ) -> PhysicalObject:
     """
     ## Partially update a building.
@@ -398,7 +398,7 @@ async def patch_building(
 )
 async def delete_building(
     request: Request,
-    building_id: int = Path(..., description="living building identifier", gt=0),
+    building_id: int = Path(..., description="building identifier", gt=0),
 ) -> OkResponse:
     """
     ## Delete a building by its identifier.
