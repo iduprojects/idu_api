@@ -45,9 +45,9 @@ from .services import (
 )
 from .soc_groups import (
     SocGroupDTO,
-    SocValueIndicatorValueDTO,
     SocGroupWithServiceTypesDTO,
     SocValueDTO,
+    SocValueIndicatorValueDTO,
     SocValueWithServiceTypesDTO,
 )
 from .territories import (

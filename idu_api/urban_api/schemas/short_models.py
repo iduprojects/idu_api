@@ -407,8 +407,8 @@ class SocValueBasic(BaseModel):
     name: str
 
 
-class SocServiceType(BaseModel):
-    """Service type model to encapsulate in SocGroup model."""
+class ShortServiceType(BaseModel):
+    """Service type model to encapsulate in SocGroup/SocValue model."""
 
     id: int
     name: str

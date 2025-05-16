@@ -6,16 +6,16 @@ from typing import Literal, Protocol
 from idu_api.urban_api.dto import (
     ServiceTypeDTO,
     SocGroupDTO,
-    SocValueIndicatorValueDTO,
     SocGroupWithServiceTypesDTO,
     SocValueDTO,
+    SocValueIndicatorValueDTO,
     SocValueWithServiceTypesDTO,
 )
 from idu_api.urban_api.schemas import (
-    SocValueIndicatorValuePost,
-    SocValueIndicatorValuePut,
     SocGroupPost,
     SocServiceTypePost,
+    SocValueIndicatorValuePost,
+    SocValueIndicatorValuePut,
     SocValuePost,
 )
 
@@ -30,10 +30,6 @@ class SocGroupsService(Protocol):
     @abc.abstractmethod
     async def get_social_group_by_id(self, soc_group_id: int) -> SocGroupWithServiceTypesDTO:
         """Get social group by identifier."""
-
-    @abc.abstractmethod
-    async def get_social_groups_by_social_value_id(self, soc_value_id: int) -> list[SocGroupDTO]:
-        """Get social groups by social value identifier."""
 
     @abc.abstractmethod
     async def add_social_group(self, soc_group: SocGroupPost) -> SocGroupWithServiceTypesDTO:
@@ -60,17 +56,17 @@ class SocGroupsService(Protocol):
         """Get a list of all social values."""
 
     @abc.abstractmethod
-    async def get_social_value_by_id(self, soc_value_id: int) -> SocValueDTO:
+    async def get_social_value_by_id(self, soc_value_id: int) -> SocValueWithServiceTypesDTO:
         """Get social value by identifier."""
 
     @abc.abstractmethod
-    async def add_social_value(self, soc_value: SocValuePost) -> SocValueDTO:
+    async def add_social_value(self, soc_value: SocValuePost) -> SocValueWithServiceTypesDTO:
         """Create a new social value."""
 
     @abc.abstractmethod
     async def add_value_to_social_group(
         self, soc_group_id: int, service_type_id: int, soc_value_id: int
-    ) -> SocValueDTO:
+    ) -> SocValueWithServiceTypesDTO:
         """Add value to social group."""
 
     @abc.abstractmethod

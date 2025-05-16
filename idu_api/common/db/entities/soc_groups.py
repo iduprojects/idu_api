@@ -89,8 +89,8 @@ Social group value:
 """
 
 IndicatorValueTypeEnum = Enum(IndicatorValueType, name="indicator_value_type")
-soc_group_value_indicators_data = Table(
-    "soc_group_value_indicators_data",
+soc_value_indicators_data = Table(
+    "soc_value_indicators_data",
     metadata,
     Column("soc_value_id", ForeignKey(soc_values_dict.c.soc_value_id, ondelete="CASCADE"), nullable=False),
     Column("territory_id", ForeignKey(territories_data.c.territory_id, ondelete="CASCADE"), nullable=False),

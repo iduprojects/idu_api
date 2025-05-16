@@ -15,6 +15,7 @@ from idu_api.urban_api.schemas import (
     UrbanFunctionPatch,
     UrbanFunctionPost,
     UrbanFunctionPut,
+    SocValueWithServiceTypes,
 )
 from idu_api.urban_api.schemas.short_models import UrbanFunctionBasic
 

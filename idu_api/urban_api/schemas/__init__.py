@@ -116,13 +116,13 @@ from .services import (
 )
 from .soc_groups import (
     SocGroup,
+    SocGroupPost,
+    SocGroupWithServiceTypes,
+    SocServiceTypePost,
+    SocValue,
     SocValueIndicatorValue,
     SocValueIndicatorValuePost,
     SocValueIndicatorValuePut,
-    SocGroupPost,
-    SocServiceTypePost,
-    SocGroupWithServiceTypes,
-    SocValue,
     SocValuePost,
     SocValueWithServiceTypes,
 )

@@ -13,7 +13,6 @@ from idu_api.urban_api.schemas import (
     ServiceTypePut,
     ServiceTypesHierarchy,
     SocGroupWithServiceTypes,
-    SocValueWithServiceTypes,
     SocValue,
     UrbanFunction,
     UrbanFunctionPatch,
@@ -379,9 +378,7 @@ async def get_physical_object_types(
 
 
 @service_types_router.get(
-    "/service_types/{service_type_id}/social_values",
-    response_model=list[SocValue],
-    status_code=status.HTTP_200_OK
+    "/service_types/{service_type_id}/social_values", response_model=list[SocValue], status_code=status.HTTP_200_OK
 )
 async def get_social_values(
     request: Request,
@@ -401,6 +398,7 @@ async def get_social_values(
     soc_values = await service_types_service.get_social_values_by_service_type_id(service_type_id)
 
     return [SocValue.from_dto(value) for value in soc_values]
+
 
 @service_types_router.get(
     "/service_types/{service_type_id}/social_groups",

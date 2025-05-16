@@ -22,9 +22,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     # add rank, normative_value, decree_value to soc_values_dict
     op.add_column("soc_values_dict", sa.Column("rank", sa.Integer(), nullable=True))
-    op.add_column(
-        "soc_values_dict", sa.Column("normative_value", sa.Float(10, 2), nullable=True)
-    )
+    op.add_column("soc_values_dict", sa.Column("normative_value", sa.Float(10, 2), nullable=True))
     op.add_column(
         "soc_values_dict",
         sa.Column("decree_value", sa.Float(10, 2), nullable=True, comment="meaning of the archetype by decree"),

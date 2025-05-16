@@ -30,9 +30,9 @@ from idu_api.common.db.entities.service_types import service_types_dict, urban_f
 from idu_api.common.db.entities.service_types_normatives import service_types_normatives_data
 from idu_api.common.db.entities.services import services_data
 from idu_api.common.db.entities.soc_groups import (
-    soc_group_value_indicators_data,
     soc_group_values_data,
     soc_groups_dict,
+    soc_value_indicators_data,
     soc_values_dict,
     soc_values_service_types_dict,
 )

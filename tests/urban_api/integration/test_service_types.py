@@ -12,6 +12,7 @@ from idu_api.urban_api.schemas import (
     ServiceTypePost,
     ServiceTypePut,
     ServiceTypesHierarchy,
+    SocValueWithServiceTypes,
     SocGroupWithServiceTypes,
     UrbanFunction,
     UrbanFunctionPost,
@@ -452,3 +453,34 @@ async def test_get_social_groups(
         assert_response(response, expected_status, SocGroupWithServiceTypes, error_message, result_type="list")
     else:
         assert_response(response, expected_status, SocGroupWithServiceTypes, error_message)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expected_status, error_message, type_id_param",
+    [
+        (200, None, 1),
+        (404, "not found", 1e9),
+    ],
+    ids=["success", "not_found"],
+)
+async def test_get_social_values(
+    urban_api_host: str,
+    expected_status: int,
+    error_message: str | None,
+    type_id_param: str,
+):
+    """Test GET /service_types/{service_type_id}/social_values method."""
+
+    # Arrange
+    service_type_id = type_id_param
+
+    # Act
+    async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
+        response = await client.get(f"/service_types/{service_type_id}/social_values")
+
+    # Assert
+    if response.status_code == 200:
+        assert_response(response, expected_status, SocValueWithServiceTypes, error_message, result_type="list")
+    else:
+        assert_response(response, expected_status, SocValueWithServiceTypes, error_message)
