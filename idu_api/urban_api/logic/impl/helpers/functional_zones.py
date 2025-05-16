@@ -2,10 +2,9 @@
 
 from collections.abc import Callable
 
-from geoalchemy2 import Geography, Geometry
 from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
-from sqlalchemy import case, cast, delete, func, insert, select, text, update
+from sqlalchemy import case, delete, func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (

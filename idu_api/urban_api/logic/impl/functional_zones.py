@@ -109,6 +109,4 @@ class FunctionalZonesServiceImpl(FunctionalZonesService):
         functional_zone_type_id: int | None,
     ) -> list[FunctionalZoneDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_functional_zones_around_from_db(
-                conn, geometry, year, source, functional_zone_type_id, buffer_meters
-            )
+            return await get_functional_zones_around_from_db(conn, geometry, year, source, functional_zone_type_id)

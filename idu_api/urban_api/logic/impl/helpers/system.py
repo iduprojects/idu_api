@@ -67,7 +67,7 @@ async def fix_geojson_by_postgis(
     for batch_idx, batch in iterator:
         try:
             batch_fixed = await process_geometries_batch(conn, batch, batch_idx, logger)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             await logger.aerror("Batch processing failed", batch=batch_idx, error=str(e))
             batch_fixed = batch  # fallback
         fixed_geoms.extend(batch_fixed)

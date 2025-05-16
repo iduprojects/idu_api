@@ -1,11 +1,11 @@
 """Unit tests for scenario geometries objects are defined here."""
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from geoalchemy2.functions import ST_AsEWKB, ST_Centroid, ST_GeomFromWKB, ST_Intersection, ST_Intersects, ST_Within
-from sqlalchemy import case, delete, insert, literal, or_, select, text, update, ScalarSelect
+from sqlalchemy import ScalarSelect, case, delete, insert, literal, or_, select, text, update
 
 from idu_api.common.db.entities import (
     buildings_data,
@@ -170,7 +170,9 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.projects_geometries.get_project_by_scenario_id") as mock_check:
         mock_check.return_value.is_regional = False
-        result = await get_geometries_by_scenario_id_from_db(mock_conn, scenario_id, user, physical_object_id, service_id)
+        result = await get_geometries_by_scenario_id_from_db(
+            mock_conn, scenario_id, user, physical_object_id, service_id
+        )
     geojson_result = await GeoJSONResponse.from_list([item.to_geojson_dict() for item in result])
 
     # Assert
@@ -459,8 +461,7 @@ async def test_get_context_geometries_from_db(mock_conn: MockConnection):
             )
         )
         .where(
-            object_geometries_data.c.territory_id.in_([1])
-            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
+            object_geometries_data.c.territory_id.in_([1]) | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
         )
         .distinct()
     )
@@ -502,8 +503,7 @@ async def test_get_context_geometries_with_all_objects_from_db(mock_conn: MockCo
             ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
         .where(
-            object_geometries_data.c.territory_id.in_([1])
-            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
+            object_geometries_data.c.territory_id.in_([1]) | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
         )
         .cte(name="objects_intersecting")
     )

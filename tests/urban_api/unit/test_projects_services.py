@@ -1,11 +1,11 @@
 """Unit tests for scenario services objects are defined here."""
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from geoalchemy2.functions import ST_Intersects, ST_Within, ST_AsEWKB
-from sqlalchemy import delete, insert, literal, or_, select, update, ScalarSelect
+from geoalchemy2.functions import ST_AsEWKB, ST_Intersects, ST_Within
+from sqlalchemy import ScalarSelect, delete, insert, literal, or_, select, update
 
 from idu_api.common.db.entities import (
     object_geometries_data,
@@ -20,26 +20,35 @@ from idu_api.common.db.entities import (
     urban_functions_dict,
     urban_objects_data,
 )
-from idu_api.urban_api.dto import ScenarioServiceDTO, ScenarioUrbanObjectDTO, ServiceDTO, UserDTO, \
-    ScenarioServiceWithGeometryDTO, ServiceWithGeometryDTO
+from idu_api.urban_api.dto import (
+    ScenarioServiceDTO,
+    ScenarioServiceWithGeometryDTO,
+    ScenarioUrbanObjectDTO,
+    ServiceDTO,
+    ServiceWithGeometryDTO,
+    UserDTO,
+)
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_services import (
     add_service_to_db,
     delete_service_from_db,
     get_context_services_from_db,
+    get_context_services_with_geometry_from_db,
     get_scenario_service_by_id_from_db,
     get_services_by_scenario_id_from_db,
+    get_services_with_geometry_by_scenario_id_from_db,
     patch_service_to_db,
-    put_service_to_db, get_services_with_geometry_by_scenario_id_from_db, get_context_services_with_geometry_from_db,
+    put_service_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.utils import get_context_territories_geometry
 from idu_api.urban_api.schemas import (
     ScenarioService,
     ScenarioServicePost,
+    ScenarioServiceWithGeometryAttributes,
     ScenarioUrbanObject,
     Service,
     ServicePatch,
-    ServicePut, ScenarioServiceWithGeometryAttributes,
+    ServicePut,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection
@@ -358,12 +367,16 @@ async def test_get_services_with_geometry_by_scenario_id_from_db(mock_conn: Mock
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.projects_services.get_project_by_scenario_id") as mock_check:
         mock_check.return_value.is_regional = False
-        result = await get_services_with_geometry_by_scenario_id_from_db(mock_conn, scenario_id, user, service_type_id, urban_function_id)
+        result = await get_services_with_geometry_by_scenario_id_from_db(
+            mock_conn, scenario_id, user, service_type_id, urban_function_id
+        )
     geojson_result = await GeoJSONResponse.from_list([r.to_geojson_dict() for r in result])
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
-    assert all(isinstance(item, ScenarioServiceWithGeometryDTO) for item in result), "Each item should be a ScenarioServiceWithGeometryDTO."
+    assert all(
+        isinstance(item, ScenarioServiceWithGeometryDTO) for item in result
+    ), "Each item should be a ScenarioServiceWithGeometryDTO."
     assert isinstance(
         ScenarioServiceWithGeometryAttributes(**geojson_result.features[0].properties),
         ScenarioServiceWithGeometryAttributes,
@@ -391,8 +404,7 @@ async def test_get_context_services_from_db(mock_conn: MockConnection):
             ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
         .where(
-            object_geometries_data.c.territory_id.in_([1])
-            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
+            object_geometries_data.c.territory_id.in_([1]) | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
         )
         .cte(name="objects_intersecting")
     )
@@ -474,8 +486,7 @@ async def test_get_context_services_with_geometry_from_db(mock_conn: MockConnect
             ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
         )
         .where(
-            object_geometries_data.c.territory_id.in_([1])
-            | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
+            object_geometries_data.c.territory_id.in_([1]) | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
         )
         .cte(name="objects_intersecting")
     )
@@ -497,7 +508,8 @@ async def test_get_context_services_with_geometry_from_db(mock_conn: MockConnect
             ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
-        ).select_from(
+        )
+        .select_from(
             urban_objects_data.join(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
             .join(
                 object_geometries_data,
@@ -533,12 +545,16 @@ async def test_get_context_services_with_geometry_from_db(mock_conn: MockConnect
         new_callable=AsyncMock,
     ) as mock_get_context:
         mock_get_context.return_value = mock_geom, [1]
-        result = await get_context_services_with_geometry_from_db(mock_conn, project_id, user, service_type_id, urban_function_id)
+        result = await get_context_services_with_geometry_from_db(
+            mock_conn, project_id, user, service_type_id, urban_function_id
+        )
     geojson_result = await GeoJSONResponse.from_list([r.to_geojson_dict() for r in result])
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
-    assert all(isinstance(item, ServiceWithGeometryDTO) for item in result), "Each item should be a ServiceWithGeometryDTO."
+    assert all(
+        isinstance(item, ServiceWithGeometryDTO) for item in result
+    ), "Each item should be a ServiceWithGeometryDTO."
     assert isinstance(
         Service(**geojson_result.features[0].properties), Service
     ), "Couldn't create pydantic model from geojson properties."

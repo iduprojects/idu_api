@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.selectable import CTE, Select
 
 from idu_api.common.db.entities import projects_data, territories_data
-from idu_api.urban_api.dto import TerritoryTreeWithoutGeometryDTO, TerritoryWithoutGeometryDTO, UserDTO
+from idu_api.urban_api.dto import UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
@@ -231,6 +231,7 @@ async def get_context_territories_geometry(
     Raises:
         EntityNotFoundById: If project ID does not exist.
         AccessDeniedError: If user does not have permission to access the project.
+        NotAllowedInRegionalScenario: If user try to get context for regional scenario.
     """
     # Retrieve the project with proper user access control
     statement = select(projects_data).where(projects_data.c.project_id == project_id)

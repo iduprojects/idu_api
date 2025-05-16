@@ -1,11 +1,11 @@
 """Unit tests for scenario functional zone objects are defined here."""
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB, ST_Intersection, ST_Intersects, ST_Within
-from sqlalchemy import case, delete, insert, select, text, update, ScalarSelect
+from sqlalchemy import ScalarSelect, case, delete, insert, select, text, update
 
 from idu_api.common.db.entities import (
     functional_zone_types_dict,
@@ -65,7 +65,9 @@ async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_conn: Mo
     )
 
     # Act
-    with patch("idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_project_by_scenario_id") as mock_check:
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_project_by_scenario_id"
+    ) as mock_check:
         mock_check.return_value.is_regional = False
         result = await get_functional_zones_sources_by_scenario_id_from_db(mock_conn, scenario_id, user)
 
@@ -127,7 +129,9 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_conn: MockConnec
     )
 
     # Act
-    with patch("idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_project_by_scenario_id") as mock_check:
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_project_by_scenario_id"
+    ) as mock_check:
         mock_check.return_value.is_regional = False
         result = await get_functional_zones_by_scenario_id_from_db(
             mock_conn, scenario_id, year, source, functional_zone_type_id, user

@@ -176,3 +176,33 @@ class BuildingPatch(BaseModel):
         if not values:
             raise ValueError("request body cannot be empty")
         return values
+
+
+class ScenarioBuildingPost(BuildingPost):
+    """Building for scenario physical object schema for POST requests."""
+
+    is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
+
+
+class ScenarioBuildingPut(BuildingPut):
+    """Building for scenario physical object schema for PUT requests."""
+
+    is_scenario_object: bool = Field(..., description="boolean parameter to determine scenario object")
+
+
+class ScenarioBuildingPatch(BaseModel):
+    """Building for scenario physical object schema for PATCH requests."""
+
+    properties: dict[str, Any] | None = Field(
+        None,
+        description="additional properties",
+        examples=[{"additional_attribute_name": "additional_attribute_value"}],
+    )
+    floors: int | None = Field(None, examples=[1])
+    building_area_official: float | None = Field(None, examples=[1.0])
+    building_area_modeled: float | None = Field(None, examples=[1.0])
+    project_type: str | None = Field(None, examples=["example"])
+    floor_type: str | None = Field(None, examples=["example"])
+    wall_material: str | None = Field(None, examples=["example"])
+    built_year: int | None = Field(None, examples=[1])
+    exploitation_start_year: int | None = Field(None, examples=[1])
