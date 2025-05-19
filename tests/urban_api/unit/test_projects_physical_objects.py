@@ -132,6 +132,7 @@ async def test_get_physical_objects_by_scenario_id_from_db(mock_conn: MockConnec
             ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
             physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
         )
+        .distinct()
     )
 
     scenario_urban_objects_query = (
@@ -218,6 +219,7 @@ async def test_get_physical_objects_by_scenario_id_from_db(mock_conn: MockConnec
             projects_urban_objects_data.c.public_urban_object_id.is_(None),
             physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
         )
+        .distinct()
     )
 
     # Act

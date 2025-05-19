@@ -47,10 +47,10 @@ from .services import (
 )
 from .soc_groups import (
     SocGroupDTO,
-    SocGroupIndicatorValueDTO,
     SocGroupWithServiceTypesDTO,
     SocValueDTO,
-    SocValueWithSocGroupsDTO,
+    SocValueIndicatorValueDTO,
+    SocValueWithServiceTypesDTO,
 )
 from .territories import (
     TargetCityTypeDTO,
@@ -120,10 +120,10 @@ __all__ = [
     "ProjectWithTerritoryDTO",
     "TargetCityTypeDTO",
     "SocGroupDTO",
-    "SocGroupWithServiceTypesDTO",
     "SocValueDTO",
-    "SocValueWithSocGroupsDTO",
-    "SocGroupIndicatorValueDTO",
+    "SocValueIndicatorValueDTO",
+    "SocGroupWithServiceTypesDTO",
+    "SocValueWithServiceTypesDTO",
     "ScenarioPhysicalObjectWithGeometryDTO",
     "ScenarioServiceWithGeometryDTO",
 ]

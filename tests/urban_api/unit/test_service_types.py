@@ -12,6 +12,8 @@ from idu_api.common.db.entities import (
     service_types_dict,
     soc_group_values_data,
     soc_groups_dict,
+    soc_values_dict,
+    soc_values_service_types_dict,
     urban_functions_dict,
 )
 from idu_api.urban_api.dto import (
@@ -19,6 +21,7 @@ from idu_api.urban_api.dto import (
     ServiceTypeDTO,
     ServiceTypesHierarchyDTO,
     SocGroupWithServiceTypesDTO,
+    SocValueDTO,
     UrbanFunctionDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
@@ -32,6 +35,7 @@ from idu_api.urban_api.logic.impl.helpers.service_types import (
     get_service_types_from_db,
     get_service_types_hierarchy_from_db,
     get_social_groups_by_service_type_id_from_db,
+    get_social_values_by_service_type_id_from_db,
     get_urban_function_by_id_from_db,
     get_urban_functions_by_parent_id_from_db,
     patch_service_type_to_db,
@@ -45,6 +49,7 @@ from idu_api.urban_api.schemas import (
     ServiceTypePatch,
     ServiceTypePost,
     SocGroupWithServiceTypes,
+    SocValue,
     UrbanFunction,
     UrbanFunctionPatch,
     UrbanFunctionPost,
@@ -651,4 +656,43 @@ async def test_get_social_groups_by_service_type_id_from_db(mock_conn: MockConne
     assert isinstance(
         SocGroupWithServiceTypes.from_dto(result[0]), SocGroupWithServiceTypes
     ), "Couldn't create pydantic model from DTO."
+    mock_conn.execute_mock.assert_called_with(str(statement))
+
+
+@pytest.mark.asyncio
+async def test_get_social_values_by_service_type_id_from_db(mock_conn: MockConnection):
+    """Test the get_social_values_by_service_type_id_from_db-db"""
+
+    # Arrange
+    async def check_service_type_id(conn, table, conditions, not_conditions=None):
+        if table == service_types_dict:
+            return False
+        return True
+
+    service_type_id = 1
+
+    statement = (
+        select(
+            soc_values_dict,
+        )
+        .join(
+            soc_values_service_types_dict,
+            soc_values_dict.c.soc_value_id == soc_values_service_types_dict.c.soc_value_id,
+        )
+        .where(soc_values_service_types_dict.c.service_type_id == service_type_id)
+    )
+
+    # Act
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.service_types.check_existence",
+        new=AsyncMock(side_effect=check_service_type_id),
+    ):
+        with pytest.raises(EntityNotFoundById):
+            await get_social_values_by_service_type_id_from_db(mock_conn, service_type_id)
+    result = await get_social_values_by_service_type_id_from_db(mock_conn, service_type_id)
+
+    # Assert
+    assert isinstance(result, list), "Result should be a list."
+    assert all(isinstance(item, SocValueDTO) for item in result), "Each item should be a SocValueDTO."
+    assert isinstance(SocValue.from_dto(result[0]), SocValue), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_called_with(str(statement))

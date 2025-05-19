@@ -1,5 +1,6 @@
 """Service types DTOs are defined here."""
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, Literal, Self
 
@@ -14,6 +15,10 @@ class ServiceTypeDTO:
     code: str
     infrastructure_type: Literal["basic", "additional", "comfort"] | None
     properties: dict[str, Any]
+
+    @classmethod
+    def fields(cls) -> Iterable[str]:
+        return cls.__annotations__.keys()
 
 
 @dataclass(frozen=True)

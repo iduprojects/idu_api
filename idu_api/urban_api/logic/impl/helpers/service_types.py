@@ -12,6 +12,8 @@ from idu_api.common.db.entities import (
     service_types_dict,
     soc_group_values_data,
     soc_groups_dict,
+    soc_values_dict,
+    soc_values_service_types_dict,
     urban_functions_dict,
 )
 from idu_api.urban_api.dto import (
@@ -19,6 +21,7 @@ from idu_api.urban_api.dto import (
     ServiceTypeDTO,
     ServiceTypesHierarchyDTO,
     SocGroupWithServiceTypesDTO,
+    SocValueDTO,
     UrbanFunctionDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityAlreadyExists, EntityNotFoundById
@@ -483,11 +486,46 @@ async def get_social_groups_by_service_type_id_from_db(
         return []
 
     service_types = [
-        {"id": row["id"], "name": row["service_type_name"], "infrastructure_type": row["infrastructure_type"]}
+        ServiceTypeDTO(
+            service_type_id=row["service_type_id"],
+            urban_function_id=row["urban_function_id"],
+            urban_function_name=row["urban_function_name"],
+            name=row["name"],
+            capacity_modeled=row["capacity_modeled"],
+            code=row["code"],
+            infrastructure_type=row["infrastructure_type"],
+            properties=row["properties"],
+        )
         for row in result
+        if row["service_type_id"] is not None
     ]
 
     return [
         SocGroupWithServiceTypesDTO(soc_group_id=row["soc_group_id"], name=row["name"], service_types=service_types)
         for row in result
     ]
+
+
+async def get_social_values_by_service_type_id_from_db(
+    conn: AsyncConnection,
+    service_type_id: int,
+) -> list[SocValueDTO]:
+    """Get all social values by service type identifier."""
+
+    if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
+        raise EntityNotFoundById(service_type_id, "service type")
+
+    select_from = soc_values_dict.join(
+        soc_values_service_types_dict,
+        soc_values_dict.c.soc_value_id == soc_values_service_types_dict.c.soc_value_id,
+    )
+
+    statement = (
+        select(soc_values_dict)
+        .select_from(select_from)
+        .where(soc_values_service_types_dict.c.service_type_id == service_type_id)
+    )
+
+    result = (await conn.execute(statement)).mappings().all()
+
+    return [SocValueDTO(**row) for row in result]

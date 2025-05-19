@@ -7,21 +7,21 @@ import httpx
 import pytest
 
 from idu_api.urban_api.schemas import (
-    SocGroupIndicatorValuePost,
-    SocGroupIndicatorValuePut,
     SocGroupPost,
-    SocGroupServiceTypePost,
+    SocServiceTypePost,
+    SocValueIndicatorValuePost,
+    SocValueIndicatorValuePut,
     SocValuePost,
 )
 
 __all__ = [
-    "soc_group_indicator_post_req",
-    "soc_group_indicator_put_req",
+    "soc_value_indicator_post_req",
+    "soc_value_indicator_put_req",
+    "social_value_indicator",
     "soc_group_post_req",
-    "soc_group_service_type_post_req",
+    "soc_service_type_post_req",
     "soc_value_post_req",
     "social_group",
-    "social_group_indicator",
     "social_value",
 ]
 
@@ -45,7 +45,12 @@ def social_group(urban_api_host) -> dict[str, Any]:
 @pytest.fixture(scope="session")
 def social_value(urban_api_host) -> dict[str, Any]:
     """Returns created social value."""
-    soc_value_post_req = SocValuePost(name="Test Social Value")
+    soc_value_post_req = SocValuePost(
+        name="Test Social Value",
+        rank=1,
+        normative_value=1,
+        decree_value=1,
+    )
 
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
         response = client.post("/social_values", json=soc_value_post_req.model_dump())
@@ -55,20 +60,19 @@ def social_value(urban_api_host) -> dict[str, Any]:
 
 
 @pytest.fixture(scope="session")
-def social_group_indicator(urban_api_host, social_group, social_value, region) -> dict[str, Any]:
-    """Returns created social group's indicator value."""
-    soc_group_indicator_post_req = SocGroupIndicatorValuePost(
+def social_value_indicator(urban_api_host, social_value, region) -> dict[str, Any]:
+    """Returns created social value's indicator value."""
+    soc_value_indicator_post_req = SocValueIndicatorValuePost(
         soc_value_id=social_value["soc_value_id"],
         territory_id=region["territory_id"],
         year=date.today().year,
-        value_type="target",
         value=0.5,
     )
 
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
         response = client.post(
-            f"/social_groups/{social_group['soc_group_id']}/indicators",
-            json=soc_group_indicator_post_req.model_dump(),
+            f"/social_values/indicators",
+            json=soc_value_indicator_post_req.model_dump(),
         )
 
     assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}.\n{response.json()}"
@@ -91,40 +95,38 @@ def soc_group_post_req() -> SocGroupPost:
 def soc_value_post_req() -> SocValuePost:
     """POST request template for social value data."""
 
-    return SocGroupPost(name="Test Social Value")
+    return SocValuePost(name="Test Social Value", rank=1, normative_value=1, decree_value=1)
 
 
 @pytest.fixture
-def soc_group_indicator_post_req() -> SocGroupIndicatorValuePost:
-    """POST request template for social group's indicator value data."""
+def soc_value_indicator_post_req() -> SocValueIndicatorValuePost:
+    """POST request template for social value's indicator value data."""
 
-    return SocGroupIndicatorValuePost(
+    return SocValueIndicatorValuePost(
         soc_value_id=1,
         territory_id=1,
         year=date.today().year,
-        value_type="target",
         value=0.5,
     )
 
 
 @pytest.fixture
-def soc_group_indicator_put_req() -> SocGroupIndicatorValuePut:
-    """PUT request template for social group's indicator value data."""
+def soc_value_indicator_put_req() -> SocValueIndicatorValuePut:
+    """PUT request template for social value's indicator value data."""
 
-    return SocGroupIndicatorValuePut(
+    return SocValueIndicatorValuePut(
         soc_value_id=1,
         territory_id=1,
         year=date.today().year,
-        value_type="target",
         value=0.5,
     )
 
 
 @pytest.fixture
-def soc_group_service_type_post_req() -> SocGroupIndicatorValuePut:
-    """POST request template for social group's service type data."""
+def soc_service_type_post_req() -> SocServiceTypePost:
+    """POST request template for social value's service type data."""
 
-    return SocGroupServiceTypePost(
+    return SocServiceTypePost(
         service_type_id=1,
         infrastructure_type="basic",
     )
