@@ -451,7 +451,7 @@ async def delete_physical_object(
 
 
 @projects_router.post(
-    "scenarios/{scenario_id}/buildings",
+    "/scenarios/{scenario_id}/buildings",
     response_model=ScenarioPhysicalObject,
     status_code=status.HTTP_201_CREATED,
 )
@@ -486,7 +486,7 @@ async def add_building(
 
 
 @projects_router.put(
-    "scenarios/{scenario_id}/buildings",
+    "/scenarios/{scenario_id}/buildings",
     response_model=PhysicalObject,
     status_code=status.HTTP_200_OK,
 )
@@ -521,7 +521,7 @@ async def put_building(
 
 
 @projects_router.patch(
-    "scenarios/{scenario_id}/buildings/{building_id}",
+    "/scenarios/{scenario_id}/buildings/{building_id}",
     response_model=PhysicalObject,
     status_code=status.HTTP_200_OK,
 )
@@ -558,7 +558,7 @@ async def patch_building(
 
 
 @projects_router.delete(
-    "scenarios/{scenario_id}/buildings/{building_id}",
+    "/scenarios/{scenario_id}/buildings/{building_id}",
     response_model=OkResponse,
     status_code=status.HTTP_200_OK,
 )
