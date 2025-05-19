@@ -40,6 +40,7 @@ from idu_api.urban_api.logic.impl.helpers.soc_groups import (
     get_social_group_by_id_from_db,
     get_social_value_indicator_values_from_db,
     get_social_groups_from_db,
+    get_social_value_with_service_types_by_id_from_db,
     get_social_value_by_id_from_db,
     get_social_values_from_db,
     put_social_value_indicator_value_to_db,
@@ -55,7 +56,8 @@ from idu_api.urban_api.schemas import (
     ServiceTypePost,
     SocGroupWithServiceTypes,
     SocValue,
-    SocValuePost, SocValueWithServiceTypes,
+    SocValuePost,
+    SocValueWithServiceTypes,
 )
 from tests.urban_api.helpers.connection import MockConnection
 
@@ -233,13 +235,9 @@ async def test_add_service_type_to_social_value_to_db(mock_conn: MockConnection)
         return True
 
     async def check_conn(conn, table, conditions):
-        if table == soc_values_dict:
-            return True
-        elif table == service_types_dict:
-            return True
         if table == soc_values_service_types_dict:
-            return True
-        return False
+            return False
+        return True
 
     statement = (
         insert(soc_values_service_types_dict)
@@ -248,6 +246,9 @@ async def test_add_service_type_to_social_value_to_db(mock_conn: MockConnection)
     )
 
     # Act
+
+    with pytest.raises(EntityAlreadyExists):
+        await add_service_type_to_social_value_to_db(mock_conn, soc_value_id, service_type_id)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.soc_groups.check_existence",
         new=AsyncMock(side_effect=check_soc_value),
@@ -261,15 +262,11 @@ async def test_add_service_type_to_social_value_to_db(mock_conn: MockConnection)
     ):
         with pytest.raises(EntityNotFoundById):
             await add_service_type_to_social_value_to_db(mock_conn, soc_value_id, service_type_id)
-
     with patch(
         "idu_api.urban_api.logic.impl.helpers.soc_groups.check_existence",
-        new=AsyncMock(side_effect=check_conn)
+        new=AsyncMock(side_effect=check_conn),
     ):
-        with pytest.raises(EntityAlreadyExists):
-            await add_service_type_to_social_value_to_db(mock_conn, soc_value_id, service_type_id)
-
-    result = await add_service_type_to_social_value_to_db(mock_conn, soc_value_id, service_type_id)
+        result = await add_service_type_to_social_value_to_db(mock_conn, soc_value_id, service_type_id)
 
     # Assert
     assert isinstance(result, SocValueWithServiceTypesDTO), "Result should be a SocValueWithServiceTypesDTO."
@@ -319,7 +316,7 @@ async def test_get_social_values_from_db(mock_conn: MockConnection):
 
 @pytest.mark.asyncio
 async def test_get_social_value_by_id_from_db(mock_conn: MockConnection):
-    """Test the get_social_value_by_id_from_db function."""
+    """Test the get_social_value_by_id_from_db"""
 
     # Arrange
     soc_value_id = 1
@@ -329,30 +326,7 @@ async def test_get_social_value_by_id_from_db(mock_conn: MockConnection):
             return False
         return True
 
-    statement = (
-        select(
-            soc_values_dict,
-            service_types_dict,
-            urban_functions_dict.c.name.label("urban_function_name")
-        )
-        .outerjoin(
-            soc_values_service_types_dict,
-            soc_values_dict.c.soc_value_id == soc_values_service_types_dict.c.soc_value_id
-        )
-        .outerjoin(
-            service_types_dict,
-            service_types_dict.c.service_type_id == soc_values_service_types_dict.c.service_type_id,
-        )
-        .outerjoin(
-            urban_functions_dict,
-            urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id
-        )
-        .where(
-            soc_values_dict.c.soc_value_id == soc_value_id
-        )
-        .order_by(service_types_dict.c.service_type_id)
-        .distinct()
-    )
+    statement = select(soc_values_dict).where(soc_values_dict.c.soc_value_id == soc_value_id)
 
     # Act
     with patch(
@@ -363,6 +337,64 @@ async def test_get_social_value_by_id_from_db(mock_conn: MockConnection):
             await get_social_value_by_id_from_db(mock_conn, soc_value_id)
 
     result = await get_social_value_by_id_from_db(mock_conn, soc_value_id)
+
+    # Assert
+    assert isinstance(result, SocValueDTO), "Result should be a SocValueDTO."
+    assert isinstance(
+        SocValue.from_dto(result), SocValue
+    ), "Couldn't create pydantic model from DTO."
+    mock_conn.execute_mock.assert_any_call(str(statement))
+
+
+@pytest.mark.asyncio
+async def test_get_social_value_with_service_types_by_id_from_db(mock_conn: MockConnection):
+    """Test the get_social_value_with_service_types_by_id_from_db function."""
+
+    # Arrange
+    soc_value_id = 1
+
+    async def check_soc_value(conn, table, conditions):
+        if table == soc_values_dict:
+            return False
+        return True
+
+    select_from = (
+        soc_values_dict
+        .join(
+            soc_values_service_types_dict,
+            soc_values_service_types_dict.c.soc_value_id == soc_values_dict.c.soc_value_id
+        )
+        .join(
+            service_types_dict,
+            service_types_dict.c.service_type_id == soc_values_service_types_dict.c.service_type_id,
+        )
+        .join(
+            urban_functions_dict,
+            urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id
+        )
+    )
+
+    statement = select(
+        soc_values_dict,
+        service_types_dict.c.service_type_id,
+        service_types_dict.c.urban_function_id,
+        service_types_dict.c.name.label("service_type_name"),
+        service_types_dict.c.capacity_modeled,
+        service_types_dict.c.code,
+        service_types_dict.c.infrastructure_type,
+        service_types_dict.c.properties,
+        urban_functions_dict.c.name.label("urban_function_name")
+    ).select_from(select_from).where(soc_values_dict.c.soc_value_id == soc_value_id).distinct()
+
+    # Act
+    with patch(
+        "idu_api.urban_api.logic.impl.helpers.soc_groups.check_existence",
+        new=AsyncMock(side_effect=check_soc_value)
+    ):
+        with pytest.raises(EntityNotFoundById):
+            await get_social_value_with_service_types_by_id_from_db(mock_conn, soc_value_id)
+
+    result = await get_social_value_with_service_types_by_id_from_db(mock_conn, soc_value_id)
 
     # Assert
     assert isinstance(result, SocValueWithServiceTypesDTO), "Result should be a SocValueWithServiceTypesDTO."
@@ -392,9 +424,9 @@ async def test_add_social_value_to_db(mock_conn: MockConnection, soc_value_post_
         result = await add_social_value_to_db(mock_conn, soc_value_post_req)
 
     # Assert
-    assert isinstance(result, SocValueWithServiceTypesDTO), "Result should be a SocValueWithServiceTypesDTO."
+    assert isinstance(result, SocValueDTO), "Result should be a SocValueDTO."
     assert isinstance(
-        SocValueWithServiceTypes.from_dto(result), SocValueWithServiceTypes
+        SocValue.from_dto(result), SocValue
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
     mock_conn.commit_mock.assert_called_once()
@@ -453,9 +485,9 @@ async def test_add_value_to_social_group_from_db(mock_conn: MockConnection):
         result = await add_value_to_social_group_from_db(mock_conn, soc_group_id, service_type_id, soc_value_id)
 
     # Assert
-    assert isinstance(result, SocValueWithServiceTypesDTO), "Result should be a SocValueWithServiceTypesDTO."
+    assert isinstance(result, SocValueDTO), "Result should be a SocValueDTO."
     assert isinstance(
-        SocValueWithServiceTypes.from_dto(result), SocValueWithServiceTypes
+        SocValue.from_dto(result), SocValue
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
     mock_conn.commit_mock.assert_called_once()
@@ -740,7 +772,6 @@ async def test_delete_social_value_indicator_value_from_db(mock_conn: MockConnec
             soc_value_indicators_data.c.territory_id == territory_id,
             soc_value_indicators_data.c.year == year,
         )
-        .returning(soc_value_indicators_data)
     )
 
     # Act

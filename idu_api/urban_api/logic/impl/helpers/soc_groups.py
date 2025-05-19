@@ -122,7 +122,7 @@ async def add_service_type_to_social_value_to_db(
         soc_values_service_types_dict,
         conditions={"service_type_id": service_type_id, "soc_value_id": soc_value_id},
     ):
-        raise EntityAlreadyExists("service type", service_type_id, soc_value_id)
+        raise EntityAlreadyExists("service type connection with soc value", service_type_id, soc_value_id)
 
     statement = (
         insert(soc_values_service_types_dict)
@@ -132,7 +132,7 @@ async def add_service_type_to_social_value_to_db(
     await conn.execute(statement)
     await conn.commit()
 
-    return await get_social_value_by_id_from_db(conn, soc_value_id)
+    return await get_social_value_with_service_types_by_id_from_db(conn, soc_value_id)
 
 
 async def add_service_type_to_social_group_to_db(
@@ -189,26 +189,51 @@ async def get_social_values_from_db(conn: AsyncConnection) -> list[SocValueDTO]:
     return [SocValueDTO(**value) for value in (await conn.execute(statement)).mappings().all()]
 
 
-async def get_social_value_by_id_from_db(conn: AsyncConnection, soc_value_id: int) -> SocValueWithServiceTypesDTO:
+async def get_social_value_by_id_from_db(conn: AsyncConnection, soc_value_id: int) -> SocValueDTO:
+    """Get social value by identifier."""
+    if not await check_existence(conn, soc_values_dict, conditions={"soc_value_id": soc_value_id}):
+        raise EntityNotFoundById(soc_value_id, "social value")
+
+    statement = select(soc_values_dict).where(soc_values_dict.c.soc_value_id == soc_value_id)
+
+    soc_value = (await conn.execute(statement)).mappings().one_or_none()
+
+    return SocValueDTO(**soc_value)
+
+
+async def get_social_value_with_service_types_by_id_from_db(
+    conn: AsyncConnection, soc_value_id: int
+) -> SocValueWithServiceTypesDTO:
     """Get social value with associated service types by identifier."""
     if not await check_existence(conn, soc_values_dict, conditions={"soc_value_id": soc_value_id}):
         raise EntityNotFoundById(soc_value_id, "social value")
 
-    statement = (
-        select(soc_values_dict, service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
-        .outerjoin(
+    select_from = (
+        soc_values_dict.join(
             soc_values_service_types_dict,
-            soc_values_dict.c.soc_value_id == soc_values_service_types_dict.c.soc_value_id,
+            soc_values_service_types_dict.c.soc_value_id == soc_values_dict.c.soc_value_id,
         )
-        .outerjoin(
+        .join(
             service_types_dict,
             service_types_dict.c.service_type_id == soc_values_service_types_dict.c.service_type_id,
         )
-        .outerjoin(
-            urban_functions_dict, urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id
+        .join(urban_functions_dict, urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id)
+    )
+
+    statement = (
+        select(
+            soc_values_dict,
+            service_types_dict.c.service_type_id,
+            service_types_dict.c.urban_function_id,
+            service_types_dict.c.name.label("service_type_name"),
+            service_types_dict.c.capacity_modeled,
+            service_types_dict.c.code,
+            service_types_dict.c.infrastructure_type,
+            service_types_dict.c.properties,
+            urban_functions_dict.c.name.label("urban_function_name"),
         )
+        .select_from(select_from)
         .where(soc_values_dict.c.soc_value_id == soc_value_id)
-        .order_by(service_types_dict.c.service_type_id)
         .distinct()
     )
 
@@ -219,7 +244,7 @@ async def get_social_value_by_id_from_db(conn: AsyncConnection, soc_value_id: in
             service_type_id=row["service_type_id"],
             urban_function_id=row["urban_function_id"],
             urban_function_name=row["urban_function_name"],
-            name=row["name"],
+            name=row["service_type_name"],
             capacity_modeled=row["capacity_modeled"],
             code=row["code"],
             infrastructure_type=row["infrastructure_type"],
@@ -239,7 +264,7 @@ async def get_social_value_by_id_from_db(conn: AsyncConnection, soc_value_id: in
     )
 
 
-async def add_social_value_to_db(conn: AsyncConnection, soc_value: SocValuePost) -> SocValueWithServiceTypesDTO:
+async def add_social_value_to_db(conn: AsyncConnection, soc_value: SocValuePost) -> SocValueDTO:
     """Create a new social value."""
 
     if await check_existence(conn, soc_values_dict, conditions={"name": soc_value.name}):
@@ -259,7 +284,7 @@ async def add_value_to_social_group_from_db(
     soc_group_id: int,
     service_type_id: int,
     soc_value_id: int,
-) -> SocValueWithServiceTypesDTO:
+) -> SocValueDTO:
     """Add value to social group."""
 
     if not await check_existence(conn, soc_groups_dict, conditions={"soc_group_id": soc_group_id}):
@@ -517,8 +542,6 @@ async def delete_social_value_indicator_value_from_db(
         statement = statement.where(
             soc_value_indicators_data.c.year == year,
         )
-
-    statement = statement.returning(soc_value_indicators_data)
 
     await conn.execute(statement)
     await conn.commit()

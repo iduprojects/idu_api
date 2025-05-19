@@ -113,7 +113,7 @@ async def add_service_type_to_social_value(
     - **service_type_id** (int, Path): Service type identifier and infrastructure type.
 
     ### Returns:
-    - **SocValue**: Social value with all associated service types.
+    - **SocValueWithServiceTypes**: Social value with all associated service types.
 
     ### Errors:
     - **404 Not Found**: If the social value (or service type) does not exist.
@@ -207,21 +207,21 @@ async def get_social_values(request: Request) -> list[SocValue]:
 
 @soc_groups_router.get(
     "/social_values/{soc_value_id}",
-    response_model=SocValueWithServiceTypes,
+    response_model=SocValue,
     status_code=status.HTTP_200_OK,
 )
 async def get_social_value_by_id(
     request: Request,
     soc_value_id: int = Path(..., description="social value identifier", gt=0),
-) -> SocValueWithServiceTypes:
+) -> SocValue:
     """
-    ## Get social value with all associated social groups by identifier.
+    ## Get social value by identifier.
 
     ### Parameters:
     - **soc_value_id** (int, Path): Social value identifier.
 
     ### Returns:
-    - **SocValueWithServiceTypes**: Social value with all associated social groups.
+    - **SocValue**: Social value.
 
     ### Errors:
     - **404 Not Found**: If the social value does not exist.
@@ -230,15 +230,15 @@ async def get_social_value_by_id(
 
     soc_value = await soc_groups_service.get_social_value_by_id(soc_value_id)
 
-    return SocValueWithServiceTypes.from_dto(soc_value)
+    return SocValue.from_dto(soc_value)
 
 
 @soc_groups_router.post(
     "/social_values",
-    response_model=SocValueWithServiceTypes,
+    response_model=SocValue,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_social_value(request: Request, soc_value: SocValuePost) -> SocValueWithServiceTypes:
+async def add_social_value(request: Request, soc_value: SocValuePost) -> SocValue:
     """
     ## Create a new social value.
 
@@ -246,7 +246,7 @@ async def add_social_value(request: Request, soc_value: SocValuePost) -> SocValu
     - **soc_value** (SocValuePost, Body): Data for the new social value.
 
     ### Returns:
-    - **SocValueWithServiceTypes**: Created social value.
+    - **SocValue**: Created social value.
 
     ### Errors:
     - **409 Conflict**: If a social value with such name already exists.
@@ -255,7 +255,7 @@ async def add_social_value(request: Request, soc_value: SocValuePost) -> SocValu
 
     new_soc_value = await soc_groups_service.add_social_value(soc_value)
 
-    return SocValueWithServiceTypes.from_dto(new_soc_value)
+    return SocValue.from_dto(new_soc_value)
 
 
 @soc_groups_router.get(
@@ -297,7 +297,7 @@ async def add_value_to_social_group(
     soc_group_id: int = Path(..., description="social group identifier", gt=0),
     service_type_id: int = Query(..., description="service type identifier", gt=0),
     soc_value_id: int = Query(..., description="social value identifier", gt=0),
-) -> SocValueWithServiceTypes:
+) -> SocValue:
     """
     ## Add social value to social group and service type.
 
@@ -307,7 +307,7 @@ async def add_value_to_social_group(
     - **soc_value_id** (int, Query): Social value identifier.
 
     ### Returns:
-    - **SocValueWithServiceTypes**: Social value with all associated social groups.
+    - **SocValue**: Social value.
 
     ### Errors:
     - **404 Not Found**: If one of given entities does not exist.
@@ -317,7 +317,7 @@ async def add_value_to_social_group(
 
     new_soc_value = await soc_groups_service.add_value_to_social_group(soc_group_id, service_type_id, soc_value_id)
 
-    return SocValueWithServiceTypes.from_dto(new_soc_value)
+    return SocValue.from_dto(new_soc_value)
 
 
 @soc_groups_router.delete(
@@ -361,7 +361,7 @@ async def get_social_value_indicator_values(
     last_only: bool = Query(False, description="to get only the last values"),
 ) -> list[SocValueIndicatorValue]:
     """
-    ## Get social value with all associated social groups by identifier.
+    ## Get social value's indicator values.
 
     **WARNING:** Set `last_only = True` only if you don't specify `year`.
 
@@ -406,10 +406,10 @@ async def add_social_value_indicator_value(
     ## Create new social value's indicator value.
 
     ### Parameters:
-    - **soc_value_indicator** (SocValueIndicatorValuePost, Body): Data for the new social group's indicator value.
+    - **soc_value_indicator** (SocValueIndicatorValuePost, Body): Data for the new social value's indicator value.
 
     ### Returns:
-    - **SocValueIndicatorValue**: Created social group's indicator value.
+    - **SocValueIndicatorValue**: Created social value's indicator value.
 
     ### Errors:
     - **404 Not Found**: If the social value (or related entity) does not exist.
@@ -438,10 +438,10 @@ async def put_social_value_indicator_value(
     Otherwise, a new indicator value will be created.
 
     ### Parameters:
-    - **soc_value_indicator** (SocValueIndicatorValuePut, Body): Data for the new social group's indicator value.
+    - **soc_value_indicator** (SocValueIndicatorValuePut, Body): Data for the new social value's indicator value.
 
     ### Returns:
-    - **SocValueIndicatorValue**: Updated or created social group's indicator value.
+    - **SocValueIndicatorValue**: Updated or created social value's indicator value.
 
     ### Errors:
     - **404 Not Found**: If the social value (or related entity) does not exist.

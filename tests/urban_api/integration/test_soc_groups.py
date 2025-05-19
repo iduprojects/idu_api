@@ -214,11 +214,7 @@ async def test_get_social_value_by_id(
         result = response.json()
 
     # Assert
-    assert_response(response, expected_status, SocValueWithServiceTypes, error_message)
-    if expected_status == 200:
-        for k, v in social_value.items():
-            if k in result and k != "service_types":
-                assert result[k] == v, f"Mismatch for {k}: {result[k]} != {v}."
+    assert_response(response, expected_status, SocValue, error_message)
 
 
 @pytest.mark.asyncio

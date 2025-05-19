@@ -12,7 +12,8 @@ from idu_api.urban_api.dto import (
     SocValueIndicatorValueDTO,
     SocValueWithServiceTypesDTO,
 )
-from idu_api.urban_api.schemas.short_models import ShortServiceType, ShortTerritory, SocValueBasic
+from idu_api.urban_api.schemas.service_types import ServiceType
+from idu_api.urban_api.schemas.short_models import ShortServiceType, ShortTerritory, SocValueBasic, UrbanFunctionBasic
 
 
 class SocGroup(BaseModel):
@@ -59,7 +60,7 @@ class SocValueWithServiceTypes(BaseModel):
     rank: int = Field(..., description="rank", examples=[3])
     normative_value: float = Field(..., description="normative value", examples=[0.56])
     decree_value: float = Field(..., description="decree value", examples=[0.75])
-    service_types: list[ShortServiceType]
+    service_types: list[ServiceType]
 
     @classmethod
     def from_dto(cls, dto: SocValueWithServiceTypesDTO) -> "SocValueWithServiceTypes":
@@ -71,10 +72,15 @@ class SocValueWithServiceTypes(BaseModel):
             normative_value=dto.normative_value,
             decree_value=dto.decree_value,
             service_types=[
-                ShortServiceType(
-                    id=service_type.service_type_id,
+                ServiceType(
+                    service_type_id=service_type.service_type_id,
                     name=service_type.name,
                     infrastructure_type=service_type.infrastructure_type,
+                    urban_function=UrbanFunctionBasic(
+                        id=service_type.urban_function_id, name=service_type.urban_function_name
+                    ),
+                    capacity_modeled=service_type.capacity_modeled,
+                    code=service_type.code,
                 )
                 for service_type in dto.service_types
             ],

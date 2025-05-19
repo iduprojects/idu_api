@@ -77,17 +77,17 @@ class SocGroupsServiceImpl(SocGroupsService):
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_social_values_from_db(conn)
 
-    async def get_social_value_by_id(self, soc_value_id: int) -> SocValueWithServiceTypesDTO:
+    async def get_social_value_by_id(self, soc_value_id: int) -> SocValueDTO:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_social_value_by_id_from_db(conn, soc_value_id)
 
-    async def add_social_value(self, soc_value: SocValuePost) -> SocValueWithServiceTypesDTO:
+    async def add_social_value(self, soc_value: SocValuePost) -> SocValueDTO:
         async with self._connection_manager.get_connection() as conn:
             return await add_social_value_to_db(conn, soc_value)
 
     async def add_value_to_social_group(
         self, soc_group_id: int, service_type_id: int, soc_value_id: int
-    ) -> SocValueWithServiceTypesDTO:
+    ) -> SocValueDTO:
         async with self._connection_manager.get_connection() as conn:
             return await add_value_to_social_group_from_db(conn, soc_group_id, service_type_id, soc_value_id)
 

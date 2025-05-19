@@ -515,14 +515,14 @@ async def get_social_values_by_service_type_id_from_db(
     if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
         raise EntityNotFoundById(service_type_id, "service type")
 
+    select_from = soc_values_dict.join(
+        soc_values_service_types_dict,
+        soc_values_dict.c.soc_value_id == soc_values_service_types_dict.c.soc_value_id,
+    )
+
     statement = (
-        select(
-            soc_values_dict,
-        )
-        .join(
-            soc_values_service_types_dict,
-            soc_values_dict.c.soc_value_id == soc_values_service_types_dict.c.soc_value_id,
-        )
+        select(soc_values_dict)
+        .select_from(select_from)
         .where(soc_values_service_types_dict.c.service_type_id == service_type_id)
     )
 

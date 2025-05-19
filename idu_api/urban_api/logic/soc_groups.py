@@ -56,17 +56,17 @@ class SocGroupsService(Protocol):
         """Get a list of all social values."""
 
     @abc.abstractmethod
-    async def get_social_value_by_id(self, soc_value_id: int) -> SocValueWithServiceTypesDTO:
+    async def get_social_value_by_id(self, soc_value_id: int) -> SocValueDTO:
         """Get social value by identifier."""
 
     @abc.abstractmethod
-    async def add_social_value(self, soc_value: SocValuePost) -> SocValueWithServiceTypesDTO:
+    async def add_social_value(self, soc_value: SocValuePost) -> SocValueDTO:
         """Create a new social value."""
 
     @abc.abstractmethod
     async def add_value_to_social_group(
         self, soc_group_id: int, service_type_id: int, soc_value_id: int
-    ) -> SocValueWithServiceTypesDTO:
+    ) -> SocValueDTO:
         """Add value to social group."""
 
     @abc.abstractmethod
