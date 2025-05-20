@@ -85,7 +85,7 @@ class SocGroupsService(Protocol):
 
     @abc.abstractmethod
     async def add_social_value_indicator_value(
-        self, soc_group_indicator: SocValueIndicatorValuePost
+        self, soc_value_indicator: SocValueIndicatorValuePost
     ) -> SocValueIndicatorValueDTO:
         """Create a new social value indicator value."""
 

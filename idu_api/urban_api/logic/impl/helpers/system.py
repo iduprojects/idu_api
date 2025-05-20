@@ -118,7 +118,7 @@ async def process_geometries_batch(
                     index_in_batch=f"{i}/{batch_size}",
                 )
             batch_fixed.append(geom)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             await logger.aerror(
                 "WKB load failed",
                 error=str(e),

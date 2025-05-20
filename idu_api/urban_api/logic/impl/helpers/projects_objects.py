@@ -1156,5 +1156,5 @@ async def save_indicators(project_id: int, scenario_id: int, logger: structlog.s
             await logger.awarning("Request failed due to connection error", reason=str(exc), params=params)
 
         # Handle any other unexpected exceptions
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             await logger.aexception("Unexpected error occurred while saving indicators")

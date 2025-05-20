@@ -13,7 +13,7 @@ from idu_api.urban_api.dto import (
     SocValueWithServiceTypesDTO,
 )
 from idu_api.urban_api.schemas.service_types import ServiceType
-from idu_api.urban_api.schemas.short_models import ShortServiceType, ShortTerritory, SocValueBasic, UrbanFunctionBasic
+from idu_api.urban_api.schemas.short_models import ShortTerritory, SocServiceType, SocValueBasic, UrbanFunctionBasic
 
 
 class SocGroup(BaseModel):
@@ -33,7 +33,7 @@ class SocGroupWithServiceTypes(BaseModel):
 
     soc_group_id: int = Field(..., description="social group identifier", examples=[1])
     name: str = Field(..., description="social group name", examples=["Трудоспособные"])
-    service_types: list[ShortServiceType]
+    service_types: list[SocServiceType]
 
     @classmethod
     def from_dto(cls, dto: SocGroupWithServiceTypesDTO) -> "SocGroupWithServiceTypes":
@@ -42,10 +42,10 @@ class SocGroupWithServiceTypes(BaseModel):
             soc_group_id=dto.soc_group_id,
             name=dto.name,
             service_types=[
-                ShortServiceType(
-                    id=service_type.service_type_id,
-                    name=service_type.name,
-                    infrastructure_type=service_type.infrastructure_type,
+                SocServiceType(
+                    id=service_type["id"],
+                    name=service_type["name"],
+                    infrastructure_type=service_type["infrastructure_type"],
                 )
                 for service_type in dto.service_types
             ],

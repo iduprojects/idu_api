@@ -49,17 +49,18 @@ async def get_social_group_by_id_from_db(conn: AsyncConnection, soc_group_id: in
     """Get social group with associated service types by identifier."""
 
     statement = (
-        select(soc_groups_dict, service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
+        select(
+            soc_groups_dict,
+            service_types_dict.c.service_type_id.label("id"),
+            service_types_dict.c.name.label("service_type_name"),
+            soc_group_values_data.c.infrastructure_type,
+        )
         .select_from(
             soc_groups_dict.outerjoin(
                 soc_group_values_data,
                 soc_group_values_data.c.soc_group_id == soc_groups_dict.c.soc_group_id,
-            )
-            .outerjoin(
+            ).outerjoin(
                 service_types_dict, service_types_dict.c.service_type_id == soc_group_values_data.c.service_type_id
-            )
-            .outerjoin(
-                urban_functions_dict, urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id
             )
         )
         .where(soc_groups_dict.c.soc_group_id == soc_group_id)
@@ -72,18 +73,9 @@ async def get_social_group_by_id_from_db(conn: AsyncConnection, soc_group_id: in
         raise EntityNotFoundById(soc_group_id, "social group")
 
     service_types = [
-        ServiceTypeDTO(
-            service_type_id=row["service_type_id"],
-            urban_function_id=row["urban_function_id"],
-            urban_function_name=row["urban_function_name"],
-            name=row["name"],
-            capacity_modeled=row["capacity_modeled"],
-            code=row["code"],
-            infrastructure_type=row["infrastructure_type"],
-            properties=row["properties"],
-        )
+        {"id": row["id"], "name": row["service_type_name"], "infrastructure_type": row["infrastructure_type"]}
         for row in result
-        if row["service_type_id"] is not None
+        if row["id"] is not None
     ]
 
     return SocGroupWithServiceTypesDTO(
