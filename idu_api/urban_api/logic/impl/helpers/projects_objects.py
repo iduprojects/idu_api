@@ -535,6 +535,11 @@ async def get_user_preview_projects_images_url_from_minio(
 async def add_project_to_db(
     conn: AsyncConnection, project: ProjectPost, user: UserDTO, logger: structlog.stdlib.BoundLogger
 ) -> ProjectDTO:
+    """Create project object."""
+    if project.is_regional:
+        project_id = await insert_project(conn, project, user)
+        await conn.commit()
+        return await get_project_by_id_from_db(conn, project_id, user)
 
     given_geometry = select(
         ST_GeomFromWKB(project.territory.geometry.as_shapely_geometry().wkb, text(str(SRID))).label("geometry")
@@ -542,12 +547,7 @@ async def add_project_to_db(
 
     await add_context_territories(conn, project, given_geometry)
 
-    statement = (
-        insert(projects_data)
-        .values(**project.model_dump(exclude={"territory"}), user_id=user.id)
-        .returning(projects_data.c.project_id)
-    )
-    project_id = (await conn.execute(statement)).scalar_one()
+    project_id = await insert_project(conn, project, user)
 
     project_territory = extract_values_from_model(project.territory)
     await conn.execute(insert(projects_territory_data).values(**project_territory, project_id=project_id))
@@ -761,6 +761,15 @@ async def get_project_image_url_from_minio(
 ####################################################################################
 #                            Helper functions                                      #
 ####################################################################################
+
+
+async def insert_project(conn: AsyncConnection, project: ProjectPost, user: UserDTO) -> int:
+    statement = (
+        insert(projects_data)
+        .values(**project.model_dump(exclude={"territory"}), user_id=user.id)
+        .returning(projects_data.c.project_id)
+    )
+    return (await conn.execute(statement)).scalar_one()
 
 
 async def add_context_territories(

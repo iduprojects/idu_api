@@ -53,8 +53,8 @@ soc_values_dict = Table(
     Column("soc_value_id", Integer, primary_key=True, server_default=soc_values_dict_id_seq.next_value()),
     Column("name", String(200), nullable=False, unique=True),
     Column("rank", Integer),
-    Column("normative_value", Float),
-    Column("decree_value", Float),
+    Column("normative_value", Float(53)),
+    Column("decree_value", Float(53)),
 )
 
 """

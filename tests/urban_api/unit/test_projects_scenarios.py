@@ -21,10 +21,7 @@ from idu_api.common.db.entities import (
 from idu_api.urban_api.dto import ScenarioDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
-    copy_geometries,
-    copy_physical_objects,
     copy_scenario_to_db,
-    copy_services,
     delete_scenario_from_db,
     get_scenario_by_id_from_db,
     get_scenarios_by_project_id_from_db,
@@ -135,11 +132,6 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
     """Test the copy_scenario_to_db function."""
 
     # Arrange
-    async def check_project(conn, table, conditions=None):
-        if table == projects_data:
-            return False
-        return True
-
     async def check_functional_zone_type(conn, table, conditions=None):
         if table == functional_zone_types_dict:
             return False
@@ -147,16 +139,6 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
 
     scenario_id = 1
     user = UserDTO(id="mock_string", is_superuser=False)
-    project = {"project_id": 1, "territory_id": 1}
-    parent_scenario_statement = (
-        select(scenarios_data.c.scenario_id)
-        .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
-        .where(
-            projects_data.c.territory_id == project["territory_id"],
-            projects_data.c.is_regional.is_(True),
-            scenarios_data.c.is_based.is_(True),
-        )
-    )
     insert_scenario_statement = (
         insert(scenarios_data)
         .values(**scenario_post_req.model_dump(), parent_id=1, is_based=False)
@@ -232,12 +214,6 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
     # Act
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_scenarios.check_existence",
-        new=AsyncMock(side_effect=check_project),
-    ):
-        with pytest.raises(EntityNotFoundById):
-            await copy_scenario_to_db(mock_conn, scenario_post_req, scenario_id, user)
-    with patch(
-        "idu_api.urban_api.logic.impl.helpers.projects_scenarios.check_existence",
         new=AsyncMock(side_effect=check_functional_zone_type),
     ):
         with pytest.raises(EntityNotFoundById):
@@ -247,7 +223,6 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
     # Assert
     assert isinstance(result, ScenarioDTO), "Result should be a ScenarioDTO."
     assert isinstance(Scenario.from_dto(result), Scenario), "Couldn't create pydantic model from DTO."
-    mock_conn.execute_mock.assert_any_call(str(parent_scenario_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_scenario_statement))
     mock_conn.execute_mock.assert_any_call(str(urban_objects_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_urban_objects_statement))
@@ -348,106 +323,3 @@ async def test_delete_scenario_from_db(mock_check: AsyncMock, mock_conn: MockCon
     mock_conn.execute_mock.assert_any_call(str(delete_statement))
     mock_conn.commit_mock.assert_called_once()
     mock_check.assert_called_once_with(mock_conn, scenario_id, user, to_edit=True)
-
-
-@pytest.mark.asyncio
-async def test_copy_geometries(mock_conn: MockConnection):
-    """Test the copy_geometries function."""
-
-    # Arrange
-    geometry_ids = [1]
-    select_statement = (
-        select(
-            projects_object_geometries_data.c.public_object_geometry_id,
-            projects_object_geometries_data.c.territory_id,
-            projects_object_geometries_data.c.address,
-            projects_object_geometries_data.c.osm_id,
-            projects_object_geometries_data.c.geometry,
-            projects_object_geometries_data.c.centre_point,
-        )
-        .where(projects_object_geometries_data.c.object_geometry_id.in_(geometry_ids))
-        .order_by(projects_object_geometries_data.c.object_geometry_id)
-    )
-    result = (await mock_conn.execute(select_statement)).mappings().all()
-    insert_statement = (
-        insert(projects_object_geometries_data)
-        .values([dict(row) for row in result])
-        .returning(projects_object_geometries_data.c.object_geometry_id)
-    )
-
-    # Act
-    result = await copy_geometries(mock_conn, geometry_ids)
-
-    # Assert
-    assert isinstance(result, dict), "Result should be dictionary."
-    assert result == {1: 1}, "Expected result not found."
-    mock_conn.execute_mock.assert_any_call(str(select_statement))
-    mock_conn.execute_mock.assert_any_call(str(insert_statement))
-
-
-@pytest.mark.asyncio
-async def test_copy_physical_objects(mock_conn: MockConnection):
-    """Test the copy_physical_objects function."""
-
-    # Arrange
-    physical_ids = [1]
-    select_statement = (
-        select(
-            projects_physical_objects_data.c.public_physical_object_id,
-            projects_physical_objects_data.c.physical_object_type_id,
-            projects_physical_objects_data.c.name,
-            projects_physical_objects_data.c.properties,
-        )
-        .where(projects_physical_objects_data.c.physical_object_id.in_(physical_ids))
-        .order_by(projects_physical_objects_data.c.physical_object_id)
-    )
-    result = (await mock_conn.execute(select_statement)).mappings().all()
-    insert_statement = (
-        insert(projects_physical_objects_data)
-        .values([dict(row) for row in result])
-        .returning(projects_physical_objects_data.c.physical_object_id)
-    )
-
-    # Act
-    result = await copy_physical_objects(mock_conn, physical_ids)
-
-    # Assert
-    assert isinstance(result, dict), "Result should be dictionary."
-    assert result == {1: 1}, "Expected result not found."
-    mock_conn.execute_mock.assert_any_call(str(select_statement))
-    mock_conn.execute_mock.assert_any_call(str(insert_statement))
-
-
-@pytest.mark.asyncio
-async def test_copy_services(mock_conn: MockConnection):
-    """Test the copy_services function."""
-
-    # Arrange
-    service_ids = [1]
-    select_statement = (
-        select(
-            projects_services_data.c.public_service_id,
-            projects_services_data.c.service_type_id,
-            projects_services_data.c.name,
-            projects_services_data.c.capacity,
-            projects_services_data.c.is_capacity_real,
-            projects_services_data.c.properties,
-        )
-        .where(projects_services_data.c.service_id.in_(service_ids))
-        .order_by(projects_services_data.c.service_id)
-    )
-    result = (await mock_conn.execute(select_statement)).mappings().all()
-    insert_statement = (
-        insert(projects_services_data)
-        .values([dict(row) for row in result])
-        .returning(projects_services_data.c.service_id)
-    )
-
-    # Act
-    result = await copy_services(mock_conn, service_ids)
-
-    # Assert
-    assert isinstance(result, dict), "Result should be dictionary."
-    assert result == {1: 1}, "Expected result not found."
-    mock_conn.execute_mock.assert_any_call(str(select_statement))
-    mock_conn.execute_mock.assert_any_call(str(insert_statement))

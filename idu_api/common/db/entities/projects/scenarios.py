@@ -26,8 +26,7 @@ from idu_api.common.db.entities.projects.projects import projects_data
 
 func: Callable
 
-ScenarioPhaseEnum = Enum(ScenarioPhase, name="scenario_phase")
-
+ScenarioPhaseEnum = Enum(ScenarioPhase, name="scenario_phase", schema="user_projects")
 
 scenarios_data_id_seq = Sequence("scenarios_data_id_seq", schema="user_projects")
 
