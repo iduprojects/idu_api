@@ -108,6 +108,14 @@ class ProjectPost(BaseModel):
     is_regional: bool = Field(False, description="boolean parameter to determine regional project")
     territory: ProjectTerritoryPost | None
 
+    @model_validator(mode="after")
+    def check_project_territory(self) -> "ProjectPost":
+        if self.is_regional and self.territory is not None:
+            raise ValueError("regional projects cannot have their own territory")
+        if not self.is_regional and self.territory is None:
+            raise ValueError("non-regional projects must have a territory")
+        return self
+
 
 class ProjectPut(BaseModel):
     """Project schema for PUT request."""

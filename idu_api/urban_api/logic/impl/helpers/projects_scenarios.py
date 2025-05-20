@@ -23,6 +23,7 @@ from idu_api.urban_api.exceptions.logic.common import (
     EntitiesNotFoundByIds,
     EntityNotFoundById,
 )
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.logic.impl.helpers.projects_objects import check_project
 from idu_api.urban_api.logic.impl.helpers.utils import check_existence, extract_values_from_model
@@ -160,165 +161,17 @@ async def get_scenario_by_id_from_db(conn: AsyncConnection, scenario_id: int, us
 async def copy_scenario_to_db(
     conn: AsyncConnection, scenario: ScenarioPost, scenario_id: int, user: UserDTO
 ) -> ScenarioDTO:
-    """Create a new scenario from another scenario (copy) by its identifier."""
+    """Copy an existing scenario and all its related entities to a new one."""
 
-    if not await check_existence(conn, projects_data, conditions={"project_id": scenario.project_id}):
-        raise EntityNotFoundById(scenario.project_id, "project")
+    await _validate_input(conn, scenario, user)
+    project, parent_id = await _validate_source_scenario(conn, scenario_id, user)
 
-    if scenario.functional_zone_type_id is not None:
-        if not await check_existence(
-            conn, functional_zone_types_dict, conditions={"functional_zone_type_id": scenario.functional_zone_type_id}
-        ):
-            raise EntityNotFoundById(scenario.functional_zone_type_id, "functional zone type")
+    new_scenario_id = await _create_scenario(conn, scenario, parent_id)
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
-
-    # fixme: use the real parent scenario identifier from the user
-    #  instead of using the basic regional scenario by default
-    parent_scenario_id = (
-        await conn.execute(
-            select(scenarios_data.c.scenario_id)
-            .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
-            .where(
-                projects_data.c.territory_id == project.territory_id,
-                projects_data.c.is_regional.is_(True),
-                scenarios_data.c.is_based.is_(True),
-            )
-        )
-    ).scalar_one_or_none()
-    if parent_scenario_id is None:
-        raise EntitiesNotFoundByIds("parent regional scenario")
-
-    new_scenario_id = (
-        await conn.execute(
-            insert(scenarios_data)
-            .values(**scenario.model_dump(), parent_id=parent_scenario_id, is_based=False)
-            .returning(scenarios_data.c.scenario_id)
-        )
-    ).scalar_one()
-
-    # copy urban objects
-    old_urban_objects = (
-        select(
-            projects_urban_objects_data.c.public_urban_object_id,
-            projects_urban_objects_data.c.object_geometry_id,
-            projects_urban_objects_data.c.physical_object_id,
-            projects_urban_objects_data.c.service_id,
-            projects_urban_objects_data.c.public_object_geometry_id,
-            projects_urban_objects_data.c.public_physical_object_id,
-            projects_urban_objects_data.c.public_service_id,
-        ).where(projects_urban_objects_data.c.scenario_id == scenario_id)
-    ).cte(name="old_urban_objects")
-    result = (await conn.execute(select(old_urban_objects))).mappings().all()
-
-    geometry_ids = set(obj.object_geometry_id for obj in result if obj.object_geometry_id is not None)
-    physical_ids = set(obj.physical_object_id for obj in result if obj.physical_object_id is not None)
-    service_ids = set(obj.service_id for obj in result if obj.service_id is not None)
-
-    geometry_mapping, physical_mapping, service_mapping = await asyncio.gather(
-        copy_geometries(conn, sorted(list(geometry_ids))),
-        copy_physical_objects(conn, sorted(list(physical_ids))),
-        copy_services(conn, sorted(list(service_ids))),
-    )
-
-    await conn.execute(
-        insert(projects_urban_objects_data).from_select(
-            [
-                "scenario_id",
-                "public_urban_object_id",
-            ],
-            select(
-                literal(new_scenario_id).label("scenario_id"),
-                old_urban_objects.c.public_urban_object_id,
-            ).where(old_urban_objects.c.public_urban_object_id.isnot(None)),
-        )
-    )
-
-    def build_case(column, mapping: dict[str, Any], default=None):
-        """Build case statement."""
-        if not mapping:
-            return literal(default)
-        return case(*[(column == key, literal(value)) for key, value in mapping.items()], else_=literal(default))
-
-    geometry_case = build_case(old_urban_objects.c.object_geometry_id, geometry_mapping, default=None)
-    physical_case = build_case(old_urban_objects.c.physical_object_id, physical_mapping, default=None)
-    service_case = build_case(old_urban_objects.c.service_id, service_mapping, default=None)
-
-    await conn.execute(
-        insert(projects_urban_objects_data).from_select(
-            [
-                "scenario_id",
-                "object_geometry_id",
-                "physical_object_id",
-                "service_id",
-                "public_object_geometry_id",
-                "public_physical_object_id",
-                "public_service_id",
-            ],
-            select(
-                literal(new_scenario_id),
-                geometry_case,
-                physical_case,
-                service_case,
-                old_urban_objects.c.public_object_geometry_id,
-                old_urban_objects.c.public_physical_object_id,
-                old_urban_objects.c.public_service_id,
-            ).where(old_urban_objects.c.public_urban_object_id.is_(None)),
-        )
-    )
-
-    # copy functional zones and indicators values
-    await asyncio.gather(
-        conn.execute(
-            insert(projects_functional_zones).from_select(
-                [
-                    projects_functional_zones.c.scenario_id,
-                    projects_functional_zones.c.name,
-                    projects_functional_zones.c.functional_zone_type_id,
-                    projects_functional_zones.c.geometry,
-                    projects_functional_zones.c.year,
-                    projects_functional_zones.c.source,
-                    projects_functional_zones.c.properties,
-                ],
-                select(
-                    literal(new_scenario_id).label("scenario_id"),
-                    projects_functional_zones.c.name,
-                    projects_functional_zones.c.functional_zone_type_id,
-                    projects_functional_zones.c.geometry,
-                    projects_functional_zones.c.year,
-                    projects_functional_zones.c.source,
-                    projects_functional_zones.c.properties,
-                ).where(projects_functional_zones.c.scenario_id == scenario_id),
-            )
-        ),
-        conn.execute(
-            insert(projects_indicators_data).from_select(
-                [
-                    projects_indicators_data.c.scenario_id,
-                    projects_indicators_data.c.indicator_id,
-                    projects_indicators_data.c.territory_id,
-                    projects_indicators_data.c.hexagon_id,
-                    projects_indicators_data.c.value,
-                    projects_indicators_data.c.comment,
-                    projects_indicators_data.c.information_source,
-                    projects_indicators_data.c.properties,
-                ],
-                select(
-                    literal(new_scenario_id).label("scenario_id"),
-                    projects_indicators_data.c.indicator_id,
-                    projects_indicators_data.c.territory_id,
-                    projects_indicators_data.c.hexagon_id,
-                    projects_indicators_data.c.value,
-                    projects_indicators_data.c.comment,
-                    projects_indicators_data.c.information_source,
-                    projects_indicators_data.c.properties,
-                ).where(projects_indicators_data.c.scenario_id == scenario_id),
-            )
-        ),
-    )
+    await _copy_urban_objects(conn, scenario_id, new_scenario_id)
+    await _copy_functional_zones_and_indicators(conn, scenario_id, new_scenario_id)
 
     await conn.commit()
-
     return await get_scenario_by_id_from_db(conn, new_scenario_id, user)
 
 
@@ -483,7 +336,195 @@ async def delete_scenario_from_db(conn: AsyncConnection, scenario_id: int, user:
     return {"status": "ok"}
 
 
-async def copy_geometries(conn, geometry_ids: list[int]) -> dict[int, int]:
+####################################################################################
+#                            Helper functions                                      #
+####################################################################################
+
+
+async def _validate_input(conn: AsyncConnection, scenario: ScenarioPost, user: UserDTO):
+    """Validate project existence and ownership, and optional functional zone type."""
+    if scenario.functional_zone_type_id is not None:
+        exists = await check_existence(
+            conn, functional_zone_types_dict, conditions={"functional_zone_type_id": scenario.functional_zone_type_id}
+        )
+        if not exists:
+            raise EntityNotFoundById(scenario.functional_zone_type_id, "functional zone type")
+
+    project = (
+        (await conn.execute(select(projects_data).where(projects_data.c.project_id == scenario.project_id)))
+        .mappings()
+        .one_or_none()
+    )
+    if project is None:
+        raise EntityNotFoundById(scenario.project_id, "project")
+    if project.user_id != user.id and not user.is_superuser:
+        raise AccessDeniedError(scenario.project_id, "project")
+
+
+async def _validate_source_scenario(conn: AsyncConnection, scenario_id: int, user: UserDTO) -> tuple[RowMapping, int]:
+    """Validate the original scenario and determine if a regional parent is required."""
+    statement = (
+        select(projects_data)
+        .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
+        .where(scenarios_data.c.scenario_id == scenario_id)
+    )
+    project = (await conn.execute(statement)).mappings().one_or_none()
+    if project is None:
+        raise EntityNotFoundById(scenario_id, "scenario")
+    if project.user_id != user.id and not project.public and not user.is_superuser:
+        raise AccessDeniedError(project.project_id, "project")
+
+    parent_id = None
+    if not project.is_regional:
+        parent_id = (
+            await conn.execute(
+                select(scenarios_data.c.scenario_id)
+                .select_from(scenarios_data.join(projects_data))
+                .where(
+                    projects_data.c.territory_id == project.territory_id,
+                    projects_data.c.is_regional.is_(True),
+                    scenarios_data.c.is_based.is_(True),
+                )
+            )
+        ).scalar_one_or_none()
+        if parent_id is None:
+            raise EntitiesNotFoundByIds("parent regional scenario")
+
+    return project, parent_id
+
+
+async def _create_scenario(conn: AsyncConnection, scenario: ScenarioPost, parent_id: int | None) -> int:
+    """Insert a new scenario into the database."""
+    return (
+        await conn.execute(
+            insert(scenarios_data)
+            .values(**scenario.model_dump(), parent_id=parent_id, is_based=False)
+            .returning(scenarios_data.c.scenario_id)
+        )
+    ).scalar_one()
+
+
+async def _copy_urban_objects(conn: AsyncConnection, old_id: int, new_id: int):
+    """Copy urban objects from old scenario to new scenario, remapping associated resources."""
+    old_objs_cte = (
+        select(
+            projects_urban_objects_data.c.public_urban_object_id,
+            projects_urban_objects_data.c.object_geometry_id,
+            projects_urban_objects_data.c.physical_object_id,
+            projects_urban_objects_data.c.service_id,
+            projects_urban_objects_data.c.public_object_geometry_id,
+            projects_urban_objects_data.c.public_physical_object_id,
+            projects_urban_objects_data.c.public_service_id,
+        ).where(projects_urban_objects_data.c.scenario_id == old_id)
+    ).cte(name="old_urban_objects")
+
+    results = (await conn.execute(select(old_objs_cte))).mappings().all()
+
+    geom_ids = {r.object_geometry_id for r in results if r.object_geometry_id}
+    phys_ids = {r.physical_object_id for r in results if r.physical_object_id}
+    svc_ids = {r.service_id for r in results if r.service_id}
+
+    geom_map, phys_map, svc_map = await asyncio.gather(
+        _copy_geometries(conn, sorted(list(geom_ids))),
+        _copy_physical_objects(conn, sorted(list(phys_ids))),
+        _copy_services(conn, sorted(list(svc_ids))),
+    )
+
+    # Copy public urban objects
+    await conn.execute(
+        insert(projects_urban_objects_data).from_select(
+            ["scenario_id", "public_urban_object_id"],
+            select(literal(new_id).label("scenario_id"), old_objs_cte.c.public_urban_object_id).where(
+                old_objs_cte.c.public_urban_object_id.isnot(None)
+            ),
+        )
+    )
+
+    # Copy internal urban objects with mapping
+    def build_case(col, mapping, default=None):
+        return (
+            case(*[(col == k, literal(v)) for k, v in mapping.items()], else_=literal(default))
+            if mapping
+            else literal(default)
+        )
+
+    await conn.execute(
+        insert(projects_urban_objects_data).from_select(
+            [
+                "scenario_id",
+                "object_geometry_id",
+                "physical_object_id",
+                "service_id",
+                "public_object_geometry_id",
+                "public_physical_object_id",
+                "public_service_id",
+            ],
+            select(
+                literal(new_id).label("scenario_id"),
+                build_case(old_objs_cte.c.object_geometry_id, geom_map),
+                build_case(old_objs_cte.c.physical_object_id, phys_map),
+                build_case(old_objs_cte.c.service_id, svc_map),
+                old_objs_cte.c.public_object_geometry_id,
+                old_objs_cte.c.public_physical_object_id,
+                old_objs_cte.c.public_service_id,
+            ).where(old_objs_cte.c.public_urban_object_id.is_(None)),
+        )
+    )
+
+
+async def _copy_functional_zones_and_indicators(conn: AsyncConnection, old_id: int, new_id: int):
+    """Copy functional zones and indicator values from old scenario."""
+    await asyncio.gather(
+        conn.execute(
+            insert(projects_functional_zones).from_select(
+                [
+                    projects_functional_zones.c.scenario_id,
+                    projects_functional_zones.c.name,
+                    projects_functional_zones.c.functional_zone_type_id,
+                    projects_functional_zones.c.geometry,
+                    projects_functional_zones.c.year,
+                    projects_functional_zones.c.source,
+                    projects_functional_zones.c.properties,
+                ],
+                select(
+                    literal(new_id).label("scenario_id"),
+                    projects_functional_zones.c.name,
+                    projects_functional_zones.c.functional_zone_type_id,
+                    projects_functional_zones.c.geometry,
+                    projects_functional_zones.c.year,
+                    projects_functional_zones.c.source,
+                    projects_functional_zones.c.properties,
+                ).where(projects_functional_zones.c.scenario_id == old_id),
+            )
+        ),
+        conn.execute(
+            insert(projects_indicators_data).from_select(
+                [
+                    projects_indicators_data.c.scenario_id,
+                    projects_indicators_data.c.indicator_id,
+                    projects_indicators_data.c.territory_id,
+                    projects_indicators_data.c.hexagon_id,
+                    projects_indicators_data.c.value,
+                    projects_indicators_data.c.comment,
+                    projects_indicators_data.c.information_source,
+                    projects_indicators_data.c.properties,
+                ],
+                select(
+                    literal(new_id).label("scenario_id"),
+                    projects_indicators_data.c.indicator_id,
+                    projects_indicators_data.c.territory_id,
+                    projects_indicators_data.c.hexagon_id,
+                    projects_indicators_data.c.value,
+                    projects_indicators_data.c.comment,
+                    projects_indicators_data.c.information_source,
+                    projects_indicators_data.c.properties,
+                ).where(projects_indicators_data.c.scenario_id == old_id),
+            )
+        ),
+    )
+
+
+async def _copy_geometries(conn, geometry_ids: list[int]) -> dict[int, int]:
     if not geometry_ids:
         return {}
 
@@ -520,7 +561,7 @@ async def copy_geometries(conn, geometry_ids: list[int]) -> dict[int, int]:
     return dict(zip(geometry_ids, new_ids))
 
 
-async def copy_physical_objects(conn, physical_ids: list[int]) -> dict[int, int]:
+async def _copy_physical_objects(conn, physical_ids: list[int]) -> dict[int, int]:
     if not physical_ids:
         return {}
 
@@ -555,7 +596,7 @@ async def copy_physical_objects(conn, physical_ids: list[int]) -> dict[int, int]
     return dict(zip(physical_ids, new_ids))
 
 
-async def copy_services(conn, service_ids: list[int]) -> dict[int, int]:
+async def _copy_services(conn, service_ids: list[int]) -> dict[int, int]:
     if not service_ids:
         return {}
 

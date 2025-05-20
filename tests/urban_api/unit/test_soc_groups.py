@@ -93,17 +93,18 @@ async def test_get_social_group_by_id_from_db(mock_conn: MockConnection):
     # Arrange
     soc_group_id = 1
     statement = (
-        select(soc_groups_dict, service_types_dict, urban_functions_dict.c.name.label("urban_function_name"))
+        select(
+            soc_groups_dict,
+            service_types_dict.c.service_type_id.label("id"),
+            service_types_dict.c.name.label("service_type_name"),
+            soc_group_values_data.c.infrastructure_type,
+        )
         .select_from(
             soc_groups_dict.outerjoin(
                 soc_group_values_data,
                 soc_group_values_data.c.soc_group_id == soc_groups_dict.c.soc_group_id,
-            )
-            .outerjoin(
+            ).outerjoin(
                 service_types_dict, service_types_dict.c.service_type_id == soc_group_values_data.c.service_type_id
-            )
-            .outerjoin(
-                urban_functions_dict, urban_functions_dict.c.urban_function_id == service_types_dict.c.urban_function_id
             )
         )
         .where(soc_groups_dict.c.soc_group_id == soc_group_id)

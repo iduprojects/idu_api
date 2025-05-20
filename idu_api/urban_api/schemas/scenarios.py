@@ -1,9 +1,10 @@
 """Scenarios response models are defined here."""
 
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from idu_api.urban_api.dto import ScenarioDTO
 from idu_api.urban_api.schemas.short_models import FunctionalZoneTypeBasic, ShortProject, ShortScenario, ShortTerritory
@@ -76,7 +77,7 @@ class ScenarioPost(BaseModel):
     )
     name: str = Field(..., description="name of the scenario", examples=["--"])
     phase: Literal["investment", "pre_design", "design", "construction", "operation", "decommission"] | None = Field(
-        None, description="phase of the scenario", examples=["pre-study"]
+        None, description="phase of the scenario", examples=["pre_design"]
     )
     phase_percentage: float | None = Field(None, description="percentage of the phase", examples=[100])
     properties: dict[str, Any] = Field(
@@ -84,6 +85,13 @@ class ScenarioPost(BaseModel):
         description="scenario additional properties",
         examples=[{"attribute_name": "attribute_value"}],
     )
+
+    @field_validator("phase", mode="before")
+    @staticmethod
+    def phase_to_string(phase: Any) -> str:
+        if isinstance(phase, Enum):
+            return phase.value
+        return phase
 
 
 class ScenarioPut(BaseModel):

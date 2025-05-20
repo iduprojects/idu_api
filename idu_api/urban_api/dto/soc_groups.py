@@ -6,6 +6,7 @@ from typing import Any
 
 from idu_api.urban_api.dto.service_types import ServiceTypeDTO
 
+
 @dataclass(frozen=True)
 class SocGroupDTO:
     soc_group_id: int
