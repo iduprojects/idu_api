@@ -3,6 +3,7 @@
 from fastapi import Depends, Path, Query, Request, Security
 from fastapi.security import HTTPBearer
 from geojson_pydantic.geometries import Geometry
+from otteroad import KafkaProducerClient
 from starlette import status
 
 from idu_api.urban_api.dto.users import UserDTO
@@ -18,6 +19,7 @@ from idu_api.urban_api.schemas import (
 )
 from idu_api.urban_api.schemas.geometries import Feature, GeoJSONResponse
 from idu_api.urban_api.utils.auth_client import get_user
+from idu_api.urban_api.utils.broker import get_kafka_producer
 
 
 @projects_router.get(
@@ -74,9 +76,12 @@ async def add_scenario_indicator_value(
     indicator_value: ScenarioIndicatorValuePost,
     scenario_id: int = Path(..., description="scenario identifier", gt=0),
     user: UserDTO = Depends(get_user),
+    kafka_producer: KafkaProducerClient = Depends(get_kafka_producer),
 ) -> ScenarioIndicatorValue:
     """
     ## Add a new indicator value for a given scenario.
+
+    **NOTE:** After the indicator value is created, a corresponding message will be sent to the Kafka broker.
 
     ### Parameters:
     - **scenario_id** (int, Path): Unique identifier of the scenario.
@@ -97,7 +102,9 @@ async def add_scenario_indicator_value(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    indicator = await user_project_service.add_scenario_indicator_value(indicator_value, scenario_id, user)
+    indicator = await user_project_service.add_scenario_indicator_value(
+        indicator_value, scenario_id, user, kafka_producer
+    )
 
     return ScenarioIndicatorValue.from_dto(indicator)
 
@@ -113,12 +120,15 @@ async def put_scenario_indicator_value(
     indicator_value: ScenarioIndicatorValuePut,
     scenario_id: int = Path(..., description="scenario identifier", gt=0),
     user: UserDTO = Depends(get_user),
+    kafka_producer: KafkaProducerClient = Depends(get_kafka_producer),
 ) -> ScenarioIndicatorValue:
     """
     ## Update or create an indicator value for a given scenario.
 
-    **NOTE:** If an indicator value with the specified attributes already exists, it will be updated.
+    **NOTE 1:** If an indicator value with the specified attributes already exists, it will be updated.
     Otherwise, a new indicator value will be created.
+
+    **NOTE 2:** After the indicator value is created, a corresponding message will be sent to the Kafka broker.
 
     ### Parameters:
     - **scenario_id** (int, Path): Unique identifier of the scenario.
@@ -136,7 +146,9 @@ async def put_scenario_indicator_value(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    indicator = await user_project_service.put_scenario_indicator_value(indicator_value, scenario_id, user)
+    indicator = await user_project_service.put_scenario_indicator_value(
+        indicator_value, scenario_id, user, kafka_producer
+    )
 
     return ScenarioIndicatorValue.from_dto(indicator)
 
@@ -153,9 +165,12 @@ async def patch_scenario_indicator_value(
     scenario_id: int = Path(..., description="scenario identifier", gt=0),
     indicator_value_id: int = Path(..., description="indicator value identifier", gt=0),
     user: UserDTO = Depends(get_user),
+    kafka_producer: KafkaProducerClient = Depends(get_kafka_producer),
 ) -> ScenarioIndicatorValue:
     """
     ## Update specific fields of an indicator value for a given scenario.
+
+    **NOTE:** After the indicator value is updated, a corresponding message will be sent to the Kafka broker.
 
     ### Parameters:
     - **scenario_id** (int, Path): Unique identifier of the scenario.
@@ -175,7 +190,7 @@ async def patch_scenario_indicator_value(
     user_project_service: UserProjectService = request.state.user_project_service
 
     indicator = await user_project_service.patch_scenario_indicator_value(
-        indicator_value, scenario_id, indicator_value_id, user
+        indicator_value, scenario_id, indicator_value_id, user, kafka_producer
     )
 
     return ScenarioIndicatorValue.from_dto(indicator)

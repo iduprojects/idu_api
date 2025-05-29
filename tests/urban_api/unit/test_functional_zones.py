@@ -25,6 +25,7 @@ from idu_api.urban_api.exceptions.logic.common import (
     EntityAlreadyExists,
     EntityNotFoundById,
     EntityNotFoundByParams,
+    TooManyObjectsError,
 )
 from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     add_functional_zone_to_db,
@@ -33,7 +34,7 @@ from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     delete_functional_zone_from_db,
     delete_profiles_reclamation_data_from_db,
     get_all_sources_from_db,
-    get_functional_zone_by_id,
+    get_functional_zone_by_ids,
     get_functional_zone_types_from_db,
     get_functional_zones_around_from_db,
     get_profiles_reclamation_data_by_id_from_db,
@@ -42,7 +43,7 @@ from idu_api.urban_api.logic.impl.helpers.functional_zones import (
     put_functional_zone_to_db,
     put_profiles_reclamation_data_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import SRID
+from idu_api.urban_api.logic.impl.helpers.utils import OBJECTS_NUMBER_LIMIT, SRID
 from idu_api.urban_api.schemas import (
     FunctionalZone,
     FunctionalZonePatch,
@@ -371,11 +372,12 @@ async def test_delete_profiles_reclamation_data_from_db(mock_conn: MockConnectio
 
 
 @pytest.mark.asyncio
-async def test_get_functional_zone_by_id(mock_conn: MockConnection):
-    """Test the get_functional_zone_by_id function."""
+async def test_get_functional_zone_by_ids(mock_conn: MockConnection):
+    """Test the get_functional_zone_by_ids function."""
 
     # Arrange
-    functional_zone_id = 1
+    ids = [1]
+    too_many_ids = list(range(OBJECTS_NUMBER_LIMIT + 1))
     statement = (
         select(
             functional_zones_data.c.functional_zone_id,
@@ -402,15 +404,18 @@ async def test_get_functional_zone_by_id(mock_conn: MockConnection):
                 functional_zone_types_dict.c.functional_zone_type_id == functional_zones_data.c.functional_zone_type_id,
             )
         )
-        .where(functional_zones_data.c.functional_zone_id.in_([functional_zone_id]))
+        .where(functional_zones_data.c.functional_zone_id.in_(ids))
     )
 
     # Act
-    result = await get_functional_zone_by_id(mock_conn, functional_zone_id)
+    with pytest.raises(TooManyObjectsError):
+        await get_functional_zone_by_ids(mock_conn, too_many_ids)
+    result = await get_functional_zone_by_ids(mock_conn, ids)
 
     # Assert
-    assert isinstance(result, FunctionalZoneDTO), "Result should be a FunctionalZoneDTO."
-    assert isinstance(FunctionalZone.from_dto(result), FunctionalZone), "Couldn't create pydantic model from DTO."
+    assert isinstance(result, list), "Result should be a list."
+    assert all(isinstance(item, FunctionalZoneDTO) for item in result), "Each item should be a FunctionalZoneDTO."
+    assert isinstance(FunctionalZone.from_dto(result[0]), FunctionalZone), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_called_once_with(str(statement))
 
 

@@ -5,6 +5,7 @@ from datetime import date
 from typing import Any, Literal
 
 import structlog
+from otteroad import KafkaProducerClient
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.dto import (
@@ -64,6 +65,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_indicators import (
 )
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
+    create_base_scenario_to_db,
     delete_project_from_db,
     get_all_projects_from_db,
     get_preview_projects_images_from_minio,
@@ -304,9 +306,18 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
                 conn, minio_client, user, is_regional, territory_id, page, page_size, self._logger
             )
 
-    async def add_project(self, project: ProjectPost, user: UserDTO) -> ProjectDTO:
+    async def add_project(self, project: ProjectPost, user: UserDTO, kafka_producer: KafkaProducerClient) -> ProjectDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_project_to_db(conn, project, user, logger=self._logger)
+            return await add_project_to_db(conn, project, user, kafka_producer, logger=self._logger)
+
+    async def create_base_scenario(
+        self,
+        project_id: int,
+        scenario_id: int,
+        kafka_producer: KafkaProducerClient,
+    ) -> ScenarioDTO:
+        async with self._connection_manager.get_connection() as conn:
+            return await create_base_scenario_to_db(conn, project_id, scenario_id, kafka_producer, self._logger)
 
     async def put_project(self, project: ProjectPut, project_id: int, user: UserDTO) -> ProjectDTO:
         async with self._connection_manager.get_connection() as conn:
@@ -751,16 +762,24 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             )
 
     async def add_scenario_indicator_value(
-        self, indicator_value: ScenarioIndicatorValuePost, scenario_id, user: UserDTO
+        self,
+        indicator_value: ScenarioIndicatorValuePost,
+        scenario_id: int,
+        user: UserDTO,
+        kafka_producer: KafkaProducerClient,
     ) -> ScenarioIndicatorValueDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_scenario_indicator_value_to_db(conn, indicator_value, scenario_id, user)
+            return await add_scenario_indicator_value_to_db(conn, indicator_value, scenario_id, user, kafka_producer)
 
     async def put_scenario_indicator_value(
-        self, indicator_value: ScenarioIndicatorValuePut, scenario_id: int, user: UserDTO
+        self,
+        indicator_value: ScenarioIndicatorValuePut,
+        scenario_id: int,
+        user: UserDTO,
+        kafka_producer: KafkaProducerClient,
     ) -> ScenarioIndicatorValueDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await put_scenario_indicator_value_to_db(conn, indicator_value, scenario_id, user)
+            return await put_scenario_indicator_value_to_db(conn, indicator_value, scenario_id, user, kafka_producer)
 
     async def patch_scenario_indicator_value(
         self,
@@ -768,10 +787,11 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         scenario_id: int | None,
         indicator_value_id: int,
         user: UserDTO,
+        kafka_producer: KafkaProducerClient,
     ) -> ScenarioIndicatorValueDTO:
         async with self._connection_manager.get_connection() as conn:
             return await patch_scenario_indicator_value_to_db(
-                conn, indicator_value, scenario_id, indicator_value_id, user
+                conn, indicator_value, scenario_id, indicator_value_id, user, kafka_producer
             )
 
     async def delete_scenario_indicators_values_by_scenario_id(self, scenario_id: int, user: UserDTO) -> dict:

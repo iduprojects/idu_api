@@ -324,7 +324,7 @@ async def get_physical_objects_with_geometry_by_scenario_id_from_db(
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
     if project.is_regional:
-        raise NotAllowedInRegionalScenario("physical objects with geometry")
+        raise NotAllowedInRegionalScenario()
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -1956,12 +1956,7 @@ async def delete_building_from_db(
         raise EntityNotFoundById(building_id, "building")
 
     if is_scenario_object:
-        statement = (
-            delete(projects_buildings_data)
-            .where(projects_buildings_data.c.building_id == building_id)
-            .returning(projects_buildings_data.c.physical_object_id)
-        )
-        scenario_physical_object_id = (await conn.execute(statement)).scalar_one()
+        await conn.execute(delete(projects_buildings_data).where(projects_buildings_data.c.building_id == building_id))
     else:
         statement = (
             insert(projects_physical_objects_data)

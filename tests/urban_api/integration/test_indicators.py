@@ -1,9 +1,12 @@
 """Integration tests for indicators objects are defined here."""
 
+import asyncio
 from typing import Any
 
 import httpx
 import pytest
+from otteroad import KafkaConsumerService
+from otteroad.models import IndicatorValuesUpdated
 
 from idu_api.urban_api.schemas import (
     Indicator,
@@ -17,6 +20,7 @@ from idu_api.urban_api.schemas import (
     MeasurementUnitPost,
     OkResponse,
 )
+from tests.urban_api.helpers.broker import mock_handler
 from tests.urban_api.helpers.utils import assert_response
 
 ####################################################################################
@@ -461,6 +465,7 @@ async def test_add_indicator_value(
     indicator_value_post_req: IndicatorValuePost,
     indicator: dict[str, Any],
     country: dict[str, Any],
+    kafka_consumer: KafkaConsumerService,
     expected_status: int,
     error_message: str | None,
     indicator_id_param: int | None,
@@ -469,17 +474,28 @@ async def test_add_indicator_value(
     """Test POST /indicator_value method."""
 
     # Arrange
+    new_handler = mock_handler(IndicatorValuesUpdated)
+    kafka_consumer.register_handler(new_handler)
     new_indicator_value = indicator_value_post_req.model_dump()
     new_indicator_value["indicator_id"] = indicator_id_param or indicator["indicator_id"]
     new_indicator_value["territory_id"] = territory_id_param or country["territory_id"]
     new_indicator_value["date_value"] = str(new_indicator_value["date_value"])
 
     # Act
+    if expected_status == 201:
+        await asyncio.sleep(5)
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.post("/indicator_value", json=new_indicator_value)
+    if expected_status == 201:
+        await asyncio.sleep(5)
 
     # Assert
     assert_response(response, expected_status, IndicatorValue, error_message)
+    if expected_status == 201:
+        assert len(new_handler.received_events) == 1, "No one event was received"
+        assert isinstance(
+            new_handler.received_events[0], IndicatorValuesUpdated
+        ), "Received event is not IndicatorValuesUpdated"
 
 
 @pytest.mark.asyncio
@@ -496,6 +512,7 @@ async def test_put_indicator_value(
     indicator_value_put_req: IndicatorValuePut,
     indicator: dict[str, Any],
     country: dict[str, Any],
+    kafka_consumer: KafkaConsumerService,
     expected_status: int,
     error_message: str | None,
     indicator_id_param: int | None,
@@ -504,17 +521,28 @@ async def test_put_indicator_value(
     """Test PUT /indicator_value method."""
 
     # Arrange
+    new_handler = mock_handler(IndicatorValuesUpdated)
+    kafka_consumer.register_handler(new_handler)
     new_indicator_value = indicator_value_put_req.model_dump()
     new_indicator_value["indicator_id"] = indicator_id_param or indicator["indicator_id"]
     new_indicator_value["territory_id"] = territory_id_param or country["territory_id"]
     new_indicator_value["date_value"] = str(new_indicator_value["date_value"])
 
     # Act
+    if expected_status == 201:
+        await asyncio.sleep(5)
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.put("/indicator_value", json=new_indicator_value)
+    if expected_status == 201:
+        await asyncio.sleep(5)
 
     # Assert
     assert_response(response, expected_status, IndicatorValue, error_message)
+    if expected_status == 201:
+        assert len(new_handler.received_events) == 1, "No one event was received"
+        assert isinstance(
+            new_handler.received_events[0], IndicatorValuesUpdated
+        ), "Received event is not IndicatorValuesUpdated"
 
 
 @pytest.mark.asyncio

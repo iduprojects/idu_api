@@ -61,7 +61,7 @@ class Project(BaseModel):
     user_id: str = Field(..., description="project creator identifier", examples=["admin@test.ru"])
     name: str = Field(..., description="project name", examples=["--"])
     territory: ShortTerritory
-    base_scenario: ShortScenario
+    base_scenario: ShortScenario | None
     description: str | None = Field(..., description="project description", examples=["--"])
     public: bool = Field(..., description="project publicity", examples=[True])
     is_regional: bool = Field(..., description="boolean parameter for regional projects", examples=[False])
@@ -81,7 +81,9 @@ class Project(BaseModel):
             user_id=dto.user_id,
             name=dto.name,
             territory=ShortTerritory(id=dto.territory_id, name=dto.territory_name),
-            base_scenario=ShortScenario(id=dto.scenario_id, name=dto.scenario_name),
+            base_scenario=(
+                ShortScenario(id=dto.scenario_id, name=dto.scenario_name) if dto.scenario_id is not None else None
+            ),
             description=dto.description,
             public=dto.public,
             is_regional=dto.is_regional,

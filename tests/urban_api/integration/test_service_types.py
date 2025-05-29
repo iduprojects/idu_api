@@ -459,13 +459,14 @@ async def test_get_social_groups(
 @pytest.mark.parametrize(
     "expected_status, error_message, type_id_param",
     [
-        (200, None, 1),
+        (200, None, None),
         (404, "not found", 1e9),
     ],
     ids=["success", "not_found"],
 )
 async def test_get_social_values(
     urban_api_host: str,
+    service_type: dict[str, Any],
     expected_status: int,
     error_message: str | None,
     type_id_param: str,
@@ -473,7 +474,7 @@ async def test_get_social_values(
     """Test GET /service_types/{service_type_id}/social_values method."""
 
     # Arrange
-    service_type_id = type_id_param
+    service_type_id = type_id_param or service_type["service_type_id"]
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:

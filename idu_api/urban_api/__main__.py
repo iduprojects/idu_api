@@ -99,6 +99,7 @@ def main(
         external=config.external,
         logging=logging_section,
         prometheus=config.prometheus,
+        broker=config.broker,
     )
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_yaml_config_path = temp_file.name

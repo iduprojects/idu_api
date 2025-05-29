@@ -4,10 +4,12 @@ import os
 from contextlib import asynccontextmanager
 from typing import Callable
 
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi_pagination import add_pagination
+from otteroad import KafkaProducerClient, KafkaProducerSettings
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.config import UrbanAPIConfig
@@ -19,6 +21,7 @@ from idu_api.urban_api.logic.impl.physical_objects import PhysicalObjectsService
 from idu_api.urban_api.logic.impl.projects import UserProjectServiceImpl
 from idu_api.urban_api.logic.impl.service_types import ServiceTypesServiceImpl
 from idu_api.urban_api.logic.impl.services import ServicesDataServiceImpl
+from idu_api.urban_api.logic.impl.soc_groups import SocGroupsServiceImpl
 from idu_api.urban_api.logic.impl.system import SystemServiceImpl
 from idu_api.urban_api.logic.impl.territories import TerritoriesServiceImpl
 from idu_api.urban_api.logic.impl.urban_objects import UrbanObjectsServiceImpl
@@ -31,7 +34,6 @@ from idu_api.urban_api.utils.auth_client import AuthenticationClient
 from idu_api.urban_api.utils.logging import configure_logging
 
 from .handlers import list_of_routers
-from .logic.impl.soc_groups import SocGroupsServiceImpl
 from .version import LAST_UPDATE, VERSION
 
 
@@ -143,6 +145,9 @@ async def lifespan(application: FastAPI):
     loggers_dict = {logger_config.filename: logger_config.level for logger_config in app_config.logging.files}
     logger = configure_logging(app_config.logging.level, loggers_dict)
     application.state.logger = logger
+    kafka_producer_settings = KafkaProducerSettings.from_custom_config(app_config.broker)
+    kafka_producer = KafkaProducerClient(kafka_producer_settings, logger=structlog.getLogger("broker"))
+    application.state.kafka_producer = kafka_producer
 
     for middleware in application.user_middleware:
         if middleware.cls == PassServicesDependenciesMiddleware:
@@ -168,6 +173,8 @@ async def lifespan(application: FastAPI):
     if not app_config.prometheus.disable:
         prometheus_server.start_server(port=app_config.prometheus.port)
 
+    await kafka_producer.start()
+
     yield
 
     for middleware in application.user_middleware:
@@ -177,6 +184,8 @@ async def lifespan(application: FastAPI):
 
     if not app_config.prometheus.disable:
         prometheus_server.stop_server()
+
+    await application.state.kafka_producer.close()
 
 
 app = get_app()

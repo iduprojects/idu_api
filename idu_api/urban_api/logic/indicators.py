@@ -4,6 +4,8 @@ import abc
 from datetime import datetime
 from typing import Protocol
 
+from otteroad import KafkaProducerClient
+
 from idu_api.urban_api.dto import (
     IndicatorDTO,
     IndicatorsGroupDTO,
@@ -86,11 +88,19 @@ class IndicatorsService(Protocol):
         """Get indicator value object by id."""
 
     @abc.abstractmethod
-    async def add_indicator_value(self, indicator_value: IndicatorValuePost) -> IndicatorValueDTO:
+    async def add_indicator_value(
+        self,
+        indicator_value: IndicatorValuePost,
+        kafka_producer: KafkaProducerClient,
+    ) -> IndicatorValueDTO:
         """Create indicator value object."""
 
     @abc.abstractmethod
-    async def put_indicator_value(self, indicator_value: IndicatorValuePut) -> IndicatorValueDTO:
+    async def put_indicator_value(
+        self,
+        indicator_value: IndicatorValuePut,
+        kafka_producer: KafkaProducerClient,
+    ) -> IndicatorValueDTO:
         """Update indicator value object."""
 
     @abc.abstractmethod

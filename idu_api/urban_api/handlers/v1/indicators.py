@@ -2,7 +2,8 @@
 
 from datetime import date
 
-from fastapi import HTTPException, Path, Query, Request
+from fastapi import Depends, HTTPException, Path, Query, Request
+from otteroad import KafkaProducerClient
 from starlette import status
 
 from idu_api.urban_api.logic.indicators import IndicatorsService
@@ -22,6 +23,7 @@ from idu_api.urban_api.schemas import (
 )
 from idu_api.urban_api.schemas.enums import DateType, ValueType
 
+from ...utils.broker import get_kafka_producer
 from .routers import indicators_router
 
 
@@ -402,9 +404,15 @@ async def get_indicator_value_by_id(
     response_model=IndicatorValue,
     status_code=status.HTTP_201_CREATED,
 )
-async def add_indicator_value(request: Request, indicator_value: IndicatorValuePost) -> IndicatorValue:
+async def add_indicator_value(
+    request: Request,
+    indicator_value: IndicatorValuePost,
+    kafka_producer: KafkaProducerClient = Depends(get_kafka_producer),
+) -> IndicatorValue:
     """
     ## Create a new indicator value.
+
+    **NOTE:** After the indicator value is created, a corresponding message will be sent to the Kafka broker.
 
     ### Parameters:
     - **indicator_value** (IndicatorValuePost, Body): Data for the new indicator value.
@@ -418,7 +426,7 @@ async def add_indicator_value(request: Request, indicator_value: IndicatorValueP
     """
     indicators_service: IndicatorsService = request.state.indicators_service
 
-    indicator_value_dto = await indicators_service.add_indicator_value(indicator_value)
+    indicator_value_dto = await indicators_service.add_indicator_value(indicator_value, kafka_producer)
 
     return IndicatorValue.from_dto(indicator_value_dto)
 
@@ -428,12 +436,18 @@ async def add_indicator_value(request: Request, indicator_value: IndicatorValueP
     response_model=IndicatorValue,
     status_code=status.HTTP_200_OK,
 )
-async def put_indicator_value(request: Request, indicator_value: IndicatorValuePut) -> IndicatorValue:
+async def put_indicator_value(
+    request: Request,
+    indicator_value: IndicatorValuePut,
+    kafka_producer: KafkaProducerClient = Depends(get_kafka_producer),
+) -> IndicatorValue:
     """
     ## Update or create an indicator value.
 
-    **NOTE:** If an indicator value with the specified attributes already exists, it will be updated.
+    **NOTE 1:** If an indicator value with the specified attributes already exists, it will be updated.
     Otherwise, a new indicator value will be created.
+
+    **NOTE 2:** After the indicator value is created, a corresponding message will be sent to the Kafka broker.
 
     ### Parameters:
     - **indicator_value** (IndicatorValuePut, Body): Data for updating or creating an indicator.
@@ -446,7 +460,7 @@ async def put_indicator_value(request: Request, indicator_value: IndicatorValueP
     """
     indicators_service: IndicatorsService = request.state.indicators_service
 
-    indicator_value_dto = await indicators_service.put_indicator_value(indicator_value)
+    indicator_value_dto = await indicators_service.put_indicator_value(indicator_value, kafka_producer)
 
     return IndicatorValue.from_dto(indicator_value_dto)
 

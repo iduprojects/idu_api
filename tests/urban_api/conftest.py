@@ -9,20 +9,19 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import httpx
-import pytest
 from alembic import command
 from alembic.config import Config
 from dotenv import load_dotenv
 
 from idu_api.common.db.config import MultipleDBsConfig
-from idu_api.urban_api.config import AppConfig, DBConfig, UrbanAPIConfig
+from idu_api.urban_api.config import AppConfig, UrbanAPIConfig
 from tests.urban_api.helpers import *
 
 load_dotenv(dotenv_path="urban_api/.env")
 
 
 @pytest.fixture(scope="session")
-def database() -> DBConfig:
+def database() -> MultipleDBsConfig:
     """Fixture to get database credentials from environment variables."""
 
     if "CONFIG_PATH" not in os.environ:
@@ -55,6 +54,7 @@ def config(database) -> UrbanAPIConfig:
         external=config.external,
         logging=config.logging,
         prometheus=config.prometheus,
+        broker=config.broker,
     )
     return config
 

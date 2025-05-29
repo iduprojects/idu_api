@@ -35,12 +35,7 @@ def regional_project(urban_api_host, region, superuser_token) -> dict[str, Any]:
         public=False,
         is_city=False,
         is_regional=True,
-        territory=ProjectTerritoryPost(
-            geometry=Geometry(
-                type="Polygon",
-                coordinates=[[[30.22, 59.86], [30.22, 59.85], [30.25, 59.85], [30.25, 59.86], [30.22, 59.86]]],
-            ),
-        ),
+        territory=None,
     )
     headers = {"Authorization": f"Bearer {superuser_token}"}
 
@@ -56,6 +51,7 @@ def project(
     urban_api_host,
     region,
     superuser_token,
+    base_regional_scenario,
     regional_project,
     functional_zone,
     urban_object,

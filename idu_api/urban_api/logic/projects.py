@@ -3,6 +3,8 @@ import io
 from datetime import date
 from typing import Any, Literal, Protocol
 
+from otteroad import KafkaProducerClient
+
 from idu_api.urban_api.dto import (
     FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
@@ -163,8 +165,17 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get preview images url for all user's projects."""
 
     @abc.abstractmethod
-    async def add_project(self, project: ProjectPost, user: UserDTO) -> ProjectDTO:
+    async def add_project(self, project: ProjectPost, user: UserDTO, kafka_producer: KafkaProducerClient) -> ProjectDTO:
         """Create project object."""
+
+    @abc.abstractmethod
+    async def create_base_scenario(
+        self,
+        project_id: int,
+        scenario_id: int,
+        kafka_producer: KafkaProducerClient,
+    ) -> ScenarioDTO:
+        """Create base scenario for given project from regional scenario."""
 
     @abc.abstractmethod
     async def put_project(self, project: ProjectPut, project_id: int, user: UserDTO) -> ProjectDTO:
@@ -532,13 +543,21 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def add_scenario_indicator_value(
-        self, indicator_value: ScenarioIndicatorValuePost, scenario_id: int, user: UserDTO
+        self,
+        indicator_value: ScenarioIndicatorValuePost,
+        scenario_id: int,
+        user: UserDTO,
+        kafka_producer: KafkaProducerClient,
     ) -> ScenarioIndicatorValueDTO:
         """Add a new project's indicator value."""
 
     @abc.abstractmethod
     async def put_scenario_indicator_value(
-        self, indicator_value: ScenarioIndicatorValuePut, scenario_id: int, user: UserDTO
+        self,
+        indicator_value: ScenarioIndicatorValuePut,
+        scenario_id: int,
+        user: UserDTO,
+        kafka_producer: KafkaProducerClient,
     ) -> ScenarioIndicatorValueDTO:
         """Put project's indicator value."""
 
@@ -549,6 +568,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         scenario_id: int | None,
         indicator_value_id: int,
         user: UserDTO,
+        kafka_producer: KafkaProducerClient,
     ) -> ScenarioIndicatorValueDTO:
         """Patch project's indicator value."""
 

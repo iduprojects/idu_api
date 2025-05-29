@@ -1,5 +1,6 @@
 """Projects internal logic is defined here."""
 
+import asyncio
 import io
 import os
 import zipfile
@@ -22,11 +23,29 @@ from geoalchemy2.functions import (
     ST_IsEmpty,
     ST_Within,
 )
+from otteroad import KafkaProducerClient
+from otteroad.models import BaseScenarioCreated, ProjectCreated
 from PIL import Image
-from sqlalchemy import ScalarSelect, cast, delete, func, insert, literal, select, text, update
+from sqlalchemy import (
+    BaseRow,
+    Integer,
+    ScalarSelect,
+    and_,
+    case,
+    cast,
+    delete,
+    func,
+    insert,
+    literal,
+    or_,
+    select,
+    text,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    functional_zone_types_dict,
     functional_zones_data,
     object_geometries_data,
     physical_object_types_dict,
@@ -43,8 +62,16 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
-from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithTerritoryDTO, UserDTO
-from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById, EntityNotFoundByParams
+from idu_api.urban_api.dto import (
+    PageDTO,
+    ProjectDTO,
+    ProjectTerritoryDTO,
+    ProjectWithTerritoryDTO,
+    ScenarioDTO,
+    UserDTO,
+)
+from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInProjectScenario, NotAllowedInRegionalProject
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
 from idu_api.urban_api.logic.impl.helpers.utils import SRID, check_existence, extract_values_from_model
@@ -64,7 +91,13 @@ func: Callable
 ####################################################################################
 
 
-async def check_project(conn: AsyncConnection, project_id: int, user: UserDTO | None, to_edit: bool = False) -> None:
+async def check_project(
+    conn: AsyncConnection,
+    project_id: int,
+    user: UserDTO | None,
+    to_edit: bool = False,
+    allow_regional: bool = True,
+) -> None:
     """Check project existence and user access."""
 
     statement = select(projects_data).where(projects_data.c.project_id == project_id)
@@ -76,11 +109,14 @@ async def check_project(conn: AsyncConnection, project_id: int, user: UserDTO | 
             raise AccessDeniedError(project_id, "project")
     elif result.user_id != user.id and (not result.public or to_edit) and not user.is_superuser:
         raise AccessDeniedError(project_id, "project")
+    if result.is_regional and not allow_regional:
+        raise NotAllowedInRegionalProject()
 
 
 async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user: UserDTO | None) -> ProjectDTO:
     """Get project object by identifier."""
 
+    regional_scenarios = scenarios_data.alias("regional_scenarios")
     statement = (
         select(
             projects_data,
@@ -89,13 +125,32 @@ async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user
             scenarios_data.c.name.label("scenario_name"),
         )
         .select_from(
-            projects_data.join(
-                territories_data,
-                territories_data.c.territory_id == projects_data.c.territory_id,
-            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+            projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+            .outerjoin(
+                scenarios_data,
+                and_(
+                    scenarios_data.c.project_id == projects_data.c.project_id,
+                    scenarios_data.c.is_based.is_(True),
+                    projects_data.c.is_regional.is_(False),
+                ),
+            )
+            .outerjoin(
+                regional_scenarios,
+                regional_scenarios.c.scenario_id == scenarios_data.c.parent_id,
+            )
         )
-        .where(projects_data.c.project_id == project_id, scenarios_data.c.is_based.is_(True))
+        .where(
+            projects_data.c.project_id == project_id,
+            or_(
+                projects_data.c.is_regional.is_(True),
+                and_(
+                    scenarios_data.c.is_based.is_(True),
+                    regional_scenarios.c.is_based.is_(True),
+                ),
+            ),
+        )
     )
+
     result = (await conn.execute(statement)).mappings().one_or_none()
 
     if result is None:
@@ -114,8 +169,9 @@ async def get_project_territory_by_id_from_db(
 ) -> ProjectTerritoryDTO:
     """Get project territory object by project identifier."""
 
-    await check_project(conn, project_id, user)
+    await check_project(conn, project_id, user, allow_regional=False)
 
+    regional_scenarios = scenarios_data.alias("regional_scenarios")
     statement = (
         select(
             projects_territory_data.c.project_territory_id,
@@ -135,14 +191,19 @@ async def get_project_territory_by_id_from_db(
                 projects_data, projects_data.c.project_id == projects_territory_data.c.project_id
             )
             .join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
-            .join(
+            .outerjoin(
                 scenarios_data,
                 scenarios_data.c.project_id == projects_data.c.project_id,
+            )
+            .outerjoin(
+                regional_scenarios,
+                regional_scenarios.c.scenario_id == scenarios_data.c.parent_id,
             )
         )
         .where(
             projects_territory_data.c.project_id == project_id,
             scenarios_data.c.is_based.is_(True),
+            regional_scenarios.c.is_based.is_(True),
         )
     )
 
@@ -156,6 +217,7 @@ async def get_project_territory_by_id_from_db(
 async def get_all_projects_from_db(conn: AsyncConnection) -> list[ProjectDTO]:
     """Get all available projects."""
 
+    regional_scenarios = scenarios_data.alias("regional_scenarios")
     statement = (
         select(
             projects_data,
@@ -164,12 +226,21 @@ async def get_all_projects_from_db(conn: AsyncConnection) -> list[ProjectDTO]:
             scenarios_data.c.name.label("scenario_name"),
         )
         .select_from(
-            projects_data.join(
-                territories_data,
-                territories_data.c.territory_id == projects_data.c.territory_id,
-            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+            projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+            .outerjoin(
+                scenarios_data,
+                scenarios_data.c.project_id == projects_data.c.project_id,
+            )
+            .outerjoin(
+                regional_scenarios,
+                regional_scenarios.c.scenario_id == scenarios_data.c.parent_id,
+            )
         )
-        .where(scenarios_data.c.is_based.is_(True), projects_data.c.is_regional.is_(False))
+        .where(
+            projects_data.c.is_regional.is_(False),
+            scenarios_data.c.is_based.is_(True),
+            regional_scenarios.c.is_based.is_(True),
+        )
         .order_by(projects_data.c.project_id)
     )
 
@@ -192,6 +263,7 @@ async def get_projects_from_db(
 ) -> list[ProjectDTO] | PageDTO[ProjectDTO]:
     """Get all public and user's projects."""
 
+    regional_scenarios = scenarios_data.alias("regional_scenarios")
     statement = (
         select(
             projects_data,
@@ -200,12 +272,30 @@ async def get_projects_from_db(
             scenarios_data.c.name.label("scenario_name"),
         )
         .select_from(
-            projects_data.join(
-                territories_data,
-                territories_data.c.territory_id == projects_data.c.territory_id,
-            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+            projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+            .outerjoin(
+                scenarios_data,
+                and_(
+                    scenarios_data.c.project_id == projects_data.c.project_id,
+                    scenarios_data.c.is_based.is_(True),
+                    projects_data.c.is_regional.is_(False),
+                ),
+            )
+            .outerjoin(
+                regional_scenarios,
+                regional_scenarios.c.scenario_id == scenarios_data.c.parent_id,
+            )
         )
-        .where(scenarios_data.c.is_based.is_(True), projects_data.c.is_regional.is_(is_regional))
+        .where(
+            projects_data.c.is_regional.is_(is_regional),
+            or_(
+                projects_data.c.is_regional.is_(True),
+                and_(
+                    scenarios_data.c.is_based.is_(True),
+                    regional_scenarios.c.is_based.is_(True),
+                ),
+            ),
+        )
     )
 
     if only_own:
@@ -257,6 +347,7 @@ async def get_projects_territories_from_db(
 ) -> list[ProjectWithTerritoryDTO]:
     """Get all public and user's project territories."""
 
+    regional_scenarios = scenarios_data.alias("regional_scenarios")
     statement = (
         select(
             projects_data,
@@ -269,9 +360,14 @@ async def get_projects_territories_from_db(
         .select_from(
             projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
             .join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+            .join(regional_scenarios, regional_scenarios.c.scenario_id == scenarios_data.c.parent_id)
             .join(projects_territory_data, projects_territory_data.c.project_id == projects_data.c.project_id)
         )
-        .where(scenarios_data.c.is_based.is_(True), projects_data.c.is_regional.is_(False))
+        .where(
+            scenarios_data.c.is_based.is_(True),
+            regional_scenarios.c.is_based.is_(True),
+            projects_data.c.is_regional.is_(False),
+        )
     )
 
     if only_own:
@@ -533,7 +629,11 @@ async def get_user_preview_projects_images_url_from_minio(
 
 
 async def add_project_to_db(
-    conn: AsyncConnection, project: ProjectPost, user: UserDTO, logger: structlog.stdlib.BoundLogger
+    conn: AsyncConnection,
+    project: ProjectPost,
+    user: UserDTO,
+    kafka_producer: KafkaProducerClient,
+    logger: structlog.stdlib.BoundLogger,
 ) -> ProjectDTO:
     """Create project object."""
     if project.is_regional:
@@ -564,7 +664,106 @@ async def add_project_to_db(
 
     await conn.commit()
 
+    event = ProjectCreated(project_id=project_id, base_scenario_id=scenario_id, territory_id=project.territory_id)
+    await kafka_producer.send(event)
+
     return await get_project_by_id_from_db(conn, project_id, user)
+
+
+async def create_base_scenario_to_db(
+    conn: AsyncConnection,
+    project_id: int,
+    scenario_id: int,
+    kafka_producer: KafkaProducerClient,
+    logger: structlog.stdlib.BoundLogger,
+) -> ScenarioDTO:
+    """Create base scenario object for given project from specified regional scenario."""
+
+    statement = (
+        select(projects_data, projects_territory_data.c.geometry)
+        .select_from(
+            projects_data.outerjoin(
+                projects_territory_data,
+                projects_territory_data.c.project_id == projects_data.c.project_id,
+            )
+        )
+        .where(projects_data.c.project_id == project_id)
+    )
+    project = (await conn.execute(statement)).mappings().one_or_none()
+    if project is None:
+        raise EntityNotFoundById(project_id, "project")
+    if project.is_regional:
+        raise NotAllowedInRegionalProject()
+
+    statement = (
+        select(scenarios_data, projects_data.c.is_regional)
+        .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
+        .where(scenarios_data.c.scenario_id == scenario_id)
+    )
+    scenario = (await conn.execute(statement)).mappings().one_or_none()
+    if scenario is None:
+        raise EntityNotFoundById(scenario_id, "scenario")
+    if not scenario.is_regional:
+        raise NotAllowedInProjectScenario()
+
+    if await check_existence(
+        conn,
+        scenarios_data,
+        conditions={"project_id": project_id, "parent_id": scenario_id, "is_based": True},
+    ):
+        raise EntityAlreadyExists("base scenario", project_id, scenario_id)
+
+    base_scenario_id = await create_project_base_scenario(conn, project_id, project.territory_id, parent_id=scenario_id)
+
+    await copy_urban_objects_from_regional_scenario(conn, scenario_id, project.geometry, base_scenario_id)
+
+    id_mapping = await insert_intersecting_geometries(conn, project.geometry)
+
+    await insert_urban_objects(conn, scenario_id, id_mapping)
+
+    await insert_functional_zones(conn, scenario_id, project.geometry)
+
+    await save_indicators(project_id, scenario_id, logger)
+
+    await conn.commit()
+
+    event = BaseScenarioCreated(
+        project_id=project_id,
+        base_scenario_id=base_scenario_id,
+        regional_scenario_id=scenario_id,
+    )
+    await kafka_producer.send(event)
+
+    scenarios_data_parents = scenarios_data.alias("scenarios_data_parents")
+    statement = (
+        select(
+            scenarios_data,
+            scenarios_data_parents.c.name.label("parent_name"),
+            projects_data.c.name.label("project_name"),
+            projects_data.c.user_id.label("project_user_id"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+            functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+            functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
+            functional_zone_types_dict.c.description.label("functional_zone_type_description"),
+        )
+        .select_from(
+            scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id)
+            .join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+            .outerjoin(
+                functional_zone_types_dict,
+                functional_zone_types_dict.c.functional_zone_type_id == scenarios_data.c.functional_zone_type_id,
+            )
+            .outerjoin(
+                scenarios_data_parents,
+                scenarios_data.c.parent_id == scenarios_data_parents.c.scenario_id,
+            )
+        )
+        .where(scenarios_data.c.scenario_id == base_scenario_id)
+    )
+    result = (await conn.execute(statement)).mappings().one_or_none()
+
+    return ScenarioDTO(**result)
 
 
 async def put_project_to_db(conn: AsyncConnection, project: ProjectPut, project_id: int, user: UserDTO) -> ProjectDTO:
@@ -775,7 +974,7 @@ async def insert_project(conn: AsyncConnection, project: ProjectPost, user: User
 async def add_context_territories(
     conn: AsyncConnection,
     project: ProjectPost,
-    geometry: ScalarSelect[Any],
+    geometry: ScalarSelect[Any] | BaseRow,
 ) -> None:
     """
     Update project properties with additional territorial context:
@@ -931,7 +1130,103 @@ async def create_project_base_scenario(
     return scenario_id
 
 
-async def insert_intersecting_geometries(conn: AsyncConnection, geometry: ScalarSelect[Any]) -> dict[int, int]:
+async def copy_urban_objects_from_regional_scenario(
+    conn: AsyncConnection, scenario_id: int, geometry: ScalarSelect[Any] | BaseRow, new_scenario_id: int
+):
+    regional_urban_objects_cte = (
+        select(
+            projects_urban_objects_data.c.public_urban_object_id,
+            projects_urban_objects_data.c.object_geometry_id,
+            projects_urban_objects_data.c.physical_object_id,
+            projects_urban_objects_data.c.service_id,
+            projects_urban_objects_data.c.public_object_geometry_id,
+            projects_urban_objects_data.c.public_physical_object_id,
+            projects_urban_objects_data.c.public_service_id,
+        )
+        .select_from(
+            projects_urban_objects_data.outerjoin(
+                projects_object_geometries_data,
+                projects_object_geometries_data.c.object_geometry_id
+                == projects_urban_objects_data.c.object_geometry_id,
+            ).outerjoin(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == projects_urban_objects_data.c.public_object_geometry_id,
+            )
+        )
+        .where(
+            projects_urban_objects_data.c.scenario_id == scenario_id,
+            ST_Intersects(projects_object_geometries_data.c.geometry, geometry)
+            | ST_Intersects(object_geometries_data.c.geometry, geometry),
+        )
+    ).cte(name="regional_urban_objects")
+
+    results = (await conn.execute(select(regional_urban_objects_cte))).mappings().all()
+
+    geom_ids = {r.object_geometry_id for r in results if r.object_geometry_id}
+    public_geom_ids = {r.public_object_geometry_id for r in results if r.public_object_geometry_id}
+
+    phys_ids = {r.physical_object_id for r in results if r.physical_object_id}
+    svc_ids = {r.service_id for r in results if r.service_id}
+
+    geom_map = await copy_geometries(conn, sorted(list(geom_ids)), geometry)
+    public_geom_map = await copy_geometries(conn, sorted(list(public_geom_ids)), geometry, is_from_public=True)
+    phys_map, svc_map = await asyncio.gather(
+        copy_physical_objects(conn, sorted(list(phys_ids))),
+        copy_services(conn, sorted(list(svc_ids))),
+    )
+
+    def build_case(col, mapping, default=None):
+        return (
+            case(*[(col == k, literal(v)) for k, v in mapping.items()], else_=literal(default))
+            if mapping
+            else literal(default)
+        )
+
+    await conn.execute(
+        insert(projects_urban_objects_data).from_select(
+            ["scenario_id", "public_urban_object_id"],
+            select(
+                literal(new_scenario_id).label("scenario_id"), regional_urban_objects_cte.c.public_urban_object_id
+            ).where(regional_urban_objects_cte.c.public_urban_object_id.isnot(None)),
+        )
+    )
+
+    await conn.execute(
+        insert(projects_urban_objects_data).from_select(
+            [
+                "scenario_id",
+                "object_geometry_id",
+                "physical_object_id",
+                "service_id",
+                "public_object_geometry_id",
+                "public_physical_object_id",
+                "public_service_id",
+            ],
+            select(
+                literal(new_scenario_id).label("scenario_id"),
+                case(
+                    (
+                        regional_urban_objects_cte.c.public_object_geometry_id.isnot(None),
+                        cast(
+                            build_case(regional_urban_objects_cte.c.public_object_geometry_id, public_geom_map), Integer
+                        ),
+                    ),
+                    else_=cast(build_case(regional_urban_objects_cte.c.object_geometry_id, geom_map), Integer),
+                ),
+                build_case(regional_urban_objects_cte.c.physical_object_id, phys_map),
+                build_case(regional_urban_objects_cte.c.service_id, svc_map),
+                literal(None),
+                regional_urban_objects_cte.c.public_physical_object_id,
+                regional_urban_objects_cte.c.public_service_id,
+            ).where(regional_urban_objects_cte.c.public_urban_object_id.is_(None)),
+        )
+    )
+
+
+async def insert_intersecting_geometries(
+    conn: AsyncConnection,
+    geometry: ScalarSelect[Any] | BaseRow,
+) -> dict[int, int]:
     """
     Identify geometries that intersect the given geometry, crop them,
     and insert the resulting geometries into the `user_projects` schema.
@@ -1167,3 +1462,128 @@ async def save_indicators(project_id: int, scenario_id: int, logger: structlog.s
         # Handle any other unexpected exceptions
         except Exception:  # pylint: disable=broad-exception-caught
             await logger.aexception("Unexpected error occurred while saving indicators")
+
+
+async def copy_geometries(
+    conn,
+    geometry_ids: list[int],
+    geometry: ScalarSelect[Any] | BaseRow | None = None,
+    is_from_public: bool = False,
+) -> dict[int, int]:
+    if not geometry_ids:
+        return {}
+
+    if is_from_public:
+        table = object_geometries_data
+        id_column = table.c.object_geometry_id
+    else:
+        table = projects_object_geometries_data
+        id_column = table.c.object_geometry_id
+
+    statement = (
+        select(
+            (
+                table.c.public_object_geometry_id
+                if not is_from_public
+                else table.c.object_geometry_id.label("public_object_geometry_id")
+            ),
+            table.c.territory_id,
+            table.c.address,
+            table.c.osm_id,
+            ST_Intersection(table.c.geometry, geometry).label("geometry") if geometry else table.c.geometry,
+            (
+                ST_Centroid(ST_Intersection(table.c.geometry, geometry)).label("centre_point")
+                if geometry
+                else table.c.centre_point
+            ),
+        )
+        .where(id_column.in_(geometry_ids))
+        .order_by(id_column)
+    )
+
+    old_geometries = (await conn.execute(statement)).mappings().all()
+    old_geometries = [dict(row) for row in old_geometries]
+
+    new_ids = (
+        (
+            await conn.execute(
+                insert(projects_object_geometries_data)
+                .values(old_geometries)
+                .returning(projects_object_geometries_data.c.object_geometry_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    return dict(zip(geometry_ids, new_ids))
+
+
+async def copy_physical_objects(conn, physical_ids: list[int]) -> dict[int, int]:
+    if not physical_ids:
+        return {}
+
+    # find all physical objects by identifiers
+    statement = (
+        select(
+            projects_physical_objects_data.c.public_physical_object_id,
+            projects_physical_objects_data.c.physical_object_type_id,
+            projects_physical_objects_data.c.name,
+            projects_physical_objects_data.c.properties,
+        )
+        .where(projects_physical_objects_data.c.physical_object_id.in_(physical_ids))
+        .order_by(projects_physical_objects_data.c.physical_object_id)
+    )
+    old_physical_objects = (await conn.execute(statement)).mappings().all()
+    old_physical_objects = [dict(row) for row in old_physical_objects]
+
+    # insert copies of old physical objects
+    new_ids = (
+        (
+            await conn.execute(
+                insert(projects_physical_objects_data)
+                .values(old_physical_objects)
+                .returning(projects_physical_objects_data.c.physical_object_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # mapping old and new physical objects
+    return dict(zip(physical_ids, new_ids))
+
+
+async def copy_services(conn, service_ids: list[int]) -> dict[int, int]:
+    if not service_ids:
+        return {}
+
+    # find all services by identifiers
+    statement = (
+        select(
+            projects_services_data.c.public_service_id,
+            projects_services_data.c.service_type_id,
+            projects_services_data.c.name,
+            projects_services_data.c.capacity,
+            projects_services_data.c.is_capacity_real,
+            projects_services_data.c.properties,
+        )
+        .where(projects_services_data.c.service_id.in_(service_ids))
+        .order_by(projects_services_data.c.service_id)
+    )
+    old_services = (await conn.execute(statement)).mappings().all()
+    old_services = [dict(row) for row in old_services]
+
+    # insert copies of old services
+    new_ids = (
+        (
+            await conn.execute(
+                insert(projects_services_data).values(old_services).returning(projects_services_data.c.service_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    # mapping old and new services
+    return dict(zip(service_ids, new_ids))

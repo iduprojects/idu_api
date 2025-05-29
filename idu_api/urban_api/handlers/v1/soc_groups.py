@@ -96,38 +96,6 @@ async def add_social_group(request: Request, soc_group: SocGroupPost) -> SocGrou
 
 
 @soc_groups_router.post(
-    "/social_values/{soc_value_id}/service_types/{service_type_id}",
-    response_model=SocValueWithServiceTypes,
-    status_code=status.HTTP_201_CREATED,
-)
-async def add_service_type_to_social_value(
-    request: Request,
-    service_type_id: int = Path(..., description="service type identifier", gt=0),
-    soc_value_id: int = Path(..., description="social value identifier", gt=0),
-) -> SocValueWithServiceTypes:
-    """
-    ## Add service type to social value.
-
-    ### Parameters:
-    - **soc_value_id** (int, Path): Social value identifier.
-    - **service_type_id** (int, Path): Service type identifier and infrastructure type.
-
-    ### Returns:
-    - **SocValue**: Social value with all associated service types.
-
-    ### Errors:
-    - **404 Not Found**: If the social value (or service type) does not exist.
-    - **409 Conflict**: If the service type for the social value already exists.
-    """
-    soc_groups_service: SocGroupsService = request.state.soc_groups_service
-
-    soc_value_with_service_types = await soc_groups_service.add_service_type_to_social_value(
-        soc_value_id, service_type_id
-    )
-    return SocValueWithServiceTypes.from_dto(soc_value_with_service_types)
-
-
-@soc_groups_router.post(
     "/social_groups/{soc_group_id}/service_types",
     response_model=SocGroupWithServiceTypes,
     status_code=status.HTTP_201_CREATED,
@@ -261,7 +229,7 @@ async def add_social_value(request: Request, soc_value: SocValuePost) -> SocValu
 @soc_groups_router.get(
     "/social_values/{soc_value_id}/service_types", response_model=list[ServiceType], status_code=status.HTTP_200_OK
 )
-async def get_service_types(
+async def get_service_types_by_soc_value_id(
     request: Request,
     soc_value_id: int = Path(..., description="social value identifier", gt=0),
     ordering: Ordering = Query(
@@ -285,6 +253,38 @@ async def get_service_types(
     result = await soc_groups_service.get_service_types_by_social_value_id(soc_value_id, ordering.value)
 
     return [ServiceType.from_dto(service_type_dto) for service_type_dto in result]
+
+
+@soc_groups_router.post(
+    "/social_values/{soc_value_id}/service_types/{service_type_id}",
+    response_model=SocValueWithServiceTypes,
+    status_code=status.HTTP_201_CREATED,
+)
+async def add_service_type_to_social_value(
+    request: Request,
+    service_type_id: int = Path(..., description="service type identifier", gt=0),
+    soc_value_id: int = Path(..., description="social value identifier", gt=0),
+) -> SocValueWithServiceTypes:
+    """
+    ## Add service type to social value.
+
+    ### Parameters:
+    - **soc_value_id** (int, Path): Social value identifier.
+    - **service_type_id** (int, Path): Service type identifier and infrastructure type.
+
+    ### Returns:
+    - **SocValue**: Social value with all associated service types.
+
+    ### Errors:
+    - **404 Not Found**: If the social value (or service type) does not exist.
+    - **409 Conflict**: If the service type for the social value already exists.
+    """
+    soc_groups_service: SocGroupsService = request.state.soc_groups_service
+
+    soc_value_with_service_types = await soc_groups_service.add_service_type_to_social_value(
+        soc_value_id, service_type_id
+    )
+    return SocValueWithServiceTypes.from_dto(soc_value_with_service_types)
 
 
 @soc_groups_router.post(

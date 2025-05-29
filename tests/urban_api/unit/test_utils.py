@@ -1,7 +1,7 @@
 """Unit tests for internal logic helper functions are defined here."""
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from geoalchemy2.functions import ST_GeomFromWKB, ST_Union
@@ -10,7 +10,7 @@ from sqlalchemy.sql.selectable import CTE, ScalarSelect, Select
 
 from idu_api.common.db.entities import projects_data, territories_data
 from idu_api.urban_api.dto import UserDTO
-from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalProject
 from idu_api.urban_api.logic.impl.helpers.utils import (
     SRID,
     build_hierarchy,
@@ -157,7 +157,7 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
     )
 
     # Act
-    with pytest.raises(NotAllowedInRegionalScenario):
+    with pytest.raises(NotAllowedInRegionalProject):
         await get_context_territories_geometry(mock_conn, project_id, user)
     with patch("tests.urban_api.helpers.connection.mock_conn") as new_mock_conn:
         new_mock_conn.execute = AsyncMock(

@@ -21,6 +21,7 @@ from idu_api.urban_api.dto import (
     UserDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalProject, NotAllowedInRegionalScenario
 from idu_api.urban_api.logic.impl.helpers.projects_functional_zones import (
     add_scenario_functional_zones_to_db,
     delete_functional_zones_by_scenario_id_from_db,
@@ -44,7 +45,7 @@ from idu_api.urban_api.schemas import (
     ScenarioFunctionalZonePatch,
     ScenarioFunctionalZonePut,
 )
-from tests.urban_api.helpers.connection import MockConnection
+from tests.urban_api.helpers.connection import MockConnection, MockRow
 
 ####################################################################################
 #                           Default use-case tests                                 #
@@ -65,10 +66,9 @@ async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_conn: Mo
     )
 
     # Act
-    with patch(
-        "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_project_by_scenario_id"
-    ) as mock_check:
-        mock_check.return_value.is_regional = False
+    with pytest.raises(NotAllowedInRegionalScenario):
+        await get_functional_zones_sources_by_scenario_id_from_db(mock_conn, scenario_id, user)
+    with patch("idu_api.urban_api.logic.impl.helpers.projects_functional_zones.check_scenario") as mock_check:
         result = await get_functional_zones_sources_by_scenario_id_from_db(mock_conn, scenario_id, user)
 
     # Assert
@@ -80,7 +80,7 @@ async def test_get_functional_zones_sources_by_scenario_id_from_db(mock_conn: Mo
         FunctionalZoneSource.from_dto(result[0]), FunctionalZoneSource
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user, allow_regional=False)
 
 
 @pytest.mark.asyncio
@@ -129,10 +129,11 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_conn: MockConnec
     )
 
     # Act
-    with patch(
-        "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_project_by_scenario_id"
-    ) as mock_check:
-        mock_check.return_value.is_regional = False
+    with pytest.raises(NotAllowedInRegionalScenario):
+        await get_functional_zones_by_scenario_id_from_db(
+            mock_conn, scenario_id, year, source, functional_zone_type_id, user
+        )
+    with patch("idu_api.urban_api.logic.impl.helpers.projects_functional_zones.check_scenario") as mock_check:
         result = await get_functional_zones_by_scenario_id_from_db(
             mock_conn, scenario_id, year, source, functional_zone_type_id, user
         )
@@ -146,7 +147,7 @@ async def test_get_functional_zones_by_scenario_id_from_db(mock_conn: MockConnec
         ScenarioFunctionalZone.from_dto(result[0]), ScenarioFunctionalZone
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user, allow_regional=False)
 
 
 @pytest.mark.asyncio
@@ -167,6 +168,8 @@ async def test_get_context_functional_zones_sources_from_db(mock_conn: MockConne
     )
 
     # Act
+    with pytest.raises(NotAllowedInRegionalProject):
+        await get_context_functional_zones_sources_from_db(mock_conn, project_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_context_territories_geometry",
         new_callable=AsyncMock,
@@ -242,6 +245,8 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
     )
 
     # Act
+    with pytest.raises(NotAllowedInRegionalProject):
+        await get_context_functional_zones_from_db(mock_conn, project_id, year, source, functional_zone_type_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_context_territories_geometry",
         new_callable=AsyncMock,
@@ -347,7 +352,7 @@ async def test_add_scenario_functional_zones_to_db(
     mock_conn.execute_mock.assert_any_call(str(delete_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user, to_edit=True)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user, to_edit=True, allow_regional=False)
 
 
 @pytest.mark.asyncio
@@ -415,7 +420,7 @@ async def test_put_scenario_functional_zone_to_db(
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(update_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True, allow_regional=False)
 
 
 @pytest.mark.asyncio
@@ -475,7 +480,7 @@ async def test_patch_scenario_functional_zone_to_db(
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(update_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True, allow_regional=False)
 
 
 @pytest.mark.asyncio
@@ -495,4 +500,4 @@ async def test_delete_functional_zones_by_scenario_id_from_db(mock_check: AsyncM
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
     mock_conn.execute_mock.assert_called_once_with(str(delete_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True, allow_regional=False)

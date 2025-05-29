@@ -487,7 +487,7 @@ async def add_building(
 
 @projects_router.put(
     "/scenarios/{scenario_id}/buildings",
-    response_model=PhysicalObject,
+    response_model=ScenarioPhysicalObject,
     status_code=status.HTTP_200_OK,
 )
 async def put_building(
@@ -522,7 +522,7 @@ async def put_building(
 
 @projects_router.patch(
     "/scenarios/{scenario_id}/buildings/{building_id}",
-    response_model=PhysicalObject,
+    response_model=ScenarioPhysicalObject,
     status_code=status.HTTP_200_OK,
 )
 async def patch_building(

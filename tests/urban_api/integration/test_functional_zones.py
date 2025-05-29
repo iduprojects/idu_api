@@ -16,6 +16,7 @@ from idu_api.urban_api.schemas import (
     ProfilesReclamationDataPost,
     ProfilesReclamationDataPut,
 )
+from idu_api.urban_api.schemas.geometries import AllPossibleGeometry
 from tests.urban_api.helpers.utils import assert_response
 
 ####################################################################################
@@ -346,3 +347,39 @@ async def test_delete_functional_zone(
 
     # Assert
     assert_response(response, expected_status, OkResponse, error_message)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expected_status, error_message, geometry_param",
+    [
+        (200, None, AllPossibleGeometry(type="Point", coordinates=[30.22, 59.86], geometries=None)),
+        (400, None, AllPossibleGeometry(type="Polygon", coordinates=[30.22, 59.86], geometries=None)),
+    ],
+    ids=["success", "bad_request"],
+)
+async def test_get_functional_zones_intersects_geometry(
+    urban_api_host: str,
+    functional_zone: dict[str, Any],
+    expected_status: int,
+    error_message: str | None,
+    geometry_param: AllPossibleGeometry,
+):
+    """Test POST /functional_zones/around."""
+
+    # Arrange
+    functional_zone_id = functional_zone["functional_zone_id"]
+    params = {"year": functional_zone["year"], "source": functional_zone["source"]}
+
+    # Act
+    async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
+        response = await client.post("/functional_zones/around", params=params, json=geometry_param.model_dump())
+
+    # Assert
+    if response.status_code == 200:
+        assert_response(response, expected_status, FunctionalZone, error_message, result_type="list")
+        assert any(
+            functional_zone_id == item["functional_zone_id"] for item in response.json()
+        ), "Expected physical object was not found in result."
+    else:
+        assert_response(response, expected_status, FunctionalZone, error_message)

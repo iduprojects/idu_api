@@ -75,6 +75,15 @@ class PrometheusConfig:
 
 
 @dataclass
+class BrokerConfig:
+    client_id: str
+    bootstrap_servers: str
+    schema_registry_url: str
+    enable_idempotence: bool
+    max_in_flight: int
+
+
+@dataclass
 class UrbanAPIConfig:
     app: AppConfig
     db: MultipleDBsConfig
@@ -83,6 +92,7 @@ class UrbanAPIConfig:
     external: ExternalServicesConfig
     logging: LoggingConfig
     prometheus: PrometheusConfig
+    broker: BrokerConfig
 
     def to_order_dict(self) -> OrderedDict:
         """OrderDict transformer."""
@@ -109,6 +119,7 @@ class UrbanAPIConfig:
                 ("external", to_ordered_dict_recursive(self.external)),
                 ("logging", to_ordered_dict_recursive(self.logging)),
                 ("prometheus", to_ordered_dict_recursive(self.prometheus)),
+                ("broker", to_ordered_dict_recursive(self.broker)),
             ]
         )
 
@@ -165,6 +176,13 @@ class UrbanAPIConfig:
             ),
             logging=LoggingConfig(level="INFO", files=[FileLogger(filename="logs/info.log", level="INFO")]),
             prometheus=PrometheusConfig(port=9000, disable=False),
+            broker=BrokerConfig(
+                client_id="urban-api",
+                bootstrap_servers="localhost:9092",
+                schema_registry_url="http://localhost:8100",
+                enable_idempotence=False,
+                max_in_flight=5,
+            ),
         )
 
     @classmethod
@@ -186,6 +204,7 @@ class UrbanAPIConfig:
                 external=ExternalServicesConfig(**data.get("external", {})),
                 logging=LoggingConfig(**data.get("logging", {})),
                 prometheus=PrometheusConfig(**data.get("prometheus", {})),
+                broker=BrokerConfig(**data.get("broker", {})),
             )
         except Exception as exc:
             raise ValueError(f"Could not read app config file: {file}") from exc

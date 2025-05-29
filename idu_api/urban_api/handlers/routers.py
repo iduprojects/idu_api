@@ -9,11 +9,13 @@ from .v1 import routers_list as v1
 from .v2 import routers_list as v2
 
 system_router = APIRouter(tags=["system"])
+broker_router = APIRouter(tags=["broker"])
 
 routers_list = [
     *v1,
     *v2,
     system_router,
+    broker_router,
 ]
 
 __all__ = [

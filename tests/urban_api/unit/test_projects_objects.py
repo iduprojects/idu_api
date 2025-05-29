@@ -10,22 +10,34 @@ import structlog
 from aioresponses import aioresponses
 from aioresponses.core import merge_params, normalize_url
 from fastapi_pagination.bases import RawParams
-from geoalchemy2.functions import ST_AsEWKB
-from sqlalchemy import delete, func, insert, or_, select, update
+from geoalchemy2.functions import ST_AsEWKB, ST_Intersects
+from otteroad import KafkaProducerClient
+from otteroad.models import BaseScenarioCreated, ProjectCreated
+from sqlalchemy import and_, delete, func, insert, or_, select, update
 
 from idu_api.common.db.entities import (
+    object_geometries_data,
     projects_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
     projects_services_data,
     projects_territory_data,
+    projects_urban_objects_data,
     scenarios_data,
     territories_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
-from idu_api.urban_api.dto import PageDTO, ProjectDTO, ProjectTerritoryDTO, ProjectWithTerritoryDTO, UserDTO
+from idu_api.urban_api.dto import (
+    PageDTO,
+    ProjectDTO,
+    ProjectTerritoryDTO,
+    ProjectWithTerritoryDTO,
+    ScenarioDTO,
+    UserDTO,
+)
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
+    create_base_scenario_to_db,
     delete_project_from_db,
     get_preview_projects_images_from_minio,
     get_preview_projects_images_url_from_minio,
@@ -48,9 +60,10 @@ from idu_api.urban_api.schemas import (
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
+    Scenario,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
-from tests.urban_api.helpers.connection import MockConnection
+from tests.urban_api.helpers.connection import MockConnection, MockResult, MockRow
 from tests.urban_api.helpers.minio_client import MockAsyncMinioClient
 
 func: Callable
@@ -67,6 +80,7 @@ async def test_get_project_by_id_from_db(mock_conn: MockConnection):
     # Arrange
     project_id = 1
     user = UserDTO(id="mock_string", is_superuser=False)
+    regional_scenarios = scenarios_data.alias("regional_scenarios")
     statement = (
         select(
             projects_data,
@@ -75,12 +89,30 @@ async def test_get_project_by_id_from_db(mock_conn: MockConnection):
             scenarios_data.c.name.label("scenario_name"),
         )
         .select_from(
-            projects_data.join(
-                territories_data,
-                territories_data.c.territory_id == projects_data.c.territory_id,
-            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+            projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+            .outerjoin(
+                scenarios_data,
+                and_(
+                    scenarios_data.c.project_id == projects_data.c.project_id,
+                    scenarios_data.c.is_based.is_(True),
+                    projects_data.c.is_regional.is_(False),
+                ),
+            )
+            .outerjoin(
+                regional_scenarios,
+                regional_scenarios.c.scenario_id == scenarios_data.c.parent_id,
+            )
         )
-        .where(projects_data.c.project_id == project_id, scenarios_data.c.is_based.is_(True))
+        .where(
+            projects_data.c.project_id == project_id,
+            or_(
+                projects_data.c.is_regional.is_(True),
+                and_(
+                    scenarios_data.c.is_based.is_(True),
+                    regional_scenarios.c.is_based.is_(True),
+                ),
+            ),
+        )
     )
 
     # Act
@@ -100,6 +132,7 @@ async def test_get_project_territory_by_id_from_db(mock_check: AsyncMock, mock_c
     # Arrange
     project_id = 1
     user = UserDTO(id="mock_string", is_superuser=False)
+    regional_scenarios = scenarios_data.alias("regional_scenarios")
     statement = (
         select(
             projects_territory_data.c.project_territory_id,
@@ -119,14 +152,19 @@ async def test_get_project_territory_by_id_from_db(mock_check: AsyncMock, mock_c
                 projects_data, projects_data.c.project_id == projects_territory_data.c.project_id
             )
             .join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
-            .join(
+            .outerjoin(
                 scenarios_data,
                 scenarios_data.c.project_id == projects_data.c.project_id,
+            )
+            .outerjoin(
+                regional_scenarios,
+                regional_scenarios.c.scenario_id == scenarios_data.c.parent_id,
             )
         )
         .where(
             projects_territory_data.c.project_id == project_id,
             scenarios_data.c.is_based.is_(True),
+            regional_scenarios.c.is_based.is_(True),
         )
     )
 
@@ -137,7 +175,7 @@ async def test_get_project_territory_by_id_from_db(mock_check: AsyncMock, mock_c
     assert isinstance(result, ProjectTerritoryDTO), "Result should be a ProjectTerritoryDTO."
     assert isinstance(ProjectTerritory.from_dto(result), ProjectTerritory), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
-    mock_check.assert_called_once_with(mock_conn, project_id, user)
+    mock_check.assert_called_once_with(mock_conn, project_id, user, allow_regional=False)
 
 
 @pytest.mark.asyncio
@@ -158,6 +196,7 @@ async def test_get_projects_from_db(mock_verify_params, mock_conn: MockConnectio
         "ordering": "asc",
     }
     limit, offset = 10, 0
+    regional_scenarios = scenarios_data.alias("regional_scenarios")
     statement = (
         select(
             projects_data,
@@ -169,11 +208,29 @@ async def test_get_projects_from_db(mock_verify_params, mock_conn: MockConnectio
             projects_data.join(
                 territories_data,
                 territories_data.c.territory_id == projects_data.c.territory_id,
-            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+            )
+            .outerjoin(
+                scenarios_data,
+                and_(
+                    scenarios_data.c.project_id == projects_data.c.project_id,
+                    scenarios_data.c.is_based.is_(True),
+                    projects_data.c.is_regional.is_(False),
+                ),
+            )
+            .outerjoin(
+                regional_scenarios,
+                regional_scenarios.c.scenario_id == scenarios_data.c.parent_id,
+            )
         )
         .where(
-            scenarios_data.c.is_based.is_(True),
             projects_data.c.is_regional.is_(filters["is_regional"]),
+            or_(
+                projects_data.c.is_regional.is_(True),
+                and_(
+                    scenarios_data.c.is_based.is_(True),
+                    regional_scenarios.c.is_based.is_(True),
+                ),
+            ),
             or_(projects_data.c.user_id == user.id, projects_data.c.public.is_(True)),
             projects_data.c.is_city.is_(False),
             projects_data.c.territory_id == filters["territory_id"],
@@ -210,6 +267,7 @@ async def test_get_projects_territories_from_db(mock_conn: MockConnection):
 
     # Arrange
     user = UserDTO(id="mock_string", is_superuser=False)
+    regional_scenarios = scenarios_data.alias("regional_scenarios")
     statement = (
         select(
             projects_data,
@@ -222,36 +280,21 @@ async def test_get_projects_territories_from_db(mock_conn: MockConnection):
         .select_from(
             projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
             .join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
+            .join(regional_scenarios, regional_scenarios.c.scenario_id == scenarios_data.c.parent_id)
             .join(projects_territory_data, projects_territory_data.c.project_id == projects_data.c.project_id)
         )
         .where(
             scenarios_data.c.is_based.is_(True),
+            regional_scenarios.c.is_based.is_(True),
             projects_data.c.is_regional.is_(False),
-            or_(projects_data.c.user_id == user.id, projects_data.c.public.is_(True)),
         )
     )
-    statement_with_filters = (
-        select(
-            projects_data,
-            territories_data.c.name.label("territory_name"),
-            ST_AsEWKB(projects_territory_data.c.geometry).label("geometry"),
-            ST_AsEWKB(projects_territory_data.c.centre_point).label("centre_point"),
-            scenarios_data.c.scenario_id,
-            scenarios_data.c.name.label("scenario_name"),
-        )
-        .select_from(
-            projects_data.join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
-            .join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
-            .join(projects_territory_data, projects_territory_data.c.project_id == projects_data.c.project_id)
-        )
-        .where(
-            scenarios_data.c.is_based.is_(True),
-            projects_data.c.is_regional.is_(False),
-            projects_data.c.user_id == user.id,
-            projects_data.c.is_city.is_(False),
-            projects_data.c.territory_id == 1,
-        )
+    statement_with_filters = statement.where(
+        projects_data.c.user_id == user.id,
+        projects_data.c.is_city.is_(False),
+        projects_data.c.territory_id == 1,
     )
+    statement = statement.where(or_(projects_data.c.user_id == user.id, projects_data.c.public.is_(True)))
 
     # Act
     await get_projects_territories_from_db(mock_conn, user, True, "common", 1)
@@ -541,11 +584,13 @@ async def test_add_project_to_db(config: UrbanAPIConfig, mock_conn: MockConnecti
         "background": "true",
     }
     normal_api_url = normalize_url(merge_params(api_url, params))
+    kafka_producer = AsyncMock(spec=KafkaProducerClient)
+    event = ProjectCreated(project_id=1, base_scenario_id=1, territory_id=1)
 
     # Act
     with aioresponses() as mocked:
         mocked.put(normal_api_url, status=200)
-        result = await add_project_to_db(mock_conn, project_post_req, user, logger)
+        result = await add_project_to_db(mock_conn, project_post_req, user, kafka_producer, logger)
 
     # Assert
     assert isinstance(result, ProjectDTO), "Result should be a ProjectDTO."
@@ -574,6 +619,84 @@ async def test_add_project_to_db(config: UrbanAPIConfig, mock_conn: MockConnecti
         params=params,
     )
     assert mocked.requests[("PUT", normal_api_url)][0].kwargs["params"] == params, "Request params do not match."
+    kafka_producer.send.assert_any_call(event)
+
+
+@pytest.mark.asyncio
+async def test_create_base_scenario_to_db(config: UrbanAPIConfig, project_post_req: ProjectPost):
+    """Test the create_base_scenario_to_db function."""
+
+    # Arrange
+    project_id = 1
+    scenario_id = 1
+    check_project_statement = (
+        select(projects_data, projects_territory_data.c.geometry)
+        .select_from(
+            projects_data.outerjoin(
+                projects_territory_data,
+                projects_territory_data.c.project_id == projects_data.c.project_id,
+            )
+        )
+        .where(projects_data.c.project_id == project_id)
+    )
+    check_scenario_statement = (
+        select(scenarios_data, projects_data.c.is_regional)
+        .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
+        .where(scenarios_data.c.scenario_id == scenario_id)
+    )
+    logger: structlog.stdlib.BoundLogger = structlog.get_logger("test")
+    api_url = f"{config.external.hextech_api}/hextech/indicators_saving/save_all"
+    params = {
+        "scenario_id": scenario_id,
+        "project_id": project_id,
+        "background": "true",
+    }
+    normal_api_url = normalize_url(merge_params(api_url, params))
+    kafka_producer = AsyncMock(spec=KafkaProducerClient)
+    event = BaseScenarioCreated(
+        project_id=project_id,
+        base_scenario_id=1,
+        regional_scenario_id=scenario_id,
+    )
+    data = {"is_regional": False, "territory_id": 1, "geometry": "geom"}
+    preset_results = [MockResult([MockRow(**data)])]
+    mock_conn = MockConnection(preset_results=preset_results)
+
+    # Act
+    with patch("idu_api.urban_api.logic.impl.helpers.projects_objects.check_existence") as mock_check:
+        mock_check.return_value = False
+        with aioresponses() as mocked:
+            mocked.put(normal_api_url, status=200)
+            result = await create_base_scenario_to_db(mock_conn, project_id, scenario_id, kafka_producer, logger)
+
+    # Assert
+    assert isinstance(result, ScenarioDTO), "Result should be a ScenarioDTO."
+    assert isinstance(Scenario.from_dto(result), Scenario), "Couldn't create Pydantic model from DTO."
+    mock_conn.execute_mock.assert_any_call(str(check_project_statement))
+    mock_conn.execute_mock.assert_any_call(str(check_scenario_statement))
+    assert any(
+        "INSERT INTO user_projects.functional_zones_data" in str(args[0])
+        for args in mock_conn.execute_mock.call_args_list
+    ), "Expected insertion into user_projects.functional_zones_data table not found."
+    assert any(
+        "INSERT INTO user_projects.object_geometries_data" in str(args[0])
+        for args in mock_conn.execute_mock.call_args_list
+    ), "Expected insertion into user_projects.object_geometries_data table not found."
+    assert any(
+        "INSERT INTO user_projects.urban_objects_data" in str(args[0]) for args in mock_conn.execute_mock.call_args_list
+    ), "Expected insertion into user_projects.urban_objects_data table not found."
+    assert any(
+        "SELECT regional_urban_objects" in str(args[0]) for args in mock_conn.execute_mock.call_args_list
+    ), "Expected selection urban objects from regional scenario not found."
+    mock_conn.commit_mock.assert_called_once()
+    mocked.assert_called_once_with(
+        url=api_url,
+        method="PUT",
+        data=None,
+        params=params,
+    )
+    assert mocked.requests[("PUT", normal_api_url)][0].kwargs["params"] == params, "Request params do not match."
+    kafka_producer.send.assert_any_call(event)
 
 
 @pytest.mark.asyncio
