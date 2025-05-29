@@ -35,6 +35,7 @@ __all__ = [
     "scenario_indicator_value_patch_req",
     "scenario_indicator_value_post_req",
     "scenario_indicator_value_put_req",
+    "scenario_hexagon_indicator_value",
 ]
 
 
@@ -109,13 +110,41 @@ def indicator_value(urban_api_host, indicator, region) -> dict[str, Any]:
 
 
 @pytest.fixture(scope="session")
-def scenario_indicator_value(urban_api_host, scenario, indicator, city, hexagon, superuser_token) -> dict[str, Any]:
+def scenario_indicator_value(urban_api_host, scenario, indicator, city, superuser_token) -> dict[str, Any]:
     """Returns created indicator value."""
     scenario_id = scenario["scenario_id"]
     scenario_indicator_value_post_req = {
         "scenario_id": scenario_id,
         "indicator_id": indicator["indicator_id"],
         "territory_id": city["territory_id"],
+        "hexagon_id": None,
+        "value": 100.5,
+        "comment": "Test Comment",
+        "information_source": "Test Source",
+    }
+    headers = {"Authorization": f"Bearer {superuser_token}"}
+
+    with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
+        response = client.post(
+            f"scenarios/{scenario_id}/indicators_values",
+            json=scenario_indicator_value_post_req,
+            headers=headers,
+        )
+
+    assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}."
+    return response.json()
+
+
+@pytest.fixture(scope="session")
+def scenario_hexagon_indicator_value(
+    urban_api_host, regional_scenario, indicator, hexagon, superuser_token
+) -> dict[str, Any]:
+    """Returns created indicator value."""
+    scenario_id = regional_scenario["scenario_id"]
+    scenario_indicator_value_post_req = {
+        "scenario_id": scenario_id,
+        "indicator_id": indicator["indicator_id"],
+        "territory_id": None,
         "hexagon_id": hexagon["hexagon_id"],
         "value": 100.5,
         "comment": "Test Comment",

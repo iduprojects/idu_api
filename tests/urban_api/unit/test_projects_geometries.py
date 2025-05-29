@@ -27,6 +27,7 @@ from idu_api.common.db.entities import (
 from idu_api.urban_api.dto import ObjectGeometryDTO, ScenarioGeometryDTO, ScenarioGeometryWithAllObjectsDTO, UserDTO
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
     delete_object_geometry_from_db,
     get_context_geometries_from_db,
@@ -168,6 +169,8 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
     )
 
     # Act
+    with pytest.raises(NotAllowedInRegionalScenario):
+        await get_geometries_by_scenario_id_from_db(mock_conn, scenario_id, user, physical_object_id, service_id)
     with patch("idu_api.urban_api.logic.impl.helpers.projects_geometries.get_project_by_scenario_id") as mock_check:
         mock_check.return_value.is_regional = False
         result = await get_geometries_by_scenario_id_from_db(
@@ -396,6 +399,10 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
     )
 
     # Act
+    with pytest.raises(NotAllowedInRegionalScenario):
+        await get_geometries_with_all_objects_by_scenario_id_from_db(
+            mock_conn, scenario_id, user, physical_object_type_id, service_type_id, None, None
+        )
     with patch("idu_api.urban_api.logic.impl.helpers.projects_geometries.get_project_by_scenario_id") as mock_check:
         mock_check.return_value.is_regional = False
         result = await get_geometries_with_all_objects_by_scenario_id_from_db(

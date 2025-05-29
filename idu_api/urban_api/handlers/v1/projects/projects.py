@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPBearer
 from geojson_pydantic import Feature
 from geojson_pydantic.geometries import Geometry
+from otteroad import KafkaProducerClient
 from starlette import status
 
 from idu_api.urban_api.dto.users import UserDTO
@@ -27,6 +28,7 @@ from idu_api.urban_api.schemas import (
 from idu_api.urban_api.schemas.enums import OrderByField, Ordering, ProjectType
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.utils.auth_client import get_user
+from idu_api.urban_api.utils.broker import get_kafka_producer
 from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client
 from idu_api.urban_api.utils.pagination import paginate
 
@@ -463,9 +465,16 @@ async def get_project_previews_url(
     status_code=status.HTTP_201_CREATED,
     dependencies=[Security(HTTPBearer())],
 )
-async def add_project(request: Request, project: ProjectPost, user: UserDTO = Depends(get_user)) -> Project:
+async def add_project(
+    request: Request,
+    project: ProjectPost,
+    user: UserDTO = Depends(get_user),
+    kafka_producer: KafkaProducerClient = Depends(get_kafka_producer),
+) -> Project:
     """
     ## Create a new project with its territory and base scenario.
+
+    **NOTE:** After the project is created, a corresponding message will be sent to the Kafka broker.
 
     ### Parameters:
     - **project** (ProjectPost, Body): The project data including geometry.
@@ -474,7 +483,6 @@ async def add_project(request: Request, project: ProjectPost, user: UserDTO = De
     - **Project**: The created project with related base scenario and region short information.
 
     ### Errors:
-    - **400 Bad Request**: If the user try to create a regional project.
     - **403 Forbidden**: If the user does not have access rights.
     - **404 Not Found**: If the related entity does not exist.
 
@@ -483,9 +491,60 @@ async def add_project(request: Request, project: ProjectPost, user: UserDTO = De
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    project_dto = await user_project_service.add_project(project, user)
+    project_dto = await user_project_service.add_project(project, user, kafka_producer)
 
     return Project.from_dto(project_dto)
+
+
+@projects_router.post(
+    "/projects/{project_id}/base_scenario/{scenario_id}",
+    response_model=Scenario,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Security(HTTPBearer())],
+)
+async def create_base_scenario(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    scenario_id: int = Path(..., description="regional scenario identifier", gt=0),
+    user: UserDTO = Depends(get_user),
+    kafka_producer: KafkaProducerClient = Depends(get_kafka_producer),
+) -> Scenario:
+    """
+    ## Create a new base scenario for given project from specified regional scenario.
+
+    **NOTE:** After the base scenario is created, a corresponding message will be sent to the Kafka broker.
+
+    **WARNING:** This is an auxiliary method for third-party APIs. Only a superuser can use it.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **scenario_id** (int, Path): Unique identifier of the regional scenario.
+
+    ### Returns:
+    - **Scenario**: The created base scenario.
+
+    ### Errors:
+    - **400 Bad Request**: If the user has provided identifier of a non-regional scenario.
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the related entity does not exist.
+
+    ### Constraints:
+    - The user must be authorized to create a new base scenario.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    if not user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a superuser to create a new base scenario.",
+        )
+
+    try:
+        scenario = await user_project_service.create_base_scenario(project_id, scenario_id, kafka_producer)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return Scenario.from_dto(scenario)
 
 
 @projects_router.put(

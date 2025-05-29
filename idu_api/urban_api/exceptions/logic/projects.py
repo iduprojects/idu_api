@@ -12,21 +12,14 @@ class NotAllowedInRegionalScenario(IduApiError):
     Exception to raise when attempting to access entities that can only be retrieved in a project scenario only.
     """
 
-    def __init__(self, entity: str):
-        """
-        Construct from entity (table) name.
-        """
-        self.entity = entity
-        super().__init__()
-
     def __str__(self) -> str:
-        return f"{self.entity} cannot be accessed in a REGIONAL scenario. Pass the identifier of a PROJECT scenario."
+        return "This method cannot be accessed in a REGIONAL scenario. Pass the identifier of a PROJECT scenario."
 
     def get_status_code(self) -> int:
         """
-        Return '403 Forbidden' status code.
+        Return '400 Bad Request' status code.
         """
-        return status.HTTP_403_FORBIDDEN
+        return status.HTTP_400_BAD_REQUEST
 
 
 class NotAllowedInProjectScenario(IduApiError):
@@ -34,18 +27,26 @@ class NotAllowedInProjectScenario(IduApiError):
     Exception to raise when attempting to access entities that can only be retrieved in a regional scenario only.
     """
 
-    def __init__(self, entity: str):
-        """
-        Construct from entity (table) name.
-        """
-        self.entity = entity
-        super().__init__()
-
     def __str__(self) -> str:
-        return f"{self.entity} cannot be accessed in a PROJECT scenario. Pass the identifier of a REGIONAL scenario."
+        return "This method cannot be accessed in a PROJECT scenario. Pass the identifier of a REGIONAL scenario."
 
     def get_status_code(self) -> int:
         """
-        Return '403 Forbidden' status code.
+        Return '400 Bad Request' status code.
         """
-        return status.HTTP_403_FORBIDDEN
+        return status.HTTP_400_BAD_REQUEST
+
+
+class NotAllowedInRegionalProject(IduApiError):
+    """
+    Exception to raise when attempting to access entities that can only be retrieved in a non-regional project only.
+    """
+
+    def __str__(self) -> str:
+        return "This method cannot be accessed in a REGIONAL project. Pass the identifier of a common PROJECT."
+
+    def get_status_code(self) -> int:
+        """
+        Return '400 Bad Request' status code.
+        """
+        return status.HTTP_400_BAD_REQUEST

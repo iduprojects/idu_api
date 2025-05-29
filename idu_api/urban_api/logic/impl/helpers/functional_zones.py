@@ -24,8 +24,14 @@ from idu_api.urban_api.exceptions.logic.common import (
     EntityAlreadyExists,
     EntityNotFoundById,
     EntityNotFoundByParams,
+    TooManyObjectsError,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import SRID, check_existence, extract_values_from_model
+from idu_api.urban_api.logic.impl.helpers.utils import (
+    OBJECTS_NUMBER_LIMIT,
+    SRID,
+    check_existence,
+    extract_values_from_model,
+)
 from idu_api.urban_api.schemas import (
     FunctionalZonePatch,
     FunctionalZonePost,
@@ -328,6 +334,9 @@ async def delete_profiles_reclamation_data_from_db(
 
 async def get_functional_zone_by_ids(conn: AsyncConnection, ids: list[int]) -> list[FunctionalZoneDTO]:
     """Get list of functional zones by identifiers."""
+
+    if len(ids) > OBJECTS_NUMBER_LIMIT:
+        raise TooManyObjectsError(len(ids), OBJECTS_NUMBER_LIMIT)
 
     statement = (
         select(

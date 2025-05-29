@@ -14,10 +14,10 @@ from geojson_pydantic import Feature
 from starlette import status
 
 from idu_api.urban_api.exceptions.base import IduApiError
+from idu_api.urban_api.logic.system import SystemService
 from idu_api.urban_api.schemas import PingResponse
+from idu_api.urban_api.schemas.geometries import AllPossibleGeometry, GeoJSONResponse
 
-from ..logic.system import SystemService
-from ..schemas.geometries import AllPossibleGeometry, GeoJSONResponse
 from .routers import system_router
 
 

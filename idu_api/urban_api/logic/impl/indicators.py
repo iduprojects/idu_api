@@ -2,6 +2,8 @@
 
 from datetime import datetime
 
+from otteroad import KafkaProducerClient
+
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.dto import (
     IndicatorDTO,
@@ -119,13 +121,21 @@ class IndicatorsServiceImpl(IndicatorsService):
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_indicator_value_by_id_from_db(conn, indicator_value_id)
 
-    async def add_indicator_value(self, indicator_value: IndicatorValuePost) -> IndicatorValueDTO:
+    async def add_indicator_value(
+        self,
+        indicator_value: IndicatorValuePost,
+        kafka_producer: KafkaProducerClient,
+    ) -> IndicatorValueDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_indicator_value_to_db(conn, indicator_value)
+            return await add_indicator_value_to_db(conn, indicator_value, kafka_producer)
 
-    async def put_indicator_value(self, indicator_value: IndicatorValuePut) -> IndicatorValueDTO:
+    async def put_indicator_value(
+        self,
+        indicator_value: IndicatorValuePut,
+        kafka_producer: KafkaProducerClient,
+    ) -> IndicatorValueDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await put_indicator_value_to_db(conn, indicator_value)
+            return await put_indicator_value_to_db(conn, indicator_value, kafka_producer)
 
     async def delete_indicator_value(self, indicator_value_id) -> dict:
         async with self._connection_manager.get_connection() as conn:

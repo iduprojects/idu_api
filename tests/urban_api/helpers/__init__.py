@@ -1,6 +1,7 @@
 """All fixtures are defined here."""
 
 from .auth import *
+from .broker import *
 from .buildings import *
 from .connection import *
 from .functional_zones import *

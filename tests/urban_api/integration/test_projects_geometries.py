@@ -26,28 +26,33 @@ from tests.urban_api.helpers.utils import assert_response
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, scenario_id_param",
+    "expected_status, error_message, scenario_id_param, is_regional_param",
     [
-        (200, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (200, None, None, False),
+        (400, "this method cannot be accessed in a regional scenario", None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success", "regional_scenario", "forbidden", "not_found"],
 )
 async def test_get_geometries_by_scenario_id(
     urban_api_host: str,
     scenario: dict[str, Any],
+    regional_scenario: dict[str, Any],
     scenario_geometry: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
     scenario_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test GET /scenarios/{scenario_id}/geometries method."""
 
     # Arrange
-    scenario_id = scenario_id_param or scenario["scenario_id"]
+    scenario_id = scenario_id_param or (
+        regional_scenario["scenario_id"] if is_regional_param else scenario["scenario_id"]
+    )
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
     # Act
@@ -71,28 +76,33 @@ async def test_get_geometries_by_scenario_id(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, scenario_id_param",
+    "expected_status, error_message, scenario_id_param, is_regional_param",
     [
-        (200, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (200, None, None, False),
+        (400, "this method cannot be accessed in a regional scenario", None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success", "regional_scenario", "forbidden", "not_found"],
 )
 async def test_get_geometries_with_all_objects_by_scenario_id(
     urban_api_host: str,
     scenario: dict[str, Any],
+    regional_scenario: dict[str, Any],
     scenario_geometry: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
     scenario_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test GET /scenarios/{scenario_id}/geometries_with_all_objects method."""
 
     # Arrange
-    scenario_id = scenario_id_param or scenario["scenario_id"]
+    scenario_id = scenario_id_param or (
+        regional_scenario["scenario_id"] if is_regional_param else scenario["scenario_id"]
+    )
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
     # Act
@@ -116,28 +126,31 @@ async def test_get_geometries_with_all_objects_by_scenario_id(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param",
+    "expected_status, error_message, project_id_param, is_regional_param",
     [
-        (200, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (200, None, None, False),
+        (400, "this method cannot be accessed in a regional project", None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success", "regional_project", "forbidden", "not_found"],
 )
 async def test_get_context_geometries(
     urban_api_host: str,
     project: dict[str, Any],
+    regional_project: dict[str, Any],
     object_geometry: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
     project_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test GET /projects/{project_id}/context/geometries method."""
 
     # Arrange
-    project_id = project_id_param or project["project_id"]
+    project_id = project_id_param or (regional_project["project_id"] if is_regional_param else project["project_id"])
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
     # Act
@@ -161,28 +174,31 @@ async def test_get_context_geometries(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param",
+    "expected_status, error_message, project_id_param, is_regional_param",
     [
-        (200, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (200, None, None, False),
+        (400, "this method cannot be accessed in a regional project", None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success", "regional_project", "forbidden", "not_found"],
 )
 async def test_get_context_geometries_with_all_objects(
     urban_api_host: str,
     project: dict[str, Any],
+    regional_project: dict[str, Any],
     object_geometry: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
     project_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test GET /projects/{project_id}/context/geometries_with_all_objects method."""
 
     # Arrange
-    project_id = project_id_param or project["project_id"]
+    project_id = project_id_param or (regional_project["project_id"] if is_regional_param else project["project_id"])
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
     # Act

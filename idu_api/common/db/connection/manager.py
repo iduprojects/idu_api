@@ -157,7 +157,7 @@ class PostgresConnectionManager:
                 yield conn
             return
 
-        # Select the next replica (round-robin), `self._replica_cycle` is guranteed to have values here
+        # Select the next replica (round-robin), `self._replica_cycle` is guaranteed to have values here
         engine = next(self._replica_cycle)  # pylint: disable=stop-iteration-return
         conn = None
         try:

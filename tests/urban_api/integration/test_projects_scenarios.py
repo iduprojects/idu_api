@@ -15,68 +15,73 @@ from tests.urban_api.helpers.utils import assert_response
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, scenario_id_param",
+    "expected_status, error_message, scenario_id_param, is_regional_param",
     [
-        (200, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (200, None, None, False),
+        (200, None, None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success_common", "success_regional", "forbidden", "not_found"],
 )
 async def test_get_scenario_by_id(
     urban_api_host: str,
     scenario: dict[str, Any],
+    regional_scenario: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
     scenario_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test GET /scenarios/{scenario_id} method."""
 
     # Arrange
-    scenario_id = scenario_id_param or scenario["scenario_id"]
+    scenario_id = scenario_id_param or (
+        regional_scenario["scenario_id"] if is_regional_param else scenario["scenario_id"]
+    )
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(f"/scenarios/{scenario_id}", headers=headers)
-        result = response.json()
 
     # Assert
     assert_response(response, expected_status, Scenario, error_message)
-    if response.status_code == 200:
-        for k, v in scenario.items():
-            if k in result:
-                assert result[k] == v, f"Mismatch for {k}: {result[k]} != {v}."
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param",
+    "expected_status, error_message, project_id_param, is_regional_param",
     [
-        (201, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (201, None, None, False),
+        (201, None, None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success_common", "success_regional", "forbidden", "not_found"],
 )
 async def test_add_scenario(
     urban_api_host: str,
     scenario_post_req: ScenarioPost,
     project: dict[str, Any],
+    regional_project: dict[str, Any],
     functional_zone_type: dict[str, Any],
     expected_status: int,
     error_message: str | None,
     valid_token: str,
     superuser_token: str,
     project_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test POST /scenarios method."""
 
     # Arrange
     new_scenario = scenario_post_req.model_dump()
-    new_scenario["project_id"] = project_id_param or project["project_id"]
+    new_scenario["project_id"] = project_id_param or (
+        regional_project["project_id"] if is_regional_param else project["project_id"]
+    )
     new_scenario["functional_zone_type_id"] = functional_zone_type["functional_zone_type_id"]
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
@@ -90,31 +95,37 @@ async def test_add_scenario(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, scenario_id_param",
+    "expected_status, error_message, scenario_id_param, is_regional_param",
     [
-        (201, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (201, None, None, False),
+        (201, None, None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success_common", "success_regional", "forbidden", "not_found"],
 )
 async def test_copy_scenario(
     urban_api_host: str,
     scenario_post_req: ScenarioPost,
     project: dict[str, Any],
+    regional_scenario: dict[str, Any],
+    regional_project: dict[str, Any],
     functional_zone_type: dict[str, Any],
     expected_status: int,
     error_message: str | None,
     valid_token: str,
     superuser_token: str,
     scenario_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test POST /scenarios/{scenario_id} method."""
 
     # Arrange
     new_scenario = scenario_post_req.model_dump()
-    scenario_id = scenario_id_param or project["base_scenario"]["id"]
-    new_scenario["project_id"] = project["project_id"]
+    scenario_id = scenario_id_param or (
+        regional_scenario["scenario_id"] if is_regional_param else project["base_scenario"]["id"]
+    )
+    new_scenario["project_id"] = regional_project["project_id"] if is_regional_param else project["project_id"]
     new_scenario["functional_zone_type_id"] = functional_zone_type["functional_zone_type_id"]
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 

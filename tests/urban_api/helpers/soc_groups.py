@@ -31,19 +31,22 @@ __all__ = [
 
 
 @pytest.fixture(scope="session")
-def social_group(urban_api_host) -> dict[str, Any]:
+def social_group(urban_api_host, service_type) -> dict[str, Any]:
     """Returns created social group."""
     soc_group_post_req = SocGroupPost(name="Test Social Group")
+    new_service_type = SocServiceTypePost(service_type_id=service_type["service_type_id"], infrastructure_type="basic")
 
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
         response = client.post("/social_groups", json=soc_group_post_req.model_dump())
+        soc_group_id = response.json()["soc_group_id"]
+        response = client.post(f"/social_groups/{soc_group_id}/service_types", json=new_service_type.model_dump())
 
     assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}."
     return response.json()
 
 
 @pytest.fixture(scope="session")
-def social_value(urban_api_host) -> dict[str, Any]:
+def social_value(urban_api_host, service_type) -> dict[str, Any]:
     """Returns created social value."""
     soc_value_post_req = SocValuePost(
         name="Test Social Value",
@@ -54,6 +57,8 @@ def social_value(urban_api_host) -> dict[str, Any]:
 
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
         response = client.post("/social_values", json=soc_value_post_req.model_dump())
+        soc_value_id = response.json()["soc_value_id"]
+        response = client.post(f"/social_values/{soc_value_id}/service_types/{service_type['service_type_id']}")
 
     assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}."
     return response.json()

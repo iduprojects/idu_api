@@ -9,6 +9,8 @@ import structlog
 from aioresponses import aioresponses
 from aioresponses.core import merge_params, normalize_url
 from geoalchemy2.functions import ST_AsEWKB
+from otteroad import KafkaProducerClient
+from otteroad.models import RegionalScenarioIndicatorsUpdated
 from sqlalchemy import delete, insert, select, update
 
 from idu_api.common.db.entities import (
@@ -40,7 +42,7 @@ from idu_api.urban_api.schemas import (
     ScenarioIndicatorValuePost,
     ScenarioIndicatorValuePut,
 )
-from tests.urban_api.helpers.connection import MockConnection
+from tests.urban_api.helpers.connection import MockConnection, MockResult, MockRow
 
 ####################################################################################
 #                           Default use-case tests                                 #
@@ -158,7 +160,7 @@ async def test_get_scenario_indicators_values_by_scenario_id_from_db(mock_check:
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_scenario")
+@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.get_project_by_scenario_id")
 async def test_add_scenario_indicator_value_to_db(
     mock_check: AsyncMock, mock_conn: MockConnection, scenario_indicator_value_post_req: ScenarioIndicatorValuePost
 ):
@@ -192,35 +194,45 @@ async def test_add_scenario_indicator_value_to_db(
         .values(**scenario_indicator_value_post_req.model_dump())
         .returning(projects_indicators_data.c.indicator_value_id)
     )
+    kafka_producer = AsyncMock(spec=KafkaProducerClient)
+    event = RegionalScenarioIndicatorsUpdated(scenario_id=1, territory_id=1, indicator_id=1, indicator_value_id=1)
 
     # Act
     with pytest.raises(EntityAlreadyExists):
-        await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user)
+        await add_scenario_indicator_value_to_db(
+            mock_conn, scenario_indicator_value_post_req, scenario_id, user, kafka_producer
+        )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_indicator),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user)
+            await add_scenario_indicator_value_to_db(
+                mock_conn, scenario_indicator_value_post_req, scenario_id, user, kafka_producer
+            )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_territory),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user)
+            await add_scenario_indicator_value_to_db(
+                mock_conn, scenario_indicator_value_post_req, scenario_id, user, kafka_producer
+            )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_hexagon),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_post_req, scenario_id, user)
+            await add_scenario_indicator_value_to_db(
+                mock_conn, scenario_indicator_value_post_req, scenario_id, user, kafka_producer
+            )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_indicator_value),
     ):
-        result = await add_scenario_indicator_value_to_db(
-            mock_conn, scenario_indicator_value_post_req, scenario_id, user
-        )
+        indicator_post = scenario_indicator_value_post_req
+        indicator_post.hexagon_id = None
+        result = await add_scenario_indicator_value_to_db(mock_conn, indicator_post, scenario_id, user, kafka_producer)
 
     # Assert
     assert isinstance(result, ScenarioIndicatorValueDTO), "Result should be a ScenarioIndicatorValueDTO."
@@ -230,10 +242,11 @@ async def test_add_scenario_indicator_value_to_db(
     mock_conn.execute_mock.assert_any_call(str(insert_statement))
     mock_conn.commit_mock.assert_called_once()
     mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
+    kafka_producer.send.assert_any_call(event)
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_scenario")
+@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.get_project_by_scenario_id")
 async def test_put_scenario_indicator_value_to_db(
     mock_check: AsyncMock, mock_conn: MockConnection, scenario_indicator_value_put_req: ScenarioIndicatorValuePut
 ):
@@ -272,11 +285,7 @@ async def test_put_scenario_indicator_value_to_db(
                 if scenario_indicator_value_put_req.territory_id is not None
                 else projects_indicators_data.c.territory_id.is_(None)
             ),
-            (
-                projects_indicators_data.c.hexagon_id == scenario_indicator_value_put_req.hexagon_id
-                if scenario_indicator_value_put_req.hexagon_id is not None
-                else projects_indicators_data.c.hexagon_id.is_(None)
-            ),
+            projects_indicators_data.c.hexagon_id.is_(None),
         )
         .values(**scenario_indicator_value_put_req.model_dump(), updated_at=datetime.now(timezone.utc))
         .returning(projects_indicators_data.c.indicator_value_id)
@@ -286,6 +295,8 @@ async def test_put_scenario_indicator_value_to_db(
         .values(**scenario_indicator_value_put_req.model_dump())
         .returning(projects_indicators_data.c.indicator_value_id)
     )
+    kafka_producer = AsyncMock(spec=KafkaProducerClient)
+    event = RegionalScenarioIndicatorsUpdated(scenario_id=1, territory_id=1, indicator_id=1, indicator_value_id=1)
 
     # Act
     with patch(
@@ -293,25 +304,35 @@ async def test_put_scenario_indicator_value_to_db(
         new=AsyncMock(side_effect=check_indicator),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
+            await add_scenario_indicator_value_to_db(
+                mock_conn, scenario_indicator_value_put_req, scenario_id, user, kafka_producer
+            )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_territory),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
+            await add_scenario_indicator_value_to_db(
+                mock_conn, scenario_indicator_value_put_req, scenario_id, user, kafka_producer
+            )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_hexagon),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
+            await add_scenario_indicator_value_to_db(
+                mock_conn, scenario_indicator_value_put_req, scenario_id, user, kafka_producer
+            )
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence",
         new=AsyncMock(side_effect=check_indicator_value),
     ):
-        await put_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
-    result = await put_scenario_indicator_value_to_db(mock_conn, scenario_indicator_value_put_req, scenario_id, user)
+        await put_scenario_indicator_value_to_db(
+            mock_conn, scenario_indicator_value_put_req, scenario_id, user, kafka_producer
+        )
+    indicator_put = scenario_indicator_value_put_req
+    indicator_put.hexagon_id = None
+    result = await put_scenario_indicator_value_to_db(mock_conn, indicator_put, scenario_id, user, kafka_producer)
 
     # Assert
     assert isinstance(result, ScenarioIndicatorValueDTO), "Result should be a ScenarioIndicatorValueDTO."
@@ -322,10 +343,11 @@ async def test_put_scenario_indicator_value_to_db(
     mock_conn.execute_mock.assert_any_call(str(insert_statement))
     assert mock_conn.commit_mock.call_count == 2, "Commit mock count should be one for one method."
     mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
+    kafka_producer.send.assert_any_call(event)
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_scenario")
+@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.get_project_by_scenario_id")
 async def test_patch_scenario_indicator_value_to_db(
     mock_check: AsyncMock, mock_conn: MockConnection, scenario_indicator_value_patch_req: ScenarioIndicatorValuePatch
 ):
@@ -341,17 +363,26 @@ async def test_patch_scenario_indicator_value_to_db(
         .values(
             **scenario_indicator_value_patch_req.model_dump(exclude_unset=True), updated_at=datetime.now(timezone.utc)
         )
+        .returning(projects_indicators_data)
     )
+    kafka_producer = AsyncMock(spec=KafkaProducerClient)
+    event = RegionalScenarioIndicatorsUpdated(scenario_id=1, territory_id=1, indicator_id=1, indicator_value_id=1)
 
     # Act
     with patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_existence") as mock_check_existence:
         mock_check_existence.return_value = False
         with pytest.raises(EntityNotFoundById):
             await patch_scenario_indicator_value_to_db(
-                mock_conn, scenario_indicator_value_patch_req, scenario_id, indicator_value_id, user
+                mock_conn, scenario_indicator_value_patch_req, scenario_id, indicator_value_id, user, kafka_producer
             )
+    mock_connection = MockConnection(
+        preset_results=[
+            MockResult(rows=[MockRow(scenario_id=scenario_id)]),
+            MockResult(rows=[MockRow(hexagon_id=None, indicator_id=1)]),
+        ]
+    )
     result = await patch_scenario_indicator_value_to_db(
-        mock_conn, scenario_indicator_value_patch_req, scenario_id, indicator_value_id, user
+        mock_connection, scenario_indicator_value_patch_req, scenario_id, indicator_value_id, user, kafka_producer
     )
 
     # Assert
@@ -359,9 +390,10 @@ async def test_patch_scenario_indicator_value_to_db(
     assert isinstance(
         ScenarioIndicatorValue.from_dto(result), ScenarioIndicatorValue
     ), "Couldn't create pydantic model from DTO."
-    mock_conn.execute_mock.assert_any_call(str(update_statement))
-    mock_conn.commit_mock.assert_called_once()
+    mock_connection.execute_mock.assert_any_call(str(update_statement))
+    mock_connection.commit_mock.assert_called_once()
     mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
+    kafka_producer.send.assert_any_call(event)
 
 
 @pytest.mark.asyncio

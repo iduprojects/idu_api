@@ -13,8 +13,7 @@ from idu_api.common.db.entities import (
 )
 from idu_api.urban_api.dto import FunctionalZoneDTO, FunctionalZoneSourceDTO, ScenarioFunctionalZoneDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
-from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
-from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario, get_project_by_scenario_id
+from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario
 from idu_api.urban_api.logic.impl.helpers.utils import (
     OBJECTS_NUMBER_LIMIT,
     check_existence,
@@ -35,9 +34,7 @@ async def get_functional_zones_sources_by_scenario_id_from_db(
 ) -> list[FunctionalZoneSourceDTO]:
     """Get list of pairs year + source for functional zones for given scenario."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user)
-    if project.is_regional:
-        raise NotAllowedInRegionalScenario("Functional zones")
+    await check_scenario(conn, scenario_id, user, allow_regional=False)
 
     statement = (
         select(projects_functional_zones.c.year, projects_functional_zones.c.source)
@@ -59,9 +56,7 @@ async def get_functional_zones_by_scenario_id_from_db(
 ) -> list[ScenarioFunctionalZoneDTO]:
     """Get list of functional zone objects by scenario identifier."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user)
-    if project.is_regional:
-        raise NotAllowedInRegionalScenario("Functional zones")
+    await check_scenario(conn, scenario_id, user, allow_regional=False)
 
     statement = (
         select(
@@ -241,7 +236,7 @@ async def add_scenario_functional_zones_to_db(
 ) -> list[ScenarioFunctionalZoneDTO]:
     """Add list of scenario functional zone objects."""
 
-    await check_scenario(conn, scenario_id, user, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True, allow_regional=False)
 
     statement = delete(projects_functional_zones).where(projects_functional_zones.c.scenario_id == scenario_id)
     await conn.execute(statement)
@@ -280,7 +275,7 @@ async def put_scenario_functional_zone_to_db(
 ) -> ScenarioFunctionalZoneDTO:
     """Update scenario functional zone by all its attributes."""
 
-    await check_scenario(conn, scenario_id, user, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True, allow_regional=False)
 
     if not await check_existence(
         conn, projects_functional_zones, conditions={"functional_zone_id": functional_zone_id}
@@ -316,7 +311,7 @@ async def patch_scenario_functional_zone_to_db(
 ) -> ScenarioFunctionalZoneDTO:
     """Update scenario functional zone by only given attributes."""
 
-    await check_scenario(conn, scenario_id, user, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True, allow_regional=False)
 
     if not await check_existence(
         conn, projects_functional_zones, conditions={"functional_zone_id": functional_zone_id}
@@ -350,7 +345,7 @@ async def delete_functional_zones_by_scenario_id_from_db(
 ) -> dict:
     """Delete functional zones by scenario identifier."""
 
-    await check_scenario(conn, scenario_id, user, to_edit=True)
+    await check_scenario(conn, scenario_id, user, to_edit=True, allow_regional=False)
 
     statement = delete(projects_functional_zones).where(projects_functional_zones.c.scenario_id == scenario_id)
     await conn.execute(statement)

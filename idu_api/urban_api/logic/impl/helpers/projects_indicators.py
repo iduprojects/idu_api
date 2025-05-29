@@ -6,6 +6,8 @@ from typing import Any
 import aiohttp
 import structlog
 from geoalchemy2.functions import ST_AsEWKB
+from otteroad import KafkaProducerClient
+from otteroad.models import RegionalScenarioIndicatorsUpdated, ScenarioIndicatorsUpdated
 from sqlalchemy import delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -133,11 +135,15 @@ async def get_scenario_indicators_values_by_scenario_id_from_db(
 
 
 async def add_scenario_indicator_value_to_db(
-    conn: AsyncConnection, indicator_value: ScenarioIndicatorValuePost, scenario_id: int, user: UserDTO
+    conn: AsyncConnection,
+    indicator_value: ScenarioIndicatorValuePost,
+    scenario_id: int,
+    user: UserDTO,
+    kafka_producer: KafkaProducerClient,
 ) -> ScenarioIndicatorValueDTO:
     """Add a new scenario's indicator value."""
 
-    await check_scenario(conn, scenario_id, user, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(conn, indicators_dict, conditions={"indicator_id": indicator_value.indicator_id}):
         raise EntityNotFoundById(indicator_value.indicator_id, "indicator")
@@ -175,17 +181,40 @@ async def add_scenario_indicator_value_to_db(
     )
     indicator_value_id = (await conn.execute(statement)).scalar_one()
 
+    new_value = await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
+
     await conn.commit()
 
-    return await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
+    if project.is_regional and indicator_value.hexagon_id is None:
+        event = RegionalScenarioIndicatorsUpdated(
+            scenario_id=scenario_id,
+            territory_id=project.territory_id,
+            indicator_id=indicator_value.indicator_id,
+            indicator_value_id=indicator_value_id,
+        )
+        await kafka_producer.send(event)
+    elif indicator_value.hexagon_id is None:
+        event = ScenarioIndicatorsUpdated(
+            project_id=project.project_id,
+            scenario_id=scenario_id,
+            indicator_id=indicator_value.indicator_id,
+            indicator_value_id=indicator_value_id,
+        )
+        await kafka_producer.send(event)
+
+    return new_value
 
 
 async def put_scenario_indicator_value_to_db(
-    conn: AsyncConnection, indicator_value: ScenarioIndicatorValuePut, scenario_id: int, user: UserDTO
+    conn: AsyncConnection,
+    indicator_value: ScenarioIndicatorValuePut,
+    scenario_id: int,
+    user: UserDTO,
+    kafka_producer: KafkaProducerClient,
 ) -> ScenarioIndicatorValueDTO:
     """Update scenario's indicator value by all attributes."""
 
-    await check_scenario(conn, scenario_id, user, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(conn, indicators_dict, conditions={"indicator_id": indicator_value.indicator_id}):
         raise EntityNotFoundById(indicator_value.indicator_id, "indicator")
@@ -236,9 +265,28 @@ async def put_scenario_indicator_value_to_db(
         )
         indicator_value_id = (await conn.execute(statement)).scalar_one()
 
+    new_value = await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
+
     await conn.commit()
 
-    return await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
+    if project.is_regional and indicator_value.hexagon_id is None:
+        event = RegionalScenarioIndicatorsUpdated(
+            scenario_id=scenario_id,
+            territory_id=project.territory_id,
+            indicator_id=indicator_value.indicator_id,
+            indicator_value_id=indicator_value_id,
+        )
+        await kafka_producer.send(event)
+    elif indicator_value.hexagon_id is None:
+        event = ScenarioIndicatorsUpdated(
+            project_id=project.project_id,
+            scenario_id=scenario_id,
+            indicator_id=indicator_value.indicator_id,
+            indicator_value_id=indicator_value_id,
+        )
+        await kafka_producer.send(event)
+
+    return new_value
 
 
 async def patch_scenario_indicator_value_to_db(
@@ -247,6 +295,7 @@ async def patch_scenario_indicator_value_to_db(
     scenario_id: int | None,
     indicator_value_id: int,
     user: UserDTO,
+    kafka_producer: KafkaProducerClient,
 ) -> ScenarioIndicatorValueDTO:
     """Update scenario's indicator value by only given attributes."""
 
@@ -258,7 +307,7 @@ async def patch_scenario_indicator_value_to_db(
         if scenario_id is None:
             raise EntityNotFoundById(indicator_value_id, "indicator value")
 
-    await check_scenario(conn, scenario_id, user, to_edit=True)
+    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
 
     if not await check_existence(conn, projects_indicators_data, conditions={"indicator_value_id": indicator_value_id}):
         raise EntityNotFoundById(indicator_value_id, "indicator value")
@@ -268,12 +317,32 @@ async def patch_scenario_indicator_value_to_db(
         update(projects_indicators_data)
         .where(projects_indicators_data.c.indicator_value_id == indicator_value_id)
         .values(**values)
+        .returning(projects_indicators_data)
     )
+    updated_indicator = (await conn.execute(statement)).mappings().one()
 
-    await conn.execute(statement)
+    new_value = await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
+
     await conn.commit()
 
-    return await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
+    if project.is_regional and updated_indicator.hexagon_id is None:
+        event = RegionalScenarioIndicatorsUpdated(
+            scenario_id=scenario_id,
+            territory_id=project.territory_id,
+            indicator_id=updated_indicator.indicator_id,
+            indicator_value_id=indicator_value_id,
+        )
+        await kafka_producer.send(event)
+    elif updated_indicator.hexagon_id is None:
+        event = ScenarioIndicatorsUpdated(
+            project_id=project.project_id,
+            scenario_id=scenario_id,
+            indicator_id=updated_indicator.indicator_id,
+            indicator_value_id=indicator_value_id,
+        )
+        await kafka_producer.send(event)
+
+    return new_value
 
 
 async def delete_scenario_indicators_values_by_scenario_id_from_db(
@@ -330,7 +399,7 @@ async def get_hexagons_with_indicators_by_scenario_id_from_db(
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
     if not project.is_regional:
-        raise NotAllowedInProjectScenario("Hexagons")
+        raise NotAllowedInProjectScenario()
 
     statement = (
         select(

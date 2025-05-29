@@ -44,3 +44,9 @@ logging:
 prometheus:
   port: 9000
   disable: false
+broker:
+  client_id: urban-api
+  bootstrap_servers: localhost:9092,localhost9093,localhost9094
+  schema_registry_url: http://localhost:8081
+  enable_idempotence: true
+  max_in_flight: 5

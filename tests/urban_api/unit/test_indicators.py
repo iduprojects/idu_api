@@ -4,6 +4,8 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from otteroad import KafkaProducerClient
+from otteroad.models import IndicatorValuesUpdated
 from sqlalchemy.sql import delete, insert, select, update
 
 from idu_api.common.db.entities import (
@@ -793,33 +795,36 @@ async def test_add_indicator_value_to_db(mock_conn: MockConnection, indicator_va
         .values(**indicator_value_post_req.model_dump())
         .returning(territory_indicators_data.c.indicator_value_id)
     )
+    kafka_producer = AsyncMock(spec=KafkaProducerClient)
+    event = IndicatorValuesUpdated(territory_id=1, indicator_id=1, indicator_value_id=1)
 
     # Act
     with pytest.raises(EntityAlreadyExists):
-        await add_indicator_value_to_db(mock_conn, indicator_value_post_req)
+        await add_indicator_value_to_db(mock_conn, indicator_value_post_req, kafka_producer)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.indicators.check_existence",
         new=AsyncMock(side_effect=check_indicator),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_indicator_value_to_db(mock_conn, indicator_value_post_req)
+            await add_indicator_value_to_db(mock_conn, indicator_value_post_req, kafka_producer)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.indicators.check_existence",
         new=AsyncMock(side_effect=check_territory),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_indicator_value_to_db(mock_conn, indicator_value_post_req)
+            await add_indicator_value_to_db(mock_conn, indicator_value_post_req, kafka_producer)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.indicators.check_existence",
         new=AsyncMock(side_effect=check_indicator_value),
     ):
-        result = await add_indicator_value_to_db(mock_conn, indicator_value_post_req)
+        result = await add_indicator_value_to_db(mock_conn, indicator_value_post_req, kafka_producer)
 
     # Assert
     assert isinstance(result, IndicatorValueDTO), "Result should be an IndicatorValueDTO."
     assert isinstance(IndicatorValue.from_dto(result), IndicatorValue), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
     mock_conn.commit_mock.assert_called_once()
+    kafka_producer.send.assert_any_call(event)
 
 
 @pytest.mark.asyncio
@@ -856,6 +861,8 @@ async def test_put_indicator_value_to_db(mock_conn: MockConnection, indicator_va
         )
         .returning(territory_indicators_data.c.indicator_value_id)
     )
+    kafka_producer = AsyncMock(spec=KafkaProducerClient)
+    event = IndicatorValuesUpdated(territory_id=1, indicator_id=1, indicator_value_id=1)
 
     # Act
     with patch(
@@ -863,19 +870,19 @@ async def test_put_indicator_value_to_db(mock_conn: MockConnection, indicator_va
         new=AsyncMock(side_effect=check_indicator),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_indicator_value_to_db(mock_conn, indicator_value_put_req)
+            await add_indicator_value_to_db(mock_conn, indicator_value_put_req, kafka_producer)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.indicators.check_existence",
         new=AsyncMock(side_effect=check_territory),
     ):
         with pytest.raises(EntityNotFoundById):
-            await add_indicator_value_to_db(mock_conn, indicator_value_put_req)
+            await add_indicator_value_to_db(mock_conn, indicator_value_put_req, kafka_producer)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.indicators.check_existence",
         new=AsyncMock(side_effect=check_indicator_value),
     ):
-        await put_indicator_value_to_db(mock_conn, indicator_value_put_req)
-    result = await put_indicator_value_to_db(mock_conn, indicator_value_put_req)
+        await put_indicator_value_to_db(mock_conn, indicator_value_put_req, kafka_producer)
+    result = await put_indicator_value_to_db(mock_conn, indicator_value_put_req, kafka_producer)
 
     # Assert
     assert isinstance(result, IndicatorValueDTO), "Result should be an IndicatorValueDTO."
@@ -883,6 +890,7 @@ async def test_put_indicator_value_to_db(mock_conn: MockConnection, indicator_va
     mock_conn.execute_mock.assert_any_call(str(statement_insert))
     mock_conn.execute_mock.assert_any_call(str(statement_update))
     assert mock_conn.commit_mock.call_count == 2, "Commit mock count should be one for one method."
+    kafka_producer.send.assert_any_call(event)
 
 
 @pytest.mark.asyncio

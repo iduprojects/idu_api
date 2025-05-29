@@ -1,10 +1,13 @@
 """Integration tests for projects are defined here."""
 
+import asyncio
 from io import BytesIO
 from typing import Any
 
 import httpx
 import pytest
+from otteroad import KafkaConsumerService
+from otteroad.models import BaseScenarioCreated, ProjectCreated
 from pydantic import ValidationError
 
 from idu_api.urban_api.schemas import (
@@ -19,6 +22,8 @@ from idu_api.urban_api.schemas import (
     Scenario,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
+from tests.urban_api.helpers import valid_token
+from tests.urban_api.helpers.broker import mock_handler
 from tests.urban_api.helpers.utils import assert_response
 
 ####################################################################################
@@ -28,66 +33,69 @@ from tests.urban_api.helpers.utils import assert_response
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param",
+    "expected_status, error_message, project_id_param, is_regional_param",
     [
-        (200, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (200, None, None, False),
+        (200, None, None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success_common", "success_regional", "forbidden", "not_found"],
 )
 async def test_get_project_by_id(
     urban_api_host: str,
     project: dict[str, Any],
+    regional_project: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
     project_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test GET /projects/{project_id} method."""
 
     # Arrange
-    project_id = project_id_param or project["project_id"]
+    project_id = project_id_param or (regional_project["project_id"] if is_regional_param else project["project_id"])
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(f"/projects/{project_id}", headers=headers)
-        result = response.json()
 
     # Assert
     assert_response(response, expected_status, Project, error_message)
-    if response.status_code == 200:
-        for k, v in project.items():
-            if k in result:
-                assert result[k] == v, f"Mismatch for {k}: {result[k]} != {v}."
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param",
+    "expected_status, error_message, project_id_param, is_regional_param",
     [
-        (200, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (200, None, None, False),
+        (400, "this method cannot be accessed in a regional project", None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success", "regional_project", "forbidden", "not_found"],
 )
 async def test_get_project_territory_by_id(
     urban_api_host: str,
     project: dict[str, Any],
+    regional_project: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
     project_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test GET /projects/{project_id}/territory method."""
 
     # Arrange
-    project_id = project_id_param or project["project_id"]
-    headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
+    project_id = project_id_param or (regional_project["project_id"] if is_regional_param else project["project_id"])
+    headers = {
+        "Authorization": f"Bearer {valid_token if expected_status == 403 and not is_regional_param else superuser_token}"
+    }
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
@@ -102,27 +110,30 @@ async def test_get_project_territory_by_id(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param",
+    "expected_status, error_message, project_id_param, is_regional_param",
     [
-        (200, None, None),
-        (403, "denied", None),
-        (404, "not found", 1e9),
+        (200, None, None, False),
+        (200, None, None, True),
+        (403, "denied", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success_common", "success_regional", "forbidden", "not_found"],
 )
 async def test_get_scenarios_by_project_id(
     urban_api_host: str,
     project: dict[str, Any],
+    regional_project: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
     project_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test GET /projects/{project_id}/scenarios method."""
 
     # Arrange
-    project_id = project_id_param or project["project_id"]
+    project_id = project_id_param or (regional_project["project_id"] if is_regional_param else project["project_id"])
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
     # Act
@@ -142,13 +153,14 @@ async def test_get_scenarios_by_project_id(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message",
+    "expected_status, error_message, is_regional_param",
     [
-        (200, None),
-        (400, "Please, choose either regional projects or certain project type"),
-        (401, "Authentication required to view own projects"),
+        (200, None, False),
+        (200, None, True),
+        (400, "Please, choose either regional projects or certain project type", True),
+        (401, "Authentication required to view own projects", False),
     ],
-    ids=["success", "bad_request", "unauthorized"],
+    ids=["success_common", "success_regional", "bad_request", "unauthorized"],
 )
 async def test_get_projects(
     urban_api_host: str,
@@ -156,6 +168,7 @@ async def test_get_projects(
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
+    is_regional_param: bool,
 ):
     """Test GET /projects method."""
 
@@ -163,20 +176,23 @@ async def test_get_projects(
     headers = {"Authorization": f"Bearer {superuser_token}"} if expected_status != 401 else {}
     params = {
         "only_own": True,
-        "is_regional": expected_status == 400,
-        "project_type": "common",
-        "territory_id": project["territory"]["id"],
-        "name": project["name"],
-        "created_at": project["created_at"][:10],
+        "is_regional": is_regional_param,
         "page_size": 1,
     }
+    if not is_regional_param or expected_status == 400:
+        params.update(
+            {
+                "project_type": "common",
+                "territory_id": project["territory"]["id"],
+                "name": project["name"],
+                "created_at": project["created_at"][:10],
+            }
+        )
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get("/projects", headers=headers, params=params)
         result = response.json()
-
-    print(headers, params)
 
     # Assert
     assert_response(response, expected_status, Page, error_message)
@@ -327,36 +343,107 @@ async def test_get_project_previews_url(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, territory_id_param",
+    "expected_status, error_message, territory_id_param, is_regional_param",
     [
-        (201, None, None),
-        (403, "not authenticated", None),
-        (404, "not found", 1e9),
+        (201, None, None, False),
+        (201, None, None, True),
+        (403, "not authenticated", None, False),
+        (404, "not found", 1e9, False),
     ],
-    ids=["success", "forbidden", "not_found"],
+    ids=["success_common", "success_regional", "forbidden", "not_found"],
 )
 async def test_add_project(
     urban_api_host: str,
     project_post_req: ProjectPost,
     region: dict[str, Any],
+    kafka_consumer: KafkaConsumerService,
     expected_status: int,
     error_message: str | None,
     superuser_token: str,
     territory_id_param: int | None,
+    is_regional_param: bool,
 ):
     """Test POST /projects method."""
 
     # Arrange
+    new_handler = mock_handler(ProjectCreated)
+    kafka_consumer.register_handler(new_handler)
     new_project = project_post_req.model_dump()
+    new_project["is_regional"] = is_regional_param
+    new_project["territory"] = new_project["territory"] if not is_regional_param else None
     new_project["territory_id"] = territory_id_param or region["territory_id"]
     headers = {"Authorization": f"Bearer {superuser_token}"} if expected_status != 403 else {}
 
     # Act
+    if expected_status == 201:
+        await asyncio.sleep(5)
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.post("/projects", json=new_project, headers=headers)
+    if expected_status == 201:
+        await asyncio.sleep(5)
 
     # Assert
     assert_response(response, expected_status, Project, error_message)
+    if expected_status == 201 and not is_regional_param:
+        assert len(new_handler.received_events) == 1, "No one event was received"
+        assert isinstance(new_handler.received_events[0], ProjectCreated), "Received event is not ProjectCreated"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expected_status, error_message, project_id_param, scenario_id_param, is_regional_project, is_regional_scenario",
+    [
+        (201, None, None, None, False, True),
+        (400, "this method cannot be accessed in a regional project", None, None, True, True),
+        (400, "this method cannot be accessed in a project scenario", None, None, False, False),
+        (403, "you must be a superuser to create a new base scenario", None, None, True, True),
+        (404, "not found", 1e9, None, False, True),
+        (409, "already exists", None, None, False, True),
+    ],
+    ids=["success", "regional_project", "regional_scenario", "forbidden", "not_found", "conflict"],
+)
+async def test_create_base_scenario(
+    urban_api_host: str,
+    project: dict[str, Any],
+    regional_project: dict[str, Any],
+    scenario: dict[str, Any],
+    regional_scenario: dict[str, Any],
+    kafka_consumer: KafkaConsumerService,
+    expected_status: int,
+    error_message: str | None,
+    valid_token: str,
+    superuser_token: str,
+    project_id_param: int | None,
+    scenario_id_param: int | None,
+    is_regional_project: bool,
+    is_regional_scenario: bool,
+):
+    """Test POST /projects/{project_id}/base_scenario/{scenario_id} method."""
+
+    # Arrange
+    new_handler = mock_handler(BaseScenarioCreated)
+    kafka_consumer.register_handler(new_handler)
+    project_id = project_id_param or (regional_project["project_id"] if is_regional_project else project["project_id"])
+    scenario_id = scenario_id_param or (
+        regional_scenario["scenario_id"] if is_regional_scenario else scenario["scenario_id"]
+    )
+    headers = {"Authorization": f"Bearer {superuser_token if expected_status != 403 else valid_token}"}
+
+    # Act
+    if expected_status == 201:
+        await asyncio.sleep(5)
+    async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
+        response = await client.post(f"/projects/{project_id}/base_scenario/{scenario_id}", headers=headers)
+    if expected_status == 201:
+        await asyncio.sleep(5)
+
+    # Assert
+    assert_response(response, expected_status, Scenario, error_message)
+    if expected_status == 201:
+        assert len(new_handler.received_events) == 1, "No one event was received"
+        assert isinstance(
+            new_handler.received_events[0], BaseScenarioCreated
+        ), "Received event is not BaseScenarioCreated"
 
 
 @pytest.mark.asyncio

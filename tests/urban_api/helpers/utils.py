@@ -1,6 +1,6 @@
 """Helper functions are defined here."""
 
-from typing import Literal, Type
+from typing import Literal
 
 import httpx
 import pytest
@@ -12,7 +12,7 @@ from idu_api.urban_api.logic.impl.helpers.utils import UrbanAPIModel
 def assert_response(
     response: httpx.Response,
     expected_status: int,
-    validation_model: Type[UrbanAPIModel],
+    validation_model: type[UrbanAPIModel],
     error_message: str | None = None,
     result_type: Literal["dict", "list"] = "dict",
 ) -> None:

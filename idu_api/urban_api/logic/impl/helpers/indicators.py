@@ -4,6 +4,8 @@ from collections import defaultdict
 from collections.abc import Callable
 from datetime import datetime, timezone
 
+from otteroad import KafkaProducerClient
+from otteroad.models import IndicatorValuesUpdated
 from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
@@ -601,6 +603,7 @@ async def get_indicator_values_by_id_from_db(
 async def add_indicator_value_to_db(
     conn: AsyncConnection,
     indicator_value: IndicatorValuePost,
+    kafka_producer: KafkaProducerClient,
 ) -> IndicatorValueDTO:
     """Create indicator value object."""
 
@@ -639,12 +642,25 @@ async def add_indicator_value_to_db(
     )
     indicator_value_id = (await conn.execute(statement)).scalar_one()
 
+    new_value = await get_indicator_value_by_id_from_db(conn, indicator_value_id)
+
     await conn.commit()
 
-    return await get_indicator_value_by_id_from_db(conn, indicator_value_id)
+    event = IndicatorValuesUpdated(
+        territory_id=indicator_value.territory_id,
+        indicator_id=indicator_value.indicator_id,
+        indicator_value_id=indicator_value_id,
+    )
+    await kafka_producer.send(event)
+
+    return new_value
 
 
-async def put_indicator_value_to_db(conn: AsyncConnection, indicator_value: IndicatorValuePut) -> IndicatorValueDTO:
+async def put_indicator_value_to_db(
+    conn: AsyncConnection,
+    indicator_value: IndicatorValuePut,
+    kafka_producer: KafkaProducerClient,
+) -> IndicatorValueDTO:
     """Update existing indicator value or create new if it doesn't exist."""
 
     if not await check_existence(conn, indicators_dict, conditions={"indicator_id": indicator_value.indicator_id}):
@@ -686,9 +702,19 @@ async def put_indicator_value_to_db(conn: AsyncConnection, indicator_value: Indi
         )
 
     indicator_value_id = (await conn.execute(statement)).scalar_one()
+
+    new_value = await get_indicator_value_by_id_from_db(conn, indicator_value_id)
+
     await conn.commit()
 
-    return await get_indicator_value_by_id_from_db(conn, indicator_value_id)
+    event = IndicatorValuesUpdated(
+        territory_id=indicator_value.territory_id,
+        indicator_id=indicator_value.indicator_id,
+        indicator_value_id=indicator_value_id,
+    )
+    await kafka_producer.send(event)
+
+    return new_value
 
 
 async def delete_indicator_value_from_db(conn: AsyncConnection, indicator_value_id: int) -> dict:
