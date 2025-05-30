@@ -92,6 +92,76 @@ async def get_project_by_scenario_id(
     return project
 
 
+async def get_scenarios_from_db(
+    conn: AsyncConnection,
+    parent_id: int | None,
+    project_id: int | None,
+    territory_id: int | None,
+    is_based: bool,
+    only_own: bool,
+    user: UserDTO | None,
+) -> list[ScenarioDTO]:
+    """Get list of scenario objects."""
+
+    where_clause = scenarios_data.c.parent_id.is_(None)
+    if parent_id is not None:
+        await check_scenario(conn, parent_id, user)
+        where_clause = scenarios_data.c.parent_id == parent_id
+
+    scenarios_data_parents = scenarios_data.alias("scenarios_data_parents")
+    statement = (
+        select(
+            scenarios_data,
+            scenarios_data_parents.c.name.label("parent_name"),
+            projects_data.c.name.label("project_name"),
+            projects_data.c.user_id.label("project_user_id"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+            functional_zone_types_dict.c.name.label("functional_zone_type_name"),
+            functional_zone_types_dict.c.zone_nickname.label("functional_zone_type_nickname"),
+            functional_zone_types_dict.c.description.label("functional_zone_type_description"),
+        )
+        .select_from(
+            scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id)
+            .join(territories_data, territories_data.c.territory_id == projects_data.c.territory_id)
+            .outerjoin(
+                functional_zone_types_dict,
+                functional_zone_types_dict.c.functional_zone_type_id == scenarios_data.c.functional_zone_type_id,
+            )
+            .outerjoin(
+                scenarios_data_parents,
+                scenarios_data.c.parent_id == scenarios_data_parents.c.scenario_id,
+            )
+        )
+        .where(where_clause)
+    )
+
+    if project_id is not None:
+        await check_project(conn, project_id, user)
+        statement = statement.where(scenarios_data.c.project_id == project_id)
+
+    if territory_id is not None:
+        statement = statement.where(projects_data.c.territory_id == territory_id)
+
+    if is_based:
+        statement = statement.where(scenarios_data.c.is_based.is_(True))
+
+    if only_own and parent_id is not None:
+        statement = statement.where(projects_data.c.user_id == user.id)
+    elif only_own and parent_id is None:
+        statement = statement.where((projects_data.c.user_id == user.id) | scenarios_data.c.is_based.is_(True))
+    elif user is not None:
+        statement = statement.where(
+            (projects_data.c.user_id == user.id) | (projects_data.c.public.is_(True) if not user.is_superuser else True)
+        )
+    else:
+        statement = statement.where(projects_data.c.public.is_(True))
+
+    result = (await conn.execute(statement)).mappings().all()
+
+    return [ScenarioDTO(**scenario) for scenario in result]
+
+
 async def get_scenarios_by_project_id_from_db(
     conn: AsyncConnection, project_id: int, user: UserDTO | None
 ) -> list[ScenarioDTO]:

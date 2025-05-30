@@ -183,8 +183,6 @@ async def add_scenario_indicator_value_to_db(
 
     new_value = await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
 
-    await conn.commit()
-
     if project.is_regional and indicator_value.hexagon_id is None:
         event = RegionalScenarioIndicatorsUpdated(
             scenario_id=scenario_id,
@@ -201,6 +199,8 @@ async def add_scenario_indicator_value_to_db(
             indicator_value_id=indicator_value_id,
         )
         await kafka_producer.send(event)
+
+    await conn.commit()
 
     return new_value
 
@@ -267,8 +267,6 @@ async def put_scenario_indicator_value_to_db(
 
     new_value = await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
 
-    await conn.commit()
-
     if project.is_regional and indicator_value.hexagon_id is None:
         event = RegionalScenarioIndicatorsUpdated(
             scenario_id=scenario_id,
@@ -285,6 +283,8 @@ async def put_scenario_indicator_value_to_db(
             indicator_value_id=indicator_value_id,
         )
         await kafka_producer.send(event)
+
+    await conn.commit()
 
     return new_value
 
@@ -323,8 +323,6 @@ async def patch_scenario_indicator_value_to_db(
 
     new_value = await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
 
-    await conn.commit()
-
     if project.is_regional and updated_indicator.hexagon_id is None:
         event = RegionalScenarioIndicatorsUpdated(
             scenario_id=scenario_id,
@@ -341,6 +339,8 @@ async def patch_scenario_indicator_value_to_db(
             indicator_value_id=indicator_value_id,
         )
         await kafka_producer.send(event)
+
+    await conn.commit()
 
     return new_value
 

@@ -1,6 +1,6 @@
 """Scenarios endpoints are defined here."""
 
-from fastapi import Depends, HTTPException, Path, Request, Security
+from fastapi import Depends, HTTPException, Path, Query, Request, Security
 from fastapi.security import HTTPBearer
 from starlette import status
 
@@ -15,6 +15,65 @@ from idu_api.urban_api.schemas import (
     ScenarioPut,
 )
 from idu_api.urban_api.utils.auth_client import get_user
+
+
+@projects_router.get(
+    "/scenarios",
+    response_model=list[Scenario],
+    status_code=status.HTTP_200_OK,
+)
+async def get_scenarios(
+    request: Request,
+    parent_id: int | None = Query(
+        None, description="REGIONAL scenario identifier (should be skipped to get regional scenarios)"
+    ),
+    project_id: int | None = Query(None, description="to filter by project"),
+    territory_id: int | None = Query(None, description="to filter by territory (region)"),
+    is_based: bool = Query(..., description="to get only base scenarios"),
+    only_own: bool = Query(False, description="if True, return only user's own projects"),
+    user: UserDTO | None = Depends(get_user),
+) -> list[Scenario]:
+    """
+    ## Get a list of scenarios.
+
+    ### Parameters:
+    - **parent_id** (int, Query): Unique identifier of the REGIONAL scenario.
+    **NOTE:** If passed, returns the child PROJECT scenarios with given parent only. Else, returns regional scenarios.
+    - **project_id** (int, Query): Unique identifier of the project to get its scenarios only.
+    - **territory_id** (int, Query): Unique identifier of the territory to get scenarios for projects located on given territory.
+    **NOTE:** Only regions.
+    - **is_based** (bool, Query): If true, returns only base scenarios. Else, returns all scenarios.
+    - **only_own** (bool, Query): If true, returns only own scenarios + base regional scenarios if parent_id skipped. Else, returns all public scenarios.
+
+    ### Returns:
+    - **list[Scenario]**: List of all scenarios matching the given filters.
+
+    ### Errors:
+    - **401 Unauthorized**: If authentication is required to view user-specific projects.
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the scenario or project or territory does not exist.
+
+    ### Constraints:
+    - The user must be the project owner or the project must be publicly available (if project of scenario passed).
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    if parent_id is None and project_id is not None and is_based:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Incompatible parameters parent_id=None, project_id={project_id}, is_based=True. This will "
+            f"always return an empty list, as the user project may not have any base regional scenario.",
+        )
+
+    if only_own and user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to view own scenarios.",
+        )
+
+    scenarios = await user_project_service.get_scenarios(parent_id, project_id, territory_id, is_based, only_own, user)
+
+    return [Scenario.from_dto(scenario) for scenario in scenarios]
 
 
 @projects_router.get(

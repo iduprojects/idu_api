@@ -644,14 +644,14 @@ async def add_indicator_value_to_db(
 
     new_value = await get_indicator_value_by_id_from_db(conn, indicator_value_id)
 
-    await conn.commit()
-
     event = IndicatorValuesUpdated(
         territory_id=indicator_value.territory_id,
         indicator_id=indicator_value.indicator_id,
         indicator_value_id=indicator_value_id,
     )
     await kafka_producer.send(event)
+
+    await conn.commit()
 
     return new_value
 
@@ -705,14 +705,14 @@ async def put_indicator_value_to_db(
 
     new_value = await get_indicator_value_by_id_from_db(conn, indicator_value_id)
 
-    await conn.commit()
-
     event = IndicatorValuesUpdated(
         territory_id=indicator_value.territory_id,
         indicator_id=indicator_value.indicator_id,
         indicator_value_id=indicator_value_id,
     )
     await kafka_producer.send(event)
+
+    await conn.commit()
 
     return new_value
 

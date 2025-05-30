@@ -104,6 +104,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     delete_scenario_from_db,
     get_scenario_by_id_from_db,
     get_scenarios_by_project_id_from_db,
+    get_scenarios_from_db,
     patch_scenario_to_db,
     put_scenario_to_db,
 )
@@ -358,6 +359,18 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             return await get_project_image_url_from_minio(
                 conn, minio_client, project_id, user, image_type, self._logger
             )
+
+    async def get_scenarios(
+        self,
+        parent_id: int | None,
+        project_id: int | None,
+        territory_id: int | None,
+        is_based: bool,
+        only_own: bool,
+        user: UserDTO | None,
+    ) -> list[ScenarioDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_scenarios_from_db(conn, parent_id, project_id, territory_id, is_based, only_own, user)
 
     async def get_scenarios_by_project_id(self, project_id: int, user: UserDTO | None) -> list[ScenarioDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
