@@ -216,6 +216,18 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get url for image with given type for given project."""
 
     @abc.abstractmethod
+    async def get_scenarios(
+        self,
+        parent_id: int | None,
+        project_id: int | None,
+        territory_id: int | None,
+        is_based: bool,
+        only_own: bool,
+        user: UserDTO | None,
+    ) -> list[ScenarioDTO]:
+        """Get list of scenario objects."""
+
+    @abc.abstractmethod
     async def get_scenarios_by_project_id(self, project_id: int, user: UserDTO | None) -> list[ScenarioDTO]:
         """Get list of scenario objects by project id."""
 

@@ -662,12 +662,14 @@ async def add_project_to_db(
 
     await save_indicators(project_id, scenario_id, logger)
 
-    await conn.commit()
+    new_project = await get_project_by_id_from_db(conn, project_id, user)
 
     event = ProjectCreated(project_id=project_id, base_scenario_id=scenario_id, territory_id=project.territory_id)
     await kafka_producer.send(event)
 
-    return await get_project_by_id_from_db(conn, project_id, user)
+    await conn.commit()
+
+    return new_project
 
 
 async def create_base_scenario_to_db(
@@ -725,15 +727,6 @@ async def create_base_scenario_to_db(
 
     await save_indicators(project_id, scenario_id, logger)
 
-    await conn.commit()
-
-    event = BaseScenarioCreated(
-        project_id=project_id,
-        base_scenario_id=base_scenario_id,
-        regional_scenario_id=scenario_id,
-    )
-    await kafka_producer.send(event)
-
     scenarios_data_parents = scenarios_data.alias("scenarios_data_parents")
     statement = (
         select(
@@ -762,6 +755,15 @@ async def create_base_scenario_to_db(
         .where(scenarios_data.c.scenario_id == base_scenario_id)
     )
     result = (await conn.execute(statement)).mappings().one_or_none()
+
+    event = BaseScenarioCreated(
+        project_id=project_id,
+        base_scenario_id=base_scenario_id,
+        regional_scenario_id=scenario_id,
+    )
+    await kafka_producer.send(event)
+
+    await conn.commit()
 
     return ScenarioDTO(**result)
 
