@@ -273,8 +273,6 @@ async def get_services_with_geometry_by_scenario_id_from_db(
     """Get services with geometry by scenario identifier."""
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
-    if project.is_regional:
-        raise NotAllowedInRegionalScenario()
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)

@@ -11,7 +11,8 @@ from sqlalchemy import insert
 
 from idu_api.common.db.connection import PostgresConnectionManager
 from idu_api.common.db.entities import scenarios_data
-from idu_api.urban_api.schemas import Scenario, ScenarioPatch, ScenarioPost, ScenarioPut
+from idu_api.urban_api.schemas import Scenario, ScenarioPatch, ScenarioPost, ScenarioPut, PhysicalObjectWithGeometryPost
+from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.short_models import FunctionalZoneTypeBasic, ShortProject, ShortScenario, ShortTerritory
 
 __all__ = [
@@ -75,12 +76,38 @@ def regional_scenario(urban_api_host, regional_project, base_regional_scenario, 
         phase=None,
         phase_percentage=None,
     )
+    physical_object_post_req = PhysicalObjectWithGeometryPost(
+        territory_id=1,
+        geometry=Geometry(
+            type="Polygon",
+            coordinates=[
+                [
+                    [30.22, 59.86],
+                    [30.22, 59.85],
+                    [30.25, 59.85],
+                    [30.25, 59.86],
+                    [30.22, 59.86],
+                ]
+            ],
+        ),
+        address="Test Address",
+        osm_id="12345",
+        physical_object_type_id=1,
+        name="Test Object",
+        properties={"key": "value"},
+    )
     headers = {"Authorization": f"Bearer {superuser_token}"}
 
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
         response = client.post(
             f"/scenarios/{base_regional_scenario['scenario_id']}",
             json=scenario_post_req.model_dump(),
+            headers=headers,
+        )
+        scenario_id = response.json()["scenario_id"]
+        client.post(
+            f"/scenarios/{scenario_id}/physical_objects",
+            json=physical_object_post_req.model_dump(),
             headers=headers,
         )
 

@@ -417,13 +417,9 @@ async def test_get_physical_objects_with_geometry_by_scenario_id_from_db(mock_co
     )
 
     # Act
-    with patch(
-        "idu_api.urban_api.logic.impl.helpers.projects_physical_objects.get_project_by_scenario_id"
-    ) as mock_check:
-        mock_check.return_value.is_regional = False
-        result = await get_physical_objects_with_geometry_by_scenario_id_from_db(
-            mock_conn, scenario_id, user, physical_object_type_id, physical_object_function_id
-        )
+    result = await get_physical_objects_with_geometry_by_scenario_id_from_db(
+        mock_conn, scenario_id, user, physical_object_type_id, physical_object_function_id
+    )
     geojson_result = await GeoJSONResponse.from_list([r.to_geojson_dict() for r in result])
 
     # Assert

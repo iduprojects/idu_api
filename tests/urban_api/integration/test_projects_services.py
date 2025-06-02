@@ -73,12 +73,12 @@ async def test_get_services_by_scenario_id(
     "expected_status, error_message, scenario_id_param, is_regional_param",
     [
         (200, None, None, False),
+        (200, None, None, True),
         (400, "please, choose either service_type_id or urban_function_id", None, False),
-        (400, "this method cannot be accessed in a regional scenario", None, True),
         (403, "denied", None, False),
         (404, "not found", 1e9, False),
     ],
-    ids=["success", "bad_request", "regional_scenario", "forbidden", "not_found"],
+    ids=["success_common", "success_regional", "bad_request", "forbidden", "not_found"],
 )
 async def test_get_services_with_geometry_by_scenario_id(
     urban_api_host: str,

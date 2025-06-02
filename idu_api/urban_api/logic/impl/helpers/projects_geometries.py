@@ -57,7 +57,7 @@ async def get_geometries_by_scenario_id_from_db(
 ) -> list[ScenarioGeometryDTO]:
     """Get geometries by scenario identifier."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user, allow_regional=False)
+    project = await get_project_by_scenario_id(conn, scenario_id, user)
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
@@ -265,7 +265,7 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
 ) -> list[ScenarioGeometryWithAllObjectsDTO]:
     """Get geometries with list of physical objects and services by scenario identifier."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user, allow_regional=False)
+    project = await get_project_by_scenario_id(conn, scenario_id, user)
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)

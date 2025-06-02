@@ -323,8 +323,6 @@ async def get_physical_objects_with_geometry_by_scenario_id_from_db(
     """Get list of physical objects with geometry by scenario identifier."""
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
-    if project.is_regional:
-        raise NotAllowedInRegionalScenario()
 
     project_geometry = (
         select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)

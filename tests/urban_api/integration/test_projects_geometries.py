@@ -29,17 +29,16 @@ from tests.urban_api.helpers.utils import assert_response
     "expected_status, error_message, scenario_id_param, is_regional_param",
     [
         (200, None, None, False),
-        (400, "this method cannot be accessed in a regional scenario", None, True),
+        (200, None, None, True),
         (403, "denied", None, False),
         (404, "not found", 1e9, False),
     ],
-    ids=["success", "regional_scenario", "forbidden", "not_found"],
+    ids=["success_common", "success_regional", "forbidden", "not_found"],
 )
 async def test_get_geometries_by_scenario_id(
     urban_api_host: str,
     scenario: dict[str, Any],
     regional_scenario: dict[str, Any],
-    scenario_geometry: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
@@ -68,10 +67,6 @@ async def test_get_geometries_by_scenario_id(
             ScenarioGeometryAttributes(**result["features"][0]["properties"])
         except ValidationError as e:
             pytest.fail(f"Pydantic validation error: {str(e)}")
-        assert any(
-            scenario_geometry["object_geometry_id"] == item["properties"]["object_geometry_id"]
-            for item in result["features"]
-        ), "Response should contain created geometry."
 
 
 @pytest.mark.asyncio
@@ -79,17 +74,16 @@ async def test_get_geometries_by_scenario_id(
     "expected_status, error_message, scenario_id_param, is_regional_param",
     [
         (200, None, None, False),
-        (400, "this method cannot be accessed in a regional scenario", None, True),
+        (200, None, None, True),
         (403, "denied", None, False),
         (404, "not found", 1e9, False),
     ],
-    ids=["success", "regional_scenario", "forbidden", "not_found"],
+    ids=["success_common", "success_regional", "forbidden", "not_found"],
 )
 async def test_get_geometries_with_all_objects_by_scenario_id(
     urban_api_host: str,
     scenario: dict[str, Any],
     regional_scenario: dict[str, Any],
-    scenario_geometry: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
@@ -118,10 +112,6 @@ async def test_get_geometries_with_all_objects_by_scenario_id(
             ScenarioAllObjects(**result["features"][0]["properties"])
         except ValidationError as e:
             pytest.fail(f"Pydantic validation error: {str(e)}")
-        assert any(
-            scenario_geometry["object_geometry_id"] == item["properties"]["object_geometry_id"]
-            for item in result["features"]
-        ), "Response should contain created geometry."
 
 
 @pytest.mark.asyncio

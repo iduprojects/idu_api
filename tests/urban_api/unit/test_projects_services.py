@@ -365,11 +365,9 @@ async def test_get_services_with_geometry_by_scenario_id_from_db(mock_conn: Mock
     )
 
     # Act
-    with patch("idu_api.urban_api.logic.impl.helpers.projects_services.get_project_by_scenario_id") as mock_check:
-        mock_check.return_value.is_regional = False
-        result = await get_services_with_geometry_by_scenario_id_from_db(
-            mock_conn, scenario_id, user, service_type_id, urban_function_id
-        )
+    result = await get_services_with_geometry_by_scenario_id_from_db(
+        mock_conn, scenario_id, user, service_type_id, urban_function_id
+    )
     geojson_result = await GeoJSONResponse.from_list([r.to_geojson_dict() for r in result])
 
     # Assert

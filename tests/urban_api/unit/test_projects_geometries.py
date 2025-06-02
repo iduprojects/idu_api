@@ -169,10 +169,7 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
     )
 
     # Act
-    with pytest.raises(NotAllowedInRegionalScenario):
-        await get_geometries_by_scenario_id_from_db(mock_conn, scenario_id, user, physical_object_id, service_id)
     with patch("idu_api.urban_api.logic.impl.helpers.projects_geometries.get_project_by_scenario_id") as mock_check:
-        mock_check.return_value.is_regional = False
         result = await get_geometries_by_scenario_id_from_db(
             mock_conn, scenario_id, user, physical_object_id, service_id
         )
@@ -399,12 +396,7 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
     )
 
     # Act
-    with pytest.raises(NotAllowedInRegionalScenario):
-        await get_geometries_with_all_objects_by_scenario_id_from_db(
-            mock_conn, scenario_id, user, physical_object_type_id, service_type_id, None, None
-        )
     with patch("idu_api.urban_api.logic.impl.helpers.projects_geometries.get_project_by_scenario_id") as mock_check:
-        mock_check.return_value.is_regional = False
         result = await get_geometries_with_all_objects_by_scenario_id_from_db(
             mock_conn, scenario_id, user, physical_object_type_id, service_type_id, None, None
         )
