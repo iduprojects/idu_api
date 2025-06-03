@@ -35,7 +35,6 @@ def upgrade() -> None:
                             SELECT capacity_modeled 
                             FROM public.service_types 
                             WHERE id = NEW.service_type_id
-                            LIMIT 1  -- Защита от дубликатов
                         );
                     END IF;
                     RETURN NEW;
