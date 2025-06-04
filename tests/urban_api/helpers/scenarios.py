@@ -11,7 +11,7 @@ from sqlalchemy import insert
 
 from idu_api.common.db.connection import PostgresConnectionManager
 from idu_api.common.db.entities import scenarios_data
-from idu_api.urban_api.schemas import Scenario, ScenarioPatch, ScenarioPost, ScenarioPut, PhysicalObjectWithGeometryPost
+from idu_api.urban_api.schemas import PhysicalObjectWithGeometryPost, Scenario, ScenarioPatch, ScenarioPost, ScenarioPut
 from idu_api.urban_api.schemas.geometries import Geometry
 from idu_api.urban_api.schemas.short_models import FunctionalZoneTypeBasic, ShortProject, ShortScenario, ShortTerritory
 

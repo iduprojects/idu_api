@@ -28,7 +28,6 @@ from idu_api.urban_api.dto import (
     UserDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
-from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario, get_project_by_scenario_id
 from idu_api.urban_api.logic.impl.helpers.projects_urban_objects import get_scenario_urban_object_by_ids_from_db
 from idu_api.urban_api.logic.impl.helpers.utils import (

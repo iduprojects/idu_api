@@ -18,10 +18,7 @@ from idu_api.common.db.entities import (
     territories_data,
 )
 from idu_api.urban_api.dto import ScenarioDTO, UserDTO
-from idu_api.urban_api.exceptions.logic.common import (
-    EntitiesNotFoundByIds,
-    EntityNotFoundById,
-)
+from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
@@ -134,6 +131,7 @@ async def get_scenarios_from_db(
             )
         )
         .where(where_clause)
+        .order_by(scenarios_data.c.scenario_id)
     )
 
     if project_id is not None:
@@ -252,7 +250,7 @@ async def copy_scenario_to_db(
     """Copy an existing scenario and all its related entities to a new one."""
 
     await _validate_input(conn, scenario, user)
-    _, parent_id = await _validate_source_scenario(conn, scenario_id, user)
+    parent_id = await _validate_source_scenario(conn, scenario_id, user)
 
     new_scenario_id = await _create_scenario(conn, scenario, parent_id)
 
@@ -339,7 +337,7 @@ async def put_scenario_to_db(
         statement = select(scenarios_data.c.scenario_id).where(
             scenarios_data.c.project_id == requested_scenario.project_id,
             scenarios_data.c.is_based.is_(True),
-            scenarios_data.c.parent_id == requested_scenario.c.parent_id,
+            scenarios_data.c.parent_id == requested_scenario.parent_id,
         )
         based_scenario_id = (await conn.execute(statement)).scalar_one_or_none()
         statement = (
@@ -387,7 +385,7 @@ async def patch_scenario_to_db(
         statement = select(scenarios_data.c.scenario_id).where(
             scenarios_data.c.project_id == requested_scenario.project_id,
             scenarios_data.c.is_based.is_(True),
-            scenarios_data.c.parent_id == requested_scenario.c.parent_id,
+            scenarios_data.c.parent_id == requested_scenario.parent_id,
         )
         based_scenario_id = (await conn.execute(statement)).scalar_one_or_none()
         statement = (
@@ -479,36 +477,20 @@ async def _validate_input(conn: AsyncConnection, scenario: ScenarioPost, user: U
         raise AccessDeniedError(scenario.project_id, "project")
 
 
-async def _validate_source_scenario(conn: AsyncConnection, scenario_id: int, user: UserDTO) -> tuple[RowMapping, int]:
+async def _validate_source_scenario(conn: AsyncConnection, scenario_id: int, user: UserDTO) -> int:
     """Validate the original scenario and determine if a regional parent is required."""
     statement = (
-        select(projects_data)
+        select(scenarios_data, projects_data.c.user_id, projects_data.c.public)
         .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
         .where(scenarios_data.c.scenario_id == scenario_id)
     )
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project is None:
+    scenario = (await conn.execute(statement)).mappings().one_or_none()
+    if scenario is None:
         raise EntityNotFoundById(scenario_id, "scenario")
-    if project.user_id != user.id and not project.public and not user.is_superuser:
-        raise AccessDeniedError(project.project_id, "project")
+    if scenario.user_id != user.id and not scenario.public and not user.is_superuser:
+        raise AccessDeniedError(scenario.project_id, "project")
 
-    parent_id = None
-    if not project.is_regional:
-        parent_id = (
-            await conn.execute(
-                select(scenarios_data.c.scenario_id)
-                .select_from(scenarios_data.join(projects_data))
-                .where(
-                    projects_data.c.territory_id == project.territory_id,
-                    projects_data.c.is_regional.is_(True),
-                    scenarios_data.c.is_based.is_(True),
-                )
-            )
-        ).scalar_one_or_none()
-        if parent_id is None:
-            raise EntitiesNotFoundByIds("parent regional scenario")
-
-    return project, parent_id
+    return scenario.parent_id
 
 
 async def _create_scenario(conn: AsyncConnection, scenario: ScenarioPost, parent_id: int | None) -> int:
