@@ -38,7 +38,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_geometries import (
     patch_object_geometry_to_db,
     put_object_geometry_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import SRID
+from idu_api.urban_api.logic.impl.helpers.utils import SRID, include_child_territories_cte
 from idu_api.urban_api.schemas import (
     AllObjects,
     GeometryAttributes,
@@ -66,6 +66,7 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
     physical_object_id = 1
     service_id = 1
 
+    territories_cte = include_child_territories_cte(1)
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
@@ -105,7 +106,8 @@ async def test_get_geometries_by_scenario_id_from_db(mock_conn: MockConnection):
         )
         .where(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
-            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            True,
+            object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
             physical_objects_data.c.physical_object_id == physical_object_id,
             services_data.c.service_id == service_id,
         )
@@ -199,6 +201,7 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
         col for col in projects_buildings_data.c if col.name not in ("physical_object_id", "properties")
     ]
 
+    territories_cte = include_child_territories_cte(1)
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
@@ -268,7 +271,8 @@ async def test_get_geometries_with_all_objects_by_scenario_id_from_db(mock_conn:
         )
         .where(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
-            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            True,
+            object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
             physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
             service_types_dict.c.service_type_id == service_type_id,
         )

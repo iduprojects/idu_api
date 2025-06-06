@@ -34,6 +34,7 @@ from idu_api.urban_api.logic.impl.helpers.utils import (
     check_existence,
     extract_values_from_model,
     get_context_territories_geometry,
+    include_child_territories_cte,
 )
 from idu_api.urban_api.schemas import ScenarioServicePost, ServicePatch, ServicePut
 
@@ -49,9 +50,14 @@ async def get_services_by_scenario_id_from_db(
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
 
-    project_geometry = (
-        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-    ).scalar_subquery()
+    project_geometry = None
+    territories_cte = None
+    if not project.is_regional:
+        project_geometry = (
+            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+        ).scalar_subquery()
+    else:
+        territories_cte = include_child_territories_cte(project.territory_id)
 
     # Шаг 1: Получить все public_urban_object_id для данного scenario_id
     public_urban_object_ids = (
@@ -100,7 +106,16 @@ async def get_services_by_scenario_id_from_db(
         )
         .where(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
-            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            (
+                ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery())
+                if not project.is_regional
+                else True
+            ),
+            (
+                object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id))
+                if project.is_regional
+                else True
+            ),
         )
     )
 
@@ -273,9 +288,14 @@ async def get_services_with_geometry_by_scenario_id_from_db(
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
 
-    project_geometry = (
-        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-    ).scalar_subquery()
+    project_geometry = None
+    territories_cte = None
+    if not project.is_regional:
+        project_geometry = (
+            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+        ).scalar_subquery()
+    else:
+        territories_cte = include_child_territories_cte(project.territory_id)
 
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
@@ -327,7 +347,16 @@ async def get_services_with_geometry_by_scenario_id_from_db(
         )
         .where(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
-            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            (
+                ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery())
+                if not project.is_regional
+                else True
+            ),
+            (
+                object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id))
+                if project.is_regional
+                else True
+            ),
         )
     )
 

@@ -40,6 +40,7 @@ from idu_api.urban_api.logic.impl.helpers.utils import (
     check_existence,
     extract_values_from_model,
     get_context_territories_geometry,
+    include_child_territories_cte,
 )
 from idu_api.urban_api.schemas import (
     PhysicalObjectPatch,
@@ -62,16 +63,21 @@ async def get_physical_objects_by_scenario_id_from_db(
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
 
-    project_geometry = (
-        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-    ).alias("project_geometry")
+    project_geometry = None
+    territories_cte = None
+    if not project.is_regional:
+        project_geometry = (
+            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+        ).scalar_subquery()
+    else:
+        territories_cte = include_child_territories_cte(project.territory_id)
 
     # Шаг 1: Получить все public_urban_object_id для данного scenario_id
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
         .where(projects_urban_objects_data.c.public_urban_object_id.isnot(None))
-    ).alias("public_urban_object_ids")
+    ).cte(name="public_urban_object_ids")
 
     building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     project_building_columns = [
@@ -124,7 +130,12 @@ async def get_physical_objects_by_scenario_id_from_db(
         )
         .where(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
-            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            ST_Within(object_geometries_data.c.geometry, project_geometry) if not project.is_regional else True,
+            (
+                object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id))
+                if project.is_regional
+                else True
+            ),
         )
         .distinct()
     )
@@ -323,9 +334,14 @@ async def get_physical_objects_with_geometry_by_scenario_id_from_db(
 
     project = await get_project_by_scenario_id(conn, scenario_id, user)
 
-    project_geometry = (
-        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-    ).scalar_subquery()
+    project_geometry = None
+    territories_cte = None
+    if not project.is_regional:
+        project_geometry = (
+            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
+        ).scalar_subquery()
+    else:
+        territories_cte = include_child_territories_cte(project.territory_id)
 
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
@@ -356,12 +372,12 @@ async def get_physical_objects_with_geometry_by_scenario_id_from_db(
         )
         .select_from(
             urban_objects_data.join(
-                physical_objects_data,
-                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
-            )
-            .join(
                 object_geometries_data,
                 object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
             )
             .join(
                 physical_object_types_dict,
@@ -383,7 +399,12 @@ async def get_physical_objects_with_geometry_by_scenario_id_from_db(
         )
         .where(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
-            ST_Within(object_geometries_data.c.geometry, project_geometry),
+            ST_Within(object_geometries_data.c.geometry, project_geometry) if not project.is_regional else True,
+            (
+                object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id))
+                if project.is_regional
+                else True
+            ),
         )
     )
 
@@ -591,10 +612,6 @@ async def get_physical_objects_with_geometry_by_scenario_id_from_db(
 
         if key not in grouped_objects:
             grouped_objects.update({key: obj})
-
-    print(public_urban_objects_query)
-    print()
-    # print(scenario_urban_objects_query)
 
     return [ScenarioPhysicalObjectWithGeometryDTO(**group) for group in grouped_objects.values()]
 

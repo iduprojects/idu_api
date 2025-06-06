@@ -40,7 +40,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_services import (
     patch_service_to_db,
     put_service_to_db,
 )
-from idu_api.urban_api.logic.impl.helpers.utils import get_context_territories_geometry
+from idu_api.urban_api.logic.impl.helpers.utils import get_context_territories_geometry, include_child_territories_cte
 from idu_api.urban_api.schemas import (
     ScenarioService,
     ScenarioServicePost,
@@ -68,6 +68,7 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
     service_type_id = 1
     urban_function_id = None
 
+    territories_cte = include_child_territories_cte(1)
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
@@ -117,7 +118,8 @@ async def test_get_services_by_scenario_id_from_db(mock_conn: MockConnection):
         )
         .where(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
-            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            True,
+            object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
             service_types_dict.c.service_type_id == service_type_id,
         )
     )
@@ -219,6 +221,7 @@ async def test_get_services_with_geometry_by_scenario_id_from_db(mock_conn: Mock
     service_type_id = 1
     urban_function_id = None
 
+    territories_cte = include_child_territories_cte(1)
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id)
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
@@ -273,7 +276,8 @@ async def test_get_services_with_geometry_by_scenario_id_from_db(mock_conn: Mock
         )
         .where(
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
-            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            True,
+            object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
             service_types_dict.c.service_type_id == service_type_id,
         )
     )
