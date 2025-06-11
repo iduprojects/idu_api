@@ -721,11 +721,11 @@ async def create_base_scenario_to_db(
 
     id_mapping = await insert_intersecting_geometries(conn, project.geometry)
 
-    await insert_urban_objects(conn, scenario_id, id_mapping)
+    await insert_urban_objects(conn, base_scenario_id, id_mapping)
 
-    await insert_functional_zones(conn, scenario_id, project.geometry)
+    await insert_functional_zones(conn, base_scenario_id, project.geometry)
 
-    await save_indicators(project_id, scenario_id, logger)
+    await save_indicators(project_id, base_scenario_id, logger)
 
     scenarios_data_parents = scenarios_data.alias("scenarios_data_parents")
     statement = (
