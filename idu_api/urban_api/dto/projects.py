@@ -3,7 +3,7 @@
 # pylint: disable=too-many-instance-attributes
 
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 import shapely.geometry as geom
@@ -84,3 +84,17 @@ class ProjectWithTerritoryDTO:
         project["base_scenario"] = {"id": project.pop("scenario_id"), "name": project.pop("scenario_name")}
 
         return project
+
+
+@dataclass
+class ProjectPhasesDTO:
+    actual_start_date: date | None
+    actual_end_date: date | None
+    planned_start_date: date | None
+    planned_end_date: date | None
+    investment: float
+    pre_design: float
+    design: float
+    construction: float
+    operation: float
+    decommission: float

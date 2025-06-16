@@ -57,12 +57,13 @@ from idu_api.common.db.entities import (
     scenarios_data,
     territories_data,
     territory_types_dict,
-    urban_objects_data,
+    urban_objects_data, projects_phases_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto import (
     PageDTO,
     ProjectDTO,
+    ProjectPhasesDTO,
     ProjectTerritoryDTO,
     ProjectWithTerritoryDTO,
     ScenarioDTO,
@@ -76,7 +77,7 @@ from idu_api.urban_api.minio.services import ProjectStorageManager
 from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
-    ProjectPut,
+    ProjectPut, ProjectPhasesPut,
 )
 from idu_api.urban_api.utils.pagination import paginate_dto
 
@@ -209,6 +210,50 @@ async def get_project_territory_by_id_from_db(
         raise EntityNotFoundById(project_id, "project territory")
 
     return ProjectTerritoryDTO(**result)
+
+
+async def get_project_phases_by_id_from_db(conn, project_id: int, user: UserDTO | None) -> ProjectPhasesDTO:
+    """Get all info about project's phases by project identifier."""
+
+    await check_project(conn, project_id, user, allow_regional=False)
+
+    statement = (
+        select(
+            projects_phases_data.c.actual_start_date,
+            projects_phases_data.c.planned_start_date,
+            projects_phases_data.c.actual_end_date,
+            projects_phases_data.c.planned_end_date,
+            projects_phases_data.c.investment,
+            projects_phases_data.c.pre_design,
+            projects_phases_data.c.design,
+            projects_phases_data.c.construction,
+            projects_phases_data.c.operation,
+            projects_phases_data.c.decommission,
+        )
+        .where(projects_phases_data.c.project_id == project_id)
+    )
+
+    result = (await conn.execute(statement)).mappings().one_or_none()
+
+    return ProjectPhasesDTO(**result)
+
+
+async def put_project_phases_to_db(
+    conn: AsyncConnection, project_id: int, project_phases: ProjectPhasesPut, user: UserDTO
+) -> ProjectPhasesDTO:
+    """Update all info about project's phases by project identifier."""
+
+    await check_project(conn, project_id, user, to_edit=True, allow_regional=False)
+
+    statement = (
+        update(projects_phases_data)
+        .where(projects_phases_data.c.project_id == project_id)
+        .values(**extract_values_from_model(project_phases))
+    )
+    await conn.execute(statement)
+    await conn.commit()
+
+    return await get_project_phases_by_id_from_db(conn, project_id, user)
 
 
 async def get_all_projects_from_db(conn: AsyncConnection) -> list[ProjectDTO]:

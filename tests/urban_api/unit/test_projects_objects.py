@@ -22,7 +22,7 @@ from idu_api.common.db.entities import (
     projects_services_data,
     projects_territory_data,
     scenarios_data,
-    territories_data,
+    territories_data, projects_phases_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto import (
@@ -31,7 +31,7 @@ from idu_api.urban_api.dto import (
     ProjectTerritoryDTO,
     ProjectWithTerritoryDTO,
     ScenarioDTO,
-    UserDTO,
+    UserDTO, ProjectPhasesDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
@@ -42,7 +42,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     get_projects_from_db,
     get_projects_territories_from_db,
     patch_project_to_db,
-    put_project_to_db,
+    put_project_to_db, get_project_phases_by_id_from_db, put_project_phases_to_db,
 )
 from idu_api.urban_api.minio.services import ProjectStorageManager
 from idu_api.urban_api.schemas import (
@@ -51,7 +51,7 @@ from idu_api.urban_api.schemas import (
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
-    Scenario,
+    Scenario, ProjectPhases, ProjectPhasesPut,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection, MockResult, MockRow
@@ -547,3 +547,66 @@ async def test_delete_project_from_db(
     mock_conn.commit_mock.assert_called_once()
     project_storage_manager.delete_project.assert_called_once_with(project_id, logger)
     mock_check.assert_called_once_with(mock_conn, project_id, user, to_edit=True)
+
+
+@pytest.mark.asyncio
+@patch("idu_api.urban_api.logic.impl.helpers.projects_objects.check_project")
+async def test_get_project_phases_by_id_from_db(mock_check: AsyncMock, mock_conn: MockConnection):
+    """Test the get_project_phases_by_id_from_db function."""
+
+    # Arrange
+    project_id = 1
+    user = UserDTO(id="mock_string", is_superuser=False)
+    statement = (
+        select(
+            projects_phases_data.c.actual_start_date,
+            projects_phases_data.c.planned_start_date,
+            projects_phases_data.c.actual_end_date,
+            projects_phases_data.c.planned_end_date,
+            projects_phases_data.c.investment,
+            projects_phases_data.c.pre_design,
+            projects_phases_data.c.design,
+            projects_phases_data.c.construction,
+            projects_phases_data.c.operation,
+            projects_phases_data.c.decommission,
+        )
+        .select_from(projects_phases_data)
+        .where(projects_phases_data.c.project_id == project_id)
+    )
+
+    # Act
+    result = await get_project_phases_by_id_from_db(mock_conn, project_id, user)
+
+    # Assert
+    assert isinstance(result, ProjectPhasesDTO), "Result should be a ProjectPhasesDTO."
+    assert isinstance(ProjectPhases.from_dto(result), ProjectPhases), "Couldn't create pydantic model from DTO."
+    mock_conn.execute_mock.assert_any_call(str(statement))
+    mock_check.assert_called_once_with(mock_conn, project_id, user, allow_regional=False)
+
+
+@pytest.mark.asyncio
+@patch("idu_api.urban_api.logic.impl.helpers.projects_objects.check_project")
+async def test_put_project_phases_to_db(
+    mock_check: AsyncMock, mock_conn: MockConnection, project_phases_put_req: ProjectPhasesPut
+):
+    """Test the get_project_phases_by_id_from_db function."""
+
+    # Arrange
+
+    project_id = 1
+    user = UserDTO(id="mock_string", is_superuser=False)
+
+    update_statement = (
+        update(projects_phases_data)
+        .where(projects_phases_data.c.project_id == project_id)
+        .values(**project_phases_put_req.model_dump())
+    )
+
+    # Act
+    result = await put_project_phases_to_db(mock_conn, project_id, project_phases_put_req, user)
+
+    # Assert
+    assert isinstance(result, ProjectPhasesDTO), "Result should be a ProjectPhasesDTO."
+    assert isinstance(ProjectPhases.from_dto(result), ProjectPhases), "Couldn't create pydantic model from DTO."
+    mock_conn.execute_mock.assert_any_call(str(update_statement))
+    mock_check.assert_any_call(mock_conn, project_id, user, to_edit=True, allow_regional=False)

@@ -12,13 +12,14 @@ from idu_api.common.db.entities import (
     projects_functional_zones,
     projects_indicators_data,
     projects_object_geometries_data,
+    projects_phases_data,
     projects_physical_objects_data,
     projects_services_data,
     projects_urban_objects_data,
     scenarios_data,
     territories_data,
 )
-from idu_api.urban_api.dto import ScenarioDTO, UserDTO
+from idu_api.urban_api.dto import ProjectPhasesDTO, ScenarioDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     copy_scenario_to_db,
@@ -28,7 +29,14 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     patch_scenario_to_db,
     put_scenario_to_db,
 )
-from idu_api.urban_api.schemas import Scenario, ScenarioPatch, ScenarioPost, ScenarioPut
+from idu_api.urban_api.schemas import (
+    ProjectPhases,
+    ProjectPhasesPut,
+    Scenario,
+    ScenarioPatch,
+    ScenarioPost,
+    ScenarioPut,
+)
 from tests.urban_api.helpers.connection import MockConnection
 
 ####################################################################################
@@ -168,48 +176,6 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
             old_urban_objects.c.public_urban_object_id,
         ).where(old_urban_objects.c.public_urban_object_id.isnot(None)),
     )
-    insert_functional_zones_statement = insert(projects_functional_zones).from_select(
-        [
-            projects_functional_zones.c.scenario_id,
-            projects_functional_zones.c.name,
-            projects_functional_zones.c.functional_zone_type_id,
-            projects_functional_zones.c.geometry,
-            projects_functional_zones.c.year,
-            projects_functional_zones.c.source,
-            projects_functional_zones.c.properties,
-        ],
-        select(
-            literal(1).label("scenario_id"),
-            projects_functional_zones.c.name,
-            projects_functional_zones.c.functional_zone_type_id,
-            projects_functional_zones.c.geometry,
-            projects_functional_zones.c.year,
-            projects_functional_zones.c.source,
-            projects_functional_zones.c.properties,
-        ).where(projects_functional_zones.c.scenario_id == scenario_id),
-    )
-    insert_indicators_statement = insert(projects_indicators_data).from_select(
-        [
-            projects_indicators_data.c.scenario_id,
-            projects_indicators_data.c.indicator_id,
-            projects_indicators_data.c.territory_id,
-            projects_indicators_data.c.hexagon_id,
-            projects_indicators_data.c.value,
-            projects_indicators_data.c.comment,
-            projects_indicators_data.c.information_source,
-            projects_indicators_data.c.properties,
-        ],
-        select(
-            literal(1).label("scenario_id"),
-            projects_indicators_data.c.indicator_id,
-            projects_indicators_data.c.territory_id,
-            projects_indicators_data.c.hexagon_id,
-            projects_indicators_data.c.value,
-            projects_indicators_data.c.comment,
-            projects_indicators_data.c.information_source,
-            projects_indicators_data.c.properties,
-        ).where(projects_indicators_data.c.scenario_id == scenario_id),
-    )
 
     # Act
     with patch(
@@ -226,8 +192,6 @@ async def test_copy_scenario_to_db(mock_conn: MockConnection, scenario_post_req:
     mock_conn.execute_mock.assert_any_call(str(insert_scenario_statement))
     mock_conn.execute_mock.assert_any_call(str(urban_objects_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_urban_objects_statement))
-    mock_conn.execute_mock.assert_any_call(str(insert_functional_zones_statement))
-    mock_conn.execute_mock.assert_any_call(str(insert_indicators_statement))
     mock_conn.commit_mock.assert_called_once()
 
 
