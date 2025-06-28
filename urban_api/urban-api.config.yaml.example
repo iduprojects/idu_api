@@ -24,15 +24,13 @@ auth:
   cache_size: 100
   cache_ttl: 1800
 fileserver:
-  host: localhost
-  port: 9000
+  url: http://localhost:9000
   projects_bucket: projects.images
   access_key: ''
   secret_key: ''
   region_name: us-west-rack-2
-  connect_timeout: 5
+  connect_timeout: 1
   read_timeout: 20
-  retries: 3
 external:
   gen_planner_api: http://localhost:8101
   hextech_api: http://localhost:8100

@@ -900,16 +900,14 @@ async def test_delete_public_physical_object_from_db(mock_conn: MockConnection):
     delete_statement = delete(projects_urban_objects_data).where(
         projects_urban_objects_data.c.public_physical_object_id == physical_object_id
     )
-    project_geometry = (
-        select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == 1)
-    ).alias("project_geometry")
+    territories_cte = include_child_territories_cte(1)
     public_urban_object_ids = (
         select(projects_urban_objects_data.c.public_urban_object_id.label("urban_object_id"))
         .where(
             projects_urban_objects_data.c.scenario_id == scenario_id,
             projects_urban_objects_data.c.public_urban_object_id.is_not(None),
         )
-        .alias("public_urban_object_ids")
+        .cte(name="public_urban_object_ids")
     )
     select_urban_object_statement = (
         select(urban_objects_data)
@@ -922,7 +920,8 @@ async def test_delete_public_physical_object_from_db(mock_conn: MockConnection):
         .where(
             urban_objects_data.c.physical_object_id == physical_object_id,
             urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids.c.urban_object_id)),
-            ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+            True,
+            object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)),
         )
     )
     insert_public_urban_objects_statement = insert(projects_urban_objects_data).values(

@@ -9,12 +9,13 @@ from geojson_pydantic import Feature
 from geojson_pydantic.geometries import Geometry
 from otteroad import KafkaProducerClient
 from starlette import status
+from structlog.stdlib import BoundLogger
 
 from idu_api.urban_api.dto.users import UserDTO
 from idu_api.urban_api.handlers.v1.projects.routers import projects_router
 from idu_api.urban_api.logic.projects import UserProjectService
+from idu_api.urban_api.minio.services import ProjectStorageManager, get_project_storage_manager
 from idu_api.urban_api.schemas import (
-    MinioImagesURL,
     MinioImageURL,
     OkResponse,
     Page,
@@ -25,11 +26,10 @@ from idu_api.urban_api.schemas import (
     ProjectTerritory,
     Scenario,
 )
-from idu_api.urban_api.schemas.enums import OrderByField, Ordering, ProjectType
+from idu_api.urban_api.schemas.enums import OrderByField, Ordering, ProjectType, ScenarioPhase
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.utils.auth_client import get_user
 from idu_api.urban_api.utils.broker import get_kafka_producer
-from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client
 from idu_api.urban_api.utils.pagination import paginate
 
 
@@ -271,194 +271,6 @@ async def get_projects_territories(
     return await GeoJSONResponse.from_list([p.to_geojson_dict() for p in projects], centers_only=centers_only)
 
 
-@projects_router.get(
-    "/projects_preview",
-    status_code=status.HTTP_200_OK,
-    deprecated=True,
-)
-async def get_preview_project_images(
-    request: Request,
-    only_own: bool = Query(False, description="if True, return only user's own projects"),
-    is_regional: bool = Query(False, description="filter to get only regional projects or not"),
-    project_type: ProjectType = Query(  # should be Optional, but swagger is generated wrongly then
-        None,
-        description="to get only certain project types, should be skipped to get all projects",
-    ),
-    territory_id: int | None = Query(None, description="to filter by territory identifier", gt=0),
-    name: str | None = Query(None, description="to filter projects by name substring (case-insensitive)"),
-    created_at: date | None = Query(None, description="to get projects created after created_at date"),
-    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
-        None, description="attribute to set ordering (created_at or updated_at)"
-    ),
-    ordering: Ordering = Query(
-        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
-    ),
-    page: int = Query(1, gt=0, description="to get images for projects from the current page"),
-    page_size: int = Query(10, gt=0, description="the number of projects images"),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
-    user: UserDTO = Depends(get_user),
-) -> StreamingResponse:
-    """
-    ## Get preview images for projects as a ZIP archive.
-
-    **WARNING 1:** You cannot set both `project_type` and `is_regional = True` at the same time.
-
-    **WARNING 2:** This method has been deprecated since version 0.37.1 and will be removed in version 1.0.
-    This is due to big sizes of image previews.
-
-    ### Parameters:
-    - **only_own** (bool, Query): If True, returns only images for the user's projects (default: false).
-    - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).
-    - **project_type** (ProjectType | None, Query): If "city", returns cities projects, else if "common" returns only common projects (default: None).
-      NOTE: Skip to get all projects (non-regional).
-    - **territory_id** (int | None, Query): Filters projects by a specific territory.
-    - **name** (str | None, Query): Filters projects by a case-insensitive substring match.
-    - **created_at** (date | None, Query): Returns projects created after the specified date.
-    - **order_by** (OrderByField, Query): Defines the sorting attribute - project_id (default), created_at or updated_at.
-    - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
-    - **page** (int, Query): Specifies the page number for retrieving images (default: 1).
-    - **page_size** (int, Query): Defines the number of project images per page (default: 10).
-
-    ### Returns:
-    - **StreamingResponse**: A ZIP archive containing preview images of projects.
-
-    ### Errors:
-    - **400 Bad Request**: If `project_type` is set and `is_regional` is set to True.
-    - **401 Unauthorized**: If authentication is required to view user-specific project images.
-    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
-
-    ### Constraints:
-    - The user must be authenticated to retrieve images of their own projects.
-    """
-    user_project_service: UserProjectService = request.state.user_project_service
-
-    if project_type is not None and is_regional:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please, choose either regional projects or certain project type.",
-        )
-
-    if only_own and user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required to view own projects",
-        )
-
-    project_type_value = project_type.value if project_type is not None else None
-    order_by_value = order_by.value if order_by is not None else None
-
-    zip_buffer = await user_project_service.get_preview_projects_images(
-        minio_client,
-        user,
-        only_own,
-        is_regional,
-        project_type_value,
-        territory_id,
-        name,
-        created_at,
-        order_by_value,
-        ordering.value,
-        page,
-        page_size,
-    )
-
-    return StreamingResponse(
-        zip_buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=project_previews.zip"},
-    )
-
-
-@projects_router.get(
-    "/projects_preview_url",
-    response_model=list[MinioImageURL],
-    status_code=status.HTTP_200_OK,
-)
-async def get_project_previews_url(
-    request: Request,
-    only_own: bool = Query(False, description="if True, return only user's own projects"),
-    is_regional: bool = Query(False, description="filter to get only regional projects or not"),
-    project_type: ProjectType = Query(  # should be Optional, but swagger is generated wrongly then
-        None,
-        description="to get only certain project types, should be skipped to get all projects",
-    ),
-    territory_id: int | None = Query(None, description="to filter by territory identifier", gt=0),
-    name: str | None = Query(None, description="to filter projects by name substring (case-insensitive)"),
-    created_at: date | None = Query(None, description="to get projects created after created_at date"),
-    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
-        None, description="attribute to set ordering (created_at or updated_at)"
-    ),
-    ordering: Ordering = Query(
-        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
-    ),
-    page: int = Query(1, gt=0, description="to get images for projects from the current page"),
-    page_size: int = Query(10, gt=0, description="the number of projects images"),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
-    user: UserDTO = Depends(get_user),
-) -> list[MinioImageURL]:
-    """
-    ## Get URLs for images of projects.
-
-    **WARNING:** You cannot set both `project_type` and `is_regional = True` at the same time.
-
-    ### Parameters:
-    - **only_own** (bool, Query): If True, returns only images url for the user's projects (default: false).
-    - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).
-    - **project_type** (ProjectType | None, Query): If "city", returns cities projects, else if "common" returns only common projects (default: None).
-      NOTE: Skip to get all projects (non-regional).
-    - **territory_id** (int | None, Query): Filters projects by a specific territory.
-    - **name** (str | None, Query): Filters projects by a case-insensitive substring match.
-    - **created_at** (date | None, Query): Returns projects created after the specified date.
-    - **order_by** (OrderByField, Query): Defines the sorting attribute - project_id (default), created_at or updated_at.
-    - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
-    - **page** (int, Query): Specifies the page number for retrieving images (default: 1).
-    - **page_size** (int, Query): Defines the number of project images per page (default: 10).
-
-    ### Returns:
-    - **list[MinioImageURL]**: A list of URLs for preview images of projects.
-
-    ### Errors:
-    - **401 Unauthorized**: If authentication is required to view user-specific project images.
-    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
-
-    ### Constraints:
-    - The user must be authenticated to retrieve image URLs of their own projects.
-    """
-    user_project_service: UserProjectService = request.state.user_project_service
-
-    if project_type is not None and is_regional:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please, choose either regional projects or certain project type.",
-        )
-
-    if only_own and user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required to view own projects",
-        )
-
-    project_type_value = project_type.value if project_type is not None else None
-    order_by_value = order_by.value if order_by is not None else None
-
-    images = await user_project_service.get_preview_projects_images_url(
-        minio_client,
-        user,
-        only_own,
-        is_regional,
-        project_type_value,
-        territory_id,
-        name,
-        created_at,
-        order_by_value,
-        ordering.value,
-        page,
-        page_size,
-    )
-
-    return [MinioImageURL(**img) for img in images]
-
-
 @projects_router.post(
     "/projects",
     response_model=Project,
@@ -470,6 +282,7 @@ async def add_project(
     project: ProjectPost,
     user: UserDTO = Depends(get_user),
     kafka_producer: KafkaProducerClient = Depends(get_kafka_producer),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
 ) -> Project:
     """
     ## Create a new project with its territory and base scenario.
@@ -491,7 +304,7 @@ async def add_project(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    project_dto = await user_project_service.add_project(project, user, kafka_producer)
+    project_dto = await user_project_service.add_project(project, user, kafka_producer, project_storage_manager)
 
     return Project.from_dto(project_dto)
 
@@ -631,7 +444,7 @@ async def patch_project(
 async def delete_project(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
     user: UserDTO = Depends(get_user),
 ) -> OkResponse:
     """
@@ -652,26 +465,120 @@ async def delete_project(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    await user_project_service.delete_project(project_id, minio_client, user)
+    await user_project_service.delete_project(project_id, project_storage_manager, user)
 
     return OkResponse()
 
 
+@projects_router.get(
+    "/projects_preview_url",
+    response_model=Page[MinioImageURL],
+    status_code=status.HTTP_200_OK,
+)
+async def get_projects_main_image_url(
+    request: Request,
+    only_own: bool = Query(False, description="if True, return only user's own projects"),
+    is_regional: bool = Query(False, description="filter to get only regional projects or not"),
+    project_type: ProjectType = Query(  # should be Optional, but swagger is generated wrongly then
+        None,
+        description="to get only certain project types, should be skipped to get all projects",
+    ),
+    territory_id: int | None = Query(None, description="to filter by territory identifier", gt=0),
+    name: str | None = Query(None, description="to filter projects by name substring (case-insensitive)"),
+    created_at: date | None = Query(None, description="to get projects created after created_at date"),
+    order_by: OrderByField = Query(  # should be Optional, but swagger is generated wrongly then
+        None, description="attribute to set ordering (created_at or updated_at)"
+    ),
+    ordering: Ordering = Query(
+        Ordering.ASC, description="order type (ascending or descending) if ordering field is set"
+    ),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+    user: UserDTO = Depends(get_user),
+) -> Page[MinioImageURL]:
+    """
+    ## Get URLs for main images of projects.
+
+    **WARNING:** You cannot set both `project_type` and `is_regional = True` at the same time.
+
+    ### Parameters:
+    - **only_own** (bool, Query): If True, returns only images url for the user's projects (default: false).
+    - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).
+    - **project_type** (ProjectType | None, Query): If "city", returns cities projects, else if "common" returns only common projects (default: None).
+      NOTE: Skip to get all projects (non-regional).
+    - **territory_id** (int | None, Query): Filters projects by a specific territory.
+    - **name** (str | None, Query): Filters projects by a case-insensitive substring match.
+    - **created_at** (date | None, Query): Returns projects created after the specified date.
+    - **order_by** (OrderByField, Query): Defines the sorting attribute - project_id (default), created_at or updated_at.
+    - **ordering** (Ordering, Query): Specifies sorting order - ascending (default) or descending.
+    - **page** (int, Query): Specifies the page number for retrieving images (default: 1).
+    - **page_size** (int, Query): Defines the number of project images per page (default: 10).
+
+    ### Returns:
+    - **list[MinioImageURL]**: A list of URLs for preview images of projects.
+
+    ### Errors:
+    - **401 Unauthorized**: If authentication is required to view user-specific project images.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be authenticated to retrieve image URLs of their own projects.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    if project_type is not None and is_regional:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, choose either regional projects or certain project type.",
+        )
+
+    if only_own and user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to view own projects",
+        )
+
+    project_type_value = project_type.value if project_type is not None else None
+    order_by_value = order_by.value if order_by is not None else None
+
+    projects = await user_project_service.get_projects(
+        user,
+        only_own,
+        is_regional,
+        project_type_value,
+        territory_id,
+        name,
+        created_at,
+        order_by_value,
+        ordering.value,
+        paginate=True,
+    )
+    ids = [p.project_id for p in projects.items]
+
+    images = await project_storage_manager.get_main_images_urls(ids, logger=logger)
+
+    return paginate(
+        images,
+        projects.total,
+        transformer=lambda x: [MinioImageURL(**item) for item in x],
+    )
+
+
 @projects_router.put(
     "/projects/{project_id}/image",
-    response_model=MinioImagesURL,
+    response_model=str,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
 )
-async def upload_project_image(
+async def upload_project_main_image(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
     file: UploadFile = File(...),
     user: UserDTO = Depends(get_user),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
-) -> MinioImageURL:
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> str:
     """
-    ## Upload an image for a project to MinIO file server.
+    ## Upload an image for the project to MinIO file server and set it as the main one.
 
     **NOTE:** This method also creates preview image (resizing main image to max 1600px on the larger side)
     and uploads it to the MinIO file server.
@@ -681,7 +588,7 @@ async def upload_project_image(
     - **file** (UploadFile, File): Image file to be uploaded (JPEG/PNG).
 
     ### Returns:
-    - **MinioImagesURL**: A response containing the URL of the uploaded images (original and preview).
+    - **str**: A URL pointing to the preview of created project image.
 
     ### Errors:
     - **400 Bad Request**: If the uploaded file is not an image or image is invalid.
@@ -693,24 +600,200 @@ async def upload_project_image(
     - The user must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
 
     if not file.content_type.startswith("image/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is not an image")
 
-    image_url = await user_project_service.upload_project_image(minio_client, project_id, user, await file.read())
+    project = await user_project_service.get_project_by_id(project_id, user)
 
-    return MinioImagesURL(**image_url)
+    url = await project_storage_manager.upload_gallery_image(
+        project.project_id,
+        await file.read(),
+        logger,
+        set_main=True,
+    )
+
+    return url
+
+
+@projects_router.post(
+    "/projects/{project_id}/gallery",
+    response_model=str,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Security(HTTPBearer())],
+)
+async def upload_project_gallery_image(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    file: UploadFile = File(...),
+    user: UserDTO = Depends(get_user),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> str:
+    """
+    ## Upload an image to gallery for the project to MinIO file server.
+
+    **NOTE:** This method also creates preview image (resizing main image to max 1600px on the larger side)
+    and uploads it to the MinIO file server.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **file** (UploadFile, File): Image file to be uploaded (JPEG/PNG).
+
+    ### Returns:
+    - **str**: A URL pointing to the preview of created project image.
+
+    ### Errors:
+    - **400 Bad Request**: If the uploaded file is not an image or image is invalid.
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is not an image")
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    url = await project_storage_manager.upload_gallery_image(project.project_id, await file.read(), logger)
+
+    return url
+
+
+@projects_router.put(
+    "/projects/{project_id}/gallery/{image_id}",
+    response_model=OkResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def set_project_main_image(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    image_id: str = Path(..., description="image identifier"),
+    user: UserDTO = Depends(get_user),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> OkResponse:
+    """
+    ## Set one of the gallery images as the main project image.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **image_id** (int, Path): Unique identifier of the project image.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project or image does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    await project_storage_manager.set_main_image(project.project_id, image_id, logger)
+
+    return OkResponse()
+
+
+@projects_router.get(
+    "/projects/{project_id}/gallery",
+    response_model=list[str],
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def get_project_gallery_images_urls(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    user: UserDTO = Depends(get_user),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> list[str]:
+    """
+    ## Get a list of presigned URLs to all project's gallery images.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+
+    ### Returns:
+    - **list[str]**: List of presigned URLs to all project's gallery images.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    urls = await project_storage_manager.get_list_gallery_images_urls(project.project_id, logger)
+
+    return urls
+
+
+@projects_router.delete(
+    "/projects/{project_id}/gallery/{image_id}",
+    response_model=OkResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def delete_project_gallery_image(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    image_id: str = Path(..., description="image identifier"),
+    user: UserDTO = Depends(get_user),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> OkResponse:
+    """
+    ## Delete the logo of the project from MinIO file server.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    await project_storage_manager.delete_gallery_image(project.project_id, image_id, logger)
+
+    return OkResponse()
 
 
 @projects_router.get(
     "/projects/{project_id}/image",
     status_code=status.HTTP_200_OK,
 )
-async def get_full_project_image(
+async def get_full_project_main_image(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
     user: UserDTO = Depends(get_user),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
 ) -> StreamingResponse:
     """
     ## Get the original image of a project.
@@ -723,16 +806,23 @@ async def get_full_project_image(
 
     ### Errors:
     - **403 Forbidden**: If the user does not have access rights.
-    - **404 Not Found**: If the project does not exist.
+    - **404 Not Found**: If the project or image does not exist.
     - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
 
     ### Constraints:
     - The user must be the project owner or the project must be publicly available.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
 
-    image_stream = await user_project_service.get_project_image(minio_client, project_id, user, image_type="origin")
+    project = await user_project_service.get_project_by_id(project_id, user)
 
+    image_stream = await project_storage_manager.get_gallery_image(
+        project.project_id,
+        image_id=None,
+        logger=logger,
+        image_type="original",
+    )
     return StreamingResponse(image_stream, media_type="image/jpeg")
 
 
@@ -740,34 +830,41 @@ async def get_full_project_image(
     "/projects/{project_id}/preview",
     status_code=status.HTTP_200_OK,
 )
-async def get_preview_project_image(
+async def get_preview_project_main_image(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
     user: UserDTO = Depends(get_user),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
 ) -> StreamingResponse:
     """
-    ## Get a preview image of a project.
+    ## Get the preview image of a project.
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
 
     ### Returns:
-    - **StreamingResponse**: A preview version of the project image in JPEG format (bytes).
+    - **StreamingResponse**: The original full-sized image of the project in JPEG format (bytes).
 
     ### Errors:
     - **403 Forbidden**: If the user does not have access rights.
-    - **404 Not Found**: If the project does not exist.
+    - **404 Not Found**: If the project or image does not exist.
     - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
 
     ### Constraints:
     - The user must be the project owner or the project must be publicly available.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
 
-    image_stream = await user_project_service.get_project_image(minio_client, project_id, user, image_type="preview")
+    project = await user_project_service.get_project_by_id(project_id, user)
 
-    return StreamingResponse(image_stream, media_type="image/png")
+    image_stream = await project_storage_manager.get_gallery_image(
+        project.project_id,
+        image_id=None,
+        logger=logger,
+        image_type="preview",
+    )
+    return StreamingResponse(image_stream, media_type="image/jpeg")
 
 
 @projects_router.get(
@@ -775,14 +872,14 @@ async def get_preview_project_image(
     response_model=str,
     status_code=status.HTTP_200_OK,
 )
-async def get_full_project_image_url(
+async def get_full_project_main_image_url(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
     user: UserDTO = Depends(get_user),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
 ) -> str:
     """
-    ## Get the URL for the original image of a project.
+    ## Get the URL for the original main image of a project.
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
@@ -792,15 +889,24 @@ async def get_full_project_image_url(
 
     ### Errors:
     - **403 Forbidden**: If the user does not have access rights.
-    - **404 Not Found**: If the project does not exist.
+    - **404 Not Found**: If the project or image does not exist.
     - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
 
     ### Constraints:
     - The user must be the project owner or the project must be publicly available.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
 
-    return await user_project_service.get_project_image_url(minio_client, project_id, user, image_type="origin")
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    url = await project_storage_manager.get_gallery_image_url(
+        project.project_id,
+        image_id=None,
+        logger=logger,
+        image_type="original",
+    )
+    return url
 
 
 @projects_router.get(
@@ -808,14 +914,14 @@ async def get_full_project_image_url(
     response_model=str,
     status_code=status.HTTP_200_OK,
 )
-async def get_preview_project_image_url(
+async def get_preview_project_main_image_url(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
     user: UserDTO = Depends(get_user),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
 ) -> str:
     """
-    ## Get the URL for the preview image of a project.
+    ## Get the URL for the preview main image of a project.
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
@@ -825,149 +931,319 @@ async def get_preview_project_image_url(
 
     ### Errors:
     - **403 Forbidden**: If the user does not have access rights.
-    - **404 Not Found**: If the project does not exist.
+    - **404 Not Found**: If the project or image does not exist.
     - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
 
     ### Constraints:
     - The user must be the project owner or the project must be publicly available.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
 
-    return await user_project_service.get_project_image_url(minio_client, project_id, user, image_type="preview")
+    project = await user_project_service.get_project_by_id(project_id, user)
 
-
-@projects_router.get(
-    "/user_projects",
-    response_model=Page[Project],
-    status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
-    deprecated=True,
-)
-async def get_user_projects(
-    request: Request,
-    is_regional: bool = Query(False, description="filter to get only regional projects or not"),
-    territory_id: int | None = Query(None, description="to filter by territory identifier", gt=0),
-    user: UserDTO = Depends(get_user),
-) -> Page[Project]:
-    """
-    ## Get a list of user's projects.
-
-    **WARNING:** This method has been deprecated since version 0.34.0 and will be removed in version 1.0.
-    Instead, use method **GET /projects** with parameter `only_own = True`.
-
-    ### Parameters:
-    - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).
-    - **territory_id** (int | None, Query): Filters projects by a specific territory.
-    - **page** (int, Query): Specifies the page number for retrieving images (default: 1).
-    - **page_size** (int, Query): Defines the number of project images per page (default: 10).
-
-    ### Returns:
-    - **Page[Project]**: A paginated list of projects.
-
-    ### Constraints:
-    - The user must be authenticated to retrieve their own projects.
-    """
-    user_project_service: UserProjectService = request.state.user_project_service
-
-    projects = await user_project_service.get_user_projects(user, is_regional, territory_id)
-
-    return paginate(
-        projects.items,
-        projects.total,
-        transformer=lambda x: [Project.from_dto(item) for item in x],
+    url = await project_storage_manager.get_gallery_image_url(
+        project.project_id,
+        image_id=None,
+        logger=logger,
+        image_type="preview",
     )
+    return url
 
 
 @projects_router.get(
-    "/user_projects_preview",
+    "/projects/{project_id}/logo",
+    response_model=str | None,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
-    deprecated=True,
 )
-async def get_user_preview_project_images(
+async def get_project_logo_url(
     request: Request,
-    is_regional: bool = Query(False, description="filter to get only regional projects or not"),
-    territory_id: int | None = Query(None, description="to filter by territory identifier", gt=0),
-    page: int = Query(1, gt=0, description="to get images for projects from the current page"),
-    page_size: int = Query(10, gt=0, description="the number of projects images"),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
+    project_id: int = Path(..., description="project identifier", gt=0),
     user: UserDTO = Depends(get_user),
-) -> StreamingResponse:
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> str | None:
     """
-    ## Get preview images for user's projects as a ZIP archive.
-
-    **WARNING:** This method has been deprecated since version 0.34.0 and will be removed in version 1.0.
-    Instead, use method **GET /projects_preview** with parameter `only_own = True`.
+    ## Get a presigned URL to the logo of the project. Returns null there is no logo for given project.
 
     ### Parameters:
-    - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).
-    - **territory_id** (int | None, Query): Filters projects by a specific territory.
-    - **page** (int, Query): Specifies the page number for retrieving images (default: 1).
-    - **page_size** (int, Query): Defines the number of project images per page (default: 10).
+    - **project_id** (int, Path): Unique identifier of the project.
 
     ### Returns:
-    - **StreamingResponse**: A ZIP archive containing preview images of projects.
+    - **str | None**: Presigned URL to the logo of the project or null if it does not exist.
 
     ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
     - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
 
     ### Constraints:
-    - The user must be authenticated to retrieve images of their own projects.
+    - The user must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
 
-    zip_buffer = await user_project_service.get_user_preview_projects_images(
-        minio_client, user, is_regional, territory_id, page, page_size
-    )
+    project = await user_project_service.get_project_by_id(project_id, user)
 
-    return StreamingResponse(
-        zip_buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": "attachment; filename=project_previews.zip"},
-    )
+    url = await project_storage_manager.get_logo_url(project.project_id, logger)
+
+    return url
 
 
-@projects_router.get(
-    "/user_projects_preview_url",
-    response_model=list[MinioImageURL],
+@projects_router.put(
+    "/projects/{project_id}/logo",
+    response_model=str,
     status_code=status.HTTP_200_OK,
     dependencies=[Security(HTTPBearer())],
-    deprecated=True,
 )
-async def get_user_preview_project_images_url(
+async def upload_project_logo(
     request: Request,
-    is_regional: bool = Query(False, description="filter to get only regional projects or not"),
-    territory_id: int | None = Query(None, description="to filter by territory identifier", gt=0),
-    page: int = Query(1, gt=0, description="to get images for projects from the current page"),
-    page_size: int = Query(10, gt=0, description="the number of projects images"),
-    minio_client: AsyncMinioClient = Depends(get_minio_client),
+    project_id: int = Path(..., description="project identifier", gt=0),
+    file: UploadFile = File(...),
     user: UserDTO = Depends(get_user),
-) -> list[MinioImageURL]:
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> str:
     """
-    ## Get URLs for preview images of user's projects.
-
-    **WARNING:** This method has been deprecated since version 0.34.0 and will be removed in version 1.0.
-    Instead, use method **GET /projects_images_url** with parameter `only_own = True`.
+    ## Upload a logo for the project to MinIO file server.
 
     ### Parameters:
-    - **is_regional** (bool, Query): If True, filters results to include only regional projects (default: false).
-    - **territory_id** (int | None, Query): Filters projects by a specific territory.
-    - **page** (int, Query): Specifies the page number for retrieving images (default: 1).
-    - **page_size** (int, Query): Defines the number of project images per page (default: 10).
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **file** (UploadFile, File): Image file to be uploaded.
 
     ### Returns:
-    - **list[MinioImageURL]**: A list of URLs for preview images of projects.
+    - **str**: A URL pointing to the uploaded logo.
 
     ### Errors:
+    - **400 Bad Request**: If the uploaded file is not an image or image is invalid.
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
     - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
 
     ### Constraints:
-    - The user must be authenticated to retrieve image URLs of their own projects.
+    - The user must be the owner of the relevant project.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
 
-    images = await user_project_service.get_user_preview_projects_images_url(
-        minio_client, user, is_regional, territory_id, page, page_size
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is not an image")
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    file_ext = file.filename.rsplit(".", maxsplit=1)[-1]
+    url = await project_storage_manager.upload_logo(project.project_id, await file.read(), file_ext, logger)
+
+    return url
+
+
+@projects_router.delete(
+    "/projects/{project_id}/logo",
+    response_model=OkResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def delete_project_logo(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    user: UserDTO = Depends(get_user),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> OkResponse:
+    """
+    ## Delete the logo of the project from MinIO file server.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    await project_storage_manager.delete_logo(project.project_id, logger)
+
+    return OkResponse()
+
+
+@projects_router.get(
+    "/projects/{project_id}/phases/documents",
+    response_model=list[str],
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def get_project_phase_documents_urls(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    phase: ScenarioPhase = Query(..., description="phase name"),
+    user: UserDTO = Depends(get_user),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> list[str]:
+    """
+    ## Get a list of presigned URLs to all project's documents for given phase.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **phase** (ScenarioPhase, Query): One of the project phase.
+
+    ### Returns:
+    - **list[str]**: List of presigned URLs to all project's documents for given phase.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    urls = await project_storage_manager.get_phase_document_urls(project.project_id, phase.value, logger)
+
+    return urls
+
+
+@projects_router.post(
+    "/projects/{project_id}/phases/documents",
+    response_model=str,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Security(HTTPBearer())],
+)
+async def upload_phase_document(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    phase: ScenarioPhase = Query(..., description="phase name"),
+    file: UploadFile = File(...),
+    user: UserDTO = Depends(get_user),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> str:
+    """
+    ## Upload a document for the specified project's phase to MinIO file server.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **phase** (ScenarioPhase, Query): One of the project phase.
+    - **file** (UploadFile, File): Document file to be uploaded.
+
+    ### Returns:
+    - **str**: A URL pointing to uploaded document for the specified project's phase.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    file_name, file_ext = file.filename.rsplit(".", maxsplit=1)
+    url = await project_storage_manager.upload_phase_document(
+        project.project_id, phase.value, await file.read(), file_name, file_ext, logger
     )
 
-    return [MinioImageURL(**img) for img in images]
+    return url
+
+
+@projects_router.patch(
+    "/projects/{project_id}/phases/documents",
+    response_model=str,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def rename_phase_document(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    phase: ScenarioPhase = Query(..., description="phase name"),
+    old_key: str = Query(..., description="file name (with extension)"),
+    new_key: str = Query(..., description="file name (with extension)"),
+    user: UserDTO = Depends(get_user),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> str:
+    """
+    ## Rename the document for the specified project's phase in MinIO file server.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **phase** (ScenarioPhase, Query): One of the project phase.
+    - **filename** (int, Path): Name of the document to be deleted.
+
+    ### Returns:
+    - **str**: A URL pointing to uploaded document for the specified project's phase.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project or file does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    url = await project_storage_manager.rename_phase_document(project.project_id, phase.value, old_key, new_key, logger)
+
+    return url
+
+
+@projects_router.delete(
+    "/projects/{project_id}/phases/documents",
+    response_model=OkResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Security(HTTPBearer())],
+)
+async def delete_project_phase_document(
+    request: Request,
+    project_id: int = Path(..., description="project identifier", gt=0),
+    phase: ScenarioPhase = Query(..., description="phase name"),
+    filename: str = Query(..., description="file name (with extension)"),
+    user: UserDTO = Depends(get_user),
+    project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
+) -> OkResponse:
+    """
+    ## Delete the document for the project's phase from MinIO file server.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **phase** (ScenarioPhase, Query): One of the project phase.
+    - **filename** (int, Path): Name of the document to be deleted.
+
+    ### Returns:
+    - **OkResponse**: A confirmation message of the deletion.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+    - **503 Service Unavailable**: If it was not possible to connect to the MinIO file server.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+    logger: BoundLogger = request.app.state.logger
+
+    project = await user_project_service.get_project_by_id(project_id, user)
+
+    await project_storage_manager.delete_phase_document(project.project_id, phase.value, filename, logger)
+
+    return OkResponse()

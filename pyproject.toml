@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "idu-api"
-version = "1.38.6"
+version = "1.39.0"
 description = "This is a Digital Territories Platform API in two versions to access and manipulate basic territories data."
 authors = ["Babayev Ruslan <rus.babaef@yandex.ru>"]
 readme = "README.md"
@@ -30,16 +30,14 @@ certifi = "^2024.7.4"
 pillow = "^11.0.0"
 python-multipart = "^0.0.12"
 pyyaml = "^6.0.2"
-tenacity = "^9.0.0"
 uvicorn = "0.19.0"
 shapely = "^2.0.6"
 structlog = "^24.4.0"
-aioboto3 = "13.3.0"
-botocore = "1.35.81"
-s3transfer = "0.10.4"
 prometheus-client = "^0.21.1"
 loguru = "^0.7.3"
-otteroad = "0.1.4"
+otteroad = "^0.1.7"
+tenacity = "^9.1.2"
+aioboto3 = "^15.0.0"
 
 [tool.poetry.scripts]
 launch_urban_api = "idu_api.urban_api.__main__:main"

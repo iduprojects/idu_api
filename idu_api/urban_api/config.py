@@ -35,15 +35,17 @@ class AuthConfig:
 
 @dataclass
 class FileServerConfig:
-    host: str
-    port: int
+    url: str
     projects_bucket: str
     access_key: str
     secret_key: str
     region_name: str
     connect_timeout: int
     read_timeout: int
-    retries: int
+
+    def __post_init__(self):
+        if not self.url.startswith("http"):
+            self.url = "http://" + self.url
 
 
 @dataclass
@@ -161,15 +163,13 @@ class UrbanAPIConfig:
             ),
             auth=AuthConfig(url="http://localhost:8086/introspect", validate=False, cache_size=100, cache_ttl=1800),
             fileserver=FileServerConfig(
-                host="localhost",
-                port=9000,
+                url="http://localhost:9000",
                 projects_bucket="projects.images",
                 access_key="",
                 secret_key="",
                 region_name="us-west-rack-2",
                 connect_timeout=5,
                 read_timeout=20,
-                retries=3,
             ),
             external=ExternalServicesConfig(
                 hextech_api="http://localhost:8100", gen_planner_api="http://localhost:8101"

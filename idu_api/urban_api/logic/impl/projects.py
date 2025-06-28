@@ -1,6 +1,5 @@
 """Projects handlers logic is defined here."""
 
-import io
 from datetime import date
 from typing import Any, Literal
 
@@ -68,20 +67,12 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     create_base_scenario_to_db,
     delete_project_from_db,
     get_all_projects_from_db,
-    get_preview_projects_images_from_minio,
-    get_preview_projects_images_url_from_minio,
     get_project_by_id_from_db,
-    get_project_image_from_minio,
-    get_project_image_url_from_minio,
     get_project_territory_by_id_from_db,
     get_projects_from_db,
     get_projects_territories_from_db,
-    get_user_preview_projects_images_from_minio,
-    get_user_preview_projects_images_url_from_minio,
-    get_user_projects_from_db,
     patch_project_to_db,
     put_project_to_db,
-    upload_project_image_to_minio,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
     add_building_to_db,
@@ -119,6 +110,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_services import (
     put_service_to_db,
 )
 from idu_api.urban_api.logic.projects import UserProjectService
+from idu_api.urban_api.minio.services import ProjectStorageManager
 from idu_api.urban_api.schemas import (
     ObjectGeometryPatch,
     ObjectGeometryPut,
@@ -144,7 +136,6 @@ from idu_api.urban_api.schemas import (
     ServicePatch,
     ServicePut,
 )
-from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
 
 class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-public-methods
@@ -207,109 +198,17 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_projects_territories_from_db(conn, user, only_own, project_type, territory_id)
 
-    async def get_preview_projects_images(
+    async def add_project(
         self,
-        minio_client: AsyncMinioClient,
-        user: UserDTO | None,
-        only_own: bool,
-        is_regional: bool,
-        project_type: Literal["common", "city"] | None,
-        territory_id: int | None,
-        name: str | None,
-        created_at: date | None,
-        order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None,
-        page: int,
-        page_size: int,
-    ) -> io.BytesIO:
-        async with self._connection_manager.get_ro_connection() as conn:
-            return await get_preview_projects_images_from_minio(
-                conn,
-                minio_client,
-                user,
-                only_own,
-                is_regional,
-                project_type,
-                territory_id,
-                name,
-                created_at,
-                order_by,
-                ordering,
-                page,
-                page_size,
-                self._logger,
-            )
-
-    async def get_preview_projects_images_url(
-        self,
-        minio_client: AsyncMinioClient,
-        user: UserDTO | None,
-        only_own: bool,
-        is_regional: bool,
-        project_type: Literal["common", "city"] | None,
-        territory_id: int | None,
-        name: str | None,
-        created_at: date | None,
-        order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None,
-        page: int,
-        page_size: int,
-    ) -> list[dict[str, int | str]]:
-        async with self._connection_manager.get_ro_connection() as conn:
-            return await get_preview_projects_images_url_from_minio(
-                conn,
-                minio_client,
-                user,
-                only_own,
-                is_regional,
-                project_type,
-                territory_id,
-                name,
-                created_at,
-                order_by,
-                ordering,
-                page,
-                page_size,
-                self._logger,
-            )
-
-    async def get_user_projects(
-        self, user: UserDTO, is_regional: bool, territory_id: int | None
-    ) -> PageDTO[ProjectDTO]:
-        async with self._connection_manager.get_ro_connection() as conn:
-            return await get_user_projects_from_db(conn, user, is_regional, territory_id)
-
-    async def get_user_preview_projects_images(
-        self,
-        minio_client: AsyncMinioClient,
+        project: ProjectPost,
         user: UserDTO,
-        is_regional: bool,
-        territory_id: int | None,
-        page: int,
-        page_size: int,
-    ) -> io.BytesIO:
-        async with self._connection_manager.get_ro_connection() as conn:
-            return await get_user_preview_projects_images_from_minio(
-                conn, minio_client, user, is_regional, territory_id, page, page_size, self._logger
-            )
-
-    async def get_user_preview_projects_images_url(
-        self,
-        minio_client: AsyncMinioClient,
-        user: UserDTO,
-        is_regional: bool,
-        territory_id: int | None,
-        page: int,
-        page_size: int,
-    ) -> list[dict[str, int | str]]:
-        async with self._connection_manager.get_ro_connection() as conn:
-            return await get_user_preview_projects_images_url_from_minio(
-                conn, minio_client, user, is_regional, territory_id, page, page_size, self._logger
-            )
-
-    async def add_project(self, project: ProjectPost, user: UserDTO, kafka_producer: KafkaProducerClient) -> ProjectDTO:
+        kafka_producer: KafkaProducerClient,
+        project_storage_manager: ProjectStorageManager,
+    ) -> ProjectDTO:
         async with self._connection_manager.get_connection() as conn:
-            return await add_project_to_db(conn, project, user, kafka_producer, logger=self._logger)
+            return await add_project_to_db(
+                conn, project, user, kafka_producer, project_storage_manager, logger=self._logger
+            )
 
     async def create_base_scenario(
         self,
@@ -328,37 +227,14 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
         async with self._connection_manager.get_connection() as conn:
             return await patch_project_to_db(conn, project, project_id, user)
 
-    async def delete_project(self, project_id: int, minio_client: AsyncMinioClient, user: UserDTO) -> dict:
-        async with self._connection_manager.get_connection() as conn:
-            return await delete_project_from_db(conn, project_id, minio_client, user, self._logger)
-
-    async def upload_project_image(
-        self, minio_client: AsyncMinioClient, project_id: int, user: UserDTO, file: bytes
+    async def delete_project(
+        self,
+        project_id: int,
+        project_storage_manager: ProjectStorageManager,
+        user: UserDTO,
     ) -> dict:
         async with self._connection_manager.get_connection() as conn:
-            return await upload_project_image_to_minio(conn, minio_client, project_id, user, file, self._logger)
-
-    async def get_project_image(
-        self,
-        minio_client: AsyncMinioClient,
-        project_id: int,
-        user: UserDTO | None,
-        image_type: Literal["origin", "preview"],
-    ) -> io.BytesIO:
-        async with self._connection_manager.get_ro_connection() as conn:
-            return await get_project_image_from_minio(conn, minio_client, project_id, user, image_type, self._logger)
-
-    async def get_project_image_url(
-        self,
-        minio_client: AsyncMinioClient,
-        project_id: int,
-        user: UserDTO | None,
-        image_type: Literal["origin", "preview"],
-    ) -> str:
-        async with self._connection_manager.get_ro_connection() as conn:
-            return await get_project_image_url_from_minio(
-                conn, minio_client, project_id, user, image_type, self._logger
-            )
+            return await delete_project_from_db(conn, project_id, project_storage_manager, user, self._logger)
 
     async def get_scenarios(
         self,
