@@ -48,8 +48,6 @@ async def base_regional_scenario(database, regional_project, urban_api_host, sup
             name="Исходный региональный сценарий",
             parent_id=None,
             is_based=True,
-            phase=None,
-            phase_percentage=None,
         )
         .returning(scenarios_data.c.scenario_id)
     )
@@ -73,8 +71,6 @@ def regional_scenario(urban_api_host, regional_project, base_regional_scenario, 
         project_id=regional_project["project_id"],
         name="Test Scenario Name",
         functional_zone_type_id=None,
-        phase=None,
-        phase_percentage=None,
     )
     physical_object_post_req = PhysicalObjectWithGeometryPost(
         territory_id=1,
@@ -122,8 +118,6 @@ def scenario(urban_api_host, project, functional_zone_type, superuser_token) -> 
         project_id=project["project_id"],
         name="Test Scenario Name",
         functional_zone_type_id=functional_zone_type["functional_zone_type_id"],
-        phase="pre_design",
-        phase_percentage=100,
     )
     headers = {"Authorization": f"Bearer {superuser_token}"}
 
@@ -166,8 +160,6 @@ def scenario_req() -> Scenario:
         ),
         name="Test Scenario",
         is_based=True,
-        phase="pre_design",
-        phase_percentage=100,
         properties={},
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
@@ -182,8 +174,6 @@ def scenario_post_req() -> ScenarioPost:
         project_id=1,
         name="Test Scenario Name",
         functional_zone_type_id=1,
-        phase="pre_design",
-        phase_percentage=100,
         properties={},
     )
 
@@ -196,8 +186,6 @@ def scenario_put_req() -> ScenarioPut:
         name="Updated Test Scenario Name",
         functional_zone_type_id=1,
         is_based=True,
-        phase="pre_design",
-        phase_percentage=100,
         properties={},
     )
 
@@ -210,6 +198,4 @@ def scenario_patch_req() -> ScenarioPatch:
         name="New Patched Scenario Name",
         functional_zone_type_id=1,
         is_based=True,
-        phase="pre_design",
-        phase_percentage=100,
     )

@@ -42,7 +42,7 @@ class ProjectType(str, Enum):
     CITY = "city"
 
 
-class ScenarioPhase(str, Enum):
+class ProjectPhase(str, Enum):
     INVESTMENT = "investment"
     PRE_DESIGN = "pre_design"
     DESIGN = "design"

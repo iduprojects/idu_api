@@ -12,7 +12,7 @@ from structlog.stdlib import BoundLogger
 from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.exceptions.utils.minio import FileNotFound, InvalidImageError
 from idu_api.urban_api.minio.client import AsyncMinioClient, get_minio_client_from_config
-from idu_api.urban_api.schemas.enums import ScenarioPhase
+from idu_api.urban_api.schemas.enums import ProjectPhase
 
 # ========== Image Utilities ==========
 
@@ -435,7 +435,7 @@ class ProjectStorageManager:
     async def upload_phase_document(
         self,
         project_id: int,
-        phase: ScenarioPhase,
+        phase: ProjectPhase,
         file_data: bytes,
         file_name: str,
         file_ext: str,
@@ -467,7 +467,7 @@ class ProjectStorageManager:
             await self._client.upload_file(session, file_data, object_name, logger)
             return (await self._client.generate_presigned_urls(session, [object_name], logger))[0]
 
-    async def get_phase_document_urls(self, project_id: int, phase: ScenarioPhase, logger: BoundLogger) -> list[str]:
+    async def get_phase_document_urls(self, project_id: int, phase: ProjectPhase, logger: BoundLogger) -> list[str]:
         """
         list all presigned URLs for documents under a specific project phase.
 
@@ -486,7 +486,7 @@ class ProjectStorageManager:
     async def rename_phase_document(
         self,
         project_id: int,
-        phase: ScenarioPhase,
+        phase: ProjectPhase,
         old_key: str,
         new_key: str,
         logger: BoundLogger,
@@ -519,7 +519,7 @@ class ProjectStorageManager:
     async def delete_phase_document(
         self,
         project_id: int,
-        phase: ScenarioPhase,
+        phase: ProjectPhase,
         file_name: str,
         logger: BoundLogger,
     ) -> None:

@@ -1,4 +1,5 @@
 """Integration tests for projects are defined here."""
+from datetime import date
 
 import asyncio
 from io import BytesIO
@@ -20,7 +21,7 @@ from idu_api.urban_api.schemas import (
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
-    Scenario,
+    Scenario, ProjectPhases, ProjectPhasesPut,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers import valid_token
@@ -1188,3 +1189,82 @@ async def test_delete_project_phase_document(
 
     # Assert
     assert_response(response, expected_status, OkResponse, error_message)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expected_status, error_message, project_id_param",
+    [
+        (200, None, None),
+        (403, "denied", None),
+        (404, "not found", 1e9),
+    ],
+    ids=["success", "not_authenticated", "not_found"],
+)
+async def test_get_project_phases(
+    urban_api_host: str,
+    expected_status: int,
+    error_message: str | None,
+    valid_token: str,
+    superuser_token: str,
+    project_id_param: int | None,
+    project: dict[str, Any],
+):
+    """Test GET /projects/{project_id}/phases method."""
+
+    # Arrange
+    headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
+    project_id = project_id_param or project["project_id"]
+
+    # Act
+    async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
+        response = await client.get(f"/projects/{project_id}/phases", headers=headers)
+
+    # Assert
+    assert_response(response, expected_status, ProjectPhases, error_message)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "expected_status, error_message, project_id_param",
+    [
+        (200, None, None),
+        (403, "denied", None),
+        (404, "not found", 1e9),
+    ],
+    ids=["success", "not_authenticated", "not_found"],
+)
+async def test_put_project_phases(
+    urban_api_host: str,
+    expected_status: int,
+    error_message: str | None,
+    valid_token: str,
+    superuser_token: str,
+    project_id_param: int | None,
+    project: dict[str, Any],
+):
+    """Test PUT /projects/{project_id}/phases method."""
+
+    # Arrange
+    headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
+    project_id = project_id_param or project["project_id"]
+    phases = {
+        "actual_start_date": date(2024, 1, 1).strftime("%Y-%m-%d"),
+        "actual_end_date": date(2024, 1, 1).strftime("%Y-%m-%d"),
+        "planned_end_date": date(2024, 1, 1).strftime("%Y-%m-%d"),
+        "planned_start_date": date(2024, 1, 1).strftime("%Y-%m-%d"),
+        "pre_design": 1,
+        "design": 1,
+        "investment": 1,
+        "construction": 1,
+        "operation": 1,
+        "decommission": 1,
+    }
+
+    # Act
+    async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
+        response = await client.put(f"/projects/{project_id}/phases", headers=headers, json=phases)
+
+    # Assert
+    assert_response(response, expected_status, ProjectPhases, error_message)
+

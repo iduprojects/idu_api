@@ -1,13 +1,14 @@
 """All fixtures for projects tests are defined here."""
 
 import io
+from datetime import date
 from typing import Any
 
 import httpx
 import pytest
 from PIL import Image
 
-from idu_api.urban_api.schemas import ProjectPatch, ProjectPost, ProjectPut, ProjectTerritoryPost
+from idu_api.urban_api.schemas import ProjectPatch, ProjectPhasesPut, ProjectPost, ProjectPut, ProjectTerritoryPost
 from idu_api.urban_api.schemas.geometries import Geometry
 
 __all__ = [
@@ -16,6 +17,7 @@ __all__ = [
     "project_patch_req",
     "project_post_req",
     "project_put_req",
+    "project_phases_put_req",
     "regional_project",
 ]
 
@@ -112,6 +114,24 @@ def project_put_req() -> ProjectPut:
         description="Updated Test Project Description",
         public=True,
         properties={},
+    )
+
+
+@pytest.fixture
+def project_phases_put_req() -> ProjectPhasesPut:
+    """PUT request template for project phases data"""
+
+    return ProjectPhasesPut(
+        actual_start_date=date(2024, 1, 1),
+        actual_end_date=date(2024, 1, 1),
+        planned_end_date=date(2024, 1, 1),
+        planned_start_date=date(2024, 1, 1),
+        pre_design=1,
+        design=1,
+        investment=1,
+        construction=1,
+        operation=1,
+        decommission=1,
     )
 
 

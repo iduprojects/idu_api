@@ -12,6 +12,7 @@ from idu_api.urban_api.dto import (
     PhysicalObjectDTO,
     PhysicalObjectWithGeometryDTO,
     ProjectDTO,
+    ProjectPhasesDTO,
     ProjectTerritoryDTO,
     ProjectWithTerritoryDTO,
     ScenarioDTO,
@@ -37,6 +38,7 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectPut,
     PhysicalObjectWithGeometryPost,
     ProjectPatch,
+    ProjectPhasesPut,
     ProjectPost,
     ProjectPut,
     ScenarioBuildingPatch,
@@ -589,3 +591,13 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def delete_functional_zones_by_scenario_id(self, scenario_id: int, user: UserDTO) -> dict:
         """Delete functional zones by scenario identifier."""
+
+    @abc.abstractmethod
+    async def get_project_phases_by_id(self, project_id: int, user: UserDTO | None) -> ProjectPhasesDTO:
+        """Get project's phases by project identifier."""
+
+    @abc.abstractmethod
+    async def put_project_phases(
+        self, project_id: int, project_phases: ProjectPhasesPut, user: UserDTO | None
+    ) -> ProjectPhasesDTO:
+        """Put project's phases."""

@@ -21,12 +21,14 @@ from idu_api.urban_api.schemas import (
     Page,
     Project,
     ProjectPatch,
+    ProjectPhases,
+    ProjectPhasesPut,
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
     Scenario,
 )
-from idu_api.urban_api.schemas.enums import OrderByField, Ordering, ProjectType, ScenarioPhase
+from idu_api.urban_api.schemas.enums import OrderByField, Ordering, ProjectPhase, ProjectType
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from idu_api.urban_api.utils.auth_client import get_user
 from idu_api.urban_api.utils.broker import get_kafka_producer
@@ -130,6 +132,74 @@ async def get_scenarios_by_project_id(
     scenarios = await user_project_service.get_scenarios_by_project_id(project_id, user)
 
     return [Scenario.from_dto(scenario) for scenario in scenarios]
+
+
+@projects_router.get(
+    "/projects/{project_id}/phases",
+    response_model=ProjectPhases,
+    status_code=status.HTTP_200_OK,
+)
+async def get_phases_by_project_id(
+    request: Request,
+    project_id: int = Path(..., description="project_id which phases are needed", gt=0),
+    user: UserDTO = Depends(get_user),
+) -> ProjectPhases:
+    """
+    ## Get phases of project by its identifier .
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+
+    ### Returns:
+    - **ProjectPhases**: Phases of project with such identifier.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project or the project must be publicly available.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    project_phases_dto = await user_project_service.get_project_phases_by_id(project_id, user)
+
+    return ProjectPhases.from_dto(project_phases_dto)
+
+
+@projects_router.put(
+    "/projects/{project_id}/phases",
+    response_model=ProjectPhases,
+    status_code=status.HTTP_200_OK,
+)
+async def put_phases_by_project_id(
+    request: Request,
+    project_phases: ProjectPhasesPut,
+    project_id: int = Path(..., description="project_id which phases are needed to update", gt=0),
+    user: UserDTO = Depends(get_user),
+) -> ProjectPhases:
+    """
+    ## Update all attributes of the given project phases.
+
+    ### Parameters:
+    - **project_id** (int, Path): Unique identifier of the project.
+    - **project_phases** (ProjectPhasesPut, Body): The updated project phases
+
+    ### Returns:
+    - **ProjectPhases**: Phases with updated attributes of given project with such identifier.
+
+    ### Errors:
+    - **403 Forbidden**: If the user does not have access rights.
+    - **404 Not Found**: If the project does not exist.
+
+    ### Constraints:
+    - The user must be the owner of the relevant project or the project must be publicly available.
+    """
+    user_project_service: UserProjectService = request.state.user_project_service
+
+    project_phases_dto = await user_project_service.put_project_phases(project_id, project_phases, user)
+
+    return ProjectPhases.from_dto(project_phases_dto)
 
 
 @projects_router.get(
@@ -1084,7 +1154,7 @@ async def delete_project_logo(
 async def get_project_phase_documents_urls(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
-    phase: ScenarioPhase = Query(..., description="phase name"),
+    phase: ProjectPhase = Query(..., description="phase name"),
     user: UserDTO = Depends(get_user),
     project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
 ) -> list[str]:
@@ -1093,7 +1163,7 @@ async def get_project_phase_documents_urls(
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
-    - **phase** (ScenarioPhase, Query): One of the project phase.
+    - **phase** (ProjectPhase, Query): One of the project phase.
 
     ### Returns:
     - **list[str]**: List of presigned URLs to all project's documents for given phase.
@@ -1125,7 +1195,7 @@ async def get_project_phase_documents_urls(
 async def upload_phase_document(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
-    phase: ScenarioPhase = Query(..., description="phase name"),
+    phase: ProjectPhase = Query(..., description="phase name"),
     file: UploadFile = File(...),
     user: UserDTO = Depends(get_user),
     project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
@@ -1135,7 +1205,7 @@ async def upload_phase_document(
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
-    - **phase** (ScenarioPhase, Query): One of the project phase.
+    - **phase** (ProjectPhase, Query): One of the project phase.
     - **file** (UploadFile, File): Document file to be uploaded.
 
     ### Returns:
@@ -1171,7 +1241,7 @@ async def upload_phase_document(
 async def rename_phase_document(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
-    phase: ScenarioPhase = Query(..., description="phase name"),
+    phase: ProjectPhase = Query(..., description="phase name"),
     old_key: str = Query(..., description="file name (with extension)"),
     new_key: str = Query(..., description="file name (with extension)"),
     user: UserDTO = Depends(get_user),
@@ -1182,7 +1252,7 @@ async def rename_phase_document(
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
-    - **phase** (ScenarioPhase, Query): One of the project phase.
+    - **phase** (ProjectPhase, Query): One of the project phase.
     - **filename** (int, Path): Name of the document to be deleted.
 
     ### Returns:
@@ -1215,7 +1285,7 @@ async def rename_phase_document(
 async def delete_project_phase_document(
     request: Request,
     project_id: int = Path(..., description="project identifier", gt=0),
-    phase: ScenarioPhase = Query(..., description="phase name"),
+    phase: ProjectPhase = Query(..., description="phase name"),
     filename: str = Query(..., description="file name (with extension)"),
     user: UserDTO = Depends(get_user),
     project_storage_manager: ProjectStorageManager = Depends(get_project_storage_manager),
@@ -1225,7 +1295,7 @@ async def delete_project_phase_document(
 
     ### Parameters:
     - **project_id** (int, Path): Unique identifier of the project.
-    - **phase** (ScenarioPhase, Query): One of the project phase.
+    - **phase** (ProjectPhase, Query): One of the project phase.
     - **filename** (int, Path): Name of the document to be deleted.
 
     ### Returns:

@@ -35,16 +35,3 @@ class InfrastructureType(str, Enum):
     basic = "basic"
     additional = "additional"
     comfort = "comfort"
-
-
-class ScenarioPhase(str, Enum):
-    """
-    Enumeration of scenario phases.
-    """
-
-    investment = "investment"
-    pre_design = "pre_design"
-    design = "design"
-    construction = "construction"
-    operation = "operation"
-    decommission = "decommission"

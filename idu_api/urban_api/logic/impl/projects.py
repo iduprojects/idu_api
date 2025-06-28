@@ -16,6 +16,7 @@ from idu_api.urban_api.dto import (
     PhysicalObjectDTO,
     PhysicalObjectWithGeometryDTO,
     ProjectDTO,
+    ProjectPhasesDTO,
     ProjectTerritoryDTO,
     ProjectWithTerritoryDTO,
     ScenarioDTO,
@@ -72,7 +73,7 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     get_projects_from_db,
     get_projects_territories_from_db,
     patch_project_to_db,
-    put_project_to_db,
+    put_project_to_db, get_project_phases_by_id_from_db, put_project_phases_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
     add_building_to_db,
@@ -118,6 +119,7 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectPut,
     PhysicalObjectWithGeometryPost,
     ProjectPatch,
+    ProjectPhasesPut,
     ProjectPost,
     ProjectPut,
     ScenarioBuildingPatch,
@@ -776,3 +778,13 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def delete_functional_zones_by_scenario_id(self, scenario_id: int, user: UserDTO) -> dict:
         async with self._connection_manager.get_connection() as conn:
             return await delete_functional_zones_by_scenario_id_from_db(conn, scenario_id, user)
+
+    async def get_project_phases_by_id(self, project_id: int, user: UserDTO | None) -> ProjectPhasesDTO:
+        async with self._connection_manager.get_connection() as conn:
+            return await get_project_phases_by_id_from_db(conn, project_id, user)
+
+    async def put_project_phases(
+        self, project_id: int, project_phases: ProjectPhasesPut, user: UserDTO | None
+    ) -> ProjectPhasesDTO:
+        async with self._connection_manager.get_connection() as conn:
+            return await put_project_phases_to_db(conn, project_id, project_phases, user)

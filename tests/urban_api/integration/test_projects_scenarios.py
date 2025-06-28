@@ -5,7 +5,12 @@ from typing import Any
 import httpx
 import pytest
 
-from idu_api.urban_api.schemas import OkResponse, Scenario, ScenarioPost, ScenarioPut
+from idu_api.urban_api.schemas import (
+    OkResponse,
+    Scenario,
+    ScenarioPost,
+    ScenarioPut,
+)
 from tests.urban_api.helpers.utils import assert_response
 
 ####################################################################################

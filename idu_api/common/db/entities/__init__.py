@@ -21,7 +21,7 @@ from idu_api.common.db.entities.projects.indicators import projects_indicators_d
 from idu_api.common.db.entities.projects.living_buildings import projects_buildings_data
 from idu_api.common.db.entities.projects.object_geometries import projects_object_geometries_data
 from idu_api.common.db.entities.projects.physical_objects import projects_physical_objects_data
-from idu_api.common.db.entities.projects.projects import projects_data
+from idu_api.common.db.entities.projects.projects import projects_data, projects_phases_data
 from idu_api.common.db.entities.projects.projects_territory import projects_territory_data
 from idu_api.common.db.entities.projects.scenarios import scenarios_data
 from idu_api.common.db.entities.projects.services import projects_services_data

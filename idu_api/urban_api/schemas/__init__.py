@@ -91,6 +91,8 @@ from .profiles_reclamation import (
 from .projects import (
     Project,
     ProjectPatch,
+    ProjectPhases,
+    ProjectPhasesPut,
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
@@ -225,6 +227,8 @@ __all__ = [
     "UrbanFunctionPut",
     "Page",
     "Project",
+    "ProjectPhases",
+    "ProjectPhasesPut",
     "ProjectPost",
     "ProjectPut",
     "ProjectPatch",

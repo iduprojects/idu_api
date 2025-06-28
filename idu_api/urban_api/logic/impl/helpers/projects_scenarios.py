@@ -250,12 +250,13 @@ async def copy_scenario_to_db(
     """Copy an existing scenario and all its related entities to a new one."""
 
     await _validate_input(conn, scenario, user)
-    parent_id = await _validate_source_scenario(conn, scenario_id, user)
+    parent_id, is_regional = await _validate_source_scenario(conn, scenario_id, user)
 
     new_scenario_id = await _create_scenario(conn, scenario, parent_id)
 
     await _copy_urban_objects(conn, scenario_id, new_scenario_id)
-    await _copy_functional_zones_and_indicators(conn, scenario_id, new_scenario_id)
+    if not is_regional:
+        await _copy_functional_zones_and_indicators(conn, scenario_id, new_scenario_id)
 
     await conn.commit()
     return await get_scenario_by_id_from_db(conn, new_scenario_id, user)
@@ -477,10 +478,10 @@ async def _validate_input(conn: AsyncConnection, scenario: ScenarioPost, user: U
         raise AccessDeniedError(scenario.project_id, "project")
 
 
-async def _validate_source_scenario(conn: AsyncConnection, scenario_id: int, user: UserDTO) -> int:
+async def _validate_source_scenario(conn: AsyncConnection, scenario_id: int, user: UserDTO) -> tuple[int, bool]:
     """Validate the original scenario and determine if a regional parent is required."""
     statement = (
-        select(scenarios_data, projects_data.c.user_id, projects_data.c.public)
+        select(scenarios_data, projects_data.c.user_id, projects_data.c.public, projects_data.c.is_regional)
         .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
         .where(scenarios_data.c.scenario_id == scenario_id)
     )
@@ -490,7 +491,7 @@ async def _validate_source_scenario(conn: AsyncConnection, scenario_id: int, use
     if scenario.user_id != user.id and not scenario.public and not user.is_superuser:
         raise AccessDeniedError(scenario.project_id, "project")
 
-    return scenario.parent_id
+    return scenario.parent_id, scenario.is_regional
 
 
 async def _create_scenario(conn: AsyncConnection, scenario: ScenarioPost, parent_id: int | None) -> int:

@@ -1,11 +1,11 @@
 """Projects schemas are defined here."""
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from idu_api.urban_api.dto import ProjectDTO, ProjectTerritoryDTO
+from idu_api.urban_api.dto import ProjectDTO, ProjectPhasesDTO, ProjectTerritoryDTO
 from idu_api.urban_api.schemas.geometries import Geometry, GeometryValidationModel
 from idu_api.urban_api.schemas.short_models import ShortProjectWithScenario, ShortScenario, ShortTerritory
 
@@ -151,3 +151,48 @@ class ProjectPatch(BaseModel):
         if not values:
             raise ValueError("request body cannot be empty")
         return values
+
+
+class ProjectPhases(BaseModel):
+    """Project's phases schema."""
+
+    actual_start_date: date | None = Field(None, examples=["2025-01-01"])
+    actual_end_date: date | None = Field(None, examples=["2026-01-01"])
+    planned_start_date: date | None = Field(None, examples=["2024-12-12"])
+    planned_end_date: date | None = Field(None, examples=["2025-01-01"])
+    investment: float = Field(default=0.0, ge=0, le=100, examples=[0])
+    pre_design: float = Field(default=0.0, ge=0, le=100, examples=[20.2])
+    design: float = Field(default=0.0, ge=0, le=100, examples=[40.3])
+    construction: float = Field(default=0.0, ge=0, le=100, examples=[60.4])
+    operation: float = Field(default=0.0, ge=0, le=100, examples=[80.5])
+    decommission: float = Field(default=0.0, ge=0, le=100, examples=[100])
+
+    @classmethod
+    def from_dto(cls, dto: ProjectPhasesDTO) -> "ProjectPhases":
+        return cls(
+            actual_start_date=dto.actual_start_date,
+            actual_end_date=dto.actual_end_date,
+            planned_start_date=dto.planned_start_date,
+            planned_end_date=dto.planned_end_date,
+            investment=dto.investment,
+            pre_design=dto.pre_design,
+            design=dto.design,
+            construction=dto.construction,
+            operation=dto.operation,
+            decommission=dto.decommission,
+        )
+
+
+class ProjectPhasesPut(BaseModel):
+    """Project's phases PUT schema."""
+
+    actual_start_date: date | None = Field(..., examples=["2025-01-01"])
+    actual_end_date: date | None = Field(..., examples=["2026-01-01"])
+    planned_start_date: date | None = Field(..., examples=["2024-12-12"])
+    planned_end_date: date | None = Field(..., examples=["2025-01-01"])
+    investment: float = Field(..., ge=0, le=100, examples=[0])
+    pre_design: float = Field(..., ge=0, le=100, examples=[20.2])
+    design: float = Field(..., ge=0, le=100, examples=[40.3])
+    construction: float = Field(..., ge=0, le=100, examples=[60.4])
+    operation: float = Field(..., ge=0, le=100, examples=[80.5])
+    decommission: float = Field(..., ge=0, le=100, examples=[100])
