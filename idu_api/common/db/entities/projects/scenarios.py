@@ -7,12 +7,12 @@ from sqlalchemy import (
     Boolean,
     Column,
     ForeignKey,
-    func,
     Integer,
     Sequence,
     String,
     Table,
     Text,
+    func,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB

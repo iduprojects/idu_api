@@ -107,9 +107,9 @@ class ProjectStorageManager:
             paths = [self._metadata_path(project_id) for project_id in ids]
             files = await self._client.get_files(session, paths, logger)
             return [json.loads(f.read().decode("utf-8")) for f in files]
-        except Exception:
-            await logger.aexception("Failed to load metadata", project_ids=ids)
-            raise
+        except Exception as exc:
+            await logger.aexception("Failed to load metadata", project_ids=ids, error=repr(exc))
+            raise FileNotFound(ids, "metadata.json") from exc
 
     async def load_metadata(self, session, project_id: int, logger: BoundLogger) -> dict:
         """

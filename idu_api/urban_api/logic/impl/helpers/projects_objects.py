@@ -50,6 +50,7 @@ from idu_api.common.db.entities import (
     projects_data,
     projects_functional_zones,
     projects_object_geometries_data,
+    projects_phases_data,
     projects_physical_objects_data,
     projects_services_data,
     projects_territory_data,
@@ -57,7 +58,7 @@ from idu_api.common.db.entities import (
     scenarios_data,
     territories_data,
     territory_types_dict,
-    urban_objects_data, projects_phases_data,
+    urban_objects_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto import (
@@ -76,8 +77,9 @@ from idu_api.urban_api.logic.impl.helpers.utils import SRID, check_existence, ex
 from idu_api.urban_api.minio.services import ProjectStorageManager
 from idu_api.urban_api.schemas import (
     ProjectPatch,
+    ProjectPhasesPut,
     ProjectPost,
-    ProjectPut, ProjectPhasesPut,
+    ProjectPut,
 )
 from idu_api.urban_api.utils.pagination import paginate_dto
 
@@ -217,21 +219,18 @@ async def get_project_phases_by_id_from_db(conn, project_id: int, user: UserDTO 
 
     await check_project(conn, project_id, user, allow_regional=False)
 
-    statement = (
-        select(
-            projects_phases_data.c.actual_start_date,
-            projects_phases_data.c.planned_start_date,
-            projects_phases_data.c.actual_end_date,
-            projects_phases_data.c.planned_end_date,
-            projects_phases_data.c.investment,
-            projects_phases_data.c.pre_design,
-            projects_phases_data.c.design,
-            projects_phases_data.c.construction,
-            projects_phases_data.c.operation,
-            projects_phases_data.c.decommission,
-        )
-        .where(projects_phases_data.c.project_id == project_id)
-    )
+    statement = select(
+        projects_phases_data.c.actual_start_date,
+        projects_phases_data.c.planned_start_date,
+        projects_phases_data.c.actual_end_date,
+        projects_phases_data.c.planned_end_date,
+        projects_phases_data.c.investment,
+        projects_phases_data.c.pre_design,
+        projects_phases_data.c.design,
+        projects_phases_data.c.construction,
+        projects_phases_data.c.operation,
+        projects_phases_data.c.decommission,
+    ).where(projects_phases_data.c.project_id == project_id)
 
     result = (await conn.execute(statement)).mappings().one_or_none()
 

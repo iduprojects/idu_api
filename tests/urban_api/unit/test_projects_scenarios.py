@@ -4,22 +4,19 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from sqlalchemy import case, delete, insert, literal, select, update
+from sqlalchemy import delete, insert, literal, select, update
 
 from idu_api.common.db.entities import (
     functional_zone_types_dict,
     projects_data,
-    projects_functional_zones,
-    projects_indicators_data,
     projects_object_geometries_data,
-    projects_phases_data,
     projects_physical_objects_data,
     projects_services_data,
     projects_urban_objects_data,
     scenarios_data,
     territories_data,
 )
-from idu_api.urban_api.dto import ProjectPhasesDTO, ScenarioDTO, UserDTO
+from idu_api.urban_api.dto import ScenarioDTO, UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     copy_scenario_to_db,
@@ -30,8 +27,6 @@ from idu_api.urban_api.logic.impl.helpers.projects_scenarios import (
     put_scenario_to_db,
 )
 from idu_api.urban_api.schemas import (
-    ProjectPhases,
-    ProjectPhasesPut,
     Scenario,
     ScenarioPatch,
     ScenarioPost,

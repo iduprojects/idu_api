@@ -1,7 +1,7 @@
 """Integration tests for projects are defined here."""
-from datetime import date
 
 import asyncio
+from datetime import date
 from io import BytesIO
 from typing import Any
 
@@ -18,10 +18,12 @@ from idu_api.urban_api.schemas import (
     OkResponse,
     Page,
     Project,
+    ProjectPhases,
+    ProjectPhasesPut,
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
-    Scenario, ProjectPhases, ProjectPhasesPut,
+    Scenario,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers import valid_token
@@ -1267,4 +1269,3 @@ async def test_put_project_phases(
 
     # Assert
     assert_response(response, expected_status, ProjectPhases, error_message)
-

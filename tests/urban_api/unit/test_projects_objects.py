@@ -18,40 +18,46 @@ from sqlalchemy import and_, delete, func, insert, or_, select, update
 from idu_api.common.db.entities import (
     projects_data,
     projects_object_geometries_data,
+    projects_phases_data,
     projects_physical_objects_data,
     projects_services_data,
     projects_territory_data,
     scenarios_data,
-    territories_data, projects_phases_data,
+    territories_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
 from idu_api.urban_api.dto import (
     PageDTO,
     ProjectDTO,
+    ProjectPhasesDTO,
     ProjectTerritoryDTO,
     ProjectWithTerritoryDTO,
     ScenarioDTO,
-    UserDTO, ProjectPhasesDTO,
+    UserDTO,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     create_base_scenario_to_db,
     delete_project_from_db,
     get_project_by_id_from_db,
+    get_project_phases_by_id_from_db,
     get_project_territory_by_id_from_db,
     get_projects_from_db,
     get_projects_territories_from_db,
     patch_project_to_db,
-    put_project_to_db, get_project_phases_by_id_from_db, put_project_phases_to_db,
+    put_project_phases_to_db,
+    put_project_to_db,
 )
 from idu_api.urban_api.minio.services import ProjectStorageManager
 from idu_api.urban_api.schemas import (
     Project,
     ProjectPatch,
+    ProjectPhases,
+    ProjectPhasesPut,
     ProjectPost,
     ProjectPut,
     ProjectTerritory,
-    Scenario, ProjectPhases, ProjectPhasesPut,
+    Scenario,
 )
 from idu_api.urban_api.schemas.geometries import GeoJSONResponse
 from tests.urban_api.helpers.connection import MockConnection, MockResult, MockRow

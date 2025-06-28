@@ -69,11 +69,13 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     delete_project_from_db,
     get_all_projects_from_db,
     get_project_by_id_from_db,
+    get_project_phases_by_id_from_db,
     get_project_territory_by_id_from_db,
     get_projects_from_db,
     get_projects_territories_from_db,
     patch_project_to_db,
-    put_project_to_db, get_project_phases_by_id_from_db, put_project_phases_to_db,
+    put_project_phases_to_db,
+    put_project_to_db,
 )
 from idu_api.urban_api.logic.impl.helpers.projects_physical_objects import (
     add_building_to_db,
