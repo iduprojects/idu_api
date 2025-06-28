@@ -3,26 +3,24 @@
 import io
 from collections.abc import Callable
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import structlog
 from aioresponses import aioresponses
 from aioresponses.core import merge_params, normalize_url
 from fastapi_pagination.bases import RawParams
-from geoalchemy2.functions import ST_AsEWKB, ST_Intersects
+from geoalchemy2.functions import ST_AsEWKB
 from otteroad import KafkaProducerClient
 from otteroad.models import BaseScenarioCreated, ProjectCreated
 from sqlalchemy import and_, delete, func, insert, or_, select, update
 
 from idu_api.common.db.entities import (
-    object_geometries_data,
     projects_data,
     projects_object_geometries_data,
     projects_physical_objects_data,
     projects_services_data,
     projects_territory_data,
-    projects_urban_objects_data,
     scenarios_data,
     territories_data,
 )
@@ -39,21 +37,14 @@ from idu_api.urban_api.logic.impl.helpers.projects_objects import (
     add_project_to_db,
     create_base_scenario_to_db,
     delete_project_from_db,
-    get_preview_projects_images_from_minio,
-    get_preview_projects_images_url_from_minio,
     get_project_by_id_from_db,
-    get_project_image_from_minio,
-    get_project_image_url_from_minio,
     get_project_territory_by_id_from_db,
     get_projects_from_db,
     get_projects_territories_from_db,
-    get_user_preview_projects_images_from_minio,
-    get_user_preview_projects_images_url_from_minio,
-    get_user_projects_from_db,
     patch_project_to_db,
     put_project_to_db,
-    upload_project_image_to_minio,
 )
+from idu_api.urban_api.minio.services import ProjectStorageManager
 from idu_api.urban_api.schemas import (
     Project,
     ProjectPatch,
@@ -314,236 +305,6 @@ async def test_get_projects_territories_from_db(mock_conn: MockConnection):
 
 
 @pytest.mark.asyncio
-async def test_get_preview_projects_images_from_minio(
-    mock_conn: MockConnection, mock_minio_client: MockAsyncMinioClient, project_image: io.BytesIO
-):
-    """Test the get_preview_projects_images_from_minio function."""
-
-    # Arrange
-    project_id = 1
-    user = UserDTO(id="mock_string", is_superuser=False)
-    filters = {
-        "only_own": False,
-        "is_regional": False,
-        "project_type": "common",
-        "territory_id": 1,
-        "name": "mock_string",
-        "created_at": datetime.now(timezone.utc),
-        "order_by": None,
-        "ordering": "asc",
-    }
-    page, page_size = 1, 10
-    logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    statement = (
-        select(projects_data.c.project_id)
-        .where(
-            projects_data.c.is_regional.is_(filters["is_regional"]),
-            or_(projects_data.c.user_id == user.id, projects_data.c.public.is_(True)),
-            projects_data.c.is_city.is_(False),
-            projects_data.c.territory_id == filters["territory_id"],
-            projects_data.c.name.ilike(f'%{filters["name"]}%'),
-            func.date(projects_data.c.created_at) >= filters["created_at"],
-        )
-        .order_by(projects_data.c.project_id)
-        .offset(page_size * (page - 1))
-        .limit(page_size)
-    )
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
-
-    # Act
-    result = await get_preview_projects_images_from_minio(
-        mock_conn,
-        mock_minio_client,
-        user,
-        **filters,
-        page=page,
-        page_size=page_size,
-        logger=logger,
-    )
-    # Assert
-    assert isinstance(result, io.BytesIO), "Result should be a io.BytesIO."
-    mock_conn.execute_mock.assert_called_once_with(str(statement))
-    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
-
-
-@pytest.mark.asyncio
-async def test_get_preview_projects_images_url_from_minio(
-    mock_conn: MockConnection, mock_minio_client: MockAsyncMinioClient, project_image: io.BytesIO
-):
-    """Test the get_preview_projects_images_url_from_minio function."""
-
-    # Arrange
-    project_id = 1
-    user = UserDTO(id="mock_string", is_superuser=False)
-    filters = {
-        "only_own": False,
-        "is_regional": False,
-        "project_type": "common",
-        "territory_id": 1,
-        "name": "mock_string",
-        "created_at": datetime.now(timezone.utc),
-        "order_by": None,
-        "ordering": "asc",
-    }
-    page, page_size = 1, 10
-    logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    statement = (
-        select(projects_data.c.project_id)
-        .where(
-            projects_data.c.is_regional.is_(filters["is_regional"]),
-            or_(projects_data.c.user_id == user.id, projects_data.c.public.is_(True)),
-            projects_data.c.is_city.is_(False),
-            projects_data.c.territory_id == filters["territory_id"],
-            projects_data.c.name.ilike(f'%{filters["name"]}%'),
-            func.date(projects_data.c.created_at) >= filters["created_at"],
-        )
-        .order_by(projects_data.c.project_id)
-        .offset(page_size * (page - 1))
-        .limit(page_size)
-    )
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
-
-    # Act
-    result = await get_preview_projects_images_url_from_minio(
-        mock_conn,
-        mock_minio_client,
-        user,
-        **filters,
-        page=page,
-        page_size=page_size,
-        logger=logger,
-    )
-
-    # Assert
-    assert isinstance(result, list), "Result should be a list."
-    assert all(isinstance(elem, dict) for elem in result), "Each item should be a dictionary."
-    mock_conn.execute_mock.assert_called_once_with(str(statement))
-    mock_minio_client.generate_presigned_urls_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
-
-
-@pytest.mark.asyncio
-@patch("idu_api.urban_api.utils.pagination.verify_params")
-async def test_get_user_projects_from_db(mock_verify_params, mock_conn: MockConnection):
-    """Test the get_user_projects_from_db function."""
-
-    # Arrange
-    user = UserDTO(id="mock_string", is_superuser=False)
-    is_regional = False
-    territory_id = 1
-    limit, offset = 10, 0
-    statement = (
-        select(
-            projects_data,
-            territories_data.c.name.label("territory_name"),
-            scenarios_data.c.scenario_id,
-            scenarios_data.c.name.label("scenario_name"),
-        )
-        .select_from(
-            projects_data.join(
-                territories_data,
-                territories_data.c.territory_id == projects_data.c.territory_id,
-            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
-        )
-        .where(
-            scenarios_data.c.is_based.is_(True),
-            projects_data.c.is_regional.is_(is_regional),
-            projects_data.c.user_id == user.id,
-            projects_data.c.territory_id == territory_id,
-        )
-        .order_by(projects_data.c.project_id)
-        .offset(offset)
-        .limit(limit)
-    )
-    mock_verify_params.return_value = (None, RawParams(limit=limit, offset=offset))
-
-    # Act
-    result = await get_user_projects_from_db(mock_conn, user, is_regional, territory_id)
-
-    # Assert
-    assert isinstance(result, PageDTO), "Result should be a PageDTO."
-    assert all(
-        isinstance(item, ProjectDTO) for item in result.items
-    ), "Each item should be a ProjectWithBaseScenarioDTO."
-    assert isinstance(Project.from_dto(result.items[0]), Project), "Couldn't create pydantic model from DTO."
-    mock_conn.execute_mock.assert_any_call(str(statement))
-
-
-@pytest.mark.asyncio
-async def test_get_user_preview_projects_images_from_minio(
-    mock_conn: MockConnection, mock_minio_client: MockAsyncMinioClient, project_image: io.BytesIO
-):
-    """Test the get_user_preview_projects_images_from_minio function."""
-
-    # Arrange
-    project_id = 1
-    user = UserDTO(id="mock_string", is_superuser=False)
-    is_regional = False
-    territory_id = 1
-    page, page_size = 1, 10
-    logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    statement = (
-        select(projects_data.c.project_id)
-        .where(
-            projects_data.c.user_id == user.id,
-            projects_data.c.is_regional.is_(is_regional),
-            projects_data.c.territory_id == territory_id,
-        )
-        .order_by(projects_data.c.project_id)
-        .offset(page_size * (page - 1))
-        .limit(page_size)
-    )
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
-
-    # Act
-    result = await get_user_preview_projects_images_from_minio(
-        mock_conn, mock_minio_client, user, is_regional, territory_id, page, page_size, logger
-    )
-
-    # Assert
-    assert isinstance(result, io.BytesIO), "Result should be a io.BytesIO."
-    mock_conn.execute_mock.assert_called_once_with(str(statement))
-    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
-
-
-@pytest.mark.asyncio
-async def test_get_user_preview_projects_images_url_from_minio(
-    mock_conn: MockConnection, mock_minio_client: MockAsyncMinioClient, project_image: io.BytesIO
-):
-    """Test the get_user_preview_projects_images_url_from_minio function."""
-
-    # Arrange
-    project_id = 1
-    user = UserDTO(id="mock_string", is_superuser=False)
-    is_regional = False
-    territory_id = 1
-    page, page_size = 1, 10
-    logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    statement = (
-        select(projects_data.c.project_id)
-        .where(
-            projects_data.c.user_id == user.id,
-            projects_data.c.is_regional.is_(is_regional),
-            projects_data.c.territory_id == territory_id,
-        )
-        .order_by(projects_data.c.project_id)
-        .offset(page_size * (page - 1))
-        .limit(page_size)
-    )
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
-
-    # Act
-    result = await get_user_preview_projects_images_url_from_minio(
-        mock_conn, mock_minio_client, user, is_regional, territory_id, page, page_size, logger
-    )
-
-    # Assert
-    assert isinstance(result, list), "Result should be a list."
-    assert all(isinstance(elem, dict) for elem in result), "Each item should be a dictionary."
-    mock_conn.execute_mock.assert_called_once_with(str(statement))
-    mock_minio_client.generate_presigned_urls_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
-
-
-@pytest.mark.asyncio
 async def test_add_project_to_db(config: UrbanAPIConfig, mock_conn: MockConnection, project_post_req: ProjectPost):
     """Test the add_project_to_db function."""
 
@@ -586,11 +347,14 @@ async def test_add_project_to_db(config: UrbanAPIConfig, mock_conn: MockConnecti
     normal_api_url = normalize_url(merge_params(api_url, params))
     kafka_producer = AsyncMock(spec=KafkaProducerClient)
     event = ProjectCreated(project_id=1, base_scenario_id=1, territory_id=1)
+    project_storage_manager = AsyncMock(spec=ProjectStorageManager)
 
     # Act
     with aioresponses() as mocked:
         mocked.put(normal_api_url, status=200)
-        result = await add_project_to_db(mock_conn, project_post_req, user, kafka_producer, logger)
+        result = await add_project_to_db(
+            mock_conn, project_post_req, user, kafka_producer, project_storage_manager, logger
+        )
 
     # Assert
     assert isinstance(result, ProjectDTO), "Result should be a ProjectDTO."
@@ -620,6 +384,7 @@ async def test_add_project_to_db(config: UrbanAPIConfig, mock_conn: MockConnecti
     )
     assert mocked.requests[("PUT", normal_api_url)][0].kwargs["params"] == params, "Request params do not match."
     kafka_producer.send.assert_any_call(event)
+    project_storage_manager.init_project.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -767,10 +532,11 @@ async def test_delete_project_from_db(
     )
     delete_service_statement = delete(projects_services_data).where(projects_services_data.c.service_id.in_([1]))
     delete_statement = delete(projects_data).where(projects_data.c.project_id == project_id)
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/", logger)
+    await mock_minio_client.upload_file(..., project_image, f"projects/{project_id}/", logger)
+    project_storage_manager = AsyncMock(spec=ProjectStorageManager)
 
     # Act
-    result = await delete_project_from_db(mock_conn, project_id, mock_minio_client, user, logger)
+    result = await delete_project_from_db(mock_conn, project_id, project_storage_manager, user, logger)
 
     # Assert
     assert result == {"status": "ok"}, "Result should be {'status': 'ok'}."
@@ -779,108 +545,5 @@ async def test_delete_project_from_db(
     mock_conn.execute_mock.assert_any_call(str(delete_service_statement))
     mock_conn.execute_mock.assert_any_call(str(delete_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_minio_client.delete_file_mock.assert_called_once_with(f"projects/{project_id}/")
+    project_storage_manager.delete_project.assert_called_once_with(project_id, logger)
     mock_check.assert_called_once_with(mock_conn, project_id, user, to_edit=True)
-
-
-@pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_objects.check_project")
-async def test_upload_project_image_to_minio(
-    mock_check: AsyncMock, mock_conn: MockConnection, mock_minio_client: MockAsyncMinioClient, project_image: io.BytesIO
-):
-    """Test the upload_project_image_to_minio function."""
-
-    # Arrange
-    project_id = 1
-    user = UserDTO(id="mock_string", is_superuser=False)
-    logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-
-    # Act
-    result = await upload_project_image_to_minio(mock_conn, mock_minio_client, project_id, user, project_image, logger)
-
-    # Assert
-    assert isinstance(result, dict), "Result should be a dictionary."
-    assert "image_url" in result, "Expected key 'image_url' in result not found."
-    assert "preview_url" in result, "Expected key 'preview_url' in result not found."
-    mock_minio_client.upload_file_mock.assert_has_calls(
-        [
-            call(f"projects/{project_id}/image.jpg"),
-            call(f"projects/{project_id}/preview.jpg"),
-        ],
-        any_order=False,
-    )
-    mock_minio_client.objects_exist_mock.assert_called_once_with(
-        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.jpg"]
-    )
-    mock_minio_client.generate_presigned_urls_mock.assert_called_once_with(
-        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.jpg"]
-    )
-    mock_check.assert_called_once_with(mock_conn, project_id, user, to_edit=True)
-
-
-@pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_objects.check_project")
-async def test_get_full_project_image_from_minio(
-    mock_check: AsyncMock, mock_conn: MockConnection, mock_minio_client: MockAsyncMinioClient, project_image: io.BytesIO
-):
-    """Test the get_full_project_image_from_minio function."""
-
-    # Arrange
-    user = UserDTO(id="mock_string", is_superuser=False)
-    project_id = 1
-    logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/image.jpg", logger)
-
-    # Act
-    result = await get_project_image_from_minio(mock_conn, mock_minio_client, project_id, user, "origin", logger)
-
-    # Assert
-    assert isinstance(result, io.BytesIO), "Result should be a io.BytesIO."
-    mock_minio_client.get_files_mock.assert_called()
-    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/image.jpg"])])
-    mock_check.assert_called_once_with(mock_conn, project_id, user)
-
-
-@pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_objects.check_project")
-async def test_get_preview_project_image_from_minio(
-    mock_check: AsyncMock, mock_conn: MockConnection, mock_minio_client: MockAsyncMinioClient, project_image: io.BytesIO
-):
-    """Test the get_preview_project_image_from_minio function."""
-
-    # Arrange
-    user = UserDTO(id="mock_string", is_superuser=False)
-    project_id = 1
-    logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/preview.jpg", logger)
-
-    # Act
-    result = await get_project_image_from_minio(mock_conn, mock_minio_client, project_id, user, "preview", logger)
-
-    # Assert
-    assert isinstance(result, io.BytesIO), "Result should be a io.BytesIO."
-    mock_minio_client.get_files_mock.assert_called()
-    mock_minio_client.get_files_mock.assert_has_calls([call(["projects/1/preview.jpg"])])
-    mock_check.assert_called_once_with(mock_conn, project_id, user)
-
-
-@pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_objects.check_project")
-async def test_get_full_project_image_url_from_minio(
-    mock_check: AsyncMock, mock_conn: MockConnection, mock_minio_client: MockAsyncMinioClient, project_image: io.BytesIO
-):
-    """Test the get_full_project_image_url_from_minio function."""
-
-    # Arrange
-    user = UserDTO(id="mock_string", is_superuser=False)
-    project_id = 1
-    logger: structlog.stdlib.BoundLogger = structlog.get_logger()
-    await mock_minio_client.upload_file(project_image, f"projects/{project_id}/image.jpg", logger)
-
-    # Act
-    result = await get_project_image_url_from_minio(mock_conn, mock_minio_client, project_id, user, "origin", logger)
-
-    # Assert
-    assert isinstance(result, str), "Result should be a string."
-    mock_minio_client.generate_presigned_urls_mock.assert_has_calls([call(["projects/1/image.jpg"])])
-    mock_check.assert_called_once_with(mock_conn, project_id, user)

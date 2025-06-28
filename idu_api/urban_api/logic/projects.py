@@ -1,5 +1,4 @@
 import abc
-import io
 from datetime import date
 from typing import Any, Literal, Protocol
 
@@ -30,6 +29,7 @@ from idu_api.urban_api.dto import (
     UserDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO, ObjectGeometryDTO
+from idu_api.urban_api.minio.services import ProjectStorageManager
 from idu_api.urban_api.schemas import (
     ObjectGeometryPatch,
     ObjectGeometryPut,
@@ -55,7 +55,6 @@ from idu_api.urban_api.schemas import (
     ServicePatch,
     ServicePut,
 )
-from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 
 
 class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
@@ -99,73 +98,13 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Get all public and user's projects territories."""
 
     @abc.abstractmethod
-    async def get_preview_projects_images(
+    async def add_project(
         self,
-        minio_client: AsyncMinioClient,
-        user: UserDTO | None,
-        only_own: bool,
-        is_regional: bool,
-        project_type: Literal["common", "city"] | None,
-        territory_id: int | None,
-        name: str | None,
-        created_at: date | None,
-        order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None,
-        page: int,
-        page_size: int,
-    ) -> io.BytesIO:
-        """Get preview images (zip) for all public and user's projects."""
-
-    @abc.abstractmethod
-    async def get_preview_projects_images_url(
-        self,
-        minio_client: AsyncMinioClient,
-        user: UserDTO | None,
-        only_own: bool,
-        is_regional: bool,
-        project_type: Literal["common", "city"] | None,
-        territory_id: int | None,
-        name: str | None,
-        created_at: date | None,
-        order_by: Literal["created_at", "updated_at"] | None,
-        ordering: Literal["asc", "desc"] | None,
-        page: int,
-        page_size: int,
-    ) -> list[dict[str, int | str]]:
-        """Get preview images url for all public and user's projects."""
-
-    @abc.abstractmethod
-    async def get_user_projects(
-        self, user: UserDTO, is_regional: bool, territory_id: int | None
-    ) -> PageDTO[ProjectDTO]:
-        """Get all user's projects."""
-
-    @abc.abstractmethod
-    async def get_user_preview_projects_images(
-        self,
-        minio_client: AsyncMinioClient,
+        project: ProjectPost,
         user: UserDTO,
-        is_regional: bool,
-        territory_id: int | None,
-        page: int,
-        page_size: int,
-    ) -> io.BytesIO:
-        """Get preview images (zip) for all user's projects with parallel MinIO requests."""
-
-    @abc.abstractmethod
-    async def get_user_preview_projects_images_url(
-        self,
-        minio_client: AsyncMinioClient,
-        user: UserDTO,
-        is_regional: bool,
-        territory_id: int | None,
-        page: int,
-        page_size: int,
-    ) -> list[dict[str, int | str]]:
-        """Get preview images url for all user's projects."""
-
-    @abc.abstractmethod
-    async def add_project(self, project: ProjectPost, user: UserDTO, kafka_producer: KafkaProducerClient) -> ProjectDTO:
+        kafka_producer: KafkaProducerClient,
+        project_storage_manager: ProjectStorageManager,
+    ) -> ProjectDTO:
         """Create project object."""
 
     @abc.abstractmethod
@@ -186,34 +125,13 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         """Update project object by only given attributes."""
 
     @abc.abstractmethod
-    async def delete_project(self, project_id: int, minio_client: AsyncMinioClient, user: UserDTO) -> dict:
-        """Delete project object."""
-
-    @abc.abstractmethod
-    async def upload_project_image(
-        self, minio_client: AsyncMinioClient, project_id: int, user: UserDTO, file: bytes
+    async def delete_project(
+        self,
+        project_id: int,
+        project_storage_manager: ProjectStorageManager,
+        user: UserDTO,
     ) -> dict:
-        """Create project image preview and upload it (full and preview) to minio bucket."""
-
-    @abc.abstractmethod
-    async def get_project_image(
-        self,
-        minio_client: AsyncMinioClient,
-        project_id: int,
-        user: UserDTO | None,
-        image_type: Literal["origin", "preview"],
-    ) -> io.BytesIO:
-        """Get image with given type for given project."""
-
-    @abc.abstractmethod
-    async def get_project_image_url(
-        self,
-        minio_client: AsyncMinioClient,
-        project_id: int,
-        user: UserDTO | None,
-        image_type: Literal["origin", "preview"],
-    ) -> str:
-        """Get url for image with given type for given project."""
+        """Delete project object."""
 
     @abc.abstractmethod
     async def get_scenarios(

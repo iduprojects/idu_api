@@ -218,7 +218,7 @@ async def test_get_context_geometries_with_all_objects(
         (200, None, None, False),
         (403, "denied", None, True),
         (404, "not found", 1e9, True),
-        (409, "already exists", None, False),
+        (409, "has already been edited or deleted for the scenario", None, False),
     ],
     ids=["success_1", "success_2", "forbidden", "not_found", "conflict"],
 )
@@ -268,7 +268,7 @@ async def test_put_scenario_geometry(
         (200, None, None, False),
         (403, "denied", None, True),
         (404, "not found", 1e9, True),
-        (409, "already exists", None, False),
+        (409, "has already been edited or deleted for the scenario", None, False),
     ],
     ids=["success_1", "success_2", "forbidden", "not_found", "conflict"],
 )

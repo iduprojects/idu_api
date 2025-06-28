@@ -38,7 +38,7 @@ from idu_api.urban_api.dto import (
     UserDTO,
 )
 from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
-from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
+from idu_api.urban_api.exceptions.logic.common import EntityAlreadyEdited, EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.projects_scenarios import get_project_by_scenario_id
 from idu_api.urban_api.logic.impl.helpers.utils import (
     check_existence,
@@ -1157,7 +1157,7 @@ async def put_object_geometry_to_db(
         )
         public_object_geometry = (await conn.execute(statement)).one_or_none()
         if public_object_geometry is not None:
-            raise EntityAlreadyExists("scenario object geometry", object_geometry_id)
+            raise EntityAlreadyEdited("object geometry", scenario_id)
 
     if is_scenario_object:
         statement = (
@@ -1178,9 +1178,16 @@ async def put_object_geometry_to_db(
         )
         updated_object_geometry_id = (await conn.execute(statement)).scalar_one()
 
-        project_geometry = (
-            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-        ).alias("project_geometry")
+        project_geometry = None
+        territories_cte = None
+        if not project.is_regional:
+            project_geometry = (
+                select(projects_territory_data.c.geometry).where(
+                    projects_territory_data.c.project_id == project.project_id
+                )
+            ).scalar_subquery()
+        else:
+            territories_cte = include_child_territories_cte(project.territory_id)
 
         public_urban_object_ids = (
             select(projects_urban_objects_data.c.public_urban_object_id.label("urban_object_id"))
@@ -1188,7 +1195,7 @@ async def put_object_geometry_to_db(
                 projects_urban_objects_data.c.scenario_id == scenario_id,
                 projects_urban_objects_data.c.public_urban_object_id.is_not(None),
             )
-            .alias("public_urban_object_ids")
+            .cte("public_urban_object_ids")
         )
 
         statement = (
@@ -1202,7 +1209,12 @@ async def put_object_geometry_to_db(
             .where(
                 urban_objects_data.c.object_geometry_id == object_geometry_id,
                 urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids.c.urban_object_id)),
-                ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+                ST_Within(object_geometries_data.c.geometry, project_geometry) if not project.is_regional else True,
+                (
+                    object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id))
+                    if project.is_regional
+                    else True
+                ),
             )
         )
         urban_objects = (await conn.execute(statement)).mappings().all()
@@ -1290,7 +1302,7 @@ async def patch_object_geometry_to_db(
         )
         public_object_geometry = (await conn.execute(statement)).scalar_one_or_none()
         if public_object_geometry is not None:
-            raise EntityAlreadyExists("scenario object geometry", object_geometry_id)
+            raise EntityAlreadyEdited("object geometry", scenario_id)
 
     values = extract_values_from_model(object_geometry, exclude_unset=True, to_update=True)
     if is_scenario_object:
@@ -1316,9 +1328,16 @@ async def patch_object_geometry_to_db(
         )
         updated_object_geometry_id = (await conn.execute(statement)).scalar_one()
 
-        project_geometry = (
-            select(projects_territory_data.c.geometry).where(projects_territory_data.c.project_id == project.project_id)
-        ).alias("project_geometry")
+        project_geometry = None
+        territories_cte = None
+        if not project.is_regional:
+            project_geometry = (
+                select(projects_territory_data.c.geometry).where(
+                    projects_territory_data.c.project_id == project.project_id
+                )
+            ).scalar_subquery()
+        else:
+            territories_cte = include_child_territories_cte(project.territory_id)
 
         public_urban_object_ids = (
             select(projects_urban_objects_data.c.public_urban_object_id.label("urban_object_id"))
@@ -1326,7 +1345,7 @@ async def patch_object_geometry_to_db(
                 projects_urban_objects_data.c.scenario_id == scenario_id,
                 projects_urban_objects_data.c.public_urban_object_id.is_not(None),
             )
-            .alias("public_urban_object_ids")
+            .cte("public_urban_object_ids")
         )
 
         statement = (
@@ -1340,7 +1359,12 @@ async def patch_object_geometry_to_db(
             .where(
                 urban_objects_data.c.object_geometry_id == object_geometry_id,
                 urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids.c.urban_object_id)),
-                ST_Within(object_geometries_data.c.geometry, select(project_geometry).scalar_subquery()),
+                ST_Within(object_geometries_data.c.geometry, project_geometry) if not project.is_regional else True,
+                (
+                    object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id))
+                    if project.is_regional
+                    else True
+                ),
             )
         )
         urban_objects = (await conn.execute(statement)).mappings().all()
@@ -1397,6 +1421,35 @@ async def delete_object_geometry_from_db(
         conn, projects_object_geometries_data if is_scenario_object else object_geometries_data
     ):
         raise EntityNotFoundById(object_geometry_id, "object geometry")
+
+    if not is_scenario_object:
+        statement = (
+            select(urban_objects_data.c.object_geometry_id)
+            .select_from(
+                projects_urban_objects_data.join(
+                    urban_objects_data,
+                    urban_objects_data.c.urban_object_id == projects_urban_objects_data.c.public_urban_object_id,
+                )
+            )
+            .where(
+                projects_urban_objects_data.c.scenario_id == scenario_id,
+                urban_objects_data.c.object_geometry_id == object_geometry_id,
+            )
+            .limit(1)
+        )
+        public_urban_object = (await conn.execute(statement)).scalar_one_or_none()
+        if public_urban_object is not None:
+            statement = (
+                select(projects_urban_objects_data.c.public_object_geometry_id)
+                .where(
+                    projects_urban_objects_data.c.scenario_id == scenario_id,
+                    projects_urban_objects_data.c.public_object_geometry_id == object_geometry_id,
+                )
+                .limit(1)
+            )
+            public_geometry = (await conn.execute(statement)).scalar_one_or_none()
+            if public_geometry is None:
+                raise EntityAlreadyEdited("object geometry", scenario_id)
 
     if is_scenario_object:
         statement = delete(projects_object_geometries_data).where(

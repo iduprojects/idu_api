@@ -33,7 +33,7 @@ def assert_response(
 
     # Basic validations applicable to all cases
     assert response.status_code == expected_status, f"Invalid status code: {response.status_code}.\n{result}"
-    assert isinstance(result, eval(result_type)), f"Result should be a {result_type}."
+    assert isinstance(result, eval(result_type)), f"Result should be a {result_type}.\n{result}"
 
     # Logic for successful responses
     if expected_status in (200, 201):

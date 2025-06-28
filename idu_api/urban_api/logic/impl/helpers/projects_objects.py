@@ -1,9 +1,7 @@
 """Projects internal logic is defined here."""
 
 import asyncio
-import io
 import os
-import zipfile
 from collections.abc import Callable
 from datetime import date, datetime, timezone
 from typing import Any, Literal
@@ -25,7 +23,6 @@ from geoalchemy2.functions import (
 )
 from otteroad import KafkaProducerClient
 from otteroad.models import BaseScenarioCreated, ProjectCreated
-from PIL import Image
 from sqlalchemy import (
     BaseRow,
     Integer,
@@ -59,6 +56,7 @@ from idu_api.common.db.entities import (
     projects_urban_objects_data,
     scenarios_data,
     territories_data,
+    territory_types_dict,
     urban_objects_data,
 )
 from idu_api.urban_api.config import UrbanAPIConfig
@@ -73,14 +71,13 @@ from idu_api.urban_api.dto import (
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById, EntityNotFoundByParams
 from idu_api.urban_api.exceptions.logic.projects import NotAllowedInProjectScenario, NotAllowedInRegionalProject
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
-from idu_api.urban_api.exceptions.utils.pillow import InvalidImageError
 from idu_api.urban_api.logic.impl.helpers.utils import SRID, check_existence, extract_values_from_model
+from idu_api.urban_api.minio.services import ProjectStorageManager
 from idu_api.urban_api.schemas import (
     ProjectPatch,
     ProjectPost,
     ProjectPut,
 )
-from idu_api.urban_api.utils.minio_client import AsyncMinioClient
 from idu_api.urban_api.utils.pagination import paginate_dto
 
 func: Callable
@@ -392,247 +389,12 @@ async def get_projects_territories_from_db(
     return [ProjectWithTerritoryDTO(**project) for project in result]
 
 
-async def get_preview_projects_images_from_minio(
-    conn: AsyncConnection,
-    minio_client: AsyncMinioClient,
-    user: UserDTO | None,
-    only_own: bool,
-    is_regional: bool,
-    project_type: Literal["common", "city"] | None,
-    territory_id: int | None,
-    name: str | None,
-    created_at: date | None,
-    order_by: Literal["created_at", "updated_at"] | None,
-    ordering: Literal["asc", "desc"] | None,
-    page: int,
-    page_size: int,
-    logger: structlog.stdlib.BoundLogger,
-) -> io.BytesIO:
-    """Get preview images for all public and user's projects with parallel MinIO requests."""
-
-    statement = (
-        select(projects_data.c.project_id)
-        .where(projects_data.c.is_regional.is_(is_regional))
-        .offset(page_size * (page - 1))
-        .limit(page_size)
-    )
-
-    if only_own:
-        statement = statement.where(projects_data.c.user_id == user.id)
-    elif user is not None:
-        statement = statement.where(
-            (projects_data.c.user_id == user.id) | (projects_data.c.public.is_(True) if not user.is_superuser else True)
-        )
-    else:
-        statement = statement.where(projects_data.c.public.is_(True))
-
-    if project_type == "common":
-        statement = statement.where(projects_data.c.is_city.is_(False))
-    elif project_type == "city":
-        statement = statement.where(projects_data.c.is_city.is_(True))
-
-    if territory_id is not None:
-        statement = statement.where(projects_data.c.territory_id == territory_id)
-    if name is not None:
-        statement = statement.where(projects_data.c.name.ilike(f"%{name}%"))
-    if created_at is not None:
-        statement = statement.where(func.date(projects_data.c.created_at) >= created_at)
-
-    if order_by is not None:
-        order = projects_data.c.created_at if order_by == "created_at" else projects_data.c.updated_at
-        if ordering == "desc":
-            order = order.desc()
-        statement = statement.order_by(order)
-    else:
-        if ordering == "desc":
-            statement = statement.order_by(projects_data.c.project_id.desc())
-        else:
-            statement = statement.order_by(projects_data.c.project_id)
-
-    project_ids = (await conn.execute(statement)).scalars().all()
-
-    results = await minio_client.get_files([f"projects/{project_id}/preview.jpg" for project_id in project_ids], logger)
-    images = {project_id: image for project_id, image in zip(project_ids, results) if image is not None}
-
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-        for project_id, image_stream in images.items():
-            if image_stream:
-                zip_file.writestr(f"preview_{project_id}.jpg", image_stream.read())
-    zip_buffer.seek(0)
-
-    return zip_buffer
-
-
-async def get_preview_projects_images_url_from_minio(
-    conn: AsyncConnection,
-    minio_client: AsyncMinioClient,
-    user: UserDTO | None,
-    only_own: bool,
-    is_regional: bool,
-    project_type: Literal["common", "city"] | None,
-    territory_id: int | None,
-    name: str | None,
-    created_at: date | None,
-    order_by: Literal["created_at", "updated_at"] | None,
-    ordering: Literal["asc", "desc"] | None,
-    page: int,
-    page_size: int,
-    logger: structlog.stdlib.BoundLogger,
-) -> list[dict[str, int | str]]:
-    """Get preview images url for all public and user's projects."""
-
-    statement = (
-        select(projects_data.c.project_id)
-        .where(projects_data.c.is_regional.is_(is_regional))
-        .offset(page_size * (page - 1))
-        .limit(page_size)
-    )
-
-    if only_own:
-        statement = statement.where(projects_data.c.user_id == user.id)
-    elif user is not None:
-        statement = statement.where(
-            (projects_data.c.user_id == user.id) | (projects_data.c.public.is_(True) if not user.is_superuser else True)
-        )
-    else:
-        statement = statement.where(projects_data.c.public.is_(True))
-
-    if project_type == "common":
-        statement = statement.where(projects_data.c.is_city.is_(False))
-    elif project_type == "city":
-        statement = statement.where(projects_data.c.is_city.is_(True))
-
-    if territory_id is not None:
-        statement = statement.where(projects_data.c.territory_id == territory_id)
-    if name is not None:
-        statement = statement.where(projects_data.c.name.ilike(f"%{name}%"))
-    if created_at is not None:
-        statement = statement.where(func.date(projects_data.c.created_at) >= created_at)
-
-    if order_by is not None:
-        order = projects_data.c.created_at if order_by == "created_at" else projects_data.c.updated_at
-        if ordering == "desc":
-            order = order.desc()
-        statement = statement.order_by(order)
-    else:
-        if ordering == "desc":
-            statement = statement.order_by(projects_data.c.project_id.desc())
-        else:
-            statement = statement.order_by(projects_data.c.project_id)
-
-    project_ids = (await conn.execute(statement)).scalars().all()
-
-    results = await minio_client.generate_presigned_urls(
-        [f"projects/{project_id}/preview.jpg" for project_id in project_ids], logger
-    )
-
-    return [{"project_id": project_id, "url": url} for project_id, url in zip(project_ids, results) if url is not None]
-
-
-async def get_user_projects_from_db(
-    conn: AsyncConnection, user: UserDTO, is_regional: bool, territory_id: int | None
-) -> PageDTO[ProjectDTO]:
-    """Get all user's projects."""
-
-    statement = (
-        select(
-            projects_data,
-            territories_data.c.name.label("territory_name"),
-            scenarios_data.c.scenario_id,
-            scenarios_data.c.name.label("scenario_name"),
-        )
-        .select_from(
-            projects_data.join(
-                territories_data,
-                territories_data.c.territory_id == projects_data.c.territory_id,
-            ).join(scenarios_data, scenarios_data.c.project_id == projects_data.c.project_id)
-        )
-        .where(
-            scenarios_data.c.is_based.is_(True),
-            projects_data.c.is_regional.is_(is_regional),
-            projects_data.c.user_id == user.id,
-        )
-        .order_by(projects_data.c.project_id)
-    )
-
-    if territory_id is not None:
-        statement = statement.where(projects_data.c.territory_id == territory_id)
-
-    return await paginate_dto(conn, statement, transformer=lambda x: [ProjectDTO(**item) for item in x])
-
-
-async def get_user_preview_projects_images_from_minio(
-    conn: AsyncConnection,
-    minio_client: AsyncMinioClient,
-    user: UserDTO,
-    is_regional: bool,
-    territory_id: int | None,
-    page: int,
-    page_size: int,
-    logger: structlog.stdlib.BoundLogger,
-) -> io.BytesIO:
-    """Get preview images for all user's projects with parallel MinIO requests."""
-
-    statement = (
-        select(projects_data.c.project_id)
-        .where(projects_data.c.user_id == user.id, projects_data.c.is_regional.is_(is_regional))
-        .order_by(projects_data.c.project_id)
-        .offset(page_size * (page - 1))
-        .limit(page_size)
-    )
-    if territory_id is not None:
-        statement = statement.where(projects_data.c.territory_id == territory_id)
-    project_ids = (await conn.execute(statement)).scalars().all()
-
-    results = await minio_client.get_files([f"projects/{project_id}/preview.jpg" for project_id in project_ids], logger)
-    images = {project_id: image for project_id, image in zip(project_ids, results) if image is not None}
-
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-        for project_id, image_stream in images.items():
-            if image_stream:
-                zip_file.writestr(f"preview_{project_id}.jpg", image_stream.read())
-    zip_buffer.seek(0)
-
-    return zip_buffer
-
-
-async def get_user_preview_projects_images_url_from_minio(
-    conn: AsyncConnection,
-    minio_client: AsyncMinioClient,
-    user: UserDTO,
-    is_regional: bool,
-    territory_id: int | None,
-    page: int,
-    page_size: int,
-    logger: structlog.stdlib.BoundLogger,
-) -> list[dict[str, int | str]]:
-    """Get preview images url for all user's projects."""
-
-    statement = (
-        select(projects_data.c.project_id)
-        .where(projects_data.c.user_id == user.id, projects_data.c.is_regional.is_(is_regional))
-        .order_by(projects_data.c.project_id)
-        .offset(page_size * (page - 1))
-        .limit(page_size)
-    )
-    if territory_id is not None:
-        statement = statement.where(projects_data.c.territory_id == territory_id)
-    project_ids = (await conn.execute(statement)).scalars().all()
-
-    results = await minio_client.generate_presigned_urls(
-        [f"projects/{project_id}/preview.jpg" for project_id in project_ids], logger
-    )
-
-    return [{"project_id": project_id, "url": url} for project_id, url in zip(project_ids, results) if url is not None]
-
-
 async def add_project_to_db(
     conn: AsyncConnection,
     project: ProjectPost,
     user: UserDTO,
     kafka_producer: KafkaProducerClient,
+    project_storage_manager: ProjectStorageManager,
     logger: structlog.stdlib.BoundLogger,
 ) -> ProjectDTO:
     """Create project object."""
@@ -666,6 +428,8 @@ async def add_project_to_db(
 
     event = ProjectCreated(project_id=project_id, base_scenario_id=scenario_id, territory_id=project.territory_id)
     await kafka_producer.send(event)
+
+    await project_storage_manager.init_project(project_id, logger)
 
     await conn.commit()
 
@@ -808,7 +572,7 @@ async def patch_project_to_db(
 async def delete_project_from_db(
     conn: AsyncConnection,
     project_id: int,
-    minio_client: AsyncMinioClient,
+    project_storage_manager: ProjectStorageManager,
     user: UserDTO,
     logger: structlog.stdlib.BoundLogger,
 ) -> dict:
@@ -862,101 +626,11 @@ async def delete_project_from_db(
     statement_for_project = delete(projects_data).where(projects_data.c.project_id == project_id)
 
     await conn.execute(statement_for_project)
-    await minio_client.delete_file(f"projects/{project_id}/", logger)
+    await project_storage_manager.delete_project(project_id, logger)
 
     await conn.commit()
 
     return {"status": "ok"}
-
-
-async def upload_project_image_to_minio(
-    conn: AsyncConnection,
-    minio_client: AsyncMinioClient,
-    project_id: int,
-    user: UserDTO,
-    file: bytes,
-    logger: structlog.stdlib.BoundLogger,
-) -> dict[str, str]:
-    """Upload original and resized project image to minio bucket."""
-
-    await check_project(conn, project_id, user, to_edit=True)
-
-    try:
-        image = Image.open(io.BytesIO(file))
-    except Exception as exc:
-        raise InvalidImageError(project_id) from exc
-
-    # Convert RGBA to RGB for JPEG compatibility
-    if image.mode == "RGBA":
-        image = image.convert("RGB")
-
-    preview_image = image.copy()
-
-    # Resize main image to max 1600px on the larger side
-    width, height = image.size
-    max_dimension = 1600
-
-    if width > max_dimension or height > max_dimension:
-        ratio = min(max_dimension / width, max_dimension / height)
-        new_size = (int(width * ratio), int(height * ratio))
-        preview_image = preview_image.resize(new_size, Image.Resampling.LANCZOS)
-
-    # Save and prepare for upload
-    image_stream = io.BytesIO()
-    image.save(image_stream, format="JPEG")
-    image_stream.seek(0)
-
-    preview_stream = io.BytesIO()
-    preview_image.save(preview_stream, format="JPEG", quality=85)
-    preview_stream.seek(0)
-
-    # Upload to MinIO
-    await minio_client.upload_file(image_stream.getvalue(), f"projects/{project_id}/image.jpg", logger)
-    await minio_client.upload_file(preview_stream.getvalue(), f"projects/{project_id}/preview.jpg", logger)
-
-    # Generate URLs
-    image_url, preview_url = await minio_client.generate_presigned_urls(
-        [f"projects/{project_id}/image.jpg", f"projects/{project_id}/preview.jpg"], logger
-    )
-
-    return {
-        "image_url": image_url,
-        "preview_url": preview_url,
-    }
-
-
-async def get_project_image_from_minio(
-    conn: AsyncConnection,
-    minio_client: AsyncMinioClient,
-    project_id: int,
-    user: UserDTO | None,
-    image_type: Literal["origin", "preview"],
-    logger: structlog.stdlib.BoundLogger,
-) -> io.BytesIO:
-    """Get full image for given project."""
-
-    await check_project(conn, project_id, user)
-
-    object_name = f"projects/{project_id}/image.jpg" if image_type == "origin" else f"projects/{project_id}/preview.jpg"
-
-    return (await minio_client.get_files([object_name], logger))[0]
-
-
-async def get_project_image_url_from_minio(
-    conn: AsyncConnection,
-    minio_client: AsyncMinioClient,
-    project_id: int,
-    user: UserDTO | None,
-    image_type: Literal["origin", "preview"],
-    logger: structlog.stdlib.BoundLogger,
-) -> str:
-    """Get full image url for given project."""
-
-    await check_project(conn, project_id, user)
-
-    object_name = f"projects/{project_id}/image.jpg" if image_type == "origin" else f"projects/{project_id}/preview.jpg"
-
-    return (await minio_client.generate_presigned_urls([object_name], logger))[0]
 
 
 ####################################################################################
@@ -979,92 +653,214 @@ async def add_context_territories(
     geometry: ScalarSelect[Any] | BaseRow,
 ) -> None:
     """
-    Update project properties with additional territorial context:
-    - Add a list of intersecting districts (e.g., municipalities),
-    - Add the nearest territories (e.g., city neighborhoods),
-    - Add context territories within a buffer zone (e.g., nearby areas).
+    Enrich project with contextual territorial data:
+    - 'territories': parents of intersecting city territories,
+    - 'districts': parents of those parent territories,
+    - 'context': parents of city territories in a 3km buffer zone.
     """
 
-    # Check if the given territory exists in the database; raise an error if it doesn't.
+    # Ensure the project's base territory exists
     if not await check_existence(conn, territories_data, conditions={"territory_id": project.territory_id}):
         raise EntityNotFoundById(project.territory_id, "territory")
 
-    # Define a 3000-meter buffer zone around the project's geometry to find nearby (context) territories.
+    # Prepare geometry buffer (3 km)
     buffer_meters = 3000
-    buffered_project_geometry = select(
-        cast(
-            ST_Buffer(
-                cast(
-                    geometry,
-                    Geography(srid=SRID),  # Convert geometry to geography for accurate distance-based buffering.
-                ),
-                buffer_meters,  # Distance of buffer in meters.
-            ),
-            Geometry(srid=SRID),  # Cast back to geometry type with SRID.
-        ).label("geometry")
+    buffered_geometry = select(
+        cast(ST_Buffer(cast(geometry, Geography(srid=SRID)), buffer_meters), Geometry(srid=SRID)).label("geometry")
     ).scalar_subquery()
 
-    # Create a recursive CTE to collect the hierarchy of territories starting from the project's territory.
+    region_level = 2
+
+    # Regions intersecting buffered geometry
+    intersecting_regions_query = (
+        select(territories_data.c.territory_id, territory_types_dict.c.name.label("type_name"))
+        .select_from(
+            territories_data.join(
+                territory_types_dict, territory_types_dict.c.territory_type_id == territories_data.c.territory_type_id
+            )
+        )
+        .where(territories_data.c.level == region_level, ST_Intersects(territories_data.c.geometry, buffered_geometry))
+    )
+
+    regions = (await conn.execute(intersecting_regions_query)).mappings().all()
+
+    regular_regions = [r.territory_id for r in regions if r.type_name != "Город федерального значения"]
+    federal_cities = [r.territory_id for r in regions if r.type_name == "Город федерального значения"]
+
+    territories, districts, context = [], [], []
+
+    if regular_regions:
+        t, d, c = await _extract_regular_regions_context(conn, geometry, buffered_geometry, regular_regions)
+        territories += t
+        districts += d
+        context += c
+
+    if federal_cities:
+        t, d, c = await _extract_federal_cities_context(conn, geometry, buffered_geometry, federal_cities)
+        territories += t
+        districts += d
+        context += c
+
+    project.properties.update(
+        {
+            "territories": territories,
+            "districts": districts,
+            "context": context,
+        }
+    )
+
+
+async def _extract_regular_regions_context(
+    conn: AsyncConnection,
+    geometry: ScalarSelect[Any],
+    buffered_geometry: ScalarSelect[Any],
+    region_ids: list[int],
+) -> tuple[list[str], list[str], list[int]]:
+    """
+    Extract context territorial data from regular regions:
+    - 'territories': parents of intersecting city territories,
+    - 'districts': parents of those parent territories,
+    - 'context': parents of city territories in a 3km buffer zone.
+    """
+
+    # Recursive CTE for hierarchy under regions
     base_cte = (
         select(
             territories_data.c.territory_id,
+            territories_data.c.parent_id,
             territories_data.c.name,
             territories_data.c.is_city,
             territories_data.c.level,
             territories_data.c.geometry,
         )
-        .where(territories_data.c.territory_id == project.territory_id)
+        .where(territories_data.c.parent_id.in_(region_ids))
         .cte(name="territories_cte", recursive=True)
     )
-
-    # Recursive part: include all children territories of the current territory in the hierarchy.
-    recursive_query = select(
+    recursive_cte = select(
         territories_data.c.territory_id,
+        territories_data.c.parent_id,
         territories_data.c.name,
         territories_data.c.is_city,
         territories_data.c.level,
         territories_data.c.geometry,
     ).where(territories_data.c.parent_id == base_cte.c.territory_id)
+    territories_cte = base_cte.union_all(recursive_cte)
 
-    # Union base with recursive to get full hierarchy of territories under the current one.
-    territories_cte = base_cte.union_all(recursive_query)
-
-    # Determine the highest city-level (e.g., city) in the territory hierarchy.
-    cities_level = (
-        select(territories_cte.c.level)
-        .where(territories_cte.c.is_city.is_(True))
-        .order_by(territories_cte.c.level.desc())
-        .limit(1)
-        .cte(name="cities_level")
+    # Cities below regions
+    city_children = (
+        select(territories_cte.c.parent_id)
+        .where(territories_cte.c.level > 3, territories_cte.c.is_city.is_(True))
+        .cte(name="city_children")
     )
 
-    # Get names of territories one level below the city that intersect with the project geometry (e.g., neighborhoods).
-    intersecting_territories = select(territories_cte.c.name).where(
-        territories_cte.c.level == (cities_level.c.level - 1),
+    # Parent territories of city territories
+    parent_territory_ids = select(city_children.c.parent_id).distinct()
+
+    # Districts (parents of those parent territories)
+    district_ids = (
+        select(territories_cte.c.parent_id)
+        .where(
+            territories_cte.c.territory_id.in_(parent_territory_ids),
+        )
+        .distinct()
+    )
+
+    # Final selections
+    territories_query = select(territories_cte.c.name).where(
+        territories_cte.c.territory_id.in_(parent_territory_ids),
         ST_Intersects(territories_cte.c.geometry, geometry),
+        territories_cte.c.is_city.is_(False),
     )
-
-    # Get names of territories two levels below the city that intersect with the project geometry (e.g., districts).
-    intersecting_district = select(territories_cte.c.name).where(
-        territories_cte.c.level == (cities_level.c.level - 2),
+    districts_query = select(territories_cte.c.name).where(
+        territories_cte.c.territory_id.in_(district_ids),
         ST_Intersects(territories_cte.c.geometry, geometry),
+        territories_cte.c.is_city.is_(False),
     )
-
-    # Get IDs of territories one level below the city that intersect with the buffered (3 km) geometry (context areas).
-    context_territories = select(territories_cte.c.territory_id).where(
-        territories_cte.c.level == (cities_level.c.level - 1),
-        ST_Intersects(territories_cte.c.geometry, buffered_project_geometry),
+    context_query = select(territories_cte.c.territory_id).where(
+        territories_cte.c.territory_id.in_(parent_territory_ids),
+        ST_Intersects(territories_cte.c.geometry, buffered_geometry),
         territories_cte.c.is_city.is_(False),
     )
 
-    # Update the project’s properties dictionary with gathered information.
-    project.properties.update(
-        {
-            "territories": list((await conn.execute(intersecting_territories)).scalars().all()),
-            "districts": list((await conn.execute(intersecting_district)).scalars().all()),
-            "context": list((await conn.execute(context_territories)).scalars().all()),
-        }
+    # Execute all queries concurrently
+    t_res, d_res, c_res = await asyncio.gather(
+        conn.execute(territories_query), conn.execute(districts_query), conn.execute(context_query)
     )
+
+    t_res = list(t_res.scalars())
+    d_res = list(d_res.scalars())
+    c_res = list(c_res.scalars())
+
+    # Fallback: if no districts — treat territories as districts
+    if not d_res:
+        d_res, t_res = t_res, []
+
+    return t_res, d_res, c_res
+
+
+async def _extract_federal_cities_context(
+    conn: AsyncConnection,
+    geometry: ScalarSelect[Any],
+    buffered_geometry: ScalarSelect[Any],
+    region_ids: list[int],
+) -> tuple[list[str], list[str], list[int]]:
+    """
+    Extract context territorial data from subject regions:
+    - 'territories': territories with type name `Муниципальное образование`,
+    - 'districts': territories with type name `Район`,
+    - 'context': territories with type name `Муниципальное образование` in a 3km buffer zone.
+    """
+    base_cte = (
+        select(
+            territories_data.c.territory_id,
+            territories_data.c.territory_type_id,
+            territories_data.c.parent_id,
+            territories_data.c.name,
+            territories_data.c.geometry,
+        )
+        .where(territories_data.c.parent_id.in_(region_ids))
+        .cte(name="territories_cte", recursive=True)
+    )
+    recursive_cte = select(
+        territories_data.c.territory_id,
+        territories_data.c.territory_type_id,
+        territories_data.c.parent_id,
+        territories_data.c.name,
+        territories_data.c.geometry,
+    ).where(territories_data.c.parent_id == base_cte.c.territory_id)
+    territories_cte = base_cte.union_all(recursive_cte)
+
+    base_query = (
+        select(territories_cte.c.name)
+        .select_from(
+            territories_cte.join(
+                territory_types_dict, territory_types_dict.c.territory_type_id == territories_cte.c.territory_type_id
+            )
+        )
+        .where(ST_Intersects(territories_cte.c.geometry, geometry))
+    )
+    territories_query = base_query.where(territory_types_dict.c.name == "Муниципальное образование")
+    districts_query = base_query.where(territory_types_dict.c.name == "Район")
+    context_query = (
+        select(territories_cte.c.territory_id)
+        .select_from(
+            territories_cte.join(
+                territory_types_dict, territory_types_dict.c.territory_type_id == territories_cte.c.territory_type_id
+            )
+        )
+        .where(
+            territory_types_dict.c.name == "Муниципальное образование",
+            ST_Intersects(territories_cte.c.geometry, buffered_geometry),
+        )
+    )
+
+    t_res, d_res, c_res = await asyncio.gather(
+        conn.execute(territories_query),
+        conn.execute(districts_query),
+        conn.execute(context_query),
+    )
+
+    return list(t_res.scalars()), list(d_res.scalars()), list(c_res.scalars())
 
 
 async def create_project_base_scenario(

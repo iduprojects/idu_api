@@ -10,7 +10,7 @@ from idu_api.urban_api.config import DBConfig, UrbanAPIConfig
 from idu_api.urban_api.dto.projects import ProjectDTO
 from idu_api.urban_api.logic.impl.projects import UserProjectServiceImpl
 from idu_api.urban_api.logic.projects import UserProjectService
-from idu_api.urban_api.utils.minio_client import AsyncMinioClient, get_minio_client_from_config
+from idu_api.urban_api.minio.client import AsyncMinioClient, get_minio_client_from_config
 
 
 async def regenerate_preview(service: UserProjectService, minio_client: AsyncMinioClient, project: ProjectDTO):

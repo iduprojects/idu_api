@@ -340,7 +340,7 @@ async def test_update_physical_objects_by_function_id(
         (200, None, None, False),
         (403, "denied", None, True),
         (404, "not found", 1e9, True),
-        (409, "already exists", None, False),
+        (409, "has already been edited or deleted for the scenario", None, False),
     ],
     ids=["success_1", "success_2", "forbidden", "not_found", "conflict"],
 )
@@ -390,7 +390,7 @@ async def test_put_scenario_physical_object(
         (200, None, None, False),
         (403, "denied", None, True),
         (404, "not found", 1e9, True),
-        (409, "already exists", None, False),
+        (409, "has already been edited or deleted for the scenario", None, False),
     ],
     ids=["success_1", "success_2", "forbidden", "not_found", "conflict"],
 )

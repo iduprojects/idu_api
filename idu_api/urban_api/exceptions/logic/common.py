@@ -37,7 +37,7 @@ class EntitiesNotFoundByIds(IduApiError):
 
     def __init__(self, entity: str):
         """
-        Construct from requested identifier and entity (table) name.
+        Construct from entity (table) name.
         """
         self.entity = entity
         super().__init__()
@@ -59,7 +59,7 @@ class EntityNotFoundByParams(IduApiError):
 
     def __init__(self, entity: str, *args):
         """
-        Construct from requested identifier and entity (table) name.
+        Construct from entity (table) name and list of parameters.
         """
         self.entity = entity
         self.params = tuple(args)
@@ -82,7 +82,7 @@ class EntityAlreadyExists(IduApiError):
 
     def __init__(self, entity: str, *args):
         """
-        Construct from requested identifier and entity (table) name.
+        Construct from entity (table) name and list of parameters.
         """
         self.entity = entity
         self.params = tuple(args)
@@ -90,6 +90,29 @@ class EntityAlreadyExists(IduApiError):
 
     def __str__(self) -> str:
         return f"Invalid input! '{self.entity}' with the same parameters={self.params} already exists"
+
+    def get_status_code(self) -> int:
+        """
+        Return '409 Conflict' status code.
+        """
+        return status.HTTP_409_CONFLICT
+
+
+class EntityAlreadyEdited(IduApiError):
+    """
+    Exception to raise when requested entity with the same parameters has been edited or deleted from the database.
+    """
+
+    def __init__(self, entity: str, scenario_id: int):
+        """
+        Construct from scenario identifier and entity (table) name.
+        """
+        self.entity = entity
+        self.scenario_id = scenario_id
+        super().__init__()
+
+    def __str__(self) -> str:
+        return f"Invalid input! The '{self.entity}' has already been edited or deleted for the scenario ({self.scenario_id})"
 
     def get_status_code(self) -> int:
         """
@@ -109,7 +132,7 @@ class TooManyObjectsError(IduApiError):
 
     def __str__(self) -> str:
         return (
-            f"Too many objects to be returned. Value is {self.objects}" + f" , but configured  limit is {self.limit}"
+            f"Too many objects to be returned. Value is {self.objects}" + f" , but configured limit is {self.limit}"
             if self.limit is not None
             else ""
         )
