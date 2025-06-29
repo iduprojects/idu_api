@@ -231,8 +231,11 @@ class ProjectStorageManager:
         async with self._client.get_session() as session:
             metadata = await self.load_metadata(session, project_id, logger)
             main_image_id = metadata.get("main_image_id")
-            object_names = sorted(metadata.get("gallery_images", []), key=lambda i: i != main_image_id)
-            final_names = [gallery_prefix + name for name in object_names]
+            if metadata.get("gallery_images"):
+                object_names = sorted(metadata.get("gallery_images", []), key=lambda i: i != main_image_id)
+                final_names = [gallery_prefix + name for name in object_names]
+            else:
+                final_names = ["defaultImg.jpg"]
 
             return await self._client.generate_presigned_urls(session, final_names, logger)
 
@@ -266,9 +269,11 @@ class ProjectStorageManager:
         async with self._client.get_session() as session:
             metadata = await self.load_metadata(session, project_id, logger)
             image_id = image_id or metadata.get("main_image_id")
-            if image_id not in metadata["gallery_images"]:
-                raise FileNotFound(project_id, f"{image_id}.jpg" if image_id else "main image")
             object_name = f"{prefix}{image_id}.jpg"
+            if image_id is None:
+                object_name = "defaultImg.jpg"
+            elif image_id not in metadata["gallery_images"]:
+                raise FileNotFound(project_id, f"{image_id}.jpg")
             return (await self._client.get_files(session, [object_name], logger))[0]
 
     async def get_gallery_image_url(
@@ -301,9 +306,11 @@ class ProjectStorageManager:
         async with self._client.get_session() as session:
             metadata = await self.load_metadata(session, project_id, logger)
             image_id = image_id or metadata.get("main_image_id")
-            if image_id not in metadata["gallery_images"]:
-                raise FileNotFound(project_id, f"{image_id}.jpg" if image_id else "main image")
             object_name = f"{prefix}{image_id}.jpg"
+            if image_id is None:
+                object_name = "defaultImg.jpg"
+            elif image_id not in metadata["gallery_images"]:
+                raise FileNotFound(project_id, f"{image_id}.jpg")
             return (await self._client.generate_presigned_urls(session, [object_name], logger))[0]
 
     async def set_main_image(self, project_id: int, image_id: str, logger: BoundLogger) -> None:

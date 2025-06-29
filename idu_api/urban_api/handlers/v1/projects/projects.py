@@ -780,7 +780,6 @@ async def set_project_main_image(
     "/projects/{project_id}/gallery",
     response_model=list[str],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_project_gallery_images_urls(
     request: Request,
@@ -1025,7 +1024,6 @@ async def get_preview_project_main_image_url(
     "/projects/{project_id}/logo",
     response_model=str | None,
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_project_logo_url(
     request: Request,
@@ -1149,7 +1147,6 @@ async def delete_project_logo(
     "/projects/{project_id}/phases/documents",
     response_model=list[str],
     status_code=status.HTTP_200_OK,
-    dependencies=[Security(HTTPBearer())],
 )
 async def get_project_phase_documents_urls(
     request: Request,
