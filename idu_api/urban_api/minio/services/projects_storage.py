@@ -237,7 +237,7 @@ class ProjectStorageManager:
             main_image_id = metadata.get("main_image_id")
             if metadata.get("gallery_images"):
                 object_names = sorted(metadata.get("gallery_images", []), key=lambda i: i != main_image_id)
-                final_names = [gallery_prefix + name for name in object_names]
+                final_names = [gallery_prefix + name + ".jpg" for name in object_names]
             else:
                 final_names = ["defaultImg.jpg"]
 
