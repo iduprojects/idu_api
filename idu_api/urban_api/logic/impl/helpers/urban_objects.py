@@ -31,6 +31,7 @@ from idu_api.urban_api.logic.impl.helpers.utils import (
     include_child_territories_cte,
 )
 from idu_api.urban_api.schemas import UrbanObjectPatch
+from idu_api.urban_api.utils.query_filters import EqFilter, apply_filters
 
 
 async def get_urban_objects_by_ids_from_db(conn: AsyncConnection, ids: list[int]) -> list[UrbanObjectDTO]:
@@ -275,11 +276,11 @@ async def get_urban_objects_by_territory_id_from_db(
         .distinct()
     )
 
-    if physical_object_type_id is not None:
-        statement = statement.where(physical_objects_data.c.physical_object_type_id == physical_object_type_id)
-
-    if service_type_id is not None:
-        statement = statement.where(services_data.c.service_type_id == service_type_id)
+    statement = apply_filters(
+        statement,
+        EqFilter(physical_objects_data, "physical_object_type_id", physical_object_type_id),
+        EqFilter(services_data, "service_type_id", service_type_id),
+    )
 
     urban_objects = (await conn.execute(statement)).mappings().all()
 

@@ -82,7 +82,8 @@ async def get_indicator_values_by_territory_id(
     - **list[IndicatorValue]**: A list of indicator values matching the filters.
 
     ### Errors:
-    - **400 Bad Request**: If `cities_only` is set to True and `include_child_territories` is set to False.
+    - **400 Bad Request**: If `cities_only` is set to True and `include_child_territories` is set to False
+    or the indicator_ids is specified in the wrong form.
     - **404 Not Found**: If the territory does not exist.
     """
     territories_service: TerritoriesService = request.state.territories_service
@@ -92,6 +93,14 @@ async def get_indicator_values_by_territory_id(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You can use cities_only parameter only with including child territories",
         )
+
+    try:
+        indicator_ids = {int(ind_id.strip()) for ind_id in indicator_ids.split(",")}
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, pass the indicator identifiers in the correct format separated by comma",
+        ) from exc
 
     value_type_field = value_type.value if value_type is not None else None
 
@@ -148,9 +157,18 @@ async def get_indicator_values_by_parent_id(
     - **GeoJSONResponse[Feature[Geometry, TerritoryWithIndicators]]**: A GeoJSON response containing territories and their indicator values.
 
     ### Errors:
+    - **400 Bad Request**: If the indicator_ids is specified in the wrong form.
     - **404 Not Found**: If the parent territory does not exist.
     """
     territories_service: TerritoriesService = request.state.territories_service
+
+    try:
+        indicator_ids = {int(ind_id.strip()) for ind_id in indicator_ids.split(",")}
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, pass the indicator identifiers in the correct format separated by comma",
+        ) from exc
 
     value_type_field = value_type.value if value_type is not None else None
 

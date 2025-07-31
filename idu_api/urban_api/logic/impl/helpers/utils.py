@@ -7,10 +7,10 @@ from sqlalchemy import ScalarSelect, Table, select, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.selectable import CTE, Select
 
-from idu_api.common.db.entities import projects_data, territories_data
+from idu_api.common.db.entities import projects_data, scenarios_data, territories_data
 from idu_api.urban_api.dto import UserDTO
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
-from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalProject
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.exceptions.logic.users import AccessDeniedError
 
 # The maximum number of records that can be returned in methods that accept a list of IDs as input.
@@ -150,7 +150,10 @@ def include_child_territories_cte(territory_id: int, cities_only: bool = False) 
 
 
 def extract_values_from_model(
-    model: UrbanAPIModel, exclude_unset: bool = False, to_update: bool = False
+    model: UrbanAPIModel,
+    exclude_unset: bool = False,
+    to_update: bool = False,
+    allow_null_geometry: bool = False,
 ) -> dict[str, Any]:
     """
     Extracts and processes values from a Pydantic model for database operations.
@@ -164,6 +167,7 @@ def extract_values_from_model(
                       If True, only fields with explicitly set values are included.
         to_update (bool): Flag to add 'updated_at' timestamp for update operations.
                   If True, adds a UTC timestamp to the returned dictionary.
+        allow_null_geometry (bool): If True, it will not raise an error about the null geometry.
 
     Returns:
         dict: Processed values ready for database insertion/update.
@@ -188,6 +192,8 @@ def extract_values_from_model(
 
             # Validate presence before conversion
             if geo_value is None:
+                if allow_null_geometry:
+                    continue
                 raise AttributeError(
                     f"Field `{field}` is present but contains None value. "
                     "Either provide a valid value or exclude the field."
@@ -212,19 +218,20 @@ def extract_values_from_model(
 
 
 async def get_context_territories_geometry(
-    conn, project_id: int, user: UserDTO | None
-) -> tuple[ScalarSelect[Any], list[int]]:
+    conn, scenario_id: int, user: UserDTO | None
+) -> tuple[int, ScalarSelect[Any], list[int]]:
     """
     Retrieve project territory relations including context territories, unified geometry,
     and all related territories (descendants and ancestors).
 
     Args:
         conn (AsyncConnection): Database connection object.
-        project_id (int): ID of the project to analyze.
+        scenario_id (int): Unique identifier of the project scenario.
         user (UserDTO | None): Data of the user requesting the data.
 
     Returns:
         Tuple containing:
+        - parent_id: Parent regional scenario identifier for given scenario.
         - unified_geometry: CTE for unified geometry of context territories.
         - context identifiers: List of context territory identifiers.
 
@@ -233,27 +240,31 @@ async def get_context_territories_geometry(
         AccessDeniedError: If user does not have permission to access the project.
         NotAllowedInRegionalScenario: If user try to get context for regional scenario.
     """
-    # Retrieve the project with proper user access control
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project is None:
-        raise EntityNotFoundById(project_id, "project")
+    # Retrieve the scenario with proper user access control
+    statement = (
+        select(projects_data, scenarios_data.c.parent_id)
+        .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
+        .where(scenarios_data.c.scenario_id == scenario_id)
+    )
+    scenario = (await conn.execute(statement)).mappings().one_or_none()
+    if scenario is None:
+        raise EntityNotFoundById(scenario_id, "scenario")
     if user is None:
-        if not project.public:
-            raise AccessDeniedError(project_id, "project")
-    elif project.user_id != user.id and not project.public and not user.is_superuser:
-        raise AccessDeniedError(project_id, "project")
-    elif project.is_regional:
-        raise NotAllowedInRegionalProject()
+        if not scenario.public:
+            raise AccessDeniedError(scenario.project_id, "project")
+    elif scenario.user_id != user.id and not scenario.public and not user.is_superuser:
+        raise AccessDeniedError(scenario.project_id, "project")
+    elif scenario.is_regional:
+        raise NotAllowedInRegionalScenario()
 
     # Get union geometry of all context territories
     unified_geometry = (
         select(ST_Union(territories_data.c.geometry).label("geometry"))
-        .where(territories_data.c.territory_id.in_(project.properties["context"]))
+        .where(territories_data.c.territory_id.in_(scenario.properties["context"]))
         .scalar_subquery()
     )
 
-    return unified_geometry, project.properties["context"]
+    return scenario.parent_id, unified_geometry, scenario.properties["context"]
 
 
 def build_hierarchy(

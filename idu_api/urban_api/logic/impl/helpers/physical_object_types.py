@@ -25,6 +25,7 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectTypePatch,
     PhysicalObjectTypePost,
 )
+from idu_api.urban_api.utils.query_filters import EqFilter, ILikeFilter, apply_filters
 
 
 async def get_physical_object_types_from_db(
@@ -46,12 +47,11 @@ async def get_physical_object_types_from_db(
         .order_by(physical_object_types_dict.c.physical_object_type_id)
     )
 
-    if physical_object_function_id is not None:
-        statement = statement.where(
-            physical_object_types_dict.c.physical_object_function_id == physical_object_function_id
-        )
-    if name is not None:
-        statement = statement.where(physical_object_types_dict.c.name.ilike(f"%{name}%"))
+    statement = apply_filters(
+        statement,
+        EqFilter(physical_object_types_dict, "physical_object_function_id", physical_object_function_id),
+        ILikeFilter(physical_object_types_dict, "name", name),
+    )
 
     return [PhysicalObjectTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
 

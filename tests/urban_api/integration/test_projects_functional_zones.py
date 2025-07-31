@@ -125,36 +125,38 @@ async def test_get_functional_zones_by_scenario_id(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param, is_regional_param",
+    "expected_status, error_message, scenario_id_param, is_regional_param",
     [
         (200, None, None, False),
-        (400, "this method cannot be accessed in a regional project", None, True),
+        (400, "this method cannot be accessed in a regional scenario", None, True),
         (403, "denied", None, False),
         (404, "not found", 1e9, False),
     ],
-    ids=["success", "regional_project", "forbidden", "not_found"],
+    ids=["success", "regional_scenario", "forbidden", "not_found"],
 )
 async def test_get_context_functional_zone_sources(
     urban_api_host: str,
-    project: dict[str, Any],
-    regional_project: dict[str, Any],
+    scenario: dict[str, Any],
+    regional_scenario: dict[str, Any],
     functional_zone: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
-    project_id_param: int | None,
+    scenario_id_param: int | None,
     is_regional_param: bool,
 ):
-    """Test GET /projects/{project_id}/context/functional_zone_sources method."""
+    """Test GET /scenarios/{scenario_id}/context/functional_zone_sources method."""
 
     # Arrange
-    project_id = project_id_param or (regional_project["project_id"] if is_regional_param else project["project_id"])
+    scenario_id = scenario_id_param or (
+        regional_scenario["scenario_id"] if is_regional_param else scenario["scenario_id"]
+    )
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
-        response = await client.get(f"/projects/{project_id}/context/functional_zone_sources", headers=headers)
+        response = await client.get(f"/scenarios/{scenario_id}/context/functional_zone_sources", headers=headers)
         result = response.json()
 
     # Assert
@@ -170,37 +172,41 @@ async def test_get_context_functional_zone_sources(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param, is_regional_param",
+    "expected_status, error_message, scenario_id_param, is_regional_param",
     [
         (200, None, None, False),
-        (400, "this method cannot be accessed in a regional project", None, True),
+        (400, "this method cannot be accessed in a regional scenario", None, True),
         (403, "denied", None, False),
         (404, "not found", 1e9, False),
     ],
-    ids=["success", "regional_project", "forbidden", "not_found"],
+    ids=["success", "regional_scenario", "forbidden", "not_found"],
 )
 async def test_get_context_functional_zones(
     urban_api_host: str,
-    project: dict[str, Any],
-    regional_project: dict[str, Any],
+    scenario: dict[str, Any],
+    regional_scenario: dict[str, Any],
     functional_zone: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
-    project_id_param: int | None,
+    scenario_id_param: int | None,
     is_regional_param: bool,
 ):
-    """Test GET /projects/{project_id}/context/functional_zones method."""
+    """Test GET /scenarios/{scenario_id}/context/functional_zones method."""
 
     # Arrange
-    project_id = project_id_param or (regional_project["project_id"] if is_regional_param else project["project_id"])
+    scenario_id = scenario_id_param or (
+        regional_scenario["scenario_id"] if is_regional_param else scenario["scenario_id"]
+    )
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
     params = {"year": functional_zone["year"], "source": functional_zone["source"]}
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
-        response = await client.get(f"/projects/{project_id}/context/functional_zones", headers=headers, params=params)
+        response = await client.get(
+            f"/scenarios/{scenario_id}/context/functional_zones", headers=headers, params=params
+        )
         result = response.json()
 
     # Assert

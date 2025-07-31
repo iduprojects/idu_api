@@ -34,6 +34,7 @@ from idu_api.urban_api.utils.auth_client import AuthenticationClient
 from idu_api.urban_api.utils.logging import configure_logging
 
 from .handlers import list_of_routers
+from .logic.impl.buffers import BufferServiceImpl
 from .version import LAST_UPDATE, VERSION
 
 
@@ -107,6 +108,7 @@ def get_app(prefix: str = "/api") -> FastAPI:
     application.add_middleware(
         PassServicesDependenciesMiddleware,
         connection_manager=connection_manager,  # reinitialized on startup
+        buffers_service=ignore_kwargs(BufferServiceImpl),
         functional_zones_service=ignore_kwargs(FunctionalZonesServiceImpl),
         indicators_service=ignore_kwargs(IndicatorsServiceImpl),
         object_geometries_service=ignore_kwargs(ObjectGeometriesServiceImpl),

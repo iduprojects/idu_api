@@ -34,6 +34,7 @@ from idu_api.urban_api.schemas import (
     UrbanFunctionPost,
     UrbanFunctionPut,
 )
+from idu_api.urban_api.utils.query_filters import EqFilter, ILikeFilter, apply_filters
 
 func: Callable
 
@@ -56,10 +57,11 @@ async def get_service_types_from_db(
         .order_by(service_types_dict.c.service_type_id)
     )
 
-    if urban_function_id is not None:
-        statement = statement.where(service_types_dict.c.urban_function_id == urban_function_id)
-    if name is not None:
-        statement = statement.where(service_types_dict.c.name.ilike(f"%{name}%"))
+    statement = apply_filters(
+        statement,
+        EqFilter(service_types_dict, "urban_function_id", urban_function_id),
+        ILikeFilter(service_types_dict, "name", name),
+    )
 
     return [ServiceTypeDTO(**data) for data in (await conn.execute(statement)).mappings().all()]
 
@@ -515,14 +517,14 @@ async def get_social_values_by_service_type_id_from_db(
     if not await check_existence(conn, service_types_dict, conditions={"service_type_id": service_type_id}):
         raise EntityNotFoundById(service_type_id, "service type")
 
-    select_from = soc_values_dict.join(
-        soc_values_service_types_dict,
-        soc_values_dict.c.soc_value_id == soc_values_service_types_dict.c.soc_value_id,
-    )
-
     statement = (
         select(soc_values_dict)
-        .select_from(select_from)
+        .select_from(
+            soc_values_dict.join(
+                soc_values_service_types_dict,
+                soc_values_dict.c.soc_value_id == soc_values_service_types_dict.c.soc_value_id,
+            )
+        )
         .where(soc_values_service_types_dict.c.service_type_id == service_type_id)
     )
 

@@ -21,7 +21,7 @@ from idu_api.urban_api.dto import (
     UserDTO,
 )
 from idu_api.urban_api.exceptions.logic.common import EntitiesNotFoundByIds, EntityNotFoundById, TooManyObjectsError
-from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalProject, NotAllowedInRegionalScenario
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.logic.impl.helpers.projects_functional_zones import (
     add_scenario_functional_zones_to_db,
     delete_functional_zones_by_scenario_id_from_db,
@@ -168,13 +168,13 @@ async def test_get_context_functional_zones_sources_from_db(mock_conn: MockConne
     )
 
     # Act
-    with pytest.raises(NotAllowedInRegionalProject):
+    with pytest.raises(NotAllowedInRegionalScenario):
         await get_context_functional_zones_sources_from_db(mock_conn, project_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_context_territories_geometry",
         new_callable=AsyncMock,
     ) as mock_get_context:
-        mock_get_context.return_value = mock_geom, [1]
+        mock_get_context.return_value = 1, mock_geom, [1]
         result = await get_context_functional_zones_sources_from_db(mock_conn, project_id, user)
 
     # Assert
@@ -245,13 +245,13 @@ async def test_get_context_functional_zones_from_db(mock_conn: MockConnection):
     )
 
     # Act
-    with pytest.raises(NotAllowedInRegionalProject):
+    with pytest.raises(NotAllowedInRegionalScenario):
         await get_context_functional_zones_from_db(mock_conn, project_id, year, source, functional_zone_type_id, user)
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_functional_zones.get_context_territories_geometry",
         new_callable=AsyncMock,
     ) as mock_get_context:
-        mock_get_context.return_value = mock_geom, [1]
+        mock_get_context.return_value = 1, mock_geom, [1]
         result = await get_context_functional_zones_from_db(
             mock_conn, project_id, year, source, functional_zone_type_id, user
         )
@@ -329,7 +329,10 @@ async def test_add_scenario_functional_zones_to_db(
     # Arrange
     scenario_id = 1
     user = UserDTO(id="mock_string", is_superuser=False)
-    delete_statement = delete(projects_functional_zones).where(projects_functional_zones.c.scenario_id == scenario_id)
+    delete_statement = delete(projects_functional_zones).where(
+        projects_functional_zones.c.scenario_id == scenario_id,
+        projects_functional_zones.c.source == "User",
+    )
     insert_statement = (
         insert(projects_functional_zones)
         .values([{"scenario_id": scenario_id, **extract_values_from_model(scenario_functional_zone_post_req)}])

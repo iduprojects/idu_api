@@ -229,7 +229,7 @@ async def test_get_projects_from_db(mock_verify_params, mock_conn: MockConnectio
                 ),
             ),
             or_(projects_data.c.user_id == user.id, projects_data.c.public.is_(True)),
-            projects_data.c.is_city.is_(False),
+            projects_data.c.is_city == False,
             projects_data.c.territory_id == filters["territory_id"],
             projects_data.c.name.ilike(f'%{filters["name"]}%'),
             func.date(projects_data.c.created_at) >= filters["created_at"],
@@ -288,7 +288,7 @@ async def test_get_projects_territories_from_db(mock_conn: MockConnection):
     )
     statement_with_filters = statement.where(
         projects_data.c.user_id == user.id,
-        projects_data.c.is_city.is_(False),
+        projects_data.c.is_city == False,
         projects_data.c.territory_id == 1,
     )
     statement = statement.where(or_(projects_data.c.user_id == user.id, projects_data.c.public.is_(True)))

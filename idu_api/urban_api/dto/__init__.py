@@ -1,5 +1,6 @@
 """Data Transfer Objects (much like entities from database) are defined in this module."""
 
+from .buffers import BufferDTO, BufferTypeDTO, DefaultBufferValueDTO, ScenarioBufferDTO
 from .buildings import BuildingDTO, BuildingWithGeometryDTO
 from .functional_zones import (
     FunctionalZoneDTO,
@@ -127,4 +128,8 @@ __all__ = [
     "SocValueWithServiceTypesDTO",
     "ScenarioPhysicalObjectWithGeometryDTO",
     "ScenarioServiceWithGeometryDTO",
+    "BufferDTO",
+    "BufferTypeDTO",
+    "DefaultBufferValueDTO",
+    "ScenarioBufferDTO",
 ]

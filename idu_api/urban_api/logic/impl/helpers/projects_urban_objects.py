@@ -1,5 +1,7 @@
 """Projects urban objects internal logic is defined here."""
 
+from collections.abc import Sequence
+
 from geoalchemy2.functions import ST_AsEWKB
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -27,7 +29,7 @@ from idu_api.urban_api.logic.impl.helpers.utils import OBJECTS_NUMBER_LIMIT
 
 
 async def get_scenario_urban_object_by_ids_from_db(
-    conn: AsyncConnection, ids: list[int]
+    conn: AsyncConnection, ids: Sequence[int]
 ) -> list[ScenarioUrbanObjectDTO]:
     """Get scenario urban object by identifiers."""
 

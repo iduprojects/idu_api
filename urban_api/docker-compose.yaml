@@ -23,7 +23,7 @@ services:
 
   fileserver:
     container_name: ${MINIO_CONTAINER_NAME:-fileserver}
-    image: minio/minio
+    image: minio/minio:RELEASE.2025-02-07T23-21-09Z
     ports:
       - 9000:9000
       - 9001:9001

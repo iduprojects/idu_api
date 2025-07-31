@@ -453,7 +453,7 @@ async def test_get_territories_by_parent_id_from_db(mock_conn: MockConnection):
     )
     statement_with_filters = statement.where(
         requested_territories.c.is_city.is_(filters["cities_only"]),
-        requested_territories.c.name.ilike(f"%{filters['cities_only']}%"),
+        requested_territories.c.name.ilike(f"%{filters['name']}%"),
         func.date(requested_territories.c.created_at) == filters["created_at"],
         requested_territories.c.territory_type_id == filters["territory_type_id"],
     )
@@ -615,7 +615,7 @@ async def test_get_territories_without_geometry_by_parent_id_from_db(mock_conn: 
     )
     statement_with_filters = statement.where(
         requested_territories.c.is_city.is_(filters["cities_only"]),
-        requested_territories.c.name.ilike(f"%{filters['cities_only']}%"),
+        requested_territories.c.name.ilike(f"%{filters['name']}%"),
         func.date(requested_territories.c.created_at) == filters["created_at"],
         requested_territories.c.territory_type_id == filters["territory_type_id"],
     )

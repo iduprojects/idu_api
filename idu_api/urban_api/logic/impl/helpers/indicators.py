@@ -41,6 +41,7 @@ from idu_api.urban_api.schemas import (
     IndicatorValuePut,
     MeasurementUnitPost,
 )
+from idu_api.urban_api.utils.query_filters import EqFilter, ILikeFilter, apply_filters
 
 func: Callable
 
@@ -332,10 +333,11 @@ async def get_indicators_by_parent_from_db(
             requested_indicators.c.name_full.ilike(f"%{name}%") | requested_indicators.c.name_short.ilike(f"%{name}%")
         )
 
-    if service_type_id is not None:
-        statement = statement.where(requested_indicators.c.service_type_id == service_type_id)
-    if physical_object_type_id is not None:
-        statement = statement.where(requested_indicators.c.physical_object_type_id == physical_object_type_id)
+    statement = apply_filters(
+        statement,
+        EqFilter(requested_indicators, "service_type_id", service_type_id),
+        EqFilter(requested_indicators, "physical_object_type_id", physical_object_type_id),
+    )
 
     result = (await conn.execute(statement)).mappings().all()
 
@@ -584,16 +586,14 @@ async def get_indicator_values_by_id_from_db(
         .where(territory_indicators_data.c.indicator_id == indicator_id)
     )
 
-    if territory_id is not None:
-        statement = statement.where(territory_indicators_data.c.territory_id == territory_id)
-    if date_type is not None:
-        statement = statement.where(territory_indicators_data.c.date_type == date_type)
-    if date_value is not None:
-        statement = statement.where(territory_indicators_data.c.date_value == date_value)
-    if value_type is not None:
-        statement = statement.where(territory_indicators_data.c.value_type == value_type)
-    if information_source is not None:
-        statement = statement.where(territory_indicators_data.c.information_source.ilike(f"%{information_source}%"))
+    statement = apply_filters(
+        statement,
+        EqFilter(territory_indicators_data, "territory_id", territory_id),
+        EqFilter(territory_indicators_data, "date_type", date_type),
+        EqFilter(territory_indicators_data, "date_value", date_value),
+        EqFilter(territory_indicators_data, "value_type", value_type),
+        ILikeFilter(territory_indicators_data, "information_source", information_source),
+    )
 
     result = (await conn.execute(statement)).mappings().all()
 

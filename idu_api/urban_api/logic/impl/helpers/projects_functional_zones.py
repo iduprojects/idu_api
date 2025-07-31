@@ -1,5 +1,7 @@
 """Projects functional zones internal logic is defined here."""
 
+from collections.abc import Sequence
+
 from geoalchemy2.functions import ST_AsEWKB, ST_Intersection, ST_Intersects, ST_Within
 from sqlalchemy import case, delete, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -102,12 +104,12 @@ async def get_functional_zones_by_scenario_id_from_db(
 
 async def get_context_functional_zones_sources_from_db(
     conn: AsyncConnection,
-    project_id: int,
+    scenario_id: int,
     user: UserDTO | None,
 ) -> list[FunctionalZoneSourceDTO]:
     """Get list of pairs year + source for functional zones for 'context' of the project territory."""
 
-    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user)
+    _, context_geom, context_ids = await get_context_territories_geometry(conn, scenario_id, user)
 
     statement = (
         select(functional_zones_data.c.year, functional_zones_data.c.source)
@@ -126,7 +128,7 @@ async def get_context_functional_zones_sources_from_db(
 
 async def get_context_functional_zones_from_db(
     conn: AsyncConnection,
-    project_id: int,
+    scenario_id: int,
     year: int,
     source: str,
     functional_zone_type_id: int | None,
@@ -134,7 +136,7 @@ async def get_context_functional_zones_from_db(
 ) -> list[FunctionalZoneDTO]:
     """Get list of functional zone objects for 'context' of the project territory."""
 
-    context_geom, context_ids = await get_context_territories_geometry(conn, project_id, user)
+    _, context_geom, context_ids = await get_context_territories_geometry(conn, scenario_id, user)
 
     statement = (
         select(
@@ -188,7 +190,7 @@ async def get_context_functional_zones_from_db(
     return [FunctionalZoneDTO(**zone) for zone in result]
 
 
-async def get_functional_zone_by_ids(conn: AsyncConnection, ids: list[int]) -> list[ScenarioFunctionalZoneDTO]:
+async def get_functional_zone_by_ids(conn: AsyncConnection, ids: Sequence[int]) -> list[ScenarioFunctionalZoneDTO]:
     """Get functional zone by identifier."""
 
     if len(ids) > OBJECTS_NUMBER_LIMIT:
@@ -238,7 +240,10 @@ async def add_scenario_functional_zones_to_db(
 
     await check_scenario(conn, scenario_id, user, to_edit=True, allow_regional=False)
 
-    statement = delete(projects_functional_zones).where(projects_functional_zones.c.scenario_id == scenario_id)
+    statement = delete(projects_functional_zones).where(
+        projects_functional_zones.c.scenario_id == scenario_id,
+        projects_functional_zones.c.source == "User",
+    )
     await conn.execute(statement)
 
     functional_zone_type_ids = {functional_zone.functional_zone_type_id for functional_zone in functional_zones}

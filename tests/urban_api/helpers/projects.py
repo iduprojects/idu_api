@@ -75,7 +75,7 @@ def project(
     headers = {"Authorization": f"Bearer {superuser_token}"}
 
     with httpx.Client(base_url=f"{urban_api_host}/api/v1") as client:
-        response = client.post("/projects", json=project_post_req.model_dump(), headers=headers)
+        response = client.post("/projects", json=project_post_req.model_dump(), headers=headers, timeout=10000)
 
     assert response.status_code == 201, f"Invalid status code was returned: {response.status_code}.\n{response.json()}"
     return response.json()

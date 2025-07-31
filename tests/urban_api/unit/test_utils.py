@@ -8,9 +8,9 @@ from geoalchemy2.functions import ST_GeomFromWKB, ST_Union
 from sqlalchemy import select, text
 from sqlalchemy.sql.selectable import CTE, ScalarSelect, Select
 
-from idu_api.common.db.entities import projects_data, territories_data
+from idu_api.common.db.entities import projects_data, scenarios_data, territories_data
 from idu_api.urban_api.dto import UserDTO
-from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalProject
+from idu_api.urban_api.exceptions.logic.projects import NotAllowedInRegionalScenario
 from idu_api.urban_api.logic.impl.helpers.utils import (
     SRID,
     build_hierarchy,
@@ -149,7 +149,11 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
     # Arrange
     project_id = 1
     user = UserDTO("mock_string", is_superuser=False)
-    statement = select(projects_data).where(projects_data.c.project_id == project_id)
+    statement = (
+        select(projects_data, scenarios_data.c.parent_id)
+        .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
+        .where(scenarios_data.c.scenario_id == 1)
+    )
     unified_geometry = (
         select(ST_Union(territories_data.c.geometry).label("geometry"))
         .where(territories_data.c.territory_id.in_([1]))
@@ -157,7 +161,7 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
     )
 
     # Act
-    with pytest.raises(NotAllowedInRegionalProject):
+    with pytest.raises(NotAllowedInRegionalScenario):
         await get_context_territories_geometry(mock_conn, project_id, user)
     with patch("tests.urban_api.helpers.connection.mock_conn") as new_mock_conn:
         new_mock_conn.execute = AsyncMock(
@@ -169,6 +173,7 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
                             "public": True,
                             "is_regional": False,
                             "properties": {"context": [1]},
+                            "parent_id": 1,
                         }
                     )
                 ]
@@ -177,13 +182,14 @@ async def test_get_all_context_territories(mock_conn: MockConnection):
         result = await get_context_territories_geometry(new_mock_conn, project_id, user)
 
     # Assert
-    assert isinstance(result, tuple), "Result should be a dictionary."
+    assert isinstance(result, tuple), "Result should be a tuple."
+    assert isinstance(result[0], int), "The first item should be an integer."
     assert isinstance(
-        result[0], ScalarSelect
-    ), "The first item in result should be a ScalarSelect object (unified geometry)."
-    assert str(result[0]) == str(unified_geometry), "The ScalarSelect should be a unified geometry."
-    assert isinstance(result[1], list), "The second item in result should be a list of context identifiers."
-    assert all(isinstance(idx, int) for idx in result[1]), "Each item in list of identifiers should be an integer."
+        result[1], ScalarSelect
+    ), "The second item in result should be a ScalarSelect object (unified geometry)."
+    assert str(result[1]) == str(unified_geometry), "The ScalarSelect should be a unified geometry."
+    assert isinstance(result[2], list), "The third item in result should be a list of context identifiers."
+    assert all(isinstance(idx, int) for idx in result[2]), "Each item in list of identifiers should be an integer."
     mock_conn.execute_mock.assert_any_call(str(statement))
 
 

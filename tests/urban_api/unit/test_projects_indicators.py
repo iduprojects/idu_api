@@ -144,7 +144,7 @@ async def test_get_scenario_indicators_values_by_scenario_id_from_db(mock_check:
 
     # Act
     result = await get_scenario_indicators_values_by_scenario_id_from_db(
-        mock_conn, scenario_id, "1", indicators_group_id, territory_id, hexagon_id, user
+        mock_conn, scenario_id, {1}, indicators_group_id, territory_id, hexagon_id, user
     )
 
     # Assert
@@ -160,7 +160,7 @@ async def test_get_scenario_indicators_values_by_scenario_id_from_db(mock_check:
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.get_project_by_scenario_id")
+@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_scenario")
 async def test_add_scenario_indicator_value_to_db(
     mock_check: AsyncMock, mock_conn: MockConnection, scenario_indicator_value_post_req: ScenarioIndicatorValuePost
 ):
@@ -241,12 +241,12 @@ async def test_add_scenario_indicator_value_to_db(
     ), "Couldn't create pydantic model from DTO."
     mock_conn.execute_mock.assert_any_call(str(insert_statement))
     mock_conn.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True, return_value=True)
     kafka_producer.send.assert_any_call(event)
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.get_project_by_scenario_id")
+@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_scenario")
 async def test_put_scenario_indicator_value_to_db(
     mock_check: AsyncMock, mock_conn: MockConnection, scenario_indicator_value_put_req: ScenarioIndicatorValuePut
 ):
@@ -342,12 +342,12 @@ async def test_put_scenario_indicator_value_to_db(
     mock_conn.execute_mock.assert_any_call(str(update_statement))
     mock_conn.execute_mock.assert_any_call(str(insert_statement))
     assert mock_conn.commit_mock.call_count == 2, "Commit mock count should be one for one method."
-    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True, return_value=True)
     kafka_producer.send.assert_any_call(event)
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.get_project_by_scenario_id")
+@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_scenario")
 async def test_patch_scenario_indicator_value_to_db(
     mock_check: AsyncMock, mock_conn: MockConnection, scenario_indicator_value_patch_req: ScenarioIndicatorValuePatch
 ):
@@ -392,7 +392,7 @@ async def test_patch_scenario_indicator_value_to_db(
     ), "Couldn't create pydantic model from DTO."
     mock_connection.execute_mock.assert_any_call(str(update_statement))
     mock_connection.commit_mock.assert_called_once()
-    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True)
+    mock_check.assert_any_call(mock_conn, scenario_id, user, to_edit=True, return_value=True)
     kafka_producer.send.assert_any_call(event)
 
 
@@ -446,7 +446,7 @@ async def test_delete_scenario_indicator_value_by_id_from_db(mock_check: AsyncMo
 
 
 @pytest.mark.asyncio
-@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.get_project_by_scenario_id")
+@patch("idu_api.urban_api.logic.impl.helpers.projects_indicators.check_scenario")
 async def test_get_hexagons_with_indicators_by_scenario_id_from_db(mock_check: AsyncMock, mock_conn: MockConnection):
     """Test the get_hexagons_with_indicators_by_scenario_id_from_db function."""
 
@@ -491,7 +491,7 @@ async def test_get_hexagons_with_indicators_by_scenario_id_from_db(mock_check: A
 
     # Act
     result = await get_hexagons_with_indicators_by_scenario_id_from_db(
-        mock_conn, scenario_id, "1", indicators_group_id, user
+        mock_conn, scenario_id, {1}, indicators_group_id, user
     )
 
     # Assert
@@ -500,7 +500,7 @@ async def test_get_hexagons_with_indicators_by_scenario_id_from_db(mock_check: A
         isinstance(item, HexagonWithIndicatorsDTO) for item in result
     ), "Each item should be a HexagonWithIndicatorsDTO."
     mock_conn.execute_mock.assert_any_call(str(statement))
-    mock_check.assert_called_once_with(mock_conn, scenario_id, user)
+    mock_check.assert_called_once_with(mock_conn, scenario_id, user, return_value=True)
 
 
 @pytest.mark.asyncio

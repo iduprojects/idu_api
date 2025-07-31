@@ -11,14 +11,12 @@ from idu_api.urban_api.dto import (
     FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
     HexagonWithIndicatorsDTO,
-    ObjectGeometryDTO,
     PageDTO,
-    PhysicalObjectDTO,
-    PhysicalObjectWithGeometryDTO,
     ProjectDTO,
     ProjectPhasesDTO,
     ProjectTerritoryDTO,
     ProjectWithTerritoryDTO,
+    ScenarioBufferDTO,
     ScenarioDTO,
     ScenarioFunctionalZoneDTO,
     ScenarioGeometryDTO,
@@ -29,11 +27,14 @@ from idu_api.urban_api.dto import (
     ScenarioServiceDTO,
     ScenarioServiceWithGeometryDTO,
     ScenarioUrbanObjectDTO,
-    ServiceDTO,
-    ServiceWithGeometryDTO,
     UserDTO,
 )
-from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO
+from idu_api.urban_api.logic.impl.helpers.projects_buffers import (
+    delete_buffer_from_db,
+    get_buffers_by_scenario_id_from_db,
+    get_context_buffers_from_db,
+    put_buffer_to_db,
+)
 from idu_api.urban_api.logic.impl.helpers.projects_functional_zones import (
     add_scenario_functional_zones_to_db,
     delete_functional_zones_by_scenario_id_from_db,
@@ -124,6 +125,8 @@ from idu_api.urban_api.schemas import (
     ProjectPhasesPut,
     ProjectPost,
     ProjectPut,
+    ScenarioBufferDelete,
+    ScenarioBufferPut,
     ScenarioBuildingPatch,
     ScenarioBuildingPost,
     ScenarioBuildingPut,
@@ -314,15 +317,15 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def get_context_physical_objects(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-    ) -> list[PhysicalObjectDTO]:
+    ) -> list[ScenarioPhysicalObjectDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_context_physical_objects_from_db(
                 conn,
-                project_id,
+                scenario_id,
                 user,
                 physical_object_type_id,
                 physical_object_function_id,
@@ -330,15 +333,15 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def get_context_physical_objects_with_geometry(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-    ) -> list[PhysicalObjectWithGeometryDTO]:
+    ) -> list[ScenarioPhysicalObjectWithGeometryDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_context_physical_objects_with_geometry_from_db(
                 conn,
-                project_id,
+                scenario_id,
                 user,
                 physical_object_type_id,
                 physical_object_function_id,
@@ -474,24 +477,24 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def get_context_services(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         service_type_id: int | None,
         urban_function_id: int | None,
-    ) -> list[ServiceDTO]:
+    ) -> list[ScenarioServiceDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_context_services_from_db(conn, project_id, user, service_type_id, urban_function_id)
+            return await get_context_services_from_db(conn, scenario_id, user, service_type_id, urban_function_id)
 
     async def get_context_services_with_geometry(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         service_type_id: int | None,
         urban_function_id: int | None,
-    ) -> list[ServiceWithGeometryDTO]:
+    ) -> list[ScenarioServiceWithGeometryDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_context_services_with_geometry_from_db(
-                conn, project_id, user, service_type_id, urban_function_id
+                conn, scenario_id, user, service_type_id, urban_function_id
             )
 
     async def add_service(
@@ -570,15 +573,15 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def get_context_geometries(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         physical_object_id: int | None,
         service_id: int | None,
-    ) -> list[ObjectGeometryDTO]:
+    ) -> list[ScenarioGeometryDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_context_geometries_from_db(
                 conn,
-                project_id,
+                scenario_id,
                 user,
                 physical_object_id,
                 service_id,
@@ -586,17 +589,17 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
 
     async def get_context_geometries_with_all_objects(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         physical_object_type_id: int | None,
         service_type_id: int | None,
         physical_object_function_id: int | None,
         urban_function_id: int | None,
-    ) -> list[GeometryWithAllObjectsDTO]:
+    ) -> list[ScenarioGeometryWithAllObjectsDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_context_geometries_with_all_objects_from_db(
                 conn,
-                project_id,
+                scenario_id,
                 user,
                 physical_object_type_id,
                 service_type_id,
@@ -643,7 +646,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_scenario_indicators_values(
         self,
         scenario_id: int,
-        indicator_ids: str | None,
+        indicator_ids: set[int],
         indicator_group_id: int | None,
         territory_id: int | None,
         hexagon_id: int | None,
@@ -700,7 +703,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_hexagons_with_indicators_by_scenario_id(
         self,
         scenario_id: int,
-        indicator_ids: str | None,
+        indicator_ids: set[int],
         indicators_group_id: int | None,
         user: UserDTO | None,
     ) -> list[HexagonWithIndicatorsDTO]:
@@ -733,14 +736,14 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
             )
 
     async def get_context_functional_zones_sources(
-        self, project_id: int, user: UserDTO | None
+        self, scenario_id: int, user: UserDTO | None
     ) -> list[FunctionalZoneSourceDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
-            return await get_context_functional_zones_sources_from_db(conn, project_id, user)
+            return await get_context_functional_zones_sources_from_db(conn, scenario_id, user)
 
     async def get_context_functional_zones(
         self,
-        project_id: int,
+        scenario_id: int,
         year: int,
         source: str,
         functional_zone_type_id: int | None,
@@ -748,7 +751,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     ) -> list[FunctionalZoneDTO]:
         async with self._connection_manager.get_ro_connection() as conn:
             return await get_context_functional_zones_from_db(
-                conn, project_id, year, source, functional_zone_type_id, user
+                conn, scenario_id, year, source, functional_zone_type_id, user
             )
 
     async def add_scenario_functional_zones(
@@ -790,3 +793,47 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     ) -> ProjectPhasesDTO:
         async with self._connection_manager.get_connection() as conn:
             return await put_project_phases_to_db(conn, project_id, project_phases, user)
+
+    async def get_buffers_by_scenario_id(
+        self,
+        scenario_id: int,
+        buffer_type_id: int | None,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+        user: UserDTO | None,
+    ) -> list[ScenarioBufferDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_buffers_by_scenario_id_from_db(
+                conn, scenario_id, buffer_type_id, physical_object_type_id, service_type_id, user
+            )
+
+    async def get_context_buffers(
+        self,
+        scenario_id: int,
+        buffer_type_id: int | None,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+        user: UserDTO | None,
+    ) -> list[ScenarioBufferDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_context_buffers_from_db(
+                conn, scenario_id, buffer_type_id, physical_object_type_id, service_type_id, user
+            )
+
+    async def put_scenario_buffer(
+        self,
+        buffer: ScenarioBufferPut,
+        scenario_id: int,
+        user: UserDTO | None,
+    ) -> ScenarioBufferDTO:
+        async with self._connection_manager.get_connection() as conn:
+            return await put_buffer_to_db(conn, buffer, scenario_id, user)
+
+    async def delete_scenario_buffer(
+        self,
+        buffer: ScenarioBufferDelete,
+        scenario_id: int,
+        user: UserDTO | None,
+    ) -> dict:
+        async with self._connection_manager.get_connection() as conn:
+            return await delete_buffer_from_db(conn, buffer, scenario_id, user)

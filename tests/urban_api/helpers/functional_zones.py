@@ -140,7 +140,7 @@ def scenario_functional_zone(urban_api_host, functional_zone_type, scenario, sup
 
 
 @pytest.fixture
-def functional_zone_type_req() -> FunctionalZone:
+def functional_zone_type_req() -> FunctionalZoneType:
     """GET request template for functional zone type data."""
 
     return FunctionalZoneType(
@@ -152,7 +152,7 @@ def functional_zone_type_req() -> FunctionalZone:
 
 
 @pytest.fixture
-def functional_zone_type_post_req() -> FunctionalZonePost:
+def functional_zone_type_post_req() -> FunctionalZoneTypePost:
     """POST request template for functional zone type data."""
 
     return FunctionalZoneTypePost(
@@ -210,7 +210,7 @@ def functional_zone_post_req() -> FunctionalZonePost:
 def functional_zone_put_req() -> FunctionalZonePut:
     """PUT request template for functional zone data."""
 
-    return FunctionalZonePost(
+    return FunctionalZonePut(
         name="Updated Test Functional Zone Name",
         territory_id=1,
         functional_zone_type_id=1,
@@ -287,7 +287,7 @@ def profiles_reclamation_put_req() -> ProfilesReclamationDataPut:
 
 
 @pytest.fixture
-def scenario_functional_zone_req() -> FunctionalZone:
+def scenario_functional_zone_req() -> ScenarioFunctionalZone:
     """GET request template for scenario functional zone data."""
 
     return ScenarioFunctionalZone(
@@ -313,7 +313,7 @@ def scenario_functional_zone_req() -> FunctionalZone:
 
 
 @pytest.fixture
-def scenario_functional_zone_post_req() -> FunctionalZonePost:
+def scenario_functional_zone_post_req() -> ScenarioFunctionalZonePost:
     """POST request template for scenario functional zone data."""
 
     return ScenarioFunctionalZonePost(
@@ -330,7 +330,7 @@ def scenario_functional_zone_post_req() -> FunctionalZonePost:
 
 
 @pytest.fixture
-def scenario_functional_zone_put_req() -> FunctionalZonePut:
+def scenario_functional_zone_put_req() -> ScenarioFunctionalZonePut:
     """POST request template for scenario functional zone data."""
 
     return ScenarioFunctionalZonePut(
@@ -347,7 +347,7 @@ def scenario_functional_zone_put_req() -> FunctionalZonePut:
 
 
 @pytest.fixture
-def scenario_functional_zone_patch_req() -> FunctionalZonePatch:
+def scenario_functional_zone_patch_req() -> ScenarioFunctionalZonePatch:
     """POST request template for scenario functional zone data."""
 
     return ScenarioFunctionalZonePatch(

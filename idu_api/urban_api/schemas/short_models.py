@@ -414,3 +414,42 @@ class SocServiceType(BaseModel):
     id: int
     name: str
     infrastructure_type: InfrastructureType
+
+
+class BufferTypeBasic(BaseModel):
+    """Basic buffer type model to encapsulate in other models."""
+
+    id: int
+    name: str
+
+
+class PhysicalObjectBasic(BaseModel):
+    """Physical object model with only id, name and type."""
+
+    id: int
+    name: str | None
+    type: PhysicalObjectTypeBasic
+
+
+class ServiceBasic(BaseModel):
+    """Service model with only id, name and type."""
+
+    id: int
+    name: str | None
+    type: ServiceTypeBasic
+
+
+class ObjectGeometryBasic(BaseModel):
+    """Object geometry model with only id and territory."""
+
+    id: int
+    territory: ShortTerritory
+
+
+class ShortUrbanObject(BaseModel):
+    """Basic urban object model to encapsulate in other models."""
+
+    id: int
+    physical_object: PhysicalObjectBasic
+    object_geometry: ObjectGeometryBasic
+    service: ServiceBasic | None

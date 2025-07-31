@@ -120,32 +120,34 @@ async def test_get_services_with_geometry_by_scenario_id(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param, is_regional_param",
+    "expected_status, error_message, scenario_id_param, is_regional_param",
     [
         (200, None, None, False),
         (400, "please, choose either service_type_id or urban_function_id", None, False),
-        (400, "this method cannot be accessed in a regional project", None, True),
+        (400, "this method cannot be accessed in a regional scenario", None, True),
         (403, "denied", None, False),
         (404, "not found", 1e9, False),
     ],
-    ids=["success", "bad_request", "regional_project", "forbidden", "not_found"],
+    ids=["success", "bad_request", "regional_scenario", "forbidden", "not_found"],
 )
 async def test_get_context_services(
     urban_api_host: str,
-    project: dict[str, Any],
-    regional_project: dict[str, Any],
+    scenario: dict[str, Any],
+    regional_scenario: dict[str, Any],
     service: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
-    project_id_param: int | None,
+    scenario_id_param: int | None,
     is_regional_param: bool,
 ):
-    """Test GET /projects/{project_id}/context/services method."""
+    """Test GET /scenarios/{scenario_id}/context/services method."""
 
     # Arrange
-    project_id = project_id_param or (regional_project["project_id"] if is_regional_param else project["project_id"])
+    scenario_id = scenario_id_param or (
+        regional_scenario["scenario_id"] if is_regional_param else scenario["scenario_id"]
+    )
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
     params = {"service_type_id": service["service_type"]["service_type_id"]}
     if expected_status == 400 and not is_regional_param:
@@ -153,7 +155,7 @@ async def test_get_context_services(
 
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
-        response = await client.get(f"/projects/{project_id}/context/services", headers=headers, params=params)
+        response = await client.get(f"/scenarios/{scenario_id}/context/services", headers=headers, params=params)
         result = response.json()
 
     # Assert
@@ -168,32 +170,34 @@ async def test_get_context_services(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "expected_status, error_message, project_id_param, is_regional_param",
+    "expected_status, error_message, scenario_id_param, is_regional_param",
     [
         (200, None, None, False),
         (400, "please, choose either service_type_id or urban_function_id", None, False),
-        (400, "this method cannot be accessed in a regional project", None, True),
+        (400, "this method cannot be accessed in a regional scenario", None, True),
         (403, "denied", None, False),
         (404, "not found", 1e9, False),
     ],
-    ids=["success", "bad_request", "regional_project", "forbidden", "not_found"],
+    ids=["success", "bad_request", "regional_scenario", "forbidden", "not_found"],
 )
 async def test_get_context_services_with_geometry(
     urban_api_host: str,
-    project: dict[str, Any],
-    regional_project: dict[str, Any],
+    scenario: dict[str, Any],
+    regional_scenario: dict[str, Any],
     service: dict[str, Any],
     valid_token: str,
     superuser_token: str,
     expected_status: int,
     error_message: str | None,
-    project_id_param: int | None,
+    scenario_id_param: int | None,
     is_regional_param: bool,
 ):
-    """Test GET /projects/{project_id}/context/services_with_geometry method."""
+    """Test GET /scenarios/{scenario_id}/context/services_with_geometry method."""
 
     # Arrange
-    project_id = project_id_param or (regional_project["project_id"] if is_regional_param else project["project_id"])
+    scenario_id = scenario_id_param or (
+        regional_scenario["scenario_id"] if is_regional_param else scenario["scenario_id"]
+    )
     headers = {"Authorization": f"Bearer {valid_token if expected_status == 403 else superuser_token}"}
     params = {"service_type_id": service["service_type"]["service_type_id"]}
     if expected_status == 400 and not is_regional_param:
@@ -202,7 +206,7 @@ async def test_get_context_services_with_geometry(
     # Act
     async with httpx.AsyncClient(base_url=f"{urban_api_host}/api/v1") as client:
         response = await client.get(
-            f"/projects/{project_id}/context/services_with_geometry", headers=headers, params=params
+            f"/scenarios/{scenario_id}/context/services_with_geometry", headers=headers, params=params
         )
         result = response.json()
 

@@ -9,12 +9,11 @@ from idu_api.urban_api.dto import (
     FunctionalZoneSourceDTO,
     HexagonWithIndicatorsDTO,
     PageDTO,
-    PhysicalObjectDTO,
-    PhysicalObjectWithGeometryDTO,
     ProjectDTO,
     ProjectPhasesDTO,
     ProjectTerritoryDTO,
     ProjectWithTerritoryDTO,
+    ScenarioBufferDTO,
     ScenarioDTO,
     ScenarioFunctionalZoneDTO,
     ScenarioGeometryDTO,
@@ -25,11 +24,8 @@ from idu_api.urban_api.dto import (
     ScenarioServiceDTO,
     ScenarioServiceWithGeometryDTO,
     ScenarioUrbanObjectDTO,
-    ServiceDTO,
-    ServiceWithGeometryDTO,
     UserDTO,
 )
-from idu_api.urban_api.dto.object_geometries import GeometryWithAllObjectsDTO, ObjectGeometryDTO
 from idu_api.urban_api.minio.services import ProjectStorageManager
 from idu_api.urban_api.schemas import (
     ObjectGeometryPatch,
@@ -41,6 +37,8 @@ from idu_api.urban_api.schemas import (
     ProjectPhasesPut,
     ProjectPost,
     ProjectPut,
+    ScenarioBufferDelete,
+    ScenarioBufferPut,
     ScenarioBuildingPatch,
     ScenarioBuildingPost,
     ScenarioBuildingPut,
@@ -198,21 +196,21 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def get_context_physical_objects(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-    ) -> list[PhysicalObjectDTO]:
+    ) -> list[ScenarioPhysicalObjectDTO]:
         """Get list of physical objects for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def get_context_physical_objects_with_geometry(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         physical_object_type_id: int | None,
         physical_object_function_id: int | None,
-    ) -> list[PhysicalObjectWithGeometryDTO]:
+    ) -> list[ScenarioPhysicalObjectWithGeometryDTO]:
         """Get list of physical objects with geometry for 'context' of the project territory."""
 
     @abc.abstractmethod
@@ -329,21 +327,21 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def get_context_services(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         service_type_id: int | None,
         urban_function_id: int | None,
-    ) -> list[ServiceDTO]:
+    ) -> list[ScenarioServiceDTO]:
         """Get list of services for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def get_context_services_with_geometry(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         service_type_id: int | None,
         urban_function_id: int | None,
-    ) -> list[ServiceWithGeometryDTO]:
+    ) -> list[ScenarioServiceWithGeometryDTO]:
         """Get list of services with geometry for 'context' of the project territory."""
 
     @abc.abstractmethod
@@ -409,23 +407,23 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     @abc.abstractmethod
     async def get_context_geometries(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         physical_object_id: int | None,
         service_id: int | None,
-    ) -> list[ObjectGeometryDTO]:
+    ) -> list[ScenarioGeometryDTO]:
         """Get list of geometries for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def get_context_geometries_with_all_objects(
         self,
-        project_id: int,
+        scenario_id: int,
         user: UserDTO | None,
         physical_object_type_id: int | None,
         service_type_id: int | None,
         physical_object_function_id: int | None,
         urban_function_id: int | None,
-    ) -> list[GeometryWithAllObjectsDTO]:
+    ) -> list[ScenarioGeometryWithAllObjectsDTO]:
         """Get geometries with lists of physical objects and services for 'context' of the project territory."""
 
     @abc.abstractmethod
@@ -464,7 +462,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     async def get_scenario_indicators_values(
         self,
         scenario_id: int,
-        indicator_ids: str | None,
+        indicator_ids: set[int],
         indicator_group_id: int | None,
         territory_id: int | None,
         hexagon_id: int | None,
@@ -518,7 +516,7 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
     async def get_hexagons_with_indicators_by_scenario_id(
         self,
         scenario_id: int,
-        indicator_ids: str | None,
+        indicator_ids: set[int],
         indicators_group_id: int | None,
         user: UserDTO | None,
     ) -> list[HexagonWithIndicatorsDTO]:
@@ -547,14 +545,14 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
 
     @abc.abstractmethod
     async def get_context_functional_zones_sources(
-        self, project_id: int, user: UserDTO | None
+        self, scenario_id: int, user: UserDTO | None
     ) -> list[FunctionalZoneSourceDTO]:
         """Get list of pairs year + source for functional zones for 'context' of the project territory."""
 
     @abc.abstractmethod
     async def get_context_functional_zones(
         self,
-        project_id: int,
+        scenario_id: int,
         year: int,
         source: str,
         functional_zone_type_id: int | None,
@@ -601,3 +599,43 @@ class UserProjectService(Protocol):  # pylint: disable=too-many-public-methods
         self, project_id: int, project_phases: ProjectPhasesPut, user: UserDTO | None
     ) -> ProjectPhasesDTO:
         """Put project's phases."""
+
+    @abc.abstractmethod
+    async def get_buffers_by_scenario_id(
+        self,
+        scenario_id: int,
+        buffer_type_id: int | None,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+        user: UserDTO | None,
+    ) -> list[ScenarioBufferDTO]:
+        """Get list of buffers by scenario identifier."""
+
+    @abc.abstractmethod
+    async def get_context_buffers(
+        self,
+        scenario_id: int,
+        buffer_type_id: int | None,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+        user: UserDTO | None,
+    ) -> list[ScenarioBufferDTO]:
+        """Get list of buffers for 'context' of the project territory."""
+
+    @abc.abstractmethod
+    async def put_scenario_buffer(
+        self,
+        buffer: ScenarioBufferPut,
+        scenario_id: int,
+        user: UserDTO | None,
+    ) -> ScenarioBufferDTO:
+        """Get buffer objects by scenario identifier."""
+
+    @abc.abstractmethod
+    async def delete_scenario_buffer(
+        self,
+        buffer: ScenarioBufferDelete,
+        scenario_id: int,
+        user: UserDTO | None,
+    ) -> dict:
+        """Get buffer objects by scenario identifier."""

@@ -86,7 +86,7 @@ async def test_get_indicator_values_by_territory_id_from_db(mock_conn: MockConne
     territory_id = 1
     filters = {
         "indicators_group_id": 1,
-        "indicator_ids": "1",
+        "indicator_ids": {1},
         "start_date": date.today(),
         "end_date": date.today(),
         "value_type": "real",
@@ -245,7 +245,7 @@ async def test_get_indicator_values_by_parent_id_from_db(mock_conn: MockConnecti
     parent_id = 1
     filters = {
         "indicators_group_id": 1,
-        "indicator_ids": "1",
+        "indicator_ids": {1},
         "start_date": date.today(),
         "end_date": date.today(),
         "value_type": "real",

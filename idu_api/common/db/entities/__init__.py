@@ -2,8 +2,9 @@
 Module to store all the database tables.
 """
 
-from idu_api.common.db.entities.buffers import buffer_types_dict, buffers_data
+from idu_api.common.db.entities.buffers import buffer_types_dict, buffers_data, default_buffer_values_dict
 from idu_api.common.db.entities.functional_zones import functional_zone_types_dict, functional_zones_data
+from idu_api.common.db.entities.hexagons import hexagons_data
 from idu_api.common.db.entities.indicators_dict import indicators_dict, measurement_units_dict
 from idu_api.common.db.entities.indicators_groups import indicators_groups_data, indicators_groups_dict
 from idu_api.common.db.entities.living_buildings import buildings_data
@@ -15,8 +16,8 @@ from idu_api.common.db.entities.physical_object_types import (
 )
 from idu_api.common.db.entities.physical_objects import physical_objects_data
 from idu_api.common.db.entities.profiles_reclamation import profiles_reclamation_data
+from idu_api.common.db.entities.projects.buffers import buffers_data as projects_buffers_data
 from idu_api.common.db.entities.projects.functional_zones import projects_functional_zones
-from idu_api.common.db.entities.projects.hexagons import hexagons_data
 from idu_api.common.db.entities.projects.indicators import projects_indicators_data
 from idu_api.common.db.entities.projects.living_buildings import projects_buildings_data
 from idu_api.common.db.entities.projects.object_geometries import projects_object_geometries_data

@@ -42,11 +42,13 @@ from sqlalchemy import (
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from idu_api.common.db.entities import (
+    buffers_data,
     functional_zone_types_dict,
     functional_zones_data,
     object_geometries_data,
     physical_object_types_dict,
     physical_objects_data,
+    projects_buffers_data,
     projects_data,
     projects_functional_zones,
     projects_object_geometries_data,
@@ -82,6 +84,7 @@ from idu_api.urban_api.schemas import (
     ProjectPut,
 )
 from idu_api.urban_api.utils.pagination import paginate_dto
+from idu_api.urban_api.utils.query_filters import CustomFilter, EqFilter, ILikeFilter, apply_filters
 
 func: Callable
 
@@ -165,7 +168,9 @@ async def get_project_by_id_from_db(conn: AsyncConnection, project_id: int, user
 
 
 async def get_project_territory_by_id_from_db(
-    conn: AsyncConnection, project_id: int, user: UserDTO | None
+    conn: AsyncConnection,
+    project_id: int,
+    user: UserDTO | None,
 ) -> ProjectTerritoryDTO:
     """Get project territory object by project identifier."""
 
@@ -339,37 +344,45 @@ async def get_projects_from_db(
         )
     )
 
-    if only_own:
-        statement = statement.where(projects_data.c.user_id == user.id)
-    elif user is not None:
-        statement = statement.where(
-            (projects_data.c.user_id == user.id) | (projects_data.c.public.is_(True) if not user.is_superuser else True)
-        )
-    else:
-        statement = statement.where(projects_data.c.public.is_(True))
+    filters = [
+        # Project ownership / visibility logic
+        (
+            EqFilter(projects_data, "user_id", user.id)
+            if only_own
+            else (
+                CustomFilter(
+                    lambda q: q.where(
+                        (projects_data.c.user_id == user.id)
+                        | (projects_data.c.public.is_(True) if not user.is_superuser else True)
+                    )
+                )
+                if user is not None
+                else EqFilter(projects_data, "public", True)
+            )
+        ),
+        # Project type logic
+        (
+            EqFilter(projects_data, "is_city", False)
+            if project_type == "common"
+            else EqFilter(projects_data, "is_city", True) if project_type == "city" else None
+        ),
+        # Standard filters
+        EqFilter(projects_data, "territory_id", territory_id),
+        ILikeFilter(projects_data, "name", name),
+        CustomFilter(lambda q: q.where(func.date(projects_data.c.created_at) >= created_at)) if created_at else None,
+    ]
 
-    if project_type == "common":
-        statement = statement.where(projects_data.c.is_city.is_(False))
-    elif project_type == "city":
-        statement = statement.where(projects_data.c.is_city.is_(True))
+    statement = apply_filters(statement, *(f for f in filters if f))
 
-    if territory_id is not None:
-        statement = statement.where(projects_data.c.territory_id == territory_id)
-    if name is not None:
-        statement = statement.where(projects_data.c.name.ilike(f"%{name}%"))
-    if created_at is not None:
-        statement = statement.where(func.date(projects_data.c.created_at) >= created_at)
+    order_column = {
+        "created_at": projects_data.c.created_at,
+        "updated_at": projects_data.c.updated_at,
+    }.get(order_by, projects_data.c.project_id)
 
-    if order_by is not None:
-        order = projects_data.c.created_at if order_by == "created_at" else projects_data.c.updated_at
-        if ordering == "desc":
-            order = order.desc()
-        statement = statement.order_by(order)
-    else:
-        if ordering == "desc":
-            statement = statement.order_by(projects_data.c.project_id.desc())
-        else:
-            statement = statement.order_by(projects_data.c.project_id)
+    if ordering == "desc":
+        order_column = order_column.desc()
+
+    statement = statement.order_by(order_column)
 
     if paginate:
         return await paginate_dto(conn, statement, transformer=lambda x: [ProjectDTO(**item) for item in x])
@@ -411,22 +424,33 @@ async def get_projects_territories_from_db(
         )
     )
 
-    if only_own:
-        statement = statement.where(projects_data.c.user_id == user.id)
-    elif user is not None:
-        statement = statement.where(
-            (projects_data.c.user_id == user.id) | (projects_data.c.public.is_(True) if not user.is_superuser else True)
-        )
-    else:
-        statement = statement.where(projects_data.c.public.is_(True))
+    filters = [
+        # Project ownership / visibility logic
+        (
+            EqFilter(projects_data, "user_id", user.id)
+            if only_own
+            else (
+                CustomFilter(
+                    lambda q: q.where(
+                        (projects_data.c.user_id == user.id)
+                        | (projects_data.c.public.is_(True) if not user.is_superuser else True)
+                    )
+                )
+                if user is not None
+                else EqFilter(projects_data, "public", True)
+            )
+        ),
+        # Project type logic
+        (
+            EqFilter(projects_data, "is_city", False)
+            if project_type == "common"
+            else EqFilter(projects_data, "is_city", True) if project_type == "city" else None
+        ),
+        # Standard filters
+        EqFilter(projects_data, "territory_id", territory_id),
+    ]
 
-    if project_type == "common":
-        statement = statement.where(projects_data.c.is_city.is_(False))
-    elif project_type == "city":
-        statement = statement.where(projects_data.c.is_city.is_(True))
-
-    if territory_id is not None:
-        statement = statement.where(projects_data.c.territory_id == territory_id)
+    statement = apply_filters(statement, *(f for f in filters if f))
 
     result = (await conn.execute(statement)).mappings().all()
 
@@ -1151,9 +1175,10 @@ async def insert_intersecting_geometries(
     return {row.public_object_geometry_id: row.object_geometry_id for row in result.mappings().all()}
 
 
-async def insert_urban_objects(conn: AsyncConnection, scenario_id: int, id_mapping: dict[int, int]) -> None:
+async def insert_urban_objects(conn: AsyncConnection, scenario_id: int, id_mapping: dict[int, int]) -> dict[int, int]:
     """
     Insert cropped urban objects into the `user_projects.urban_objects_data` table for a specific scenario.
+    Returns mapping from public.urban_objects_data to user_projects.urban_objects_data.
 
     This function does the following:
     1. Selects urban objects related to the provided geometry mapping.
@@ -1167,7 +1192,7 @@ async def insert_urban_objects(conn: AsyncConnection, scenario_id: int, id_mappi
     """
 
     if not id_mapping:
-        return
+        return {}
 
     # Step 1: Common base query for selecting matched urban objects and joining mapping
     base_query_cte = (
@@ -1187,28 +1212,81 @@ async def insert_urban_objects(conn: AsyncConnection, scenario_id: int, id_mappi
     ).cte(name="base_query")
 
     # Step 2: Insert basic public urban object references
-    insert_public = insert(projects_urban_objects_data).from_select(
-        ["public_urban_object_id", "scenario_id"],
-        select(
-            base_query_cte.c.public_urban_object_id,
-            literal(scenario_id).label("scenario_id"),
-        ),
+    insert_public = (
+        insert(projects_urban_objects_data)
+        .from_select(
+            ["public_urban_object_id", "scenario_id"],
+            select(
+                base_query_cte.c.public_urban_object_id,
+                literal(scenario_id).label("scenario_id"),
+            ).order_by(base_query_cte.c.public_urban_object_id),
+        )
+        .returning(projects_urban_objects_data.c.public_urban_object_id)
     )
 
     # Step 3: Insert detailed urban object data with mapped geometries
-    insert_detailed = insert(projects_urban_objects_data).from_select(
-        ["public_physical_object_id", "public_service_id", "object_geometry_id", "scenario_id"],
-        select(
-            base_query_cte.c.public_physical_object_id,
-            base_query_cte.c.public_service_id,
-            base_query_cte.c.object_geometry_id,
-            literal(scenario_id).label("scenario_id"),
-        ),
+    insert_detailed = (
+        insert(projects_urban_objects_data)
+        .from_select(
+            ["public_physical_object_id", "public_service_id", "object_geometry_id", "scenario_id"],
+            select(
+                base_query_cte.c.public_physical_object_id,
+                base_query_cte.c.public_service_id,
+                base_query_cte.c.object_geometry_id,
+                literal(scenario_id).label("scenario_id"),
+            ).order_by(base_query_cte.c.public_urban_object_id),
+        )
+        .returning(projects_urban_objects_data.c.urban_object_id)
     )
 
     # Execute inserts
-    await conn.execute(insert_public)
-    await conn.execute(insert_detailed)
+    public_ids = (await conn.execute(insert_public)).scalars().all()
+    scenario_ids = (await conn.execute(insert_detailed)).scalars().all()
+
+    return dict(zip(public_ids, scenario_ids))
+
+
+async def copy_buffers(conn: AsyncConnection, id_mapping: dict[int, int]) -> None:
+    """
+    Copy custom buffers from public.buffers_data to user_projects.buffers_data,
+    updating only geometry and is_custom fields for matching urban_object_ids.
+
+    Args:
+        conn (AsyncConnection): Asynchronous database connection.
+        id_mapping (dict[int, int]): Mapping from public urban_object_id → project urban_object_id.
+    """
+    if not id_mapping:
+        return
+
+    # Step 1: Select relevant public buffer entries (is_custom = true)
+    statement = select(
+        buffers_data.c.buffer_type_id,
+        buffers_data.c.urban_object_id.label("public_urban_object_id"),
+        buffers_data.c.geometry,
+        buffers_data.c.is_custom,
+    ).where(
+        buffers_data.c.urban_object_id.in_(id_mapping.keys()),
+        buffers_data.c.is_custom.is_(True),
+    )
+
+    result = (await conn.execute(statement)).mappings().all()
+
+    # Step 2: For each matching row, issue an UPDATE on user_projects.buffers_data
+    for row in result:
+        public_urban_object_id = row.public_urban_object_id
+        project_urban_object_id = id_mapping.get(public_urban_object_id)
+        if project_urban_object_id is None:
+            continue
+
+        statement = (
+            update(projects_buffers_data)
+            .where(
+                projects_buffers_data.c.buffer_type_id == row.buffer_type_id,
+                projects_buffers_data.c.urban_object_id == project_urban_object_id,
+            )
+            .values(geometry=row.geometry, is_custom=True)
+        )
+        await conn.execute(statement)
 
 
 async def insert_functional_zones(conn: AsyncConnection, scenario_id: int, geometry: ScalarSelect[Any]) -> None:

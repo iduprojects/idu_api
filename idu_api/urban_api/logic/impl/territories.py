@@ -7,6 +7,7 @@ from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, P
 
 from idu_api.common.db.connection.manager import PostgresConnectionManager
 from idu_api.urban_api.dto import (
+    BufferDTO,
     BuildingWithGeometryDTO,
     FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
@@ -30,6 +31,7 @@ from idu_api.urban_api.dto import (
     TerritoryWithNormativesDTO,
     TerritoryWithoutGeometryDTO,
 )
+from idu_api.urban_api.logic.impl.helpers.territories_buffers import get_buffers_by_territory_id_from_db
 from idu_api.urban_api.logic.impl.helpers.territories_buildings import (
     get_buildings_with_geometry_by_territory_id_from_db,
 )
@@ -220,7 +222,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def get_indicator_values_by_territory_id(
         self,
         territory_id: int,
-        indicator_ids: str | None,
+        indicator_ids: set[int],
         indicators_group_id: int | None,
         start_date: date | None,
         end_date: date | None,
@@ -248,7 +250,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def get_indicator_values_by_parent_id(
         self,
         parent_id: int | None,
-        indicator_ids: str | None,
+        indicator_ids: set[int],
         indicators_group_id: int | None,
         start_date: date | None,
         end_date: date | None,
@@ -515,3 +517,23 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def delete_hexagons_by_territory_id(self, territory_id: int) -> dict:
         async with self._connection_manager.get_connection() as conn:
             return await delete_hexagons_by_territory_id_from_db(conn, territory_id)
+
+    async def get_buffers_by_territory_id(
+        self,
+        territory_id: int,
+        include_child_territories: bool,
+        cities_only: bool,
+        buffer_type_id: int | None,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+    ) -> list[BufferDTO]:
+        async with self._connection_manager.get_ro_connection() as conn:
+            return await get_buffers_by_territory_id_from_db(
+                conn,
+                territory_id,
+                include_child_territories,
+                cities_only,
+                buffer_type_id,
+                physical_object_type_id,
+                service_type_id,
+            )

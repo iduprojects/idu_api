@@ -1,6 +1,6 @@
 """Indicator values projects-related endpoints are defined here."""
 
-from fastapi import Depends, Path, Query, Request, Security
+from fastapi import Depends, HTTPException, Path, Query, Request, Security
 from fastapi.security import HTTPBearer
 from geojson_pydantic.geometries import Geometry
 from otteroad import KafkaProducerClient
@@ -50,6 +50,7 @@ async def get_indicators_values_by_scenario_id(
     - **list[ScenarioIndicatorValue]**: A list of scenario indicator values.
 
     ### Errors:
+    - **400 Bad Request**: If the indicator_ids is specified in the wrong form.
     - **403 Forbidden**: If the user does not have access rights.
     - **404 Not Found**: If the scenario does not exist.
 
@@ -57,6 +58,14 @@ async def get_indicators_values_by_scenario_id(
     - The user must be the owner of the relevant project or the project must be publicly available.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+
+    try:
+        indicator_ids = {int(ind_id.strip()) for ind_id in indicator_ids.split(",")}
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, pass the indicator identifiers in the correct format separated by comma",
+        ) from exc
 
     indicators = await user_project_service.get_scenario_indicators_values(
         scenario_id, indicator_ids, indicators_group_id, territory_id, hexagon_id, user
@@ -292,6 +301,7 @@ async def get_hexagons_with_indicators_values_by_scenario_id(
     - **GeoJSONResponse[Feature[Geometry, HexagonWithIndicators]]**: A GeoJSON response containing hexagons with indicator values.
 
     ### Errors:
+    - **400 Bad Request**: If the indicator_ids is specified in the wrong form.
     - **403 Forbidden**: If the user does not have access rights.
     - **404 Not Found**: If the scenario does not exist.
 
@@ -299,6 +309,14 @@ async def get_hexagons_with_indicators_values_by_scenario_id(
     - The user must be the owner of the relevant project or the project must be publicly available.
     """
     user_project_service: UserProjectService = request.state.user_project_service
+
+    try:
+        indicator_ids = {int(ind_id.strip()) for ind_id in indicator_ids.split(",")}
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please, pass the indicator identifiers in the correct format separated by comma",
+        ) from exc
 
     hexagons = await user_project_service.get_hexagons_with_indicators_by_scenario_id(
         scenario_id, indicator_ids, indicators_group_id, user
