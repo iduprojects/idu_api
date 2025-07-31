@@ -20,6 +20,7 @@ from idu_api.urban_api.logic.impl.helpers.utils import (
 )
 from idu_api.urban_api.schemas import TerritoryPatch, TerritoryPost, TerritoryPut
 from idu_api.urban_api.utils.pagination import paginate_dto
+from idu_api.urban_api.utils.query_filters import CustomFilter, EqFilter, ILikeFilter, apply_filters
 
 func: Callable
 Geom = geom.Polygon | geom.MultiPolygon | geom.Point | geom.LineString | geom.MultiLineString
@@ -264,25 +265,25 @@ async def get_territories_by_parent_id_from_db(
         .outerjoin(admin_centers, admin_centers.c.territory_id == requested_territories.c.admin_center_id)
     )
 
-    if cities_only:
-        statement = statement.where(requested_territories.c.is_city.is_(cities_only))
-    if name is not None:
-        statement = statement.where(requested_territories.c.name.ilike(f"%{name}%"))
-    if created_at is not None:
-        statement = statement.where(func.date(requested_territories.c.created_at) == created_at)
-    if territory_type_id is not None:
-        statement = statement.where(requested_territories.c.territory_type_id == territory_type_id)
+    statement = apply_filters(
+        statement,
+        CustomFilter(lambda q: q.where(requested_territories.c.is_city.is_(True)) if cities_only else q),
+        ILikeFilter(requested_territories, "name", name),
+        CustomFilter(
+            lambda q: q.where(func.date(requested_territories.c.created_at) == created_at) if created_at else q
+        ),
+        EqFilter(requested_territories, "territory_type_id", territory_type_id),
+    )
 
-    if order_by is not None:
-        order = requested_territories.c.created_at if order_by == "created_at" else requested_territories.c.updated_at
-        if ordering == "desc":
-            order = order.desc()
-        statement = statement.order_by(order)
-    else:
-        if ordering == "desc":
-            statement = statement.order_by(requested_territories.c.territory_id.desc())
-        else:
-            statement = statement.order_by(requested_territories.c.territory_id)
+    order_column = {
+        "created_at": requested_territories.c.created_at,
+        "updated_at": requested_territories.c.updated_at,
+    }.get(order_by, requested_territories.c.territory_id)
+
+    if ordering == "desc":
+        order_column = order_column.desc()
+
+    statement = statement.order_by(order_column)
 
     if paginate:
         return await paginate_dto(conn, statement, transformer=lambda x: [TerritoryDTO(**item) for item in x])
@@ -361,25 +362,25 @@ async def get_territories_without_geometry_by_parent_id_from_db(
         .outerjoin(admin_centers, admin_centers.c.territory_id == requested_territories.c.admin_center_id)
     )
 
-    if cities_only:
-        statement = statement.where(requested_territories.c.is_city.is_(cities_only))
-    if name is not None:
-        statement = statement.where(requested_territories.c.name.ilike(f"%{name}%"))
-    if created_at is not None:
-        statement = statement.where(func.date(requested_territories.c.created_at) == created_at)
-    if territory_type_id is not None:
-        statement = statement.where(requested_territories.c.territory_type_id == territory_type_id)
+    statement = apply_filters(
+        statement,
+        CustomFilter(lambda q: q.where(requested_territories.c.is_city.is_(True)) if cities_only else q),
+        ILikeFilter(requested_territories, "name", name),
+        CustomFilter(
+            lambda q: q.where(func.date(requested_territories.c.created_at) == created_at) if created_at else q
+        ),
+        EqFilter(requested_territories, "territory_type_id", territory_type_id),
+    )
 
-    if order_by is not None:
-        order = requested_territories.c.created_at if order_by == "created_at" else requested_territories.c.updated_at
-        if ordering == "desc":
-            order = order.desc()
-        statement = statement.order_by(order)
-    else:
-        if ordering == "desc":
-            statement = statement.order_by(requested_territories.c.territory_id.desc())
-        else:
-            statement = statement.order_by(requested_territories.c.territory_id)
+    order_column = {
+        "created_at": requested_territories.c.created_at,
+        "updated_at": requested_territories.c.updated_at,
+    }.get(order_by, requested_territories.c.territory_id)
+
+    if ordering == "desc":
+        order_column = order_column.desc()
+
+    statement = statement.order_by(order_column)
 
     if paginate:
         return await paginate_dto(

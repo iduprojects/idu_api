@@ -98,46 +98,46 @@ async def get_functional_zones_by_scenario_id(
 
 
 @projects_router.get(
-    "/projects/{project_id}/context/functional_zone_sources",
+    "/scenarios/{scenario_id}/context/functional_zone_sources",
     response_model=list[FunctionalZoneSource],
     status_code=status.HTTP_200_OK,
 )
 async def get_context_functional_zone_sources(
     request: Request,
-    project_id: int = Path(..., description="project identifier", gt=0),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     user: UserDTO = Depends(get_user),
 ) -> list[FunctionalZoneSource]:
     """
     ## Get functional zone sources for the project's context.
 
     ### Parameters:
-    - **project_id** (int, Path): Unique identifier of the project.
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
 
     ### Returns:
     - **list[FunctionalZoneSource]**: A list of functional zone sources, each represented as a (year, source) pair.
 
     ### Errors:
     - **403 Forbidden**: If the user does not have access rights.
-    - **404 Not Found**: If the project does not exist.
+    - **404 Not Found**: If the scenario does not exist.
 
     ### Constraints:
     - The user must be the relevant project owner or the project must be publicly accessible.
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    sources = await user_project_service.get_context_functional_zones_sources(project_id, user)
+    sources = await user_project_service.get_context_functional_zones_sources(scenario_id, user)
 
     return [FunctionalZoneSource.from_dto(source) for source in sources]
 
 
 @projects_router.get(
-    "/projects/{project_id}/context/functional_zones",
+    "/scenarios/{scenario_id}/context/functional_zones",
     response_model=GeoJSONResponse[Feature[Geometry, FunctionalZoneWithoutGeometry]],
     status_code=status.HTTP_200_OK,
 )
 async def get_context_functional_zones(
     request: Request,
-    project_id: int = Path(..., description="project identifier", gt=0),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     year: int = Query(..., description="to filter by year when zones were uploaded"),
     source: str = Query(..., description="to filter by source from which zones were uploaded"),
     functional_zone_type_id: int | None = Query(None, description="functional zone type identifier", gt=0),
@@ -147,7 +147,7 @@ async def get_context_functional_zones(
     ## Get functional zones in GeoJSON format for the project's context, filtered by year and source.
 
     ### Parameters:
-    - **project_id** (int, Path): Unique identifier of the project.
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
     - **year** (int, Query): Year of zone upload.
     - **source** (str, Query): Source from which zones were uploaded.
     - **functional_zone_type_id** (int | None, Query): Optional functional zone type filter.
@@ -157,7 +157,7 @@ async def get_context_functional_zones(
 
     ### Errors:
     - **403 Forbidden**: If the user does not have access rights.
-    - **404 Not Found**: If the project does not exist.
+    - **404 Not Found**: If the scenario does not exist.
 
     ### Constraints:
     - The user must be the relevant project owner or the project must be publicly accessible.
@@ -165,7 +165,7 @@ async def get_context_functional_zones(
     user_project_service: UserProjectService = request.state.user_project_service
 
     functional_zones = await user_project_service.get_context_functional_zones(
-        project_id, year, source, functional_zone_type_id, user
+        scenario_id, year, source, functional_zone_type_id, user
     )
 
     return await GeoJSONResponse.from_list([zone.to_geojson_dict() for zone in functional_zones])
@@ -186,7 +186,8 @@ async def add_scenario_functional_zones(
     """
     ## Create new functional zones for a given scenario.
 
-    **WARNING:** This method will delete all existing functional zones for the specified scenario before adding new ones.
+    **WARNING:** This method will delete **ONLY USER'S** functional zones (since version 0.49.0)
+    for the specified scenario before adding new ones.
 
     ### Parameters:
     - **scenario_id** (int, Path): Unique identifier of the scenario.

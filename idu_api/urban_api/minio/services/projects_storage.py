@@ -1,8 +1,8 @@
 import asyncio
 import io
 import json
-import time
 import uuid
+from io import BytesIO
 from typing import Literal
 
 import aioboto3
@@ -174,7 +174,11 @@ class ProjectStorageManager:
     # ========== Gallery Management ==========
 
     async def upload_gallery_image(
-        self, project_id: int, file: bytes, logger: BoundLogger, set_main: bool = False
+        self,
+        project_id: int,
+        file: bytes,
+        logger: BoundLogger,
+        set_main: bool = False,
     ) -> str:
         """
         Upload a gallery image (original + preview) to the project.
@@ -245,7 +249,7 @@ class ProjectStorageManager:
         image_id: str | None,
         logger: BoundLogger,
         image_type: Literal["original", "preview"] = "preview",
-    ) -> bytes:
+    ) -> BytesIO:
         """
         Get the image from project's gallery by given identifier.
 
@@ -402,6 +406,10 @@ class ProjectStorageManager:
         """
         logo_path = f"{self._logo_prefix(project_id)}image.{file_ext}"
         async with self._client.get_session() as session:
+            existing_objects = await self._client.list_objects(session, logger, prefix=self._logo_prefix(project_id))
+            if existing_objects:
+                await self._client.delete_file(session, existing_objects[0], logger)
+
             await self._client.upload_file(session, file_data, logo_path, logger)
 
             return (await self._client.generate_presigned_urls(session, [logo_path], logger))[0]
@@ -420,7 +428,7 @@ class ProjectStorageManager:
         async with self._client.get_session() as session:
             existing_objects = await self._client.list_objects(session, logger, prefix=self._logo_prefix(project_id))
             if not existing_objects:
-                return None
+                existing_objects = ["defaultLogo.jpg"]
             return (await self._client.generate_presigned_urls(session, existing_objects, logger))[0]
 
     async def delete_logo(self, project_id: int, logger: BoundLogger) -> None:
@@ -432,7 +440,7 @@ class ProjectStorageManager:
             logger: Structlog logger.
         """
         async with self._client.get_session() as session:
-            logos = list(await self._client.list_objects(session, logger, prefix=self._logo_prefix(project_id)))
+            logos = await self._client.list_objects(session, logger, prefix=self._logo_prefix(project_id))
             if not logos:
                 raise FileNotFound(project_id, "logo")
             await self._client.delete_file(session, logos[0], logger)
@@ -547,7 +555,7 @@ class ProjectStorageManager:
             await self._client.delete_file(session, object_name, logger)
 
 
-def get_project_storage_manager_from_config(app_config: UrbanAPIConfig) -> AsyncMinioClient:
+def get_project_storage_manager_from_config(app_config: UrbanAPIConfig) -> ProjectStorageManager:
     return ProjectStorageManager(app_config)
 
 

@@ -23,6 +23,7 @@ from idu_api.urban_api.logic.impl.helpers.utils import (
     check_existence,
     include_child_territories_cte,
 )
+from idu_api.urban_api.utils.query_filters import CustomFilter, EqFilter, ILikeFilter, InFilter, apply_filters
 
 func: Callable
 
@@ -66,7 +67,7 @@ async def get_indicators_by_territory_id_from_db(conn: AsyncConnection, territor
 async def get_indicator_values_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
-    indicator_ids: str | None,
+    indicator_ids: set[int],
     indicators_group_id: int | None,
     start_date: date | None,
     end_date: date | None,
@@ -156,26 +157,28 @@ async def get_indicator_values_by_territory_id_from_db(
             )
         )
 
-    if indicator_ids is not None:
-        ids = {int(indicator.strip()) for indicator in indicator_ids.split(",")}
-        statement = statement.where(territory_indicators_data.c.indicator_id.in_(ids))
-    if indicators_group_id is not None:
-        statement = statement.where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
-    if start_date is not None:
-        statement = statement.where(func.date(territory_indicators_data.c.date_value) >= start_date)
-    if end_date is not None:
-        statement = statement.where(func.date(territory_indicators_data.c.date_value) <= end_date)
-    if value_type is not None:
-        statement = statement.where(territory_indicators_data.c.value_type == value_type)
-    if information_source is not None:
-        statement = statement.where(territory_indicators_data.c.information_source.ilike(f"%{information_source}%"))
     if include_child_territories:
         territories_cte = include_child_territories_cte(territory_id, cities_only)
-        statement = statement.where(
-            territory_indicators_data.c.territory_id.in_(select(territories_cte.c.territory_id))
+        territory_filter = CustomFilter(
+            lambda q: q.where(territory_indicators_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
         )
     else:
-        statement = statement.where(territory_indicators_data.c.territory_id == territory_id)
+        territory_filter = EqFilter(territory_indicators_data, "territory_id", territory_id)
+
+    statement = apply_filters(
+        statement,
+        InFilter(territory_indicators_data, "indicator_id", indicator_ids),
+        EqFilter(indicators_groups_data, "indicators_group_id", indicators_group_id),
+        CustomFilter(
+            lambda q: q.where(func.date(territory_indicators_data.c.date_value) >= start_date) if start_date else q
+        ),
+        CustomFilter(
+            lambda q: q.where(func.date(territory_indicators_data.c.date_value) <= end_date) if end_date else q
+        ),
+        EqFilter(territory_indicators_data, "value_type", value_type),
+        ILikeFilter(territory_indicators_data, "information_source", information_source),
+        territory_filter,
+    )
 
     result = (await conn.execute(statement)).mappings().all()
 
@@ -185,7 +188,7 @@ async def get_indicator_values_by_territory_id_from_db(
 async def get_indicator_values_by_parent_id_from_db(
     conn: AsyncConnection,
     parent_id: int | None,
-    indicator_ids: str | None,
+    indicator_ids: set[int],
     indicators_group_id: int | None,
     start_date: date | None,
     end_date: date | None,
@@ -278,19 +281,19 @@ async def get_indicator_values_by_parent_id_from_db(
             .join(territories_data, territories_data.c.territory_id == territory_indicators_data.c.territory_id)
         )
 
-    if indicator_ids is not None:
-        ids = {int(i.strip()) for i in indicator_ids.split(",") if i.strip()}
-        statement = statement.where(territory_indicators_data.c.indicator_id.in_(ids))
-    if indicators_group_id is not None:
-        statement = statement.where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
-    if start_date is not None:
-        statement = statement.where(func.date(territory_indicators_data.c.date_value) >= start_date)
-    if end_date is not None:
-        statement = statement.where(func.date(territory_indicators_data.c.date_value) <= end_date)
-    if value_type is not None:
-        statement = statement.where(territory_indicators_data.c.value_type == value_type)
-    if information_source is not None:
-        statement = statement.where(territory_indicators_data.c.information_source.ilike(f"%{information_source}%"))
+    statement = apply_filters(
+        statement,
+        InFilter(territory_indicators_data, "indicator_id", indicator_ids),
+        EqFilter(indicators_groups_data, "indicators_group_id", indicators_group_id),
+        CustomFilter(
+            lambda q: q.where(func.date(territory_indicators_data.c.date_value) >= start_date) if start_date else q
+        ),
+        CustomFilter(
+            lambda q: q.where(func.date(territory_indicators_data.c.date_value) <= end_date) if end_date else q
+        ),
+        EqFilter(territory_indicators_data, "value_type", value_type),
+        ILikeFilter(territory_indicators_data, "information_source", information_source),
+    )
 
     result = (await conn.execute(statement)).mappings().all()
 
@@ -305,7 +308,7 @@ async def get_indicator_values_by_parent_id_from_db(
             geometry=rows[0].geometry,
             centre_point=rows[0].centre_point,
             indicators=[
-                IndicatorValueDTO(**{k: v for k, v in item.items() if k in IndicatorValueDTO.fields()}) for item in rows
+                IndicatorValueDTO(**{k: v for k, v in row.items() if k in IndicatorValueDTO.fields()}) for row in rows
             ],
         )
         for territory_id, rows in territories.items()

@@ -4,8 +4,9 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from geoalchemy2.functions import ST_AsEWKB, ST_GeomFromWKB, ST_Intersects, ST_Within
-from sqlalchemy import ScalarSelect, delete, insert, literal, or_, select, text, update
+from geoalchemy2.functions import ST_AsEWKB, ST_Centroid, ST_GeomFromWKB, ST_Intersection, ST_Intersects, ST_Within
+from sqlalchemy import ScalarSelect, delete, insert, literal, or_, select, text, union_all, update
+from sqlalchemy.sql.functions import coalesce
 
 from idu_api.common.db.entities import (
     buildings_data,
@@ -22,8 +23,6 @@ from idu_api.common.db.entities import (
     urban_objects_data,
 )
 from idu_api.urban_api.dto import (
-    PhysicalObjectDTO,
-    PhysicalObjectWithGeometryDTO,
     ScenarioPhysicalObjectDTO,
     ScenarioPhysicalObjectWithGeometryDTO,
     ScenarioUrbanObjectDTO,
@@ -77,9 +76,6 @@ async def test_get_physical_objects_by_scenario_id_from_db(mock_conn: MockConnec
     physical_object_type_id = 1
     physical_object_function_id = None
     building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
-    project_building_columns = [
-        col for col in projects_buildings_data.c if col.name not in ("physical_object_id", "properties")
-    ]
 
     territories_cte = include_child_territories_cte(1)
     public_urban_object_ids = (
@@ -103,6 +99,7 @@ async def test_get_physical_objects_by_scenario_id_from_db(mock_conn: MockConnec
             buildings_data.c.properties.label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
+            literal(False).label("is_scenario_object"),
         )
         .select_from(
             urban_objects_data.join(
@@ -142,34 +139,73 @@ async def test_get_physical_objects_by_scenario_id_from_db(mock_conn: MockConnec
 
     scenario_urban_objects_query = (
         select(
-            projects_physical_objects_data.c.physical_object_id,
+            coalesce(
+                projects_physical_objects_data.c.physical_object_id,
+                physical_objects_data.c.physical_object_id,
+            ).label("physical_object_id"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_object_functions_dict.c.physical_object_function_id,
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
-            projects_physical_objects_data.c.name,
-            projects_physical_objects_data.c.properties,
-            projects_physical_objects_data.c.created_at,
-            projects_physical_objects_data.c.updated_at,
-            physical_objects_data.c.physical_object_id.label("public_physical_object_id"),
-            physical_objects_data.c.name.label("public_name"),
-            physical_objects_data.c.properties.label("public_properties"),
-            physical_objects_data.c.created_at.label("public_created_at"),
-            physical_objects_data.c.updated_at.label("public_updated_at"),
-            *project_building_columns,
-            projects_buildings_data.c.properties.label("building_properties"),
-            buildings_data.c.building_id.label("public_building_id"),
-            buildings_data.c.properties.label("public_building_properties"),
-            buildings_data.c.floors.label("public_floors"),
-            buildings_data.c.building_area_official.label("public_building_area_official"),
-            buildings_data.c.building_area_modeled.label("public_building_area_modeled"),
-            buildings_data.c.project_type.label("public_project_type"),
-            buildings_data.c.floor_type.label("public_floor_type"),
-            buildings_data.c.wall_material.label("public_wall_material"),
-            buildings_data.c.built_year.label("public_built_year"),
-            buildings_data.c.exploitation_start_year.label("public_exploitation_start_year"),
+            coalesce(
+                projects_physical_objects_data.c.name,
+                physical_objects_data.c.name,
+            ).label("name"),
+            coalesce(
+                projects_physical_objects_data.c.properties,
+                physical_objects_data.c.properties,
+            ).label("properties"),
+            coalesce(
+                projects_physical_objects_data.c.created_at,
+                physical_objects_data.c.created_at,
+            ).label("created_at"),
+            coalesce(
+                projects_physical_objects_data.c.updated_at,
+                physical_objects_data.c.updated_at,
+            ).label("updated_at"),
+            coalesce(
+                projects_buildings_data.c.building_id,
+                buildings_data.c.building_id,
+            ).label("building_id"),
+            coalesce(
+                projects_buildings_data.c.floors,
+                buildings_data.c.floors,
+            ).label("floors"),
+            coalesce(
+                projects_buildings_data.c.building_area_official,
+                buildings_data.c.building_area_official,
+            ).label("building_area_official"),
+            coalesce(
+                projects_buildings_data.c.building_area_modeled,
+                buildings_data.c.building_area_modeled,
+            ).label("building_area_modeled"),
+            coalesce(
+                projects_buildings_data.c.project_type,
+                buildings_data.c.project_type,
+            ).label("project_type"),
+            coalesce(
+                projects_buildings_data.c.floor_type,
+                buildings_data.c.floor_type,
+            ).label("floor_type"),
+            coalesce(
+                projects_buildings_data.c.wall_material,
+                buildings_data.c.wall_material,
+            ).label("wall_material"),
+            coalesce(
+                projects_buildings_data.c.built_year,
+                buildings_data.c.built_year,
+            ).label("built_year"),
+            coalesce(
+                projects_buildings_data.c.exploitation_start_year,
+                buildings_data.c.exploitation_start_year,
+            ).label("exploitation_start_year"),
+            coalesce(
+                projects_buildings_data.c.properties,
+                buildings_data.c.properties,
+            ).label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
+            (projects_urban_objects_data.c.physical_object_id.isnot(None)).label("is_scenario_object"),
         )
         .select_from(
             projects_urban_objects_data.outerjoin(
@@ -226,6 +262,7 @@ async def test_get_physical_objects_by_scenario_id_from_db(mock_conn: MockConnec
         )
         .distinct()
     )
+    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query)
 
     # Act
     result = await get_physical_objects_by_scenario_id_from_db(
@@ -240,8 +277,7 @@ async def test_get_physical_objects_by_scenario_id_from_db(mock_conn: MockConnec
     assert isinstance(
         ScenarioPhysicalObject.from_dto(result[0]), ScenarioPhysicalObject
     ), "Couldn't create pydantic model from DTO."
-    mock_conn.execute_mock.assert_any_call(str(public_urban_objects_query))
-    mock_conn.execute_mock.assert_any_call(str(scenario_urban_objects_query))
+    mock_conn.execute_mock.assert_any_call(str(union_query))
 
 
 @pytest.mark.asyncio
@@ -254,9 +290,6 @@ async def test_get_physical_objects_with_geometry_by_scenario_id_from_db(mock_co
     physical_object_type_id = 1
     physical_object_function_id = None
     building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
-    project_building_columns = [
-        col for col in projects_buildings_data.c if col.name not in ("physical_object_id", "properties")
-    ]
 
     territories_cte = include_child_territories_cte(1)
     public_urban_object_ids = (
@@ -267,19 +300,26 @@ async def test_get_physical_objects_with_geometry_by_scenario_id_from_db(mock_co
 
     public_urban_objects_query = (
         select(
-            physical_objects_data,
+            physical_objects_data.c.physical_object_id,
+            physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_object_functions_dict.c.physical_object_function_id,
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
+            physical_objects_data.c.name,
+            physical_objects_data.c.properties,
+            physical_objects_data.c.created_at,
+            physical_objects_data.c.updated_at,
             *building_columns,
             buildings_data.c.properties.label("building_properties"),
-            territories_data.c.territory_id,
-            territories_data.c.name.label("territory_name"),
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
             ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
             ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+            literal(False).label("is_scenario_physical_object"),
+            literal(False).label("is_scenario_geometry"),
         )
         .select_from(
             urban_objects_data.join(
@@ -318,44 +358,94 @@ async def test_get_physical_objects_with_geometry_by_scenario_id_from_db(mock_co
 
     scenario_urban_objects_query = (
         select(
-            projects_urban_objects_data.c.physical_object_id,
-            projects_urban_objects_data.c.object_geometry_id,
-            projects_urban_objects_data.c.public_physical_object_id,
-            projects_urban_objects_data.c.public_object_geometry_id,
-            projects_physical_objects_data.c.name,
-            projects_physical_objects_data.c.properties,
-            projects_physical_objects_data.c.created_at,
-            projects_physical_objects_data.c.updated_at,
-            *project_building_columns,
-            projects_buildings_data.c.properties.label("building_properties"),
-            projects_object_geometries_data.c.address,
-            projects_object_geometries_data.c.osm_id,
-            ST_AsEWKB(projects_object_geometries_data.c.geometry).label("geometry"),
-            ST_AsEWKB(projects_object_geometries_data.c.centre_point).label("centre_point"),
-            physical_objects_data.c.name.label("public_name"),
-            physical_objects_data.c.properties.label("public_properties"),
-            physical_objects_data.c.created_at.label("public_created_at"),
-            physical_objects_data.c.updated_at.label("public_updated_at"),
-            buildings_data.c.building_id.label("public_building_id"),
-            buildings_data.c.properties.label("public_building_properties"),
-            buildings_data.c.floors.label("public_floors"),
-            buildings_data.c.building_area_official.label("public_building_area_official"),
-            buildings_data.c.building_area_modeled.label("public_building_area_modeled"),
-            buildings_data.c.project_type.label("public_project_type"),
-            buildings_data.c.floor_type.label("public_floor_type"),
-            buildings_data.c.wall_material.label("public_wall_material"),
-            buildings_data.c.built_year.label("public_built_year"),
-            buildings_data.c.exploitation_start_year.label("public_exploitation_start_year"),
-            object_geometries_data.c.address.label("public_address"),
-            object_geometries_data.c.osm_id.label("public_osm_id"),
-            ST_AsEWKB(object_geometries_data.c.geometry).label("public_geometry"),
-            ST_AsEWKB(object_geometries_data.c.centre_point).label("public_centre_point"),
+            coalesce(
+                projects_physical_objects_data.c.physical_object_id,
+                physical_objects_data.c.physical_object_id,
+            ).label("physical_object_id"),
             physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_object_functions_dict.c.physical_object_function_id,
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
+            coalesce(
+                projects_physical_objects_data.c.name,
+                physical_objects_data.c.name,
+            ).label("name"),
+            coalesce(
+                projects_physical_objects_data.c.properties,
+                physical_objects_data.c.properties,
+            ).label("properties"),
+            coalesce(
+                projects_physical_objects_data.c.created_at,
+                physical_objects_data.c.created_at,
+            ).label("created_at"),
+            coalesce(
+                projects_physical_objects_data.c.updated_at,
+                physical_objects_data.c.updated_at,
+            ).label("updated_at"),
+            coalesce(
+                projects_buildings_data.c.building_id,
+                buildings_data.c.building_id,
+            ).label("building_id"),
+            coalesce(
+                projects_buildings_data.c.floors,
+                buildings_data.c.floors,
+            ).label("floors"),
+            coalesce(
+                projects_buildings_data.c.building_area_official,
+                buildings_data.c.building_area_official,
+            ).label("building_area_official"),
+            coalesce(
+                projects_buildings_data.c.building_area_modeled,
+                buildings_data.c.building_area_modeled,
+            ).label("building_area_modeled"),
+            coalesce(
+                projects_buildings_data.c.project_type,
+                buildings_data.c.project_type,
+            ).label("project_type"),
+            coalesce(
+                projects_buildings_data.c.floor_type,
+                buildings_data.c.floor_type,
+            ).label("floor_type"),
+            coalesce(
+                projects_buildings_data.c.wall_material,
+                buildings_data.c.wall_material,
+            ).label("wall_material"),
+            coalesce(
+                projects_buildings_data.c.built_year,
+                buildings_data.c.built_year,
+            ).label("built_year"),
+            coalesce(
+                projects_buildings_data.c.exploitation_start_year,
+                buildings_data.c.exploitation_start_year,
+            ).label("exploitation_start_year"),
+            coalesce(
+                projects_buildings_data.c.properties,
+                buildings_data.c.properties,
+            ).label("building_properties"),
+            coalesce(
+                projects_object_geometries_data.c.object_geometry_id,
+                object_geometries_data.c.object_geometry_id,
+            ).label("object_geometry_id"),
+            coalesce(
+                projects_object_geometries_data.c.address,
+                object_geometries_data.c.address,
+            ).label("address"),
+            coalesce(
+                projects_object_geometries_data.c.osm_id,
+                object_geometries_data.c.osm_id,
+            ).label("osm_id"),
+            coalesce(
+                projects_object_geometries_data.c.geometry,
+                object_geometries_data.c.geometry,
+            ).label("geometry"),
+            coalesce(
+                projects_object_geometries_data.c.centre_point,
+                object_geometries_data.c.centre_point,
+            ).label("centre_point"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
+            (projects_urban_objects_data.c.physical_object_id.isnot(None)).label("is_scenario_physical_object"),
+            (projects_urban_objects_data.c.object_geometry_id.isnot(None)).label("is_scenario_geometry"),
         )
         .select_from(
             projects_urban_objects_data.outerjoin(
@@ -411,6 +501,7 @@ async def test_get_physical_objects_with_geometry_by_scenario_id_from_db(mock_co
             physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
         )
     )
+    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query)
 
     # Act
     result = await get_physical_objects_with_geometry_by_scenario_id_from_db(
@@ -427,8 +518,7 @@ async def test_get_physical_objects_with_geometry_by_scenario_id_from_db(mock_co
         ScenarioPhysicalObjectWithGeometryAttributes(**geojson_result.features[0].properties),
         ScenarioPhysicalObjectWithGeometryAttributes,
     ), "Couldn't create pydantic model from geojson properties."
-    mock_conn.execute_mock.assert_any_call(str(public_urban_objects_query))
-    mock_conn.execute_mock.assert_any_call(str(scenario_urban_objects_query))
+    mock_conn.execute_mock.assert_any_call(str(union_query))
 
 
 @pytest.mark.asyncio
@@ -441,22 +531,29 @@ async def test_get_context_physical_objects_from_db(mock_conn: MockConnection):
     physical_object_type_id = 1
     physical_object_function_id = None
     mock_geom = str(MagicMock(spec=ScalarSelect))
+
+    public_urban_object_ids = (
+        select(projects_urban_objects_data.c.public_urban_object_id)
+        .where(projects_urban_objects_data.c.scenario_id == 1)
+        .where(projects_urban_objects_data.c.public_urban_object_id.isnot(None))
+    ).cte(name="public_urban_object_ids")
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .select_from(
             object_geometries_data.join(
                 urban_objects_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
+            )
         )
         .where(
-            object_geometries_data.c.territory_id.in_([1]) | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
+            urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
+            object_geometries_data.c.territory_id.in_([1])
+            | ST_Intersects(object_geometries_data.c.geometry, mock_geom),
         )
         .cte(name="objects_intersecting")
     )
     building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
-
-    statement = (
+    public_urban_objects_query = (
         select(
             physical_objects_data.c.physical_object_id,
             physical_object_types_dict.c.physical_object_type_id,
@@ -471,6 +568,7 @@ async def test_get_context_physical_objects_from_db(mock_conn: MockConnection):
             buildings_data.c.properties.label("building_properties"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
+            literal(False).label("is_scenario_object"),
         )
         .select_from(
             urban_objects_data.join(
@@ -503,24 +601,157 @@ async def test_get_context_physical_objects_from_db(mock_conn: MockConnection):
                 buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
-        .where(physical_object_types_dict.c.physical_object_type_id == physical_object_type_id)
+        .where(
+            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
+        )
     )
+
+    scenario_urban_objects_query = (
+        select(
+            coalesce(
+                projects_physical_objects_data.c.physical_object_id,
+                physical_objects_data.c.physical_object_id,
+            ).label("physical_object_id"),
+            physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_functions_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
+            coalesce(
+                projects_physical_objects_data.c.name,
+                physical_objects_data.c.name,
+            ).label("name"),
+            coalesce(
+                projects_physical_objects_data.c.properties,
+                physical_objects_data.c.properties,
+            ).label("properties"),
+            coalesce(
+                projects_physical_objects_data.c.created_at,
+                physical_objects_data.c.created_at,
+            ).label("created_at"),
+            coalesce(
+                projects_physical_objects_data.c.updated_at,
+                physical_objects_data.c.updated_at,
+            ).label("updated_at"),
+            coalesce(
+                projects_buildings_data.c.building_id,
+                buildings_data.c.building_id,
+            ).label("building_id"),
+            coalesce(
+                projects_buildings_data.c.floors,
+                buildings_data.c.floors,
+            ).label("floors"),
+            coalesce(
+                projects_buildings_data.c.building_area_official,
+                buildings_data.c.building_area_official,
+            ).label("building_area_official"),
+            coalesce(
+                projects_buildings_data.c.building_area_modeled,
+                buildings_data.c.building_area_modeled,
+            ).label("building_area_modeled"),
+            coalesce(
+                projects_buildings_data.c.project_type,
+                buildings_data.c.project_type,
+            ).label("project_type"),
+            coalesce(
+                projects_buildings_data.c.floor_type,
+                buildings_data.c.floor_type,
+            ).label("floor_type"),
+            coalesce(
+                projects_buildings_data.c.wall_material,
+                buildings_data.c.wall_material,
+            ).label("wall_material"),
+            coalesce(
+                projects_buildings_data.c.built_year,
+                buildings_data.c.built_year,
+            ).label("built_year"),
+            coalesce(
+                projects_buildings_data.c.exploitation_start_year,
+                buildings_data.c.exploitation_start_year,
+            ).label("exploitation_start_year"),
+            coalesce(
+                projects_buildings_data.c.properties,
+                buildings_data.c.properties,
+            ).label("building_properties"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+            (projects_urban_objects_data.c.physical_object_id.isnot(None)).label("is_scenario_object"),
+        )
+        .select_from(
+            projects_urban_objects_data.outerjoin(
+                projects_physical_objects_data,
+                projects_physical_objects_data.c.physical_object_id == projects_urban_objects_data.c.physical_object_id,
+            )
+            .outerjoin(
+                projects_object_geometries_data,
+                projects_object_geometries_data.c.object_geometry_id
+                == projects_urban_objects_data.c.object_geometry_id,
+            )
+            .outerjoin(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == projects_urban_objects_data.c.public_physical_object_id,
+            )
+            .outerjoin(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == projects_urban_objects_data.c.public_object_geometry_id,
+            )
+            .outerjoin(
+                territories_data,
+                or_(
+                    territories_data.c.territory_id == projects_object_geometries_data.c.territory_id,
+                    territories_data.c.territory_id == object_geometries_data.c.territory_id,
+                ),
+            )
+            .outerjoin(
+                physical_object_types_dict,
+                or_(
+                    physical_object_types_dict.c.physical_object_type_id
+                    == projects_physical_objects_data.c.physical_object_type_id,
+                    physical_object_types_dict.c.physical_object_type_id
+                    == physical_objects_data.c.physical_object_type_id,
+                ),
+            )
+            .outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
+            )
+            .outerjoin(
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+            )
+            .outerjoin(
+                projects_buildings_data,
+                projects_buildings_data.c.physical_object_id == projects_physical_objects_data.c.physical_object_id,
+            )
+        )
+        .where(
+            projects_urban_objects_data.c.scenario_id == 1,
+            projects_urban_objects_data.c.public_urban_object_id.is_(None),
+            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
+        )
+        .distinct()
+    )
+    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query)
 
     # Act
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_physical_objects.get_context_territories_geometry",
         new_callable=AsyncMock,
     ) as mock_get_context:
-        mock_get_context.return_value = mock_geom, [1]
+        mock_get_context.return_value = 1, mock_geom, [1]
         result = await get_context_physical_objects_from_db(
             mock_conn, project_id, user, physical_object_type_id, physical_object_function_id
         )
 
     # Assert
     assert isinstance(result, list), "Result should be a list."
-    assert all(isinstance(item, PhysicalObjectDTO) for item in result), "Each item should be a PhysicalObjectDTO."
-    assert isinstance(PhysicalObject.from_dto(result[0]), PhysicalObject), "Couldn't create pydantic model from DTO."
-    mock_conn.execute_mock.assert_any_call(str(statement))
+    assert all(
+        isinstance(item, ScenarioPhysicalObjectDTO) for item in result
+    ), "Each item should be a ScenarioPhysicalObjectDTO."
+    assert isinstance(
+        ScenarioPhysicalObject.from_dto(result[0]), ScenarioPhysicalObject
+    ), "Couldn't create pydantic model from DTO."
+    mock_conn.execute_mock.assert_any_call(str(union_query))
 
 
 @pytest.mark.asyncio
@@ -533,36 +764,50 @@ async def test_get_context_physical_objects_with_geometry_from_db(mock_conn: Moc
     physical_object_type_id = 1
     physical_object_function_id = None
     mock_geom = str(MagicMock(spec=ScalarSelect))
+
+    public_urban_object_ids = (
+        select(projects_urban_objects_data.c.public_urban_object_id)
+        .where(projects_urban_objects_data.c.scenario_id == 1)
+        .where(projects_urban_objects_data.c.public_urban_object_id.isnot(None))
+    ).cte(name="public_urban_object_ids")
     objects_intersecting = (
         select(object_geometries_data.c.object_geometry_id)
         .select_from(
             object_geometries_data.join(
                 urban_objects_data,
                 urban_objects_data.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-            ).join(territories_data, territories_data.c.territory_id == object_geometries_data.c.territory_id)
+            )
         )
         .where(
-            object_geometries_data.c.territory_id.in_([1]) | ST_Intersects(object_geometries_data.c.geometry, mock_geom)
+            urban_objects_data.c.urban_object_id.not_in(select(public_urban_object_ids)),
+            object_geometries_data.c.territory_id.in_([1])
+            | ST_Intersects(object_geometries_data.c.geometry, mock_geom),
         )
         .cte(name="objects_intersecting")
     )
     building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
-
-    statement = (
+    public_urban_objects_query = (
         select(
-            physical_objects_data,
+            physical_objects_data.c.physical_object_id,
+            physical_object_types_dict.c.physical_object_type_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
-            physical_object_types_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.physical_object_function_id,
             physical_object_functions_dict.c.name.label("physical_object_function_name"),
+            physical_objects_data.c.name,
+            physical_objects_data.c.properties,
+            physical_objects_data.c.created_at,
+            physical_objects_data.c.updated_at,
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            ST_AsEWKB(object_geometries_data.c.geometry).label("geometry"),
-            ST_AsEWKB(object_geometries_data.c.centre_point).label("centre_point"),
-            *building_columns,
-            buildings_data.c.properties.label("building_properties"),
+            ST_AsEWKB(ST_Intersection(object_geometries_data.c.geometry, mock_geom)).label("geometry"),
+            ST_AsEWKB(ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, mock_geom))).label("centre_point"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
+            literal(False).label("is_scenario_physical_object"),
+            literal(False).label("is_scenario_geometry"),
         )
         .select_from(
             urban_objects_data.join(
@@ -595,15 +840,174 @@ async def test_get_context_physical_objects_with_geometry_from_db(mock_conn: Moc
                 buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
-        .where(physical_object_types_dict.c.physical_object_type_id == physical_object_type_id)
+        .distinct()
+    ).where(physical_object_types_dict.c.physical_object_type_id == physical_object_type_id)
+    scenario_urban_objects_query = (
+        select(
+            coalesce(
+                projects_physical_objects_data.c.physical_object_id,
+                physical_objects_data.c.physical_object_id,
+            ).label("physical_object_id"),
+            physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_object_functions_dict.c.physical_object_function_id,
+            physical_object_functions_dict.c.name.label("physical_object_function_name"),
+            coalesce(
+                projects_physical_objects_data.c.name,
+                physical_objects_data.c.name,
+            ).label("name"),
+            coalesce(
+                projects_physical_objects_data.c.properties,
+                physical_objects_data.c.properties,
+            ).label("properties"),
+            coalesce(
+                projects_physical_objects_data.c.created_at,
+                physical_objects_data.c.created_at,
+            ).label("created_at"),
+            coalesce(
+                projects_physical_objects_data.c.updated_at,
+                physical_objects_data.c.updated_at,
+            ).label("updated_at"),
+            coalesce(
+                projects_buildings_data.c.building_id,
+                buildings_data.c.building_id,
+            ).label("building_id"),
+            coalesce(
+                projects_buildings_data.c.floors,
+                buildings_data.c.floors,
+            ).label("floors"),
+            coalesce(
+                projects_buildings_data.c.building_area_official,
+                buildings_data.c.building_area_official,
+            ).label("building_area_official"),
+            coalesce(
+                projects_buildings_data.c.building_area_modeled,
+                buildings_data.c.building_area_modeled,
+            ).label("building_area_modeled"),
+            coalesce(
+                projects_buildings_data.c.project_type,
+                buildings_data.c.project_type,
+            ).label("project_type"),
+            coalesce(
+                projects_buildings_data.c.floor_type,
+                buildings_data.c.floor_type,
+            ).label("floor_type"),
+            coalesce(
+                projects_buildings_data.c.wall_material,
+                buildings_data.c.wall_material,
+            ).label("wall_material"),
+            coalesce(
+                projects_buildings_data.c.built_year,
+                buildings_data.c.built_year,
+            ).label("built_year"),
+            coalesce(
+                projects_buildings_data.c.exploitation_start_year,
+                buildings_data.c.exploitation_start_year,
+            ).label("exploitation_start_year"),
+            coalesce(
+                projects_buildings_data.c.properties,
+                buildings_data.c.properties,
+            ).label("building_properties"),
+            coalesce(
+                projects_object_geometries_data.c.object_geometry_id,
+                object_geometries_data.c.object_geometry_id,
+            ).label("object_geometry_id"),
+            coalesce(
+                projects_object_geometries_data.c.address,
+                object_geometries_data.c.address,
+            ).label("address"),
+            coalesce(
+                projects_object_geometries_data.c.osm_id,
+                object_geometries_data.c.osm_id,
+            ).label("osm_id"),
+            ST_AsEWKB(
+                ST_Intersection(
+                    coalesce(
+                        projects_object_geometries_data.c.geometry,
+                        object_geometries_data.c.geometry,
+                    ),
+                    mock_geom,
+                )
+            ).label("geometry"),
+            ST_AsEWKB(
+                ST_Centroid(
+                    ST_Intersection(
+                        coalesce(
+                            projects_object_geometries_data.c.geometry,
+                            object_geometries_data.c.geometry,
+                        ),
+                        mock_geom,
+                    )
+                )
+            ).label("centre_point"),
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+            (projects_urban_objects_data.c.physical_object_id.isnot(None)).label("is_scenario_physical_object"),
+            (projects_urban_objects_data.c.object_geometry_id.isnot(None)).label("is_scenario_geometry"),
+        )
+        .select_from(
+            projects_urban_objects_data.outerjoin(
+                projects_physical_objects_data,
+                projects_physical_objects_data.c.physical_object_id == projects_urban_objects_data.c.physical_object_id,
+            )
+            .outerjoin(
+                projects_object_geometries_data,
+                projects_object_geometries_data.c.object_geometry_id
+                == projects_urban_objects_data.c.object_geometry_id,
+            )
+            .outerjoin(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == projects_urban_objects_data.c.public_physical_object_id,
+            )
+            .outerjoin(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == projects_urban_objects_data.c.public_object_geometry_id,
+            )
+            .outerjoin(
+                territories_data,
+                or_(
+                    territories_data.c.territory_id == projects_object_geometries_data.c.territory_id,
+                    territories_data.c.territory_id == object_geometries_data.c.territory_id,
+                ),
+            )
+            .outerjoin(
+                physical_object_types_dict,
+                or_(
+                    physical_object_types_dict.c.physical_object_type_id
+                    == projects_physical_objects_data.c.physical_object_type_id,
+                    physical_object_types_dict.c.physical_object_type_id
+                    == physical_objects_data.c.physical_object_type_id,
+                ),
+            )
+            .outerjoin(
+                physical_object_functions_dict,
+                physical_object_functions_dict.c.physical_object_function_id
+                == physical_object_types_dict.c.physical_object_function_id,
+            )
+            .outerjoin(
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+            )
+            .outerjoin(
+                projects_buildings_data,
+                projects_buildings_data.c.physical_object_id == projects_physical_objects_data.c.physical_object_id,
+            )
+        )
+        .where(
+            projects_urban_objects_data.c.scenario_id == 1,
+            projects_urban_objects_data.c.public_urban_object_id.is_(None),
+            physical_object_types_dict.c.physical_object_type_id == physical_object_type_id,
+        )
+        .distinct()
     )
+    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query)
 
     # Act
     with patch(
         "idu_api.urban_api.logic.impl.helpers.projects_physical_objects.get_context_territories_geometry",
         new_callable=AsyncMock,
     ) as mock_get_context:
-        mock_get_context.return_value = mock_geom, [1]
+        mock_get_context.return_value = 1, mock_geom, [1]
         result = await get_context_physical_objects_with_geometry_from_db(
             mock_conn, project_id, user, physical_object_type_id, physical_object_function_id
         )
@@ -612,12 +1016,13 @@ async def test_get_context_physical_objects_with_geometry_from_db(mock_conn: Moc
     # Assert
     assert isinstance(result, list), "Result should be a list."
     assert all(
-        isinstance(item, PhysicalObjectWithGeometryDTO) for item in result
-    ), "Each item should be a PhysicalObjectWithGeometryDTO."
+        isinstance(item, ScenarioPhysicalObjectWithGeometryDTO) for item in result
+    ), "Each item should be a ScenarioPhysicalObjectWithGeometryDTO."
     assert isinstance(
-        PhysicalObject(**geojson_result.features[0].properties), PhysicalObject
+        ScenarioPhysicalObjectWithGeometryAttributes(**geojson_result.features[0].properties),
+        ScenarioPhysicalObjectWithGeometryAttributes,
     ), "Couldn't create pydantic model from geojson properties."
-    mock_conn.execute_mock.assert_any_call(str(statement))
+    mock_conn.execute_mock.assert_any_call(str(union_query))
 
 
 @pytest.mark.asyncio

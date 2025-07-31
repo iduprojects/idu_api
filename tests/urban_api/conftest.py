@@ -76,7 +76,7 @@ def urban_api_host(config) -> Iterator[str]:  # pylint: disable=redefined-outer-
         ]
     ) as process:
         try:
-            time.sleep(10)
+            time.sleep(5)
             with httpx.Client() as client:
                 if client.get(f"{host}/health_check/ping").is_success:
                     yield host

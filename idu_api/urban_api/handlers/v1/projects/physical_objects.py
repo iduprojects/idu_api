@@ -130,24 +130,24 @@ async def get_physical_objects_with_geometry_by_scenario_id(
 
 
 @projects_router.get(
-    "/projects/{project_id}/context/physical_objects",
+    "/scenarios/{scenario_id}/context/physical_objects",
     response_model=list[PhysicalObject],
     status_code=status.HTTP_200_OK,
 )
 async def get_context_physical_objects(
     request: Request,
-    project_id: int = Path(..., description="project identifier", gt=0),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
     physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
     user: UserDTO = Depends(get_user),
-) -> list[PhysicalObject]:
+) -> list[ScenarioPhysicalObject]:
     """
     ## Get a list of physical objects for the context of a project territory.
 
     **WARNING:** You can only filter by physical object type or physical object function.
 
     ### Parameters:
-    - **project_id** (int, Path): Unique identifier of the project.
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
     - **physical_object_type_id** (int | None, Query): Optional filter by physical object type identifier.
     - **physical_object_function_id** (int | None, Query): Optional filter by physical object function identifier.
 
@@ -157,7 +157,7 @@ async def get_context_physical_objects(
     ### Errors:
     - **400 Bad Request**: If you set both `physical_object_type_id` and `physical_object_function_id`.
     - **403 Forbidden**: If the user does not have access rights.
-    - **404 Not Found**: If the project does not exist.
+    - **404 Not Found**: If the scenario does not exist.
 
     ### Constraints:
     - The user must be the owner of the relevant project or the project must be publicly available.
@@ -171,32 +171,32 @@ async def get_context_physical_objects(
         )
 
     physical_objects = await user_project_service.get_context_physical_objects(
-        project_id, user, physical_object_type_id, physical_object_function_id
+        scenario_id, user, physical_object_type_id, physical_object_function_id
     )
 
-    return [PhysicalObject.from_dto(phys_obj) for phys_obj in physical_objects]
+    return [ScenarioPhysicalObject.from_dto(phys_obj) for phys_obj in physical_objects]
 
 
 @projects_router.get(
-    "/projects/{project_id}/context/physical_objects_with_geometry",
-    response_model=GeoJSONResponse[Feature[Geometry, PhysicalObject]],
+    "/scenarios/{scenario_id}/context/physical_objects_with_geometry",
+    response_model=GeoJSONResponse[Feature[Geometry, ScenarioPhysicalObjectWithGeometryAttributes]],
     status_code=status.HTTP_200_OK,
 )
 async def get_context_physical_objects_with_geometry(
     request: Request,
-    project_id: int = Path(..., description="project identifier", gt=0),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     physical_object_type_id: int | None = Query(None, description="to filter by physical object type", gt=0),
     physical_object_function_id: int | None = Query(None, description="to filter by physical object function", gt=0),
     centers_only: bool = Query(False, description="display only centers"),
     user: UserDTO = Depends(get_user),
-) -> GeoJSONResponse[Feature[Geometry, PhysicalObject]]:
+) -> GeoJSONResponse[Feature[Geometry, ScenarioPhysicalObjectWithGeometryAttributes]]:
     """
     ## Get a list of physical objects for the context of a project territory.
 
     **WARNING:** You can only filter by physical object type or physical object function.
 
     ### Parameters:
-    - **project_id** (int, Path): Unique identifier of the project.
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
     - **physical_object_type_id** (int | None, Query): Optional filter by physical object type identifier.
     - **physical_object_function_id** (int | None, Query): Optional filter by physical object function identifier.
 
@@ -206,7 +206,7 @@ async def get_context_physical_objects_with_geometry(
     ### Errors:
     - **400 Bad Request**: If you set both `physical_object_type_id` and `physical_object_function_id`.
     - **403 Forbidden**: If the user does not have access rights.
-    - **404 Not Found**: If the project does not exist.
+    - **404 Not Found**: If the scenario does not exist.
 
     ### Constraints:
     - The user must be the owner of the relevant project or the project must be publicly available.
@@ -220,7 +220,7 @@ async def get_context_physical_objects_with_geometry(
         )
 
     physical_objects = await user_project_service.get_context_physical_objects_with_geometry(
-        project_id, user, physical_object_type_id, physical_object_function_id
+        scenario_id, user, physical_object_type_id, physical_object_function_id
     )
 
     return await GeoJSONResponse.from_list([obj.to_geojson_dict() for obj in physical_objects], centers_only)

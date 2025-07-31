@@ -21,6 +21,7 @@ from idu_api.urban_api.dto import PageDTO, ServiceDTO, ServicesCountCapacityDTO,
 from idu_api.urban_api.exceptions.logic.common import EntityNotFoundById
 from idu_api.urban_api.logic.impl.helpers.utils import check_existence, include_child_territories_cte
 from idu_api.urban_api.utils.pagination import paginate_dto
+from idu_api.urban_api.utils.query_filters import CustomFilter, EqFilter, ILikeFilter, RecursiveFilter, apply_filters
 
 func: Callable
 
@@ -118,36 +119,29 @@ async def get_services_by_territory_id_from_db(
 
     if include_child_territories:
         territories_cte = include_child_territories_cte(territory_id, cities_only)
-        statement = statement.where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
+        territory_filter = CustomFilter(
+            lambda q: q.where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
+        )
     else:
-        statement = statement.where(object_geometries_data.c.territory_id == territory_id)
+        territory_filter = EqFilter(object_geometries_data, "territory_id", territory_id)
 
-    if service_type_id is not None:
-        statement = statement.where(services_data.c.service_type_id == service_type_id)
-    elif urban_function_id is not None:
-        functions_cte = (
-            select(urban_functions_dict.c.urban_function_id)
-            .where(urban_functions_dict.c.urban_function_id == urban_function_id)
-            .cte(recursive=True)
-        )
-        functions_cte = functions_cte.union_all(
-            select(urban_functions_dict.c.urban_function_id).where(
-                urban_functions_dict.c.parent_id == functions_cte.c.urban_function_id
-            )
-        )
-        statement = statement.where(service_types_dict.c.urban_function_id.in_(select(functions_cte)))
-    if name is not None:
-        statement = statement.where(services_data.c.name.ilike(f"%{name}%"))
-    if order_by is not None:
-        order = services_data.c.created_at if order_by == "created_at" else services_data.c.updated_at
-        if ordering == "desc":
-            order = order.desc()
-        statement = statement.order_by(order)
-    else:
-        if ordering == "desc":
-            statement = statement.order_by(services_data.c.service_id.desc())
-        else:
-            statement = statement.order_by(services_data.c.service_id)
+    statement = apply_filters(
+        statement,
+        territory_filter,
+        EqFilter(services_data, "service_type_id", service_type_id),
+        RecursiveFilter(service_types_dict, "urban_function_id", urban_function_id, urban_functions_dict),
+        ILikeFilter(services_data, "name", name),
+    )
+
+    order_column = {
+        "created_at": services_data.c.created_at,
+        "updated_at": services_data.c.updated_at,
+    }.get(order_by, services_data.c.service_id)
+
+    if ordering == "desc":
+        order_column = order_column.desc()
+
+    statement = statement.order_by(order_column)
 
     def group_objects(rows: Sequence[RowMapping]) -> list[ServiceDTO]:
         """Group territories by service identifier."""
@@ -230,36 +224,29 @@ async def get_services_with_geometry_by_territory_id_from_db(
 
     if include_child_territories:
         territories_cte = include_child_territories_cte(territory_id, cities_only)
-        statement = statement.where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
+        territory_filter = CustomFilter(
+            lambda q: q.where(object_geometries_data.c.territory_id.in_(select(territories_cte.c.territory_id)))
+        )
     else:
-        statement = statement.where(object_geometries_data.c.territory_id == territory_id)
+        territory_filter = EqFilter(object_geometries_data, "territory_id", territory_id)
 
-    if service_type_id is not None:
-        statement = statement.where(services_data.c.service_type_id == service_type_id)
-    elif urban_function_id is not None:
-        functions_cte = (
-            select(urban_functions_dict.c.urban_function_id)
-            .where(urban_functions_dict.c.urban_function_id == urban_function_id)
-            .cte(recursive=True)
-        )
-        functions_cte = functions_cte.union_all(
-            select(urban_functions_dict.c.urban_function_id).where(
-                urban_functions_dict.c.parent_id == functions_cte.c.urban_function_id
-            )
-        )
-        statement = statement.where(service_types_dict.c.urban_function_id.in_(select(functions_cte)))
-    if name is not None:
-        statement = statement.where(services_data.c.name.ilike(f"%{name}%"))
-    if order_by is not None:
-        order = services_data.c.created_at if order_by == "created_at" else services_data.c.updated_at
-        if ordering == "desc":
-            order = order.desc()
-        statement = statement.order_by(order)
-    else:
-        if ordering == "desc":
-            statement = statement.order_by(services_data.c.service_id.desc())
-        else:
-            statement = statement.order_by(services_data.c.service_id)
+    statement = apply_filters(
+        statement,
+        territory_filter,
+        EqFilter(services_data, "service_type_id", service_type_id),
+        RecursiveFilter(service_types_dict, "urban_function_id", urban_function_id, urban_functions_dict),
+        ILikeFilter(services_data, "name", name),
+    )
+
+    order_column = {
+        "created_at": services_data.c.created_at,
+        "updated_at": services_data.c.updated_at,
+    }.get(order_by, services_data.c.service_id)
+
+    if ordering == "desc":
+        order_column = order_column.desc()
+
+    statement = statement.order_by(order_column)
 
     if paginate:
         return await paginate_dto(conn, statement, transformer=lambda x: [ServiceWithGeometryDTO(**item) for item in x])

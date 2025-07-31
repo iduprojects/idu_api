@@ -2,6 +2,7 @@
 
 from .auth import *
 from .broker import *
+from .buffers import *
 from .buildings import *
 from .connection import *
 from .functional_zones import *

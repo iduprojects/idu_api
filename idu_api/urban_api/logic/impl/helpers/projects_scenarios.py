@@ -41,11 +41,12 @@ async def check_scenario(
     user: UserDTO | None,
     to_edit: bool = False,
     allow_regional: bool = True,
-) -> None:
+    return_value: bool = False,
+) -> RowMapping | None:
     """Check scenario existence and user access."""
 
     statement = (
-        select(projects_data.c.project_id, projects_data.c.user_id, projects_data.c.public, projects_data.c.is_regional)
+        select(projects_data, scenarios_data.c.parent_id)
         .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
         .where(scenarios_data.c.scenario_id == scenario_id)
     )
@@ -60,33 +61,7 @@ async def check_scenario(
     if scenario.is_regional and not allow_regional:
         raise NotAllowedInRegionalScenario()
 
-
-async def get_project_by_scenario_id(
-    conn: AsyncConnection,
-    scenario_id: int,
-    user: UserDTO | None,
-    to_edit: bool = False,
-    allow_regional: bool = True,
-) -> RowMapping:
-    """Get project with checking access"""
-
-    statement = (
-        select(projects_data)
-        .select_from(scenarios_data.join(projects_data, projects_data.c.project_id == scenarios_data.c.project_id))
-        .where(scenarios_data.c.scenario_id == scenario_id)
-    )
-    project = (await conn.execute(statement)).mappings().one_or_none()
-    if project is None:
-        raise EntityNotFoundById(scenario_id, "scenario")
-    if user is None:
-        if not project.public:
-            raise AccessDeniedError(project.project_id, "project")
-    elif project.user_id != user.id and (not project.public or to_edit) and not user.is_superuser:
-        raise AccessDeniedError(project.project_id, "project")
-    if project.is_regional and not allow_regional:
-        raise NotAllowedInRegionalScenario()
-
-    return project
+    return scenario if return_value else None
 
 
 async def get_scenarios_from_db(

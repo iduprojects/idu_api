@@ -6,9 +6,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from geoalchemy2.types import Geometry
 from shapely.geometry import shape
-from sqlalchemy import Column, Enum, Table
+from sqlalchemy import Column, CompoundSelect, Enum, Table
 from sqlalchemy.engine import Connection
 from sqlalchemy.sql import Insert, Select, Update
+from sqlalchemy.sql.elements import BinaryExpression, BindParameter, BooleanClauseList, Label, UnaryExpression
+from sqlalchemy.sql.functions import Function
 
 from idu_api.urban_api.schemas.enums import NormativeType
 
@@ -180,6 +182,10 @@ class MockConnection:
         """
 
         def get_column_type(col: Column):
+            if isinstance(col, (UnaryExpression, BooleanClauseList, BinaryExpression)):
+                return bool
+            if isinstance(col, Function):
+                return bool
             if isinstance(col.type, Geometry) or col.name.removeprefix("public_") in {"geometry", "centre_point"}:
                 return "GeometryType"
             if isinstance(col.type, Enum):
@@ -188,9 +194,12 @@ class MockConnection:
                 return "normative"
             if col.name == "row_num":
                 return int
+            if "is_" in col.name:
+                return bool
             try:
                 return col.type.python_type
             except Exception as e:
+                print(col.name)
                 raise NotImplementedError(f"Unsupported column type: {col.type}") from e
 
         def process_columns(columns):
@@ -203,7 +212,7 @@ class MockConnection:
                     result[col.name] = get_column_type(col)
             return result
 
-        if isinstance(query, Select):
+        if isinstance(query, (Select, CompoundSelect)):
             return process_columns(query.selected_columns)
 
         if isinstance(query, (Insert, Update)):

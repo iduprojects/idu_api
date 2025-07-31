@@ -18,8 +18,8 @@ from idu_api.urban_api.schemas import (
     ProfilesReclamationDataPost,
     ProfilesReclamationDataPut,
 )
+from idu_api.urban_api.schemas.geometries import AllPossibleGeometry
 
-from ...schemas.geometries import AllPossibleGeometry
 from .routers import functional_zones_router
 
 

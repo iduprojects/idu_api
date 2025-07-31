@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from idu_api.urban_api.dto.service_types import ServiceTypeDTO
 
@@ -17,7 +16,7 @@ class SocGroupDTO:
 class SocGroupWithServiceTypesDTO:
     soc_group_id: int
     name: str
-    service_types: list[dict[str, Any]]
+    service_types: list[ServiceTypeDTO]
 
 
 @dataclass(frozen=True)

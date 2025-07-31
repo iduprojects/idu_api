@@ -53,6 +53,7 @@ from idu_api.urban_api.schemas import (
     PhysicalObjectPut,
     PhysicalObjectWithGeometryPost,
 )
+from idu_api.urban_api.utils.query_filters import EqFilter, apply_filters
 
 func: Callable
 Geom = Point | Polygon | MultiPolygon | LineString
@@ -120,7 +121,10 @@ async def get_physical_objects_with_geometry_by_ids_from_db(
 
 
 async def get_physical_objects_around_from_db(
-    conn: AsyncConnection, geometry: Geom, physical_object_type_id: int | None, buffer_meters: int
+    conn: AsyncConnection,
+    geometry: Geom,
+    physical_object_type_id: int | None,
+    buffer_meters: int,
 ) -> list[PhysicalObjectWithGeometryDTO]:
     """Get physical objects which are in buffer area of the given geometry."""
 
@@ -218,7 +222,8 @@ async def get_physical_object_by_id_from_db(conn: AsyncConnection, physical_obje
 
 
 async def add_physical_object_with_geometry_to_db(
-    conn: AsyncConnection, physical_object: PhysicalObjectWithGeometryPost
+    conn: AsyncConnection,
+    physical_object: PhysicalObjectWithGeometryPost,
 ) -> UrbanObjectDTO:
     """Create physical object with geometry."""
 
@@ -298,7 +303,9 @@ async def put_physical_object_to_db(
 
 
 async def patch_physical_object_to_db(
-    conn: AsyncConnection, physical_object: PhysicalObjectPatch, physical_object_id: int
+    conn: AsyncConnection,
+    physical_object: PhysicalObjectPatch,
+    physical_object_id: int,
 ) -> PhysicalObjectDTO:
     """Update scenario physical object by only given attributes."""
 
@@ -518,11 +525,11 @@ async def get_services_by_physical_object_id_from_db(
         .distinct()
     )
 
-    if service_type_id is not None:
-        statement = statement.where(service_types_dict.c.service_type_id == service_type_id)
-
-    if territory_type_id is not None:
-        statement = statement.where(territory_types_dict.c.territory_type_id == territory_type_id)
+    statement = apply_filters(
+        statement,
+        EqFilter(service_types_dict, "service_type_id", service_type_id),
+        EqFilter(territory_types_dict, "territory_type_id", territory_type_id),
+    )
 
     result = (await conn.execute(statement)).mappings().all()
 
@@ -591,11 +598,11 @@ async def get_services_with_geometry_by_physical_object_id_from_db(
         .distinct()
     )
 
-    if service_type_id is not None:
-        statement = statement.where(service_types_dict.c.service_type_id == service_type_id)
-
-    if territory_type_id is not None:
-        statement = statement.where(territory_types_dict.c.territory_type_id == territory_type_id)
+    statement = apply_filters(
+        statement,
+        EqFilter(service_types_dict, "service_type_id", service_type_id),
+        EqFilter(territory_types_dict, "territory_type_id", territory_type_id),
+    )
 
     result = (await conn.execute(statement)).mappings().all()
 
@@ -642,7 +649,9 @@ async def get_physical_object_geometries_from_db(
 
 
 async def add_physical_object_to_object_geometry_to_db(
-    conn: AsyncConnection, object_geometry_id: int, physical_object: PhysicalObjectPost
+    conn: AsyncConnection,
+    object_geometry_id: int,
+    physical_object: PhysicalObjectPost,
 ) -> UrbanObjectDTO:
     """Create object geometry connected with physical object."""
 

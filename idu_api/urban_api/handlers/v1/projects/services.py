@@ -15,7 +15,6 @@ from idu_api.urban_api.schemas import (
     ScenarioServicePost,
     ScenarioServiceWithGeometryAttributes,
     ScenarioUrbanObject,
-    Service,
     ServicePatch,
     ServicePut,
 )
@@ -127,24 +126,24 @@ async def get_services_with_geometry_by_scenario_id(
 
 
 @projects_router.get(
-    "/projects/{project_id}/context/services",
-    response_model=list[Service],
+    "/scenarios/{scenario_id}/context/services",
+    response_model=list[ScenarioService],
     status_code=status.HTTP_200_OK,
 )
 async def get_context_services(
     request: Request,
-    project_id: int = Path(..., description="project identifier", gt=0),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     service_type_id: int | None = Query(None, description="to filter by service type", gt=0),
     urban_function_id: int | None = Query(None, description="to filter by urban function", gt=0),
     user: UserDTO = Depends(get_user),
-) -> list[Service]:
+) -> list[ScenarioService]:
     """
     ## Get a list of services for the context of a project territory.
 
     **WARNING:** You can only filter by service type or urban function.
 
     ### Parameters:
-    - **project_id** (int, Path): Unique identifier of the project.
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
     - **service_type_id** (int | None, Query): Optional filter by service type identifier.
     - **urban_function_id** (int | None, Query): Optional filter by urban function identifier.
 
@@ -167,31 +166,31 @@ async def get_context_services(
             detail="Please, choose either service_type_id or urban_function_id",
         )
 
-    services = await user_project_service.get_context_services(project_id, user, service_type_id, urban_function_id)
+    services = await user_project_service.get_context_services(scenario_id, user, service_type_id, urban_function_id)
 
-    return [Service.from_dto(service) for service in services]
+    return [ScenarioService.from_dto(service) for service in services]
 
 
 @projects_router.get(
-    "/projects/{project_id}/context/services_with_geometry",
-    response_model=GeoJSONResponse[Feature[Geometry, Service]],
+    "/scenarios/{scenario_id}/context/services_with_geometry",
+    response_model=GeoJSONResponse[Feature[Geometry, ScenarioServiceWithGeometryAttributes]],
     status_code=status.HTTP_200_OK,
 )
 async def get_context_services_with_geometry(
     request: Request,
-    project_id: int = Path(..., description="project identifier", gt=0),
+    scenario_id: int = Path(..., description="scenario identifier", gt=0),
     service_type_id: int | None = Query(None, description="to filter by service type", gt=0),
     urban_function_id: int | None = Query(None, description="to filter by urban function", gt=0),
     centers_only: bool = Query(False, description="display only centers"),
     user: UserDTO = Depends(get_user),
-) -> GeoJSONResponse[Feature[Geometry, Service]]:
+) -> GeoJSONResponse[Feature[Geometry, ScenarioServiceWithGeometryAttributes]]:
     """
     ## Get a list of services with geometry for the context of a project territory.
 
     **WARNING:** You can only filter by service type or urban function.
 
     ### Parameters:
-    - **project_id** (int, Path): Unique identifier of the project.
+    - **scenario_id** (int, Path): Unique identifier of the scenario.
     - **service_type_id** (int | None, Query): Optional filter by service type identifier.
     - **urban_function_id** (int | None, Query): Optional filter by urban function identifier.
 
@@ -215,7 +214,7 @@ async def get_context_services_with_geometry(
         )
 
     services = await user_project_service.get_context_services_with_geometry(
-        project_id, user, service_type_id, urban_function_id
+        scenario_id, user, service_type_id, urban_function_id
     )
 
     return await GeoJSONResponse.from_list([obj.to_geojson_dict() for obj in services], centers_only)

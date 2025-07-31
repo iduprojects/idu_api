@@ -2,7 +2,6 @@
 
 import asyncio
 import io
-from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import aioboto3
@@ -81,11 +80,11 @@ class AsyncMinioClient:
         session,
         logger: structlog.stdlib.BoundLogger,
         prefix: str = "",
-    ) -> dict[str, bool]:
+    ) -> list[str]:
         try:
             response = await session.list_objects_v2(Bucket=self._bucket_name, Prefix=prefix)
             existing_objects = {obj["Key"] for obj in response.get("Contents", [])}
-            return existing_objects
+            return list(existing_objects)
         except EndpointConnectionError as exc:
             await logger.aerror("could not connect to MinIO fileserver")
             raise ExternalServiceUnavailable("fileserver") from exc

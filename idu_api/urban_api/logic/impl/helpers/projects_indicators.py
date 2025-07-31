@@ -29,9 +29,10 @@ from idu_api.urban_api.dto import (
 )
 from idu_api.urban_api.exceptions.logic.common import EntityAlreadyExists, EntityNotFoundById
 from idu_api.urban_api.exceptions.logic.projects import NotAllowedInProjectScenario
-from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario, get_project_by_scenario_id
+from idu_api.urban_api.logic.impl.helpers.projects_scenarios import check_scenario
 from idu_api.urban_api.logic.impl.helpers.utils import check_existence, extract_values_from_model
 from idu_api.urban_api.schemas import ScenarioIndicatorValuePatch, ScenarioIndicatorValuePost, ScenarioIndicatorValuePut
+from idu_api.urban_api.utils.query_filters import EqFilter, InFilter, apply_filters
 
 
 async def get_scenario_indicator_value_by_id_from_db(
@@ -76,7 +77,7 @@ async def get_scenario_indicator_value_by_id_from_db(
 async def get_scenario_indicators_values_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
-    indicator_ids: str | None,
+    indicator_ids: set[int],
     indicators_group_id: int | None,
     territory_id: int | None,
     hexagon_id: int | None,
@@ -119,15 +120,13 @@ async def get_scenario_indicators_values_by_scenario_id_from_db(
         .distinct()
     )
 
-    if indicators_group_id is not None:
-        statement = statement.where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
-    if indicator_ids is not None:
-        ids = {int(indicator.strip()) for indicator in indicator_ids.split(",")}
-        statement = statement.where(projects_indicators_data.c.indicator_id.in_(ids))
-    if territory_id is not None:
-        statement = statement.where(projects_indicators_data.c.territory_id == territory_id)
-    if hexagon_id is not None:
-        statement = statement.where(projects_indicators_data.c.hexagon_id == hexagon_id)
+    statement = apply_filters(
+        statement,
+        EqFilter(indicators_groups_data, "indicators_group_id", indicators_group_id),
+        InFilter(projects_indicators_data, "indicator_id", indicator_ids),
+        EqFilter(projects_indicators_data, "territory_id", territory_id),
+        EqFilter(projects_indicators_data, "hexagon_id", hexagon_id),
+    )
 
     results = (await conn.execute(statement)).mappings().all()
 
@@ -143,7 +142,7 @@ async def add_scenario_indicator_value_to_db(
 ) -> ScenarioIndicatorValueDTO:
     """Add a new scenario's indicator value."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
+    scenario = await check_scenario(conn, scenario_id, user, to_edit=True, return_value=True)
 
     if not await check_existence(conn, indicators_dict, conditions={"indicator_id": indicator_value.indicator_id}):
         raise EntityNotFoundById(indicator_value.indicator_id, "indicator")
@@ -183,17 +182,17 @@ async def add_scenario_indicator_value_to_db(
 
     new_value = await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
 
-    if project.is_regional and indicator_value.hexagon_id is None:
+    if scenario.is_regional and indicator_value.hexagon_id is None:
         event = RegionalScenarioIndicatorsUpdated(
             scenario_id=scenario_id,
-            territory_id=project.territory_id,
+            territory_id=scenario.territory_id,
             indicator_id=indicator_value.indicator_id,
             indicator_value_id=indicator_value_id,
         )
         await kafka_producer.send(event)
     elif indicator_value.hexagon_id is None:
         event = ScenarioIndicatorsUpdated(
-            project_id=project.project_id,
+            project_id=scenario.project_id,
             scenario_id=scenario_id,
             indicator_id=indicator_value.indicator_id,
             indicator_value_id=indicator_value_id,
@@ -214,7 +213,7 @@ async def put_scenario_indicator_value_to_db(
 ) -> ScenarioIndicatorValueDTO:
     """Update scenario's indicator value by all attributes."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
+    scenario = await check_scenario(conn, scenario_id, user, to_edit=True, return_value=True)
 
     if not await check_existence(conn, indicators_dict, conditions={"indicator_id": indicator_value.indicator_id}):
         raise EntityNotFoundById(indicator_value.indicator_id, "indicator")
@@ -267,17 +266,17 @@ async def put_scenario_indicator_value_to_db(
 
     new_value = await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
 
-    if project.is_regional and indicator_value.hexagon_id is None:
+    if scenario.is_regional and indicator_value.hexagon_id is None:
         event = RegionalScenarioIndicatorsUpdated(
             scenario_id=scenario_id,
-            territory_id=project.territory_id,
+            territory_id=scenario.territory_id,
             indicator_id=indicator_value.indicator_id,
             indicator_value_id=indicator_value_id,
         )
         await kafka_producer.send(event)
     elif indicator_value.hexagon_id is None:
         event = ScenarioIndicatorsUpdated(
-            project_id=project.project_id,
+            project_id=scenario.project_id,
             scenario_id=scenario_id,
             indicator_id=indicator_value.indicator_id,
             indicator_value_id=indicator_value_id,
@@ -307,7 +306,7 @@ async def patch_scenario_indicator_value_to_db(
         if scenario_id is None:
             raise EntityNotFoundById(indicator_value_id, "indicator value")
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user, to_edit=True)
+    scenario = await check_scenario(conn, scenario_id, user, to_edit=True, return_value=True)
 
     if not await check_existence(conn, projects_indicators_data, conditions={"indicator_value_id": indicator_value_id}):
         raise EntityNotFoundById(indicator_value_id, "indicator value")
@@ -323,17 +322,17 @@ async def patch_scenario_indicator_value_to_db(
 
     new_value = await get_scenario_indicator_value_by_id_from_db(conn, indicator_value_id)
 
-    if project.is_regional and updated_indicator.hexagon_id is None:
+    if scenario.is_regional and updated_indicator.hexagon_id is None:
         event = RegionalScenarioIndicatorsUpdated(
             scenario_id=scenario_id,
-            territory_id=project.territory_id,
+            territory_id=scenario.territory_id,
             indicator_id=updated_indicator.indicator_id,
             indicator_value_id=indicator_value_id,
         )
         await kafka_producer.send(event)
     elif updated_indicator.hexagon_id is None:
         event = ScenarioIndicatorsUpdated(
-            project_id=project.project_id,
+            project_id=scenario.project_id,
             scenario_id=scenario_id,
             indicator_id=updated_indicator.indicator_id,
             indicator_value_id=indicator_value_id,
@@ -361,7 +360,10 @@ async def delete_scenario_indicators_values_by_scenario_id_from_db(
 
 
 async def delete_scenario_indicator_value_by_id_from_db(
-    conn: AsyncConnection, scenario_id: int | None, indicator_value_id: int, user: UserDTO
+    conn: AsyncConnection,
+    scenario_id: int | None,
+    indicator_value_id: int,
+    user: UserDTO,
 ) -> dict:
     """Delete specific scenario's indicator values by indicator value identifier if you're the project owner."""
 
@@ -391,14 +393,14 @@ async def delete_scenario_indicator_value_by_id_from_db(
 async def get_hexagons_with_indicators_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
-    indicator_ids: str | None,
+    indicator_ids: set[int],
     indicators_group_id: int | None,
     user: UserDTO | None,
 ) -> list[HexagonWithIndicatorsDTO]:
     """Get scenario's indicators values for given regional scenario with hexagons."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user)
-    if not project.is_regional:
+    scenario = await check_scenario(conn, scenario_id, user, return_value=True)
+    if not scenario.is_regional:
         raise NotAllowedInProjectScenario()
 
     statement = (
@@ -431,11 +433,11 @@ async def get_hexagons_with_indicators_by_scenario_id_from_db(
         .order_by(projects_indicators_data.c.indicator_id.asc())
     )
 
-    if indicators_group_id is not None:
-        statement = statement.where(indicators_groups_data.c.indicators_group_id == indicators_group_id)
-    if indicator_ids is not None:
-        ids = {int(indicator.strip()) for indicator in indicator_ids.split(",")}
-        statement = statement.where(projects_indicators_data.c.indicator_id.in_(ids))
+    statement = apply_filters(
+        statement,
+        EqFilter(indicators_groups_data, "indicators_group_id", indicators_group_id),
+        InFilter(projects_indicators_data, "indicator_id", indicator_ids),
+    )
     indicators = (await conn.execute(statement)).mappings().all()
 
     grouped_data = {}
@@ -466,12 +468,12 @@ async def update_all_indicators_values_by_scenario_id_to_db(
 ) -> dict[str, Any]:
     """Update all indicators values for given scenario."""
 
-    project = await get_project_by_scenario_id(conn, scenario_id, user)
+    scenario = await check_scenario(conn, scenario_id, user, to_edit=True, return_value=True)
 
     config = UrbanAPIConfig.from_file_or_default(os.getenv("CONFIG_PATH"))
 
     async with aiohttp.ClientSession() as session:
-        params = {"scenario_id": scenario_id, "project_id": project.project_id, "background": "false"}
+        params = {"scenario_id": scenario_id, "project_id": scenario.project_id, "background": "false"}
         try:
             response = await session.put(
                 f"{config.external.hextech_api}/hextech/indicators_saving/save_all",

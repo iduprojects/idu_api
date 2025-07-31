@@ -8,6 +8,8 @@ from fastapi import APIRouter
 from .projects import routers_list as projects_routers
 from .territories import routers_list as territories_routers
 
+buffers_router = APIRouter(tags=["buffers"], prefix="/v1")
+
 indicators_router = APIRouter(tags=["indicators"], prefix="/v1")
 
 service_types_router = APIRouter(tags=["service_types"], prefix="/v1")
@@ -27,6 +29,7 @@ services_router = APIRouter(tags=["services"], prefix="/v1")
 urban_objects_router = APIRouter(tags=["urban_objects"], prefix="/v1")
 
 routers_list = [
+    buffers_router,
     indicators_router,
     services_router,
     functional_zones_router,

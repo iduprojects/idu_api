@@ -1,10 +1,9 @@
 """Scenarios response models are defined here."""
 
 from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Literal
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from idu_api.urban_api.dto import ScenarioDTO
 from idu_api.urban_api.schemas.short_models import FunctionalZoneTypeBasic, ShortProject, ShortScenario, ShortTerritory

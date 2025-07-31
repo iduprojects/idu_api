@@ -7,6 +7,7 @@ from typing import Literal, Protocol
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, Polygon
 
 from idu_api.urban_api.dto import (
+    BufferDTO,
     BuildingWithGeometryDTO,
     FunctionalZoneDTO,
     FunctionalZoneSourceDTO,
@@ -135,7 +136,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
     async def get_indicator_values_by_territory_id(
         self,
         territory_id: int,
-        indicator_ids: str | None,
+        indicator_ids: set[int],
         indicators_group_id: int | None,
         start_date: date | None,
         end_date: date | None,
@@ -155,7 +156,7 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
     async def get_indicator_values_by_parent_id(
         self,
         parent_id: int | None,
-        indicator_ids: str | None,
+        indicator_ids: set[int],
         indicators_group_id: int | None,
         start_date: date | None,
         end_date: date | None,
@@ -342,3 +343,15 @@ class TerritoriesService(Protocol):  # pylint: disable=too-many-public-methods,
     @abc.abstractmethod
     async def delete_hexagons_by_territory_id(self, territory_id: int) -> dict:
         """Delete hexagons for a given territory."""
+
+    @abc.abstractmethod
+    async def get_buffers_by_territory_id(
+        self,
+        territory_id: int,
+        include_child_territories: bool,
+        cities_only: bool,
+        buffer_type_id: int | None,
+        physical_object_type_id: int | None,
+        service_type_id: int | None,
+    ) -> list[BufferDTO]:
+        """Get buffers by territory identifier."""
