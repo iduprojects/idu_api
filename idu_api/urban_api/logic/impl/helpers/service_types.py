@@ -466,45 +466,56 @@ async def get_social_groups_by_service_type_id_from_db(
         raise EntityNotFoundById(service_type_id, "service type")
 
     statement = (
-        select(
-            soc_groups_dict,
-            service_types_dict.c.service_type_id.label("id"),
-            service_types_dict.c.name.label("service_type_name"),
-            soc_group_values_data.c.infrastructure_type,
-        )
+        select(soc_groups_dict)
         .select_from(
-            service_types_dict.join(
+            soc_groups_dict.join(
                 soc_group_values_data,
-                soc_group_values_data.c.service_type_id == service_types_dict.c.service_type_id,
-            ).join(soc_groups_dict, soc_groups_dict.c.soc_group_id == soc_group_values_data.c.soc_group_id)
+                soc_groups_dict.c.soc_group_id == soc_group_values_data.c.soc_group_id,
+            )
         )
-        .where(service_types_dict.c.service_type_id == service_type_id)
+        .where(soc_group_values_data.c.service_type_id == service_type_id)
         .order_by(soc_groups_dict.c.soc_group_id)
         .distinct()
     )
-
-    result = (await conn.execute(statement)).mappings().all()
-    if not result:
+    soc_groups = (await conn.execute(statement)).mappings().all()
+    if not soc_groups:
         return []
 
-    service_types = [
-        ServiceTypeDTO(
-            service_type_id=row["service_type_id"],
-            urban_function_id=row["urban_function_id"],
-            urban_function_name=row["urban_function_name"],
-            name=row["name"],
-            capacity_modeled=row["capacity_modeled"],
-            code=row["code"],
-            infrastructure_type=row["infrastructure_type"],
-            properties=row["properties"],
+    soc_group_ids = [row.soc_group_id for row in soc_groups]
+    statement = (
+        select(
+            soc_group_values_data.c.soc_group_id,
+            service_types_dict.c.service_type_id.label("id"),
+            service_types_dict.c.name.label("name"),
+            soc_group_values_data.c.infrastructure_type,
         )
-        for row in result
-        if row["service_type_id"] is not None
-    ]
+        .select_from(
+            soc_group_values_data.join(
+                service_types_dict, soc_group_values_data.c.service_type_id == service_types_dict.c.service_type_id
+            )
+        )
+        .where(soc_group_values_data.c.soc_group_id.in_(soc_group_ids))
+        .order_by(service_types_dict.c.service_type_id)
+    )
+    service_types = (await conn.execute(statement)).mappings().all()
+
+    service_types_map: dict[int, list[dict]] = {}
+    for row in service_types:
+        group_id = row["soc_group_id"]
+        service_type = {
+            "id": row["id"],
+            "name": row["name"],
+            "infrastructure_type": row["infrastructure_type"],
+        }
+        service_types_map.setdefault(group_id, []).append(service_type)
 
     return [
-        SocGroupWithServiceTypesDTO(soc_group_id=row["soc_group_id"], name=row["name"], service_types=service_types)
-        for row in result
+        SocGroupWithServiceTypesDTO(
+            soc_group_id=row["soc_group_id"],
+            name=row["name"],
+            service_types=service_types_map.get(row["soc_group_id"], []),
+        )
+        for row in soc_groups
     ]
 
 

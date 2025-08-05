@@ -7,9 +7,10 @@ from geoalchemy2.functions import (
     ST_Centroid,
     ST_Intersection,
     ST_Intersects,
+    ST_IsEmpty,
     ST_Within,
 )
-from sqlalchemy import case, delete, insert, literal, or_, select, union_all, update
+from sqlalchemy import delete, insert, literal, or_, select, union_all, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.functions import coalesce
 
@@ -634,6 +635,7 @@ async def get_context_geometries_from_db(
     )
 
     # Step 3: Collect all geometries from `public` intersecting context geometry
+    intersected_geom = ST_Intersection(object_geometries_data.c.geometry, context_geom)
     public_geoms_query = (
         select(
             object_geometries_data.c.object_geometry_id,
@@ -641,24 +643,8 @@ async def get_context_geometries_from_db(
             object_geometries_data.c.osm_id,
             object_geometries_data.c.created_at,
             object_geometries_data.c.updated_at,
-            ST_AsEWKB(
-                case(
-                    (
-                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
-                        ST_Intersection(object_geometries_data.c.geometry, context_geom),
-                    ),
-                    else_=object_geometries_data.c.geometry,
-                )
-            ).label("geometry"),
-            ST_AsEWKB(
-                case(
-                    (
-                        ~ST_Within(object_geometries_data.c.geometry, context_geom),
-                        ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context_geom)),
-                    ),
-                    else_=object_geometries_data.c.centre_point,
-                )
-            ).label("centre_point"),
+            ST_AsEWKB(intersected_geom).label("geometry"),
+            ST_AsEWKB(ST_Centroid(intersected_geom)).label("centre_point"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
             literal(False).label("is_scenario_object"),
@@ -677,10 +663,18 @@ async def get_context_geometries_from_db(
                 territories_data.c.territory_id == object_geometries_data.c.territory_id,
             )
         )
+        .where(~ST_IsEmpty(intersected_geom))
         .distinct()
     )
 
     # Step 4: Collect all geometries from parent regional scenario intersecting context geometry
+    geom_expr = ST_Intersection(
+        coalesce(
+            projects_object_geometries_data.c.geometry,
+            object_geometries_data.c.geometry,
+        ),
+        context_geom,
+    )
     regional_scenario_geoms_query = (
         select(
             coalesce(
@@ -703,26 +697,8 @@ async def get_context_geometries_from_db(
                 projects_object_geometries_data.c.updated_at,
                 object_geometries_data.c.updated_at,
             ).label("updated_at"),
-            ST_AsEWKB(
-                ST_Intersection(
-                    coalesce(
-                        projects_object_geometries_data.c.geometry,
-                        object_geometries_data.c.geometry,
-                    ),
-                    context_geom,
-                )
-            ).label("geometry"),
-            ST_AsEWKB(
-                ST_Centroid(
-                    ST_Intersection(
-                        coalesce(
-                            projects_object_geometries_data.c.geometry,
-                            object_geometries_data.c.geometry,
-                        ),
-                        context_geom,
-                    )
-                )
-            ).label("centre_point"),
+            ST_AsEWKB(geom_expr).label("geometry"),
+            ST_AsEWKB(ST_Centroid(geom_expr)).label("centre_point"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
             (object_geometries_data.c.object_geometry_id.isnot(None)).label("is_scenario_object"),
@@ -760,6 +736,7 @@ async def get_context_geometries_from_db(
         .where(
             projects_urban_objects_data.c.scenario_id == parent_id,
             projects_urban_objects_data.c.public_urban_object_id.is_(None),
+            ~ST_IsEmpty(geom_expr),
         )
     )
 
@@ -815,71 +792,83 @@ async def get_context_geometries_with_all_objects_from_db(
     )
 
     # Step 3: Collect all geometries from `public` intersecting context geometry
+    intersected_geom = ST_Intersection(object_geometries_data.c.geometry, context_geom)
     building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
-    public_geoms_query = select(
-        physical_objects_data.c.physical_object_id,
-        physical_object_types_dict.c.physical_object_type_id,
-        physical_object_types_dict.c.name.label("physical_object_type_name"),
-        physical_objects_data.c.name.label("physical_object_name"),
-        physical_objects_data.c.properties.label("physical_object_properties"),
-        *building_columns,
-        buildings_data.c.properties.label("building_properties"),
-        object_geometries_data.c.object_geometry_id,
-        territories_data.c.territory_id,
-        territories_data.c.name.label("territory_name"),
-        object_geometries_data.c.address,
-        object_geometries_data.c.osm_id,
-        ST_AsEWKB(ST_Intersection(object_geometries_data.c.geometry, context_geom)).label("geometry"),
-        ST_AsEWKB(ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context_geom))).label("centre_point"),
-        services_data.c.service_id,
-        services_data.c.name.label("service_name"),
-        services_data.c.capacity,
-        services_data.c.is_capacity_real,
-        services_data.c.properties.label("service_properties"),
-        service_types_dict.c.service_type_id,
-        service_types_dict.c.name.label("service_type_name"),
-        territory_types_dict.c.territory_type_id,
-        territory_types_dict.c.name.label("territory_type_name"),
-        literal(False).label("is_scenario_geometry"),
-        literal(False).label("is_scenario_physical_object"),
-        literal(False).label("is_scenario_service"),
-    ).select_from(
-        urban_objects_data.join(
-            physical_objects_data,
-            physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+    public_geoms_query = (
+        select(
+            physical_objects_data.c.physical_object_id,
+            physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.name.label("physical_object_type_name"),
+            physical_objects_data.c.name.label("physical_object_name"),
+            physical_objects_data.c.properties.label("physical_object_properties"),
+            *building_columns,
+            buildings_data.c.properties.label("building_properties"),
+            object_geometries_data.c.object_geometry_id,
+            territories_data.c.territory_id,
+            territories_data.c.name.label("territory_name"),
+            object_geometries_data.c.address,
+            object_geometries_data.c.osm_id,
+            ST_AsEWKB(intersected_geom).label("geometry"),
+            ST_AsEWKB(ST_Centroid(intersected_geom)).label("centre_point"),
+            services_data.c.service_id,
+            services_data.c.name.label("service_name"),
+            services_data.c.capacity,
+            services_data.c.is_capacity_real,
+            services_data.c.properties.label("service_properties"),
+            service_types_dict.c.service_type_id,
+            service_types_dict.c.name.label("service_type_name"),
+            territory_types_dict.c.territory_type_id,
+            territory_types_dict.c.name.label("territory_type_name"),
+            literal(False).label("is_scenario_geometry"),
+            literal(False).label("is_scenario_physical_object"),
+            literal(False).label("is_scenario_service"),
         )
-        .join(
-            object_geometries_data,
-            object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+        .select_from(
+            urban_objects_data.join(
+                physical_objects_data,
+                physical_objects_data.c.physical_object_id == urban_objects_data.c.physical_object_id,
+            )
+            .join(
+                object_geometries_data,
+                object_geometries_data.c.object_geometry_id == urban_objects_data.c.object_geometry_id,
+            )
+            .join(
+                objects_intersecting,
+                objects_intersecting.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
+            )
+            .join(
+                territories_data,
+                territories_data.c.territory_id == object_geometries_data.c.territory_id,
+            )
+            .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
+            .join(
+                physical_object_types_dict,
+                physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
+            )
+            .outerjoin(
+                service_types_dict,
+                service_types_dict.c.service_type_id == services_data.c.service_type_id,
+            )
+            .outerjoin(
+                territory_types_dict,
+                territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
+            )
+            .outerjoin(
+                buildings_data,
+                buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
+            )
         )
-        .join(
-            objects_intersecting,
-            objects_intersecting.c.object_geometry_id == object_geometries_data.c.object_geometry_id,
-        )
-        .join(
-            territories_data,
-            territories_data.c.territory_id == object_geometries_data.c.territory_id,
-        )
-        .outerjoin(services_data, services_data.c.service_id == urban_objects_data.c.service_id)
-        .join(
-            physical_object_types_dict,
-            physical_object_types_dict.c.physical_object_type_id == physical_objects_data.c.physical_object_type_id,
-        )
-        .outerjoin(
-            service_types_dict,
-            service_types_dict.c.service_type_id == services_data.c.service_type_id,
-        )
-        .outerjoin(
-            territory_types_dict,
-            territory_types_dict.c.territory_type_id == services_data.c.territory_type_id,
-        )
-        .outerjoin(
-            buildings_data,
-            buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
-        )
+        .where(~ST_IsEmpty(intersected_geom))
     )
 
     # Step 4: Collect all geometries from parent regional scenario
+    geom_expr = ST_Intersection(
+        coalesce(
+            projects_object_geometries_data.c.geometry,
+            object_geometries_data.c.geometry,
+        ),
+        context_geom,
+    )
     coalesce_building_columns = [
         coalesce(up_col, pub_col).label(pub_col.name)
         for pub_col, up_col in zip(buildings_data.c, projects_buildings_data.c)
@@ -905,26 +894,8 @@ async def get_context_geometries_with_all_objects_from_db(
             territories_data.c.name.label("territory_name"),
             coalesce(projects_object_geometries_data.c.address, object_geometries_data.c.address).label("address"),
             coalesce(projects_object_geometries_data.c.osm_id, object_geometries_data.c.osm_id).label("osm_id"),
-            ST_AsEWKB(
-                ST_Intersection(
-                    coalesce(
-                        projects_object_geometries_data.c.geometry,
-                        object_geometries_data.c.geometry,
-                    ),
-                    context_geom,
-                )
-            ).label("geometry"),
-            ST_AsEWKB(
-                ST_Centroid(
-                    ST_Intersection(
-                        coalesce(
-                            projects_object_geometries_data.c.geometry,
-                            object_geometries_data.c.geometry,
-                        ),
-                        context_geom,
-                    )
-                )
-            ).label("centre_point"),
+            ST_AsEWKB(geom_expr).label("geometry"),
+            ST_AsEWKB(ST_Centroid(geom_expr)).label("centre_point"),
             coalesce(projects_services_data.c.service_id, services_data.c.service_id).label("service_id"),
             coalesce(projects_services_data.c.name, services_data.c.name).label("service_name"),
             coalesce(projects_services_data.c.capacity, services_data.c.capacity).label("capacity"),
@@ -1004,6 +975,7 @@ async def get_context_geometries_with_all_objects_from_db(
         .where(
             projects_urban_objects_data.c.scenario_id == parent_id,
             projects_urban_objects_data.c.public_urban_object_id.is_(None),
+            ~ST_IsEmpty(geom_expr),
         )
     )
 

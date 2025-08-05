@@ -2,7 +2,15 @@
 
 from collections import defaultdict
 
-from geoalchemy2.functions import ST_AsEWKB, ST_Centroid, ST_GeomFromWKB, ST_Intersection, ST_Intersects, ST_Within
+from geoalchemy2.functions import (
+    ST_AsEWKB,
+    ST_Centroid,
+    ST_GeomFromWKB,
+    ST_Intersection,
+    ST_Intersects,
+    ST_IsEmpty,
+    ST_Within,
+)
 from sqlalchemy import delete, insert, literal, or_, select, text, union_all, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 from sqlalchemy.sql.functions import coalesce
@@ -853,6 +861,7 @@ async def get_context_physical_objects_with_geometry_from_db(
     )
 
     # Step 3: Collect all physical objects from `public` intersecting context geometry
+    intersected_geom = ST_Intersection(object_geometries_data.c.geometry, context_geom)
     building_columns = [col for col in buildings_data.c if col.name not in ("physical_object_id", "properties")]
     public_urban_objects_query = (
         select(
@@ -870,10 +879,8 @@ async def get_context_physical_objects_with_geometry_from_db(
             object_geometries_data.c.object_geometry_id,
             object_geometries_data.c.address,
             object_geometries_data.c.osm_id,
-            ST_AsEWKB(ST_Intersection(object_geometries_data.c.geometry, context_geom)).label("geometry"),
-            ST_AsEWKB(ST_Centroid(ST_Intersection(object_geometries_data.c.geometry, context_geom))).label(
-                "centre_point"
-            ),
+            ST_AsEWKB(intersected_geom).label("geometry"),
+            ST_AsEWKB(ST_Centroid(intersected_geom)).label("centre_point"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
             literal(False).label("is_scenario_physical_object"),
@@ -910,10 +917,18 @@ async def get_context_physical_objects_with_geometry_from_db(
                 buildings_data.c.physical_object_id == physical_objects_data.c.physical_object_id,
             )
         )
+        .where(~ST_IsEmpty(intersected_geom))
         .distinct()
     )
 
     # Step 4: Collect all physical objects from parent regional scenario intersecting context geometry
+    geom_expr = ST_Intersection(
+        coalesce(
+            projects_object_geometries_data.c.geometry,
+            object_geometries_data.c.geometry,
+        ),
+        context_geom,
+    )
     scenario_urban_objects_query = (
         select(
             coalesce(
@@ -992,26 +1007,8 @@ async def get_context_physical_objects_with_geometry_from_db(
                 projects_object_geometries_data.c.osm_id,
                 object_geometries_data.c.osm_id,
             ).label("osm_id"),
-            ST_AsEWKB(
-                ST_Intersection(
-                    coalesce(
-                        projects_object_geometries_data.c.geometry,
-                        object_geometries_data.c.geometry,
-                    ),
-                    context_geom,
-                )
-            ).label("geometry"),
-            ST_AsEWKB(
-                ST_Centroid(
-                    ST_Intersection(
-                        coalesce(
-                            projects_object_geometries_data.c.geometry,
-                            object_geometries_data.c.geometry,
-                        ),
-                        context_geom,
-                    )
-                )
-            ).label("centre_point"),
+            ST_AsEWKB(geom_expr).label("geometry"),
+            ST_AsEWKB(ST_Centroid(geom_expr)).label("centre_point"),
             territories_data.c.territory_id,
             territories_data.c.name.label("territory_name"),
             (projects_urban_objects_data.c.physical_object_id.isnot(None)).label("is_scenario_physical_object"),
@@ -1068,6 +1065,7 @@ async def get_context_physical_objects_with_geometry_from_db(
         .where(
             projects_urban_objects_data.c.scenario_id == parent_id,
             projects_urban_objects_data.c.public_urban_object_id.is_(None),
+            ~ST_IsEmpty(geom_expr),
         )
         .distinct()
     )

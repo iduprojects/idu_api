@@ -428,7 +428,7 @@ class ProjectStorageManager:
         async with self._client.get_session() as session:
             existing_objects = await self._client.list_objects(session, logger, prefix=self._logo_prefix(project_id))
             if not existing_objects:
-                existing_objects = ["defaultLogo.jpg"]
+                existing_objects = ["defaultLogo.svg"]
             return (await self._client.generate_presigned_urls(session, existing_objects, logger))[0]
 
     async def delete_logo(self, project_id: int, logger: BoundLogger) -> None:
