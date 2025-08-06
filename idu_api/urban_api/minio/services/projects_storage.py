@@ -372,7 +372,7 @@ class ProjectStorageManager:
             image_id: identifier of the image to delete.
             logger: Structlog logger.
         """
-        original_name = f"{self._gallery_original_prefix(project_id)}original/{image_id}.jpg"
+        original_name = f"{self._gallery_original_prefix(project_id)}{image_id}.jpg"
         preview_name = f"{self._gallery_preview_prefix(project_id)}{image_id}.jpg"
 
         async with self._client.get_session() as session:
@@ -385,6 +385,7 @@ class ProjectStorageManager:
                 self._client.delete_file(session, preview_name, logger),
             )
 
+            metadata["gallery_images"] = [id_ for id_ in metadata["gallery_images"] if id_ != image_id]
             if metadata.get("main_image_id") == image_id:
                 metadata["main_image_id"] = metadata["gallery_images"][0] if metadata["gallery_images"] else None
             await self.save_metadata(session, project_id, metadata, logger)
