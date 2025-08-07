@@ -282,25 +282,22 @@ async def get_buffers_by_scenario_id_from_db(
         .where(projects_urban_objects_data.c.scenario_id == scenario_id)
     )
 
-    # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(buffer_types_dict, "buffer_type_id", buffer_type_id),
-            EqFilter(physical_object_types_dict, "physical_object_type_id", physical_object_type_id),
-            EqFilter(service_types_dict, "service_type_id", service_type_id),
-        )
-
-    public_buffers_query = apply_common_filters(public_buffers_query)
-    locked_regional_scenario_buffers_query = apply_common_filters(locked_regional_scenario_buffers_query)
-    scenario_buffers_query = apply_common_filters(scenario_buffers_query)
-
     union_query = union_all(
         public_buffers_query,
         locked_regional_scenario_buffers_query,
         scenario_buffers_query,
+    ).cte(name="union_query")
+    statement = select(union_query)
+
+    # Apply optional filters
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "buffer_type_id", buffer_type_id),
+        EqFilter(union_query, "physical_object_type_id", physical_object_type_id),
+        EqFilter(union_query, "service_type_id", service_type_id),
     )
-    result = (await conn.execute(union_query)).mappings().all()
+
+    result = (await conn.execute(statement)).mappings().all()
 
     return [ScenarioBufferDTO(**row) for row in result]
 
@@ -471,23 +468,21 @@ async def get_context_buffers_from_db(
         )
     )
 
-    # Step 5: Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(buffer_types_dict, "buffer_type_id", buffer_type_id),
-            EqFilter(physical_object_types_dict, "physical_object_type_id", physical_object_type_id),
-            EqFilter(service_types_dict, "service_type_id", service_type_id),
-        )
-
-    public_buffers_query = apply_common_filters(public_buffers_query)
-    regional_scenario_buffers_query = apply_common_filters(regional_scenario_buffers_query)
-
     union_query = union_all(
         public_buffers_query,
         regional_scenario_buffers_query,
+    ).cte(name="union_query")
+    statement = select(union_query)
+
+    # Apply optional filters
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "buffer_type_id", buffer_type_id),
+        EqFilter(union_query, "physical_object_type_id", physical_object_type_id),
+        EqFilter(union_query, "service_type_id", service_type_id),
     )
-    result = (await conn.execute(union_query)).mappings().all()
+
+    result = (await conn.execute(statement)).mappings().all()
 
     return [ScenarioBufferDTO(**row) for row in result]
 

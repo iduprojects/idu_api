@@ -646,7 +646,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_scenario_indicators_values(
         self,
         scenario_id: int,
-        indicator_ids: set[int],
+        indicator_ids: set[int] | None,
         indicator_group_id: int | None,
         territory_id: int | None,
         hexagon_id: int | None,
@@ -703,7 +703,7 @@ class UserProjectServiceImpl(UserProjectService):  # pylint: disable=too-many-pu
     async def get_hexagons_with_indicators_by_scenario_id(
         self,
         scenario_id: int,
-        indicator_ids: set[int],
+        indicator_ids: set[int] | None,
         indicators_group_id: int | None,
         user: UserDTO | None,
     ) -> list[HexagonWithIndicatorsDTO]:

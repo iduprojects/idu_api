@@ -67,7 +67,7 @@ async def get_indicators_by_territory_id_from_db(conn: AsyncConnection, territor
 async def get_indicator_values_by_territory_id_from_db(
     conn: AsyncConnection,
     territory_id: int,
-    indicator_ids: set[int],
+    indicator_ids: set[int] | None,
     indicators_group_id: int | None,
     start_date: date | None,
     end_date: date | None,
@@ -188,7 +188,7 @@ async def get_indicator_values_by_territory_id_from_db(
 async def get_indicator_values_by_parent_id_from_db(
     conn: AsyncConnection,
     parent_id: int | None,
-    indicator_ids: set[int],
+    indicator_ids: set[int] | None,
     indicators_group_id: int | None,
     start_date: date | None,
     end_date: date | None,

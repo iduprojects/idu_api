@@ -222,7 +222,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def get_indicator_values_by_territory_id(
         self,
         territory_id: int,
-        indicator_ids: set[int],
+        indicator_ids: set[int] | None,
         indicators_group_id: int | None,
         start_date: date | None,
         end_date: date | None,
@@ -250,7 +250,7 @@ class TerritoriesServiceImpl(TerritoriesService):  # pylint: disable=too-many-pu
     async def get_indicator_values_by_parent_id(
         self,
         parent_id: int | None,
-        indicator_ids: set[int],
+        indicator_ids: set[int] | None,
         indicators_group_id: int | None,
         start_date: date | None,
         end_date: date | None,

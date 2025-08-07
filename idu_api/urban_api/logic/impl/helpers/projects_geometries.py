@@ -298,6 +298,7 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
         select(
             physical_objects_data.c.physical_object_id,
             physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.physical_object_function_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
@@ -316,6 +317,7 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
             services_data.c.is_capacity_real,
             services_data.c.properties.label("service_properties"),
             service_types_dict.c.service_type_id,
+            service_types_dict.c.urban_function_id,
             service_types_dict.c.name.label("service_type_name"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
@@ -378,6 +380,7 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
                 projects_physical_objects_data.c.physical_object_id, physical_objects_data.c.physical_object_id
             ).label("physical_object_id"),
             physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.physical_object_function_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             coalesce(projects_physical_objects_data.c.name, physical_objects_data.c.name).label("physical_object_name"),
             coalesce(projects_physical_objects_data.c.properties, physical_objects_data.c.properties).label(
@@ -407,6 +410,7 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
             ),
             coalesce(projects_services_data.c.properties, services_data.c.properties).label("service_properties"),
             service_types_dict.c.service_type_id,
+            service_types_dict.c.urban_function_id,
             service_types_dict.c.name.label("service_type_name"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
@@ -481,29 +485,27 @@ async def get_geometries_with_all_objects_by_scenario_id_from_db(
         )
     )
 
-    # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(physical_object_types_dict, "physical_object_type_id", physical_object_type_id),
-            RecursiveFilter(
-                physical_object_types_dict,
-                "physical_object_function_id",
-                physical_object_function_id,
-                physical_object_functions_dict,
-            ),
-            EqFilter(service_types_dict, "service_type_id", service_type_id),
-            RecursiveFilter(service_types_dict, "urban_function_id", urban_function_id, urban_functions_dict),
-        )
-
-    public_urban_objects_query = apply_common_filters(public_urban_objects_query)
-    scenario_urban_objects_query = apply_common_filters(scenario_urban_objects_query)
-
     union_query = union_all(
         public_urban_objects_query,
         scenario_urban_objects_query,
+    ).cte(name="union_query")
+    statement = select(union_query)
+
+    # Apply optional filters
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "physical_object_type_id", physical_object_type_id),
+        RecursiveFilter(
+            union_query,
+            "physical_object_function_id",
+            physical_object_function_id,
+            physical_object_functions_dict,
+        ),
+        EqFilter(union_query, "service_type_id", service_type_id),
+        RecursiveFilter(union_query, "urban_function_id", urban_function_id, urban_functions_dict),
     )
-    result = (await conn.execute(union_query)).mappings().all()
+
+    result = (await conn.execute(statement)).mappings().all()
 
     def initialize_group(group, obj, is_scenario_geometry):
         group.update(
@@ -798,6 +800,7 @@ async def get_context_geometries_with_all_objects_from_db(
         select(
             physical_objects_data.c.physical_object_id,
             physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.physical_object_function_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             physical_objects_data.c.name.label("physical_object_name"),
             physical_objects_data.c.properties.label("physical_object_properties"),
@@ -816,6 +819,7 @@ async def get_context_geometries_with_all_objects_from_db(
             services_data.c.is_capacity_real,
             services_data.c.properties.label("service_properties"),
             service_types_dict.c.service_type_id,
+            service_types_dict.c.urban_function_id,
             service_types_dict.c.name.label("service_type_name"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
@@ -880,6 +884,7 @@ async def get_context_geometries_with_all_objects_from_db(
                 projects_physical_objects_data.c.physical_object_id, physical_objects_data.c.physical_object_id
             ).label("physical_object_id"),
             physical_object_types_dict.c.physical_object_type_id,
+            physical_object_types_dict.c.physical_object_function_id,
             physical_object_types_dict.c.name.label("physical_object_type_name"),
             coalesce(projects_physical_objects_data.c.name, physical_objects_data.c.name).label("physical_object_name"),
             coalesce(projects_physical_objects_data.c.properties, physical_objects_data.c.properties).label(
@@ -904,6 +909,7 @@ async def get_context_geometries_with_all_objects_from_db(
             ),
             coalesce(projects_services_data.c.properties, services_data.c.properties).label("service_properties"),
             service_types_dict.c.service_type_id,
+            service_types_dict.c.urban_function_id,
             service_types_dict.c.name.label("service_type_name"),
             territory_types_dict.c.territory_type_id,
             territory_types_dict.c.name.label("territory_type_name"),
@@ -979,29 +985,26 @@ async def get_context_geometries_with_all_objects_from_db(
         )
     )
 
-    # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(physical_object_types_dict, "physical_object_type_id", physical_object_type_id),
-            RecursiveFilter(
-                physical_object_types_dict,
-                "physical_object_function_id",
-                physical_object_function_id,
-                physical_object_functions_dict,
-            ),
-            EqFilter(service_types_dict, "service_type_id", service_type_id),
-            RecursiveFilter(service_types_dict, "urban_function_id", urban_function_id, urban_functions_dict),
-        )
-
-    public_geoms_query = apply_common_filters(public_geoms_query)
-    regional_scenario_geoms_query = apply_common_filters(regional_scenario_geoms_query)
-
     union_query = union_all(
         public_geoms_query,
         regional_scenario_geoms_query,
+    ).cte(name="union_query")
+    statement = select(union_query)
+
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "physical_object_type_id", physical_object_type_id),
+        RecursiveFilter(
+            union_query,
+            "physical_object_function_id",
+            physical_object_function_id,
+            physical_object_functions_dict,
+        ),
+        EqFilter(union_query, "service_type_id", service_type_id),
+        RecursiveFilter(union_query, "urban_function_id", urban_function_id, urban_functions_dict),
     )
-    result = (await conn.execute(union_query)).mappings().all()
+
+    result = (await conn.execute(statement)).mappings().all()
 
     def initialize_group(group, obj, is_scenario_geometry):
         group.update(

@@ -211,19 +211,17 @@ async def get_services_by_scenario_id_from_db(
         )
     )
 
+    union_query = union_all(public_services_query, scenario_services_query).cte(name="union_query")
+    statement = select(union_query)
+
     # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(service_types_dict, "service_type_id", service_type_id),
-            RecursiveFilter(service_types_dict, "urban_function_id", urban_function_id, urban_functions_dict),
-        )
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "service_type_id", service_type_id),
+        RecursiveFilter(union_query, "urban_function_id", urban_function_id, urban_functions_dict),
+    )
 
-    public_services_query = apply_common_filters(public_services_query)
-    scenario_services_query = apply_common_filters(scenario_services_query)
-
-    union_query = union_all(public_services_query, scenario_services_query)
-    result = (await conn.execute(union_query)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     grouped_objects = defaultdict(lambda: {"territories": []})
     for obj in result:
@@ -439,19 +437,17 @@ async def get_services_with_geometry_by_scenario_id_from_db(
         )
     )
 
+    union_query = union_all(public_services_query, scenario_services_query).cte(name="union_query")
+    statement = select(union_query)
+
     # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(service_types_dict, "service_type_id", service_type_id),
-            RecursiveFilter(service_types_dict, "urban_function_id", urban_function_id, urban_functions_dict),
-        )
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "service_type_id", service_type_id),
+        RecursiveFilter(union_query, "urban_function_id", urban_function_id, urban_functions_dict),
+    )
 
-    public_services_query = apply_common_filters(public_services_query)
-    scenario_services_query = apply_common_filters(scenario_services_query)
-
-    union_query = union_all(public_services_query, scenario_services_query)
-    result = (await conn.execute(union_query)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     return [ScenarioServiceWithGeometryDTO(**row) for row in result]
 
@@ -618,19 +614,17 @@ async def get_context_services_from_db(
         )
     )
 
+    union_query = union_all(public_services_query, scenario_services_query).cte(name="union_query")
+    statement = select(union_query)
+
     # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(service_types_dict, "service_type_id", service_type_id),
-            RecursiveFilter(service_types_dict, "urban_function_id", urban_function_id, urban_functions_dict),
-        )
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "service_type_id", service_type_id),
+        RecursiveFilter(union_query, "urban_function_id", urban_function_id, urban_functions_dict),
+    )
 
-    public_services_query = apply_common_filters(public_services_query)
-    scenario_services_query = apply_common_filters(scenario_services_query)
-
-    union_query = union_all(public_services_query, scenario_services_query)
-    result = (await conn.execute(union_query)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     grouped_data = defaultdict(lambda: {"territories": []})
     for row in result:
@@ -844,19 +838,17 @@ async def get_context_services_with_geometry_from_db(
         .distinct()
     )
 
+    union_query = union_all(public_services_query, scenario_services_query).cte(name="union_query")
+    statement = select(union_query)
+
     # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(service_types_dict, "service_type_id", service_type_id),
-            RecursiveFilter(service_types_dict, "urban_function_id", urban_function_id, urban_functions_dict),
-        )
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "service_type_id", service_type_id),
+        RecursiveFilter(union_query, "urban_function_id", urban_function_id, urban_functions_dict),
+    )
 
-    public_services_query = apply_common_filters(public_services_query)
-    scenario_services_query = apply_common_filters(scenario_services_query)
-
-    union_query = union_all(public_services_query, scenario_services_query)
-    result = (await conn.execute(union_query)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     return [ScenarioServiceWithGeometryDTO(**row) for row in result]
 

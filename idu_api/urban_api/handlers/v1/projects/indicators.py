@@ -59,13 +59,14 @@ async def get_indicators_values_by_scenario_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    try:
-        indicator_ids = {int(ind_id.strip()) for ind_id in indicator_ids.split(",")}
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please, pass the indicator identifiers in the correct format separated by comma",
-        ) from exc
+    if indicator_ids is not None:
+        try:
+            indicator_ids = {int(ind_id.strip()) for ind_id in indicator_ids.split(",")}
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Please, pass the indicator identifiers in the correct format separated by comma",
+            ) from exc
 
     indicators = await user_project_service.get_scenario_indicators_values(
         scenario_id, indicator_ids, indicators_group_id, territory_id, hexagon_id, user
@@ -310,13 +311,14 @@ async def get_hexagons_with_indicators_values_by_scenario_id(
     """
     user_project_service: UserProjectService = request.state.user_project_service
 
-    try:
-        indicator_ids = {int(ind_id.strip()) for ind_id in indicator_ids.split(",")}
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Please, pass the indicator identifiers in the correct format separated by comma",
-        ) from exc
+    if indicator_ids is not None:
+        try:
+            indicator_ids = {int(ind_id.strip()) for ind_id in indicator_ids.split(",")}
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Please, pass the indicator identifiers in the correct format separated by comma",
+            ) from exc
 
     hexagons = await user_project_service.get_hexagons_with_indicators_by_scenario_id(
         scenario_id, indicator_ids, indicators_group_id, user

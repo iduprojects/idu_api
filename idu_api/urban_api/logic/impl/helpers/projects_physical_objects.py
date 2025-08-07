@@ -274,24 +274,22 @@ async def get_physical_objects_by_scenario_id_from_db(
         .distinct()
     )
 
+    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query).cte(name="union_query")
+    statement = select(union_query)
+
     # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(physical_object_types_dict, "physical_object_type_id", physical_object_type_id),
-            RecursiveFilter(
-                physical_object_types_dict,
-                "physical_object_function_id",
-                physical_object_function_id,
-                physical_object_functions_dict,
-            ),
-        )
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "physical_object_type_id", physical_object_type_id),
+        RecursiveFilter(
+            union_query,
+            "physical_object_function_id",
+            physical_object_function_id,
+            physical_object_functions_dict,
+        ),
+    )
 
-    public_urban_objects_query = apply_common_filters(public_urban_objects_query)
-    scenario_urban_objects_query = apply_common_filters(scenario_urban_objects_query)
-
-    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query)
-    result = (await conn.execute(union_query)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     grouped_objects = defaultdict(lambda: {"territories": []})
     for obj in result:
@@ -546,24 +544,22 @@ async def get_physical_objects_with_geometry_by_scenario_id_from_db(
         )
     )
 
+    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query).cte(name="union_query")
+    statement = select(union_query)
+
     # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(physical_object_types_dict, "physical_object_type_id", physical_object_type_id),
-            RecursiveFilter(
-                physical_object_types_dict,
-                "physical_object_function_id",
-                physical_object_function_id,
-                physical_object_functions_dict,
-            ),
-        )
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "physical_object_type_id", physical_object_type_id),
+        RecursiveFilter(
+            union_query,
+            "physical_object_function_id",
+            physical_object_function_id,
+            physical_object_functions_dict,
+        ),
+    )
 
-    public_urban_objects_query = apply_common_filters(public_urban_objects_query)
-    scenario_urban_objects_query = apply_common_filters(scenario_urban_objects_query)
-
-    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query)
-    result = (await conn.execute(union_query)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     grouped_objects = defaultdict()
     for obj in result:
@@ -791,25 +787,22 @@ async def get_context_physical_objects_from_db(
         .distinct()
     )
 
+    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query).cte(name="union_query")
+    statement = select(union_query)
+
     # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(physical_object_types_dict, "physical_object_type_id", physical_object_type_id),
-            RecursiveFilter(
-                physical_object_types_dict,
-                "physical_object_function_id",
-                physical_object_function_id,
-                physical_object_functions_dict,
-            ),
-        )
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "physical_object_type_id", physical_object_type_id),
+        RecursiveFilter(
+            union_query,
+            "physical_object_function_id",
+            physical_object_function_id,
+            physical_object_functions_dict,
+        ),
+    )
 
-    public_urban_objects_query = apply_common_filters(public_urban_objects_query)
-    scenario_urban_objects_query = apply_common_filters(scenario_urban_objects_query)
-
-    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query)
-
-    result = (await conn.execute(union_query)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     grouped_data = defaultdict(lambda: {"territories": []})
     for row in result:
@@ -1070,24 +1063,22 @@ async def get_context_physical_objects_with_geometry_from_db(
         .distinct()
     )
 
+    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query).cte(name="union_query")
+    statement = select(union_query)
+
     # Apply optional filters
-    def apply_common_filters(query):
-        return apply_filters(
-            query,
-            EqFilter(physical_object_types_dict, "physical_object_type_id", physical_object_type_id),
-            RecursiveFilter(
-                physical_object_types_dict,
-                "physical_object_function_id",
-                physical_object_function_id,
-                physical_object_functions_dict,
-            ),
-        )
+    statement = apply_filters(
+        statement,
+        EqFilter(union_query, "physical_object_type_id", physical_object_type_id),
+        RecursiveFilter(
+            union_query,
+            "physical_object_function_id",
+            physical_object_function_id,
+            physical_object_functions_dict,
+        ),
+    )
 
-    public_urban_objects_query = apply_common_filters(public_urban_objects_query)
-    scenario_urban_objects_query = apply_common_filters(scenario_urban_objects_query)
-
-    union_query = union_all(public_urban_objects_query, scenario_urban_objects_query)
-    result = (await conn.execute(union_query)).mappings().all()
+    result = (await conn.execute(statement)).mappings().all()
 
     return [ScenarioPhysicalObjectWithGeometryDTO(**phys_obj) for phys_obj in result]
 

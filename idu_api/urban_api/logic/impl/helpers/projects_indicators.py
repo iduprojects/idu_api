@@ -77,7 +77,7 @@ async def get_scenario_indicator_value_by_id_from_db(
 async def get_scenario_indicators_values_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
-    indicator_ids: set[int],
+    indicator_ids: set[int] | None,
     indicators_group_id: int | None,
     territory_id: int | None,
     hexagon_id: int | None,
@@ -393,7 +393,7 @@ async def delete_scenario_indicator_value_by_id_from_db(
 async def get_hexagons_with_indicators_by_scenario_id_from_db(
     conn: AsyncConnection,
     scenario_id: int,
-    indicator_ids: set[int],
+    indicator_ids: set[int] | None,
     indicators_group_id: int | None,
     user: UserDTO | None,
 ) -> list[HexagonWithIndicatorsDTO]:
