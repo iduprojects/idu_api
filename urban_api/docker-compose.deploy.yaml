@@ -1,0 +1,42 @@
+name: urban-api
+
+services:
+  migrator:
+    container_name: ${IMAGE_MIGRATOR}
+    volumes:
+      - ${REAL_CONFIG_PATH}:/app/urban-api.config.yaml:ro
+
+  api:
+    container_name: ${IMAGE_API}
+    restart: always
+    ports:
+      - ${APP_PORT_MAPPING:-5300:8000}
+      - ${PROMETHEUS_PORT_MAPPING:-9000:9000}
+    volumes:
+      - ${LOG_VOLUME:-./logs}:/app/logs
+      - ${REAL_CONFIG_PATH}:/app/urban-api.config.yaml:ro
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    deploy:
+      resources:
+        limits:
+          memory: ${MEM_LIMIT:-8G}
+    memswap_limit: ${MEMSWAP_LIMIT:-8G}
+    healthcheck:
+      test: curl -f http://localhost:8000/health_check/ping
+      interval: 10s
+      timeout: 5s
+      start_period: 5s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    networks:
+      - ${CUSTOM_NETWORK:-default}
+
+networks:
+  default:
+  hosting_net:
+    external: true

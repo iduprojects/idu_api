@@ -1,0 +1,93 @@
+name: build_and_deploy_urban_api
+on: workflow_dispatch
+
+env:
+  IMAGE_API: ${{ secrets.REGISTRY }}/urban_api
+  IMAGE_MIGRATOR: ${{ secrets.REGISTRY }}/urban_migrator
+  CONTAINER_NAME: urban_api
+
+jobs:
+  build:
+    runs-on: 47_runner
+    outputs:
+      tag: ${{ steps.date.outputs.NOW }}
+    steps:
+      - name: Get build tag
+        id: date
+        run: echo "NOW=$(date +'%Y-%m-%dT%H-%M-%S')" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build migrator image
+        run: docker build -f migrations.Dockerfile -t $IMAGE_MIGRATOR:${{ steps.date.outputs.NOW }} .
+
+      - name: Build API image
+        run: docker build -f urban_api/Dockerfile -t $IMAGE_API:${{ steps.date.outputs.NOW }} .
+
+      - name: Push migrator image
+        run: docker push $IMAGE_MIGRATOR:${{ steps.date.outputs.NOW }}
+
+      - name: Push API image
+        run: docker push $IMAGE_API:${{ steps.date.outputs.NOW }}
+
+  deploy_47:
+    needs: build
+    runs-on: 47_runner
+    environment: 47-host
+    env:
+      TAG: ${{ needs.build.outputs.tag }}
+    steps:
+      - name: Set image versions
+        run: |
+          echo "IMAGE_API=${{ env.IMAGE_API }}:$TAG" >> $GITHUB_ENV
+          echo "IMAGE_MIGRATOR=${{ env.IMAGE_MIGRATOR }}:$TAG" >> $GITHUB_ENV
+
+      - name: Create .env file
+        run: echo "${{ secrets.ENV_CONTENT }}" > .env.47
+
+      - name: Stop old container
+        run: docker rm -f $CONTAINER_NAME || true
+
+      - name: Deploy
+        run: docker compose -f docker-compose.deploy.yaml .env.47 up -d
+
+#  deploy_65:
+#    needs: build
+#    runs-on: 65_runner
+#    env:
+#      TAG: ${{ needs.build.outputs.tag }}
+#    steps:
+#      - name: Set image versions
+#        run: |
+#          echo "IMAGE_API=${{ env.IMAGE_API }}:$TAG" >> $GITHUB_ENV
+#          echo "IMAGE_MIGRATOR=${{ env.IMAGE_MIGRATOR }}:$TAG" >> $GITHUB_ENV
+#
+#      - name: Create .env file
+#        run: echo "${{ secrets.ENV_65_CONTENTS }}" > .env.65
+#
+#      - name: Stop old container
+#        run: docker rm -f $CONTAINER_NAME || true
+#
+#      - name: Deploy
+#        run: docker compose -f docker-compose.deploy.yaml .env.65 up -d
+#
+#  deploy_107:
+#    needs: build
+#    runs-on: 107_runner
+#    env:
+#      TAG: ${{ needs.build.outputs.tag }}
+#    steps:
+#      - name: Set image versions
+#        run: |
+#          echo "IMAGE_API=${{ env.IMAGE_API }}:$TAG" >> $GITHUB_ENV
+#          echo "IMAGE_MIGRATOR=${{ env.IMAGE_MIGRATOR }}:$TAG" >> $GITHUB_ENV
+#
+#      - name: Create .env file
+#        run: echo "${{ secrets.ENV_107_CONTENTS }}" > .env.107
+#
+#      - name: Stop old container
+#        run: docker rm -f $CONTAINER_NAME || true
+#
+#      - name: Deploy
+#        run: docker compose -f docker-compose.deploy.yaml --env-file .env.107 up -d

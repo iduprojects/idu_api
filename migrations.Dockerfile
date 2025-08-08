@@ -17,7 +17,6 @@ RUN sed -i '0,/version = .*/ s//version = "0.1.0"/' pyproject.toml
 RUN poetry config virtualenvs.create false && \
     poetry install --with dev --no-root
 
-COPY urban-api.config.yaml /app/
 COPY idu_api /app/idu_api
 
 RUN pip install .

@@ -19,12 +19,8 @@ RUN sed -i '0,/version = .*/ s//version = "0.1.0"/' pyproject.toml
 RUN poetry config virtualenvs.create false && \
     poetry install --with dev --no-root
 
-COPY urban-api.config.yaml /app/
 COPY idu_api /app/idu_api
 
 RUN pip install .
-
-COPY logrotate.conf /etc/logrotate.d/urban_api
-RUN chmod 0644 /etc/logrotate.d/urban_api
 
 CMD ["launch_urban_api"]
